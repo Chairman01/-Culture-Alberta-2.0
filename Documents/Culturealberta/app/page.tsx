@@ -1,5 +1,6 @@
 "use client"
 // Culture Alberta - Homepage
+// Updated for deployment
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
