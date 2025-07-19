@@ -5,7 +5,6 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowRight, MapPin, Youtube, Instagram, Facebook, Twitter } from "lucide-react"
-import { getAllPosts, BlogPost } from "@/lib/posts"
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -90,6 +89,35 @@ const formatDate = (dateString: string) => {
   }
 }
 
+// Fallback data for when Supabase is not available
+const fallbackArticles: Article[] = [
+  {
+    id: '1',
+    title: 'Welcome to Culture Alberta',
+    excerpt: 'Discover the rich cultural heritage of Alberta through stories, events, and community.',
+    image: '/placeholder.jpg',
+    category: 'featured',
+    date: new Date().toISOString(),
+    featured: true
+  },
+  {
+    id: '2',
+    title: 'Exploring Edmonton\'s Arts Scene',
+    excerpt: 'From galleries to street art, discover Edmonton\'s vibrant arts community.',
+    image: '/placeholder.jpg',
+    category: 'edmonton',
+    date: new Date().toISOString()
+  },
+  {
+    id: '3',
+    title: 'Calgary\'s Cultural Festivals',
+    excerpt: 'Experience the diverse cultural festivals that make Calgary unique.',
+    image: '/placeholder.jpg',
+    category: 'calgary',
+    date: new Date().toISOString()
+  }
+]
+
 export default function Home() {
   const [isClient, setIsClient] = useState(false)
   const [articles, setArticles] = useState<{
@@ -103,8 +131,8 @@ export default function Home() {
     calgary: [],
     food: []
   })
-  const [edmontonSpotlight, setEdmontonSpotlight] = useState<BlogPost[]>([])
-  const [calgarySpotlight, setCalgarySpotlight] = useState<BlogPost[]>([])
+  const [edmontonSpotlight, setEdmontonSpotlight] = useState<Article[]>([])
+  const [calgarySpotlight, setCalgarySpotlight] = useState<Article[]>([])
   const [featuredArticle, setFeaturedArticle] = useState<Article | null>(null)
   const [bestOfItems, setBestOfItems] = useState<BestOfItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -116,48 +144,71 @@ export default function Home() {
 
   const loadArticles = async () => {
     try {
-      const allPosts: BlogPost[] = await getAllPosts()
-      // Sort by date
-      allPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      // Try to load from Supabase, but fallback to static data if it fails
+      const { getAllPosts } = await import('@/lib/posts')
+      const allPosts = await getAllPosts()
+      
+      // Convert BlogPost to Article format
+      const convertedPosts: Article[] = allPosts.map(post => ({
+        id: post.id,
+        title: post.title,
+        excerpt: post.excerpt,
+        image: post.image_url,
+        category: post.category,
+        date: post.created_at,
+        featured: false
+      }))
 
       // Set featured article - either the explicitly featured one or the newest one
-      const featured = allPosts[0]
+      const featured = convertedPosts[0]
       if (featured) {
         setFeaturedArticle(featured)
       }
 
       setArticles({
-        latest: allPosts.slice(0, 6),
-        edmonton: allPosts.filter(article =>
+        latest: convertedPosts.slice(0, 6),
+        edmonton: convertedPosts.filter(article =>
           article.category?.toLowerCase() === 'edmonton' ||
           article.category?.toLowerCase().includes('edmonton')
         ).slice(0, 6),
-        calgary: allPosts.filter(article =>
+        calgary: convertedPosts.filter(article =>
           article.category?.toLowerCase() === 'calgary' ||
           article.category?.toLowerCase().includes('calgary')
         ).slice(0, 6),
-        food: allPosts.filter(article =>
+        food: convertedPosts.filter(article =>
           article.category?.toLowerCase().includes('food')
         ).slice(0, 6)
       })
 
       setEdmontonSpotlight(
-        allPosts.filter(article =>
+        convertedPosts.filter(article =>
           article.category?.toLowerCase() === 'edmonton' ||
           article.category?.toLowerCase().includes('edmonton')
         ).slice(0, 4)
       )
 
       setCalgarySpotlight(
-        allPosts.filter(article =>
+        convertedPosts.filter(article =>
           article.category?.toLowerCase() === 'calgary' ||
           article.category?.toLowerCase().includes('calgary')
         ).slice(0, 4)
       )
 
-      setIsLoading(false)
     } catch (error) {
-      console.error('Error loading articles:', error)
+      console.log('Using fallback data due to Supabase connection issue:', error)
+      
+      // Use fallback data
+      setFeaturedArticle(fallbackArticles[0])
+      setArticles({
+        latest: fallbackArticles,
+        edmonton: fallbackArticles.filter(a => a.category === 'edmonton'),
+        calgary: fallbackArticles.filter(a => a.category === 'calgary'),
+        food: []
+      })
+      setEdmontonSpotlight(fallbackArticles.filter(a => a.category === 'edmonton'))
+      setCalgarySpotlight(fallbackArticles.filter(a => a.category === 'calgary'))
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -430,7 +481,7 @@ export default function Home() {
                       <MapPin className="h-3 w-3 text-blue-600" />
                       <span className="text-blue-600">Edmonton</span>
                       <span>•</span>
-                      <span>{formatDate(article.created_at || '')}</span>
+                      <span>{formatDate(article.date || '')}</span>
                     </div>
                     <h3 className="mt-1 font-bold group-hover:text-blue-600 line-clamp-2">{article.title}</h3>
                     {article.excerpt && <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>}
@@ -471,7 +522,7 @@ export default function Home() {
                       <MapPin className="h-3 w-3 text-red-600" />
                       <span className="text-red-600">Calgary</span>
                       <span>•</span>
-                      <span>{formatDate(article.created_at || '')}</span>
+                      <span>{formatDate(article.date || '')}</span>
                     </div>
                     <h3 className="mt-1 font-bold group-hover:text-red-600 line-clamp-2">{article.title}</h3>
                     {article.excerpt && <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>}
