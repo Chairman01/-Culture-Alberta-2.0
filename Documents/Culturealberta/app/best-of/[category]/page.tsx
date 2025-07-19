@@ -16,8 +16,8 @@ interface ExtendedArticle extends Article {
   name?: string;
 }
 
-export default function BestOfCategoryPage({ params }: { params: Promise<{ category: string }> }) {
-  const { category } = React.use(params)
+export default function BestOfCategoryPage({ params }: { params: { category: string } }) {
+  const { category } = params
   const [items, setItems] = useState<ExtendedArticle[]>([])
   const [isLoading, setIsLoading] = useState(true)
 

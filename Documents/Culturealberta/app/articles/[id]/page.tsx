@@ -22,9 +22,9 @@ interface ExtendedArticle {
   type?: string;
 }
 
-export default function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
+export default function ArticlePage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const articleId = use(params).id
+  const articleId = params.id
   const [article, setArticle] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 

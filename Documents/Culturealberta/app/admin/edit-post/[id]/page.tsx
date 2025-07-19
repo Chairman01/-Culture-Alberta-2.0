@@ -15,13 +15,13 @@ import { useToast } from "@/hooks/use-toast"
 import { use } from "react"
 
 interface EditPostPageProps {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }
 
 export default function EditPostPage({ params }: EditPostPageProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const postId = use(params).id
+  const postId = params.id
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState("")
   const [readTime, setReadTime] = useState("5")
