@@ -39,10 +39,12 @@ interface PageParams {
   id: string;
 }
 
-export default function ArticleForm({ params }: { params: PageParams }) {
+export default function ArticlePage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const resolvedParams = use(params as any) as PageParams
-  const isNew = resolvedParams.id === "new"
+  const articleId = params.id
+  const [article, setArticle] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const isNew = articleId === "new"
   const [isLoading, setIsLoading] = useState(!isNew)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [articleType, setArticleType] = useState<'post' | 'article'>('post')
@@ -76,7 +78,7 @@ export default function ArticleForm({ params }: { params: PageParams }) {
     if (isNew) return
 
     try {
-      const id = resolvedParams.id
+      const id = articleId
       // Try both post_ and article_ prefixes
       const savedPostJson = localStorage.getItem(`post_${id}`) || 
                           localStorage.getItem(`article_${id}`)
@@ -123,7 +125,7 @@ export default function ArticleForm({ params }: { params: PageParams }) {
     event.preventDefault()
     
     try {
-      const id = isNew ? Date.now().toString() : resolvedParams.id
+      const id = isNew ? Date.now().toString() : articleId
       const prefix = articleType === 'post' ? 'post_' : 'article_'
       
       // If we have an image, store it separately
