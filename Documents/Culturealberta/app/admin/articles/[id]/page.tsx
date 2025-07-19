@@ -35,10 +35,6 @@ interface FormData {
   neighborhood?: string
 }
 
-interface PageParams {
-  id: string;
-}
-
 export default function ArticlePage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const articleId = params.id
