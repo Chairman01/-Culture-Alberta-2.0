@@ -64,7 +64,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setExcerpt(articleData.excerpt || "")
       setContent(articleData.content || "")
       setAuthor(articleData.author || "")
-      setImageUrl(articleData.image || "")
+      setImageUrl(articleData.imageUrl || "")
     } catch (error) {
       console.error("Error loading article:", error)
       toast({
@@ -114,7 +114,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         location: location || "Alberta",
         excerpt,
         content,
-        image: imageUrl,
+        imageUrl: imageUrl,
         author: author || "Admin",
         date: new Date().toISOString(),
         type: "article",
