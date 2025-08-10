@@ -22,14 +22,21 @@ interface PageParams {
   id: string;
 }
 
-export default function BestOfDetailPage({ params }: { params: PageParams }) {
-  const resolvedParams = use(params as any) as PageParams
+export default function BestOfDetailPage({ params }: { params: Promise<PageParams> }) {
+  const [resolvedParams, setResolvedParams] = useState<PageParams | null>(null)
+  
+  // Handle async params
+  useEffect(() => {
+    params.then((params) => setResolvedParams(params))
+  }, [params])
   const [item, setItem] = useState<ExtendedArticle | null>(null)
   const [relatedItems, setRelatedItems] = useState<ExtendedArticle[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const category = resolvedParams.category.charAt(0).toUpperCase() + resolvedParams.category.slice(1)
+  const category = resolvedParams?.category ? resolvedParams.category.charAt(0).toUpperCase() + resolvedParams.category.slice(1) : ""
 
   const loadItem = useCallback(() => {
+    if (!resolvedParams) return
+    
     try {
       const keys = Object.keys(localStorage)
       const postKeys = keys.filter(key => key.startsWith('post_') && !key.includes('image_'))
@@ -96,7 +103,7 @@ export default function BestOfDetailPage({ params }: { params: PageParams }) {
       console.error('Error loading item:', error)
     }
     setIsLoading(false)
-  }, [resolvedParams.id, resolvedParams.category])
+  }, [resolvedParams?.id, resolvedParams?.category])
 
   useEffect(() => {
     loadItem();
