@@ -58,16 +58,18 @@ export async function POST(request: NextRequest) {
 // PUT /api/articles - Update an article
 export async function PUT(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
     const body: UpdateArticleInput = await request.json()
     
-    if (!body.id) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Article ID is required' },
         { status: 400 }
       )
     }
 
-    const updatedArticle = await updateArticleInFile(body.id, body)
+    const updatedArticle = await updateArticleInFile(id, body)
     return NextResponse.json(updatedArticle)
   } catch (error) {
     console.error('Error updating article:', error)

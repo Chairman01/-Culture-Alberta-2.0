@@ -55,8 +55,8 @@ export async function createArticleInFile(article: CreateArticleInput): Promise<
   const newArticle: Article = {
     id: `article-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     ...article,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     status: article.status || 'published',
     type: article.type || 'article'
   }
@@ -78,7 +78,7 @@ export async function updateArticleInFile(id: string, article: UpdateArticleInpu
   articles[index] = {
     ...articles[index],
     ...article,
-    updated_at: new Date().toISOString()
+    updatedAt: new Date().toISOString()
   }
   
   writeArticles(articles)

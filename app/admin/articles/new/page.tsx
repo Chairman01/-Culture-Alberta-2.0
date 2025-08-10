@@ -65,9 +65,9 @@ export default function NewArticlePage() {
         location: location || "Alberta",
         excerpt,
         content,
-        image: imageUrl,
+        imageUrl: imageUrl,
         author: author || "Admin",
-        date: new Date().toISOString(),
+
         type: "article",
         status: "published"
       })

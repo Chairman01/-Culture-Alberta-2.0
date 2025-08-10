@@ -198,7 +198,7 @@ export default function BestOfDetailPage({ params }: { params: Promise<PageParam
               {relatedItems.map((relatedItem) => (
                 <Link
                   key={relatedItem.id}
-                  href={`/best-of/${resolvedParams.category}/${relatedItem.id}`}
+                  href={`/best-of/${resolvedParams?.category}/${relatedItem.id}`}
                   className="block group"
                 >
                   <div className="aspect-video relative rounded-lg overflow-hidden mb-2">

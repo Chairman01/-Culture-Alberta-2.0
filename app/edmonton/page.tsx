@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react"
 import { getAllPosts, BlogPost } from "@/lib/posts"
 import { getAllArticles } from "@/lib/articles"
+import { Article } from "@/lib/types/article"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowRight, Calendar, MapPin } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Footer } from "@/components/footer"
 
-// Extend BlogPost locally to include 'type' for filtering
-interface EdmontonArticle extends BlogPost {
+// Extend Article locally to include 'type' for filtering
+interface EdmontonArticle extends Article {
   type?: string;
   location?: string;
 }
@@ -94,7 +95,7 @@ export default function EdmontonPage() {
                 <Link href={`/articles/${featureArticle.id}`} className="group block">
                   <div className="aspect-[16/9] rounded-lg overflow-hidden">
                     <Image
-                      src={featureArticle.image || "/placeholder.svg"}
+                      src={featureArticle.imageUrl || "/placeholder.svg"}
                       alt={featureArticle.title}
                       width={800}
                       height={500}
@@ -219,7 +220,7 @@ export default function EdmontonPage() {
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[16/9] w-full bg-muted relative">
                             <Image
-                              src={article.image || "/placeholder.svg"}
+                              src={article.imageUrl || "/placeholder.svg"}
                               alt={article.title}
                               width={400}
                               height={225}
@@ -244,7 +245,7 @@ export default function EdmontonPage() {
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[16/9] w-full bg-muted relative">
                             <Image
-                              src={article.image || "/placeholder.svg"}
+                              src={article.imageUrl || "/placeholder.svg"}
                               alt={article.title}
                               width={400}
                               height={225}
@@ -269,7 +270,7 @@ export default function EdmontonPage() {
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[16/9] w-full bg-muted relative">
                             <Image
-                              src={article.image || "/placeholder.svg"}
+                              src={article.imageUrl || "/placeholder.svg"}
                               alt={article.title}
                               width={400}
                               height={225}
@@ -294,7 +295,7 @@ export default function EdmontonPage() {
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[16/9] w-full bg-muted relative">
                             <Image
-                              src={article.image || "/placeholder.svg"}
+                              src={article.imageUrl || "/placeholder.svg"}
                               alt={article.title}
                               width={400}
                               height={225}
@@ -319,7 +320,7 @@ export default function EdmontonPage() {
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[16/9] w-full bg-muted relative">
                             <Image
-                              src={article.image || "/placeholder.svg"}
+                              src={article.imageUrl || "/placeholder.svg"}
                               alt={article.title}
                               width={400}
                               height={225}
