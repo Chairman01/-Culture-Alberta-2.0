@@ -35,5 +35,4 @@ export interface CreateArticleInput {
 }
 
 export interface UpdateArticleInput extends Partial<CreateArticleInput> {
-  id: string;
 } 
