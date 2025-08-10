@@ -116,7 +116,6 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         content,
         imageUrl: imageUrl,
         author: author || "Admin",
-        date: new Date().toISOString(),
         type: "article",
         status: "published"
       })
