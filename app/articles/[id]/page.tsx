@@ -5,22 +5,10 @@ import { Calendar, Clock } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
-import { getPostById } from '@/lib/posts'
+import { getArticleById } from '@/lib/articles'
 import { use } from 'react'
 
-interface ExtendedArticle {
-  id: string;
-  title: string;
-  image?: string;
-  category?: string;
-  location?: string;
-  date?: string;
-  readTime?: string;
-  excerpt?: string;
-  description?: string;
-  content?: string;
-  type?: string;
-}
+import { Article } from '@/lib/types/article'
 
 export default function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
@@ -30,14 +18,14 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     params.then(({ id }) => setArticleId(id))
   }, [params])
-  const [article, setArticle] = useState<any>(null)
+  const [article, setArticle] = useState<Article | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadArticle() {
       try {
-        const post = await getPostById(articleId)
-        setArticle(post)
+        const article = await getArticleById(articleId)
+        setArticle(article)
       } catch (error) {
         console.error("Article not found:", articleId)
         setArticle(null)
@@ -72,9 +60,9 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
     <article className="container mx-auto px-4 py-8 max-w-4xl">
       <h1 className="text-4xl font-bold mb-4">{article.title}</h1>
       <div className="flex flex-wrap gap-4 text-gray-600 mb-6">
-        {article.created_at && (
+        {article.createdAt && (
           <div className="flex items-center gap-2">
-            <span>{new Date(article.created_at).toLocaleDateString()}</span>
+            <span>{new Date(article.createdAt).toLocaleDateString()}</span>
           </div>
         )}
         {article.category && (
@@ -88,10 +76,10 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
           </span>
         )}
       </div>
-      {article.image_url && (
+      {article.imageUrl && (
         <div className="relative w-full h-[400px] mb-8">
           <img
-            src={article.image_url}
+            src={article.imageUrl}
             alt={article.title || 'Article image'}
             className="object-cover rounded-lg w-full h-full"
           />

@@ -6,24 +6,7 @@ import Image from 'next/image'
 import { getAllArticles } from '@/lib/articles'
 import { Footer } from '@/components/footer'
 
-interface Article {
-  id: string
-  title: string
-  excerpt?: string
-  description?: string
-  content?: string
-  category?: string
-  location?: string
-  date?: string
-  readTime?: string
-  type?: string
-  author?: string
-  status?: string
-  tags?: string[]
-  rating?: number
-  featured?: boolean
-  image?: string
-}
+import { Article } from '@/lib/types/article'
 
 export default function Home() {
   const [posts, setPosts] = useState<Article[]>([])
@@ -127,7 +110,7 @@ export default function Home() {
   }
 
   const getPostImage = (post: Article) => {
-    return post.image || "/placeholder.svg"
+    return post.imageUrl || "/placeholder.svg"
   }
 
   const getPostCategory = (post: Article) => {
