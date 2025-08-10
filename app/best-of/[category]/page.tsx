@@ -16,8 +16,13 @@ interface ExtendedArticle extends Article {
   name?: string;
 }
 
-export default function BestOfCategoryPage({ params }: { params: { category: string } }) {
-  const { category } = params
+export default function BestOfCategoryPage({ params }: { params: Promise<{ category: string }> }) {
+  const [category, setCategory] = useState<string>("")
+  
+  // Handle async params
+  useEffect(() => {
+    params.then(({ category: paramCategory }) => setCategory(paramCategory))
+  }, [params])
   const [items, setItems] = useState<ExtendedArticle[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -25,10 +30,14 @@ export default function BestOfCategoryPage({ params }: { params: { category: str
   const categoryName = category.charAt(0).toUpperCase() + category.slice(1)
 
   useEffect(() => {
-    loadBestOfItems()
+    if (category) {
+      loadBestOfItems()
+    }
   }, [category])
 
   const loadBestOfItems = () => {
+    if (!category) return
+    
     try {
       const keys = Object.keys(localStorage)
       const postKeys = keys.filter(key => key.startsWith('post_') && !key.startsWith('post_image_'))
