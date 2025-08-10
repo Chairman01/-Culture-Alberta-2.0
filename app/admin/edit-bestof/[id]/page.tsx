@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, Save, Upload, Star } from "lucide-react"
 
@@ -12,7 +12,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
 import { useToast } from "@/hooks/use-toast"
 
-export default function EditBestOfPage({ params }: { params: { id: string } }) {
+export default function EditBestOfPage({ params }: { params: Promise<{ id: string }> }) {
+  const [id, setId] = useState<string>("")
+  
+  // Handle async params
+  useEffect(() => {
+    params.then(({ id: paramId }) => setId(paramId))
+  }, [params])
   // Sample data for Best of Alberta listings
   const bestOfItems = [
     {
@@ -43,7 +49,7 @@ export default function EditBestOfPage({ params }: { params: { id: string } }) {
     },
   ]
 
-  const item = bestOfItems.find((i) => i.id === params.id) || bestOfItems[0]
+  const item = bestOfItems.find((i) => i.id === id) || bestOfItems[0]
   const { toast } = useToast()
 
   const [name, setName] = useState(item.name)

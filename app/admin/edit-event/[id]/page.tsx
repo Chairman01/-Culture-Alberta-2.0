@@ -12,7 +12,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
 import { useToast } from "@/hooks/use-toast"
 
-export default function EditEventPage({ params }: { params: { id: string } }) {
+export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
+  const [id, setId] = useState<string>("")
+  
+  // Handle async params
+  useEffect(() => {
+    params.then(({ id: paramId }) => setId(paramId))
+  }, [params])
   // In a real application, you would fetch the event data based on the ID
   // For now, we'll use sample data
   const events = [
@@ -38,7 +44,7 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
     },
   ]
 
-  const event = events.find((e) => e.id === params.id) || events[0]
+  const event = events.find((e) => e.id === id) || events[0]
   const { toast } = useToast()
 
   const [title, setTitle] = useState(event.title)

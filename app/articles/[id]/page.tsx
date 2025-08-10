@@ -22,9 +22,14 @@ interface ExtendedArticle {
   type?: string;
 }
 
-export default function ArticlePage({ params }: { params: { id: string } }) {
+export default function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
-  const articleId = params.id
+  const [articleId, setArticleId] = useState<string>("")
+  
+  // Handle async params
+  useEffect(() => {
+    params.then(({ id }) => setArticleId(id))
+  }, [params])
   const [article, setArticle] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
