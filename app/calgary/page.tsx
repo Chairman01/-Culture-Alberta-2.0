@@ -1,15 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getAllPosts, BlogPost } from "@/lib/posts"
+import { getAllArticles } from "@/lib/articles"
+import { Article } from "@/lib/types/article"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowRight, Calendar, MapPin } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Footer } from "@/components/footer"
 
-// Extend BlogPost locally to include 'type' for filtering
-interface CalgaryArticle extends BlogPost {
+// Extend Article locally to include 'type' for filtering
+interface CalgaryArticle extends Article {
   type?: string;
   location?: string;
 }
@@ -34,23 +35,12 @@ export default function CalgaryPage() {
   useEffect(() => {
     async function loadCalgaryArticles() {
       try {
-        const allPosts = await getAllPosts()
-        // Merge with events from localStorage
-        let localEvents = []
-        try {
-          const keys = Object.keys(localStorage)
-          const eventKeys = keys.filter((key) => key.startsWith("event_"))
-          for (const key of eventKeys) {
-            const savedEventJson = localStorage.getItem(key)
-            if (savedEventJson) {
-              const savedEvent = JSON.parse(savedEventJson)
-              localEvents.push(savedEvent)
-            }
-          }
-        } catch (e) { /* ignore localStorage errors */ }
-        const combinedPosts = [...allPosts, ...localEvents]
-        const calgaryPosts = combinedPosts.filter(
-          (post) => post.category?.toLowerCase().includes("calgary")
+        const allArticles = await getAllArticles()
+        
+        // Filter for Calgary articles
+        const calgaryPosts = allArticles.filter(
+          (post) => post.category?.toLowerCase().includes("calgary") || 
+                    post.location?.toLowerCase().includes("calgary")
         )
         setArticles(calgaryPosts)
         // Feature article: newest
@@ -68,7 +58,7 @@ export default function CalgaryPage() {
         const now = new Date()
         setUpcomingEvents(
           calgaryPosts.filter(
-            (a) => (a.type === 'event' || a.type === 'Event') && a.created_at && new Date(a.created_at) > now
+            (a) => (a.type === 'event' || a.type === 'Event') && a.date && new Date(a.date) > now
           ).slice(0, 3)
         )
       } catch (error) {
@@ -109,7 +99,7 @@ export default function CalgaryPage() {
               <div className="w-full max-w-4xl mx-auto mb-6">
                 <div className="aspect-[16/9] rounded-lg overflow-hidden">
                   <Image
-                    src={featureArticle.image_url || "/placeholder.svg"}
+                                          src={featureArticle.imageUrl || "/placeholder.svg"}
                     alt={featureArticle.title}
                     width={800}
                     height={500}
@@ -231,7 +221,7 @@ export default function CalgaryPage() {
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[16/9] w-full bg-muted relative">
                             <Image
-                              src={article.image_url || "/placeholder.svg"}
+                              src={article.imageUrl || "/placeholder.svg"}
                               alt={article.title}
                               width={400}
                               height={225}
@@ -256,7 +246,7 @@ export default function CalgaryPage() {
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[16/9] w-full bg-muted relative">
                             <Image
-                              src={article.image_url || "/placeholder.svg"}
+                              src={article.imageUrl || "/placeholder.svg"}
                               alt={article.title}
                               width={400}
                               height={225}
@@ -281,7 +271,7 @@ export default function CalgaryPage() {
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[16/9] w-full bg-muted relative">
                             <Image
-                              src={article.image_url || "/placeholder.svg"}
+                              src={article.imageUrl || "/placeholder.svg"}
                               alt={article.title}
                               width={400}
                               height={225}
@@ -306,7 +296,7 @@ export default function CalgaryPage() {
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[16/9] w-full bg-muted relative">
                             <Image
-                              src={article.image_url || "/placeholder.svg"}
+                              src={article.imageUrl || "/placeholder.svg"}
                               alt={article.title}
                               width={400}
                               height={225}
@@ -331,7 +321,7 @@ export default function CalgaryPage() {
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[16/9] w-full bg-muted relative">
                             <Image
-                              src={article.image_url || "/placeholder.svg"}
+                              src={article.imageUrl || "/placeholder.svg"}
                               alt={article.title}
                               width={400}
                               height={225}
@@ -341,7 +331,7 @@ export default function CalgaryPage() {
                         </div>
                         <div className="mt-4 space-y-2">
                           <Image
-                            src={article.image_url || "/placeholder.svg"}
+                            src={article.imageUrl || "/placeholder.svg"}
                             alt={article.title}
                             width={400}
                             height={225}

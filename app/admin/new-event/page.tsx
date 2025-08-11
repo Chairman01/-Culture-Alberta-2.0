@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
 import { useToast } from "@/hooks/use-toast"
+import { createArticle } from "@/lib/articles"
 
 export default function NewEventPage() {
   const { toast } = useToast()
@@ -79,32 +80,25 @@ export default function NewEventPage() {
     setIsSaving(true)
 
     try {
-      // Simulate saving the event
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
       // Format the date range
       const formattedDate = endDate ? `${startDate} - ${endDate}` : startDate
 
-      // Create a new event object
+      // Create a new event object using the articles system
       const newEvent = {
-        id: `event-${Date.now()}`,
         title,
+        content: description,
+        excerpt: description.substring(0, 150) + (description.length > 150 ? '...' : ''),
         category: category.charAt(0).toUpperCase() + category.slice(1),
-        date: formattedDate,
         location,
-        description,
-        image: imageUrl,
-        ticketUrl,
-        organizer,
-        contactEmail,
-        contactPhone,
+        author: organizer || 'Event Organizer',
+        imageUrl: imageUrl || '/placeholder.svg',
+        type: 'event',
+        status: 'published'
       }
 
-      // In a real app, you would save this to your database
-      console.log("New event:", newEvent)
-
-      // Save to localStorage so it appears in the admin events list
-      localStorage.setItem(`event_${newEvent.id}`, JSON.stringify(newEvent))
+      // Save to the articles system
+      const savedEvent = await createArticle(newEvent)
+      console.log("New event saved:", savedEvent)
 
       toast({
         title: "Event created",

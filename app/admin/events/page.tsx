@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getAllArticles, deleteArticle } from "@/lib/articles"
 import {
   Pagination,
   PaginationContent,
@@ -42,42 +43,41 @@ export default function EventsAdminPage() {
 
   // Load events data on component mount
   useEffect(() => {
-    // Start with the default events
-    const eventsData = [...mockEvents]
+    async function loadEvents() {
+      try {
+        const allArticles = await getAllArticles()
+        
+        // Filter for events (articles with type 'event')
+        const eventArticles = allArticles.filter(article => article.type === 'event')
+        
+        // Transform articles to match the expected event format
+        const eventsData = eventArticles.map(article => ({
+          id: article.id,
+          title: article.title,
+          category: article.category,
+          date: article.date || article.createdAt,
+          location: article.location,
+          description: article.content,
+          image: article.imageUrl,
+          status: article.status,
+          organizer: article.author
+        }))
 
-    // Try to load any events from localStorage
-    try {
-      // Get all localStorage keys
-      const keys = Object.keys(localStorage)
-
-      // Find keys that match our event pattern
-      const eventKeys = keys.filter((key) => key.startsWith("event_") && !key.startsWith("event_image_"))
-
-      for (const key of eventKeys) {
-        const eventId = key.replace("event_", "")
-        const savedEventJson = localStorage.getItem(key)
-
-        if (savedEventJson) {
-          const savedEvent = JSON.parse(savedEventJson)
-
-          // Check if this event already exists in our array
-          const existingIndex = eventsData.findIndex((e) => e.id === eventId)
-          if (existingIndex !== -1) {
-            // Update existing event
-            eventsData[existingIndex] = savedEvent
-          } else {
-            // Add new event
-            eventsData.push(savedEvent)
-          }
-        }
+        setEvents(eventsData)
+      } catch (error) {
+        console.error("Error loading events:", error)
+        toast({
+          title: "Error loading events",
+          description: "There was a problem loading the events.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
       }
-    } catch (error) {
-      console.error("Error loading saved events data:", error)
     }
 
-    setEvents(eventsData)
-    setIsLoading(false)
-  }, [])
+    loadEvents()
+  }, [toast])
 
   // Filter events based on search term, location, and status
   const filteredEvents = events.filter((event) => {
@@ -104,11 +104,10 @@ export default function EventsAdminPage() {
     ),
   )
 
-  const handleDeleteEvent = (id: string) => {
+  const handleDeleteEvent = async (id: string) => {
     try {
-      // Remove from localStorage if it exists
-      localStorage.removeItem(`event_${id}`)
-      localStorage.removeItem(`event_image_${id}`)
+      // Delete from the articles system
+      await deleteArticle(id)
 
       // Remove from state
       setEvents(events.filter((event) => event.id !== id))
@@ -284,61 +283,4 @@ export default function EventsAdminPage() {
   )
 }
 
-// Sample data for events
-const mockEvents = [
-  {
-    id: "1",
-    title: "Alberta Heritage Festival",
-    description:
-      "A celebration of Alberta's diverse cultural heritage featuring music, dance, food, and crafts from over 100 cultural groups.",
-    date: "May 15-17, 2025",
-    location: "Edmonton, AB",
-    category: "Festival",
-    status: "Upcoming",
-    image: "/placeholder.svg?height=400&width=600&text=Heritage+Festival",
-  },
-  {
-    id: "2",
-    title: "Indigenous Art Exhibition",
-    description:
-      "Showcasing contemporary works by indigenous artists from across the province, exploring themes of identity, land, and reconciliation.",
-    date: "June 1-30, 2025",
-    location: "Calgary, AB",
-    category: "Art",
-    status: "Upcoming",
-    image: "/placeholder.svg?height=400&width=600&text=Indigenous+Art",
-  },
-  {
-    id: "3",
-    title: "Ukrainian Dance Spectacular",
-    description:
-      "A vibrant showcase of Ukrainian dance traditions featuring performances by Alberta's top Ukrainian dance ensembles.",
-    date: "May 22, 2025",
-    location: "Red Deer, AB",
-    category: "Dance",
-    status: "Upcoming",
-    image: "/placeholder.svg?height=400&width=600&text=Ukrainian+Dance",
-  },
-  {
-    id: "4",
-    title: "Alberta Food Festival",
-    description:
-      "Celebrate Alberta's culinary heritage with tastings, cooking demonstrations, and workshops featuring local ingredients and traditional recipes.",
-    date: "June 10-12, 2025",
-    location: "Lethbridge, AB",
-    category: "Food",
-    status: "Upcoming",
-    image: "/placeholder.svg?height=400&width=600&text=Food+Festival",
-  },
-  {
-    id: "5",
-    title: "Mountain Culture Film Festival",
-    description:
-      "A showcase of films celebrating the unique cultural heritage of Alberta's mountain communities and their relationship with the landscape.",
-    date: "July 5-8, 2025",
-    location: "Banff, AB",
-    category: "Film",
-    status: "Upcoming",
-    image: "/placeholder.svg?height=400&width=600&text=Film+Festival",
-  },
-]
+

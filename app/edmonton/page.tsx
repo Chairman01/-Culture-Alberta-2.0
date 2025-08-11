@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getAllPosts, BlogPost } from "@/lib/posts"
 import { getAllArticles } from "@/lib/articles"
 import { Article } from "@/lib/types/article"
 import Link from "next/link"
@@ -26,14 +25,17 @@ export default function EdmontonPage() {
   useEffect(() => {
     async function loadEdmontonArticles() {
       try {
-        // Load from articles system (simpler approach)
         const allArticles = await getAllArticles()
         
         // Filter for Edmonton articles
+        console.log('All articles:', allArticles.map(a => ({ id: a.id, title: a.title, category: a.category, location: a.location })))
+        
         const edmontonPosts = allArticles.filter(
           (post) => post.category?.toLowerCase().includes("edmonton") || 
                     post.location?.toLowerCase().includes("edmonton")
         )
+        
+        console.log('Filtered Edmonton posts:', edmontonPosts.map(a => ({ id: a.id, title: a.title, category: a.category, location: a.location })))
         setArticles(edmontonPosts)
         // Feature article: newest
         if (edmontonPosts.length > 0) {
@@ -49,9 +51,9 @@ export default function EdmontonPage() {
         // Upcoming events: type 'event' and future date
         const now = new Date()
         setUpcomingEvents(
-                     edmontonPosts.filter(
-             (a) => (a.type === 'event' || a.type === 'Event') && a.date && new Date(a.date) > now
-           ).slice(0, 3)
+          edmontonPosts.filter(
+            (a) => (a.type === 'event' || a.type === 'Event') && a.date && new Date(a.date) > now
+          ).slice(0, 3)
         )
       } catch (error) {
         console.error("Error loading Edmonton articles:", error)
@@ -94,13 +96,29 @@ export default function EdmontonPage() {
               <div className="w-full max-w-4xl mx-auto mb-6">
                 <Link href={`/articles/${featureArticle.id}`} className="group block">
                   <div className="aspect-[16/9] rounded-lg overflow-hidden">
-                    <Image
-                      src={featureArticle.imageUrl || "/placeholder.svg"}
-                      alt={featureArticle.title}
-                      width={800}
-                      height={500}
-                      className="w-full h-full object-cover"
-                    />
+                    {featureArticle.imageUrl?.endsWith('.svg') ? (
+                      <img
+                        src={featureArticle.imageUrl}
+                        alt={featureArticle.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.log('SVG failed to load:', featureArticle.imageUrl);
+                          e.currentTarget.src = "/placeholder.svg";
+                        }}
+                      />
+                    ) : (
+                      <Image
+                        src={featureArticle.imageUrl || "/placeholder.svg"}
+                        alt={featureArticle.title}
+                        width={800}
+                        height={500}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.log('Image failed to load:', featureArticle.imageUrl);
+                          e.currentTarget.src = "/placeholder.svg";
+                        }}
+                      />
+                    )}
                   </div>
                   <div className="mt-4">
                     <div className="flex items-center gap-2">
@@ -151,7 +169,7 @@ export default function EdmontonPage() {
                       <h4 className="font-medium group-hover:text-primary">{event.title}</h4>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
                         <Calendar className="h-3 w-3" />
-                                                 <span>{event.date ? new Date(event.date).toLocaleDateString() : ""}</span>
+                        <span>{event.date ? new Date(event.date).toLocaleDateString() : ""}</span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
                         <MapPin className="h-3 w-3" />

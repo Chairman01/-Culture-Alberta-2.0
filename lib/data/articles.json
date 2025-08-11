@@ -1,17 +1,28 @@
 [
   {
-    "id": "sample-article-1",
-    "title": "Welcome to Culture Alberta",
-    "content": "Discover the rich cultural heritage and vibrant communities of Alberta. From the bustling cities of Calgary and Edmonton to the stunning natural landscapes, Alberta offers a diverse range of cultural experiences.",
-    "excerpt": "Discover the rich cultural heritage and vibrant communities of Alberta.",
+    "id": "article-1754870922027-wd5q2h3f2",
+    "title": "Welcome to Cultural Alberta",
     "category": "Edmonton",
-    "location": "Edmonton",
-    "author": "Culture Alberta Team",
-    "date": "2024-01-15T00:00:00.000Z",
-    "type": "article",
+    "location": "Edmonton, Alberta",
+    "excerpt": "Discover the rich cultural heritage and vibrant arts scene of Alberta's capital city.",
+    "content": "Edmonton, the capital city of Alberta, is a vibrant cultural hub that offers visitors and residents alike a rich tapestry of arts, history, and community experiences.",
+    "imageUrl": "/images/edmonton-culture.svg",
+    "createdAt": "2024-01-15T10:00:00.000Z",
+    "updatedAt": "2024-01-15T10:00:00.000Z",
     "status": "published",
-    "imageUrl": "/placeholder.svg",
-    "createdAt": "2024-01-15T00:00:00.000Z",
-    "updatedAt": "2024-01-15T00:00:00.000Z"
+    "type": "article"
+  },
+  {
+    "id": "article-1754870922028-wd5q2h3f3",
+    "title": "Calgary's Cultural Renaissance",
+    "category": "Calgary",
+    "location": "Calgary, Alberta",
+    "excerpt": "Explore Calgary's growing arts and culture scene, from contemporary galleries to traditional festivals.",
+    "content": "Calgary is experiencing a cultural renaissance with new galleries, museums, and cultural events that showcase the city's diverse heritage and modern artistic expression.",
+    "imageUrl": "/images/calgary-culture.svg",
+    "createdAt": "2024-01-16T10:00:00.000Z",
+    "updatedAt": "2024-01-16T10:00:00.000Z",
+    "status": "published",
+    "type": "article"
   }
 ]

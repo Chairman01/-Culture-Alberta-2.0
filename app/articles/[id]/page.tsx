@@ -23,6 +23,11 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
 
   useEffect(() => {
     async function loadArticle() {
+      if (!articleId) {
+        setLoading(false)
+        return
+      }
+      
       try {
         const article = await getArticleById(articleId)
         setArticle(article)
