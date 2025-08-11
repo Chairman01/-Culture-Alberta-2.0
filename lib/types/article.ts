@@ -17,6 +17,14 @@ export interface Article {
   featured?: boolean;
   createdAt: string;
   updatedAt: string;
+  // Trending flags
+  trendingHome?: boolean;
+  trendingEdmonton?: boolean;
+  trendingCalgary?: boolean;
+  // Featured article flags
+  featuredHome?: boolean;
+  featuredEdmonton?: boolean;
+  featuredCalgary?: boolean;
 }
 
 export interface CreateArticleInput {
@@ -32,6 +40,14 @@ export interface CreateArticleInput {
   status?: string;
   tags?: string[];
   featured?: boolean;
+  // Trending flags
+  trendingHome?: boolean;
+  trendingEdmonton?: boolean;
+  trendingCalgary?: boolean;
+  // Featured article flags
+  featuredHome?: boolean;
+  featuredEdmonton?: boolean;
+  featuredCalgary?: boolean;
 }
 
 export interface UpdateArticleInput extends Partial<CreateArticleInput> {

@@ -1,6 +1,10 @@
--- Create articles table in Supabase
-CREATE TABLE IF NOT EXISTS articles (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+-- Update articles table to use text IDs instead of UUIDs
+-- Drop the existing table and recreate it with text IDs
+
+DROP TABLE IF EXISTS articles;
+
+CREATE TABLE articles (
+  id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   content TEXT,
   excerpt TEXT,
@@ -12,11 +16,7 @@ CREATE TABLE IF NOT EXISTS articles (
   status TEXT DEFAULT 'published',
   image TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  -- Trending flags
-  trending_home BOOLEAN DEFAULT FALSE,
-  trending_edmonton BOOLEAN DEFAULT FALSE,
-  trending_calgary BOOLEAN DEFAULT FALSE
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create indexes for better performance
@@ -24,9 +24,6 @@ CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category);
 CREATE INDEX IF NOT EXISTS idx_articles_location ON articles(location);
 CREATE INDEX IF NOT EXISTS idx_articles_created_at ON articles(created_at);
 CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
-CREATE INDEX IF NOT EXISTS idx_articles_trending_home ON articles(trending_home);
-CREATE INDEX IF NOT EXISTS idx_articles_trending_edmonton ON articles(trending_edmonton);
-CREATE INDEX IF NOT EXISTS idx_articles_trending_calgary ON articles(trending_calgary);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE articles ENABLE ROW LEVEL SECURITY;

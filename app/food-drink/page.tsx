@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Article } from "@/lib/data"
+import { getAllArticles } from "@/lib/articles"
 import { Footer } from "@/components/footer"
+import { Article } from "@/lib/types/article"
 
 interface ExtendedArticle extends Article {
   description?: string;
@@ -20,46 +21,27 @@ export default function FoodDrinkPage() {
     loadArticles()
   }, [])
 
-  const loadArticles = () => {
+  const loadArticles = async () => {
     try {
-      const keys = Object.keys(localStorage)
-      const postKeys = keys.filter(key => key.startsWith('post_') && !key.startsWith('post_image_'))
-      const articleKeys = keys.filter(key => key.startsWith('article_') && !key.startsWith('article_image_'))
+      const allArticles = await getAllArticles()
       
-      const foodArticles: ExtendedArticle[] = []
-      
-      for (const key of [...postKeys, ...articleKeys]) {
-        const savedJson = localStorage.getItem(key)
-        if (savedJson) {
-          const article = JSON.parse(savedJson)
-          
-          // Only include food & drink related articles
-          if (article.category?.toLowerCase().includes('food') || 
-              article.category?.toLowerCase().includes('drink') ||
-              article.category?.toLowerCase().includes('restaurant') ||
-              article.category?.toLowerCase().includes('cafe') ||
-              article.category?.toLowerCase().includes('brewery')) {
-            
-            // Handle image loading
-            if (article.image && article.image.startsWith('__BASE64_IMAGE_')) {
-              const imageId = article.image.replace('__BASE64_IMAGE_', '').replace('__', '')
-              const savedImage = localStorage.getItem(`post_image_${imageId}`) || 
-                               localStorage.getItem(`article_image_${imageId}`)
-              if (savedImage) {
-                article.image = savedImage
-              }
-            }
-
-            foodArticles.push({
-              ...article,
-              id: key.replace('post_', '').replace('article_', ''),
-              category: article.category || 'Food & Drink',
-              date: article.date || new Date().toISOString(),
-              image: article.image || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(article.title)}`
-            })
-          }
-        }
-      }
+      // Filter for food & drink related articles
+      const foodArticles: ExtendedArticle[] = allArticles
+        .filter(article => 
+          article.category?.toLowerCase().includes('food') || 
+          article.category?.toLowerCase().includes('drink') ||
+          article.category?.toLowerCase().includes('restaurant') ||
+          article.category?.toLowerCase().includes('cafe') ||
+          article.category?.toLowerCase().includes('brewery') ||
+          article.category?.toLowerCase().includes('food & drink')
+        )
+        .map(article => ({
+          ...article,
+          description: article.content,
+          category: article.category || 'Food & Drink',
+          date: article.date || article.createdAt || new Date().toISOString(),
+          imageUrl: article.imageUrl || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(article.title)}`
+        }))
 
       // Sort articles based on selected sort option
       foodArticles.sort((a, b) => {
@@ -85,10 +67,23 @@ export default function FoodDrinkPage() {
     )
   }
 
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      })
+    } catch {
+      return 'Recently'
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/40">
+        <section className="w-full py-16 md:py-24 lg:py-32 bg-muted/40">
           <div className="container mx-auto max-w-7xl px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2 max-w-[900px] mx-auto">
@@ -101,7 +96,7 @@ export default function FoodDrinkPage() {
           </div>
         </section>
 
-        <section className="w-full py-12 md:py-24 lg:py-32">
+        <section className="w-full py-16 md:py-24 lg:py-32">
           <div className="container mx-auto max-w-7xl px-4 md:px-6">
             <Tabs defaultValue="all" className="w-full">
               <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
@@ -148,7 +143,7 @@ export default function FoodDrinkPage() {
                           <div className="overflow-hidden rounded-lg">
                             <div className="aspect-[4/3] w-full bg-gray-200">
                               <img
-                                src={article.image || "/placeholder.svg"}
+                                src={article.imageUrl || "/placeholder.svg"}
                                 alt={article.title}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -163,7 +158,7 @@ export default function FoodDrinkPage() {
                               <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">
                                 {article.category}
                               </span>
-                              <span>{article.date}</span>
+                              <span>{formatDate(article.date || '')}</span>
                             </div>
                             <h3 className="font-bold group-hover:text-primary">{article.title}</h3>
                             <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>

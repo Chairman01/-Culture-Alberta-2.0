@@ -5,15 +5,17 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { getAllArticles } from '@/lib/articles'
 import { Footer } from '@/components/footer'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Instagram, Youtube, Facebook, Twitter } from 'lucide-react'
 
 import { Article } from '@/lib/types/article'
 
 export default function Home() {
   const [posts, setPosts] = useState<Article[]>([])
+  const [events, setEvents] = useState<Article[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isClient, setIsClient] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [activeBestOfTab, setActiveBestOfTab] = useState('dentists')
 
   useEffect(() => {
     setIsClient(true)
@@ -21,7 +23,13 @@ export default function Home() {
       try {
         const apiArticles = await getAllArticles()
         const allPosts = apiArticles
-        setPosts(allPosts)
+        
+        // Separate events from regular articles
+        const regularPosts = allPosts.filter(post => post.type !== 'event')
+        const eventPosts = allPosts.filter(post => post.type === 'event')
+        
+        setPosts(regularPosts)
+        setEvents(eventPosts)
       } catch (error) {
         console.error("Error loading posts:", error)
         setError(error instanceof Error ? error.message : 'Unknown error')
@@ -74,6 +82,19 @@ export default function Home() {
     }
   }
 
+  const formatEventDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-US', { 
+        month: 'long', 
+        day: 'numeric', 
+        year: 'numeric' 
+      })
+    } catch {
+      return 'Date TBA'
+    }
+  }
+
   const getPostTitle = (post: Article) => {
     return post.title || 'Untitled Article'
   }
@@ -98,24 +119,29 @@ export default function Home() {
     return post.author || 'Culture Alberta'
   }
 
-  const featuredPost = posts[0] || null
+  const featuredPost = posts.find(post => post.featuredHome === true) || posts[0] || null
   const edmontonPosts = posts.filter(post => post.category === 'Edmonton').slice(0, 3)
   const calgaryPosts = posts.filter(post => post.category === 'Calgary').slice(0, 3)
   const foodDrinkPosts = posts.filter(post => post.category === 'Food & Drink').slice(0, 2)
-  const trendingPosts = posts.slice(0, 5)
+  const trendingPosts = posts.filter(post => post.trendingHome === true).slice(0, 5)
+  const upcomingEvents = events.slice(0, 3) // Get the first 3 events
+
+  // Debug logging
+  console.log('All posts:', posts.map(p => ({ id: p.id, title: p.title, trendingHome: p.trendingHome })))
+  console.log('Trending posts:', trendingPosts.map(p => ({ id: p.id, title: p.title, trendingHome: p.trendingHome })))
 
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
         {/* Featured Article + Trending Sidebar */}
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-b from-gray-50 to-white">
+        <section className="w-full py-8 md:py-10 lg:py-12 bg-gradient-to-b from-gray-50 to-white">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Featured Article */}
               <div className="lg:col-span-2">
                 {featuredPost ? (
                   <Link href={`/articles/${featuredPost.id}`} className="group block">
-                    <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
                       <div className="aspect-[16/9] w-full bg-gray-200 relative">
                         <Image
                           src={getPostImage(featuredPost)}
@@ -126,23 +152,23 @@ export default function Home() {
                         />
                       </div>
                       <div className="p-6">
-                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
-                          <span className="rounded-full bg-black text-white px-3 py-1">{getPostCategory(featuredPost)}</span>
-                          <span>{formatDate(getPostDate(featuredPost))}</span>
+                        <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
+                          <span className="rounded-full bg-black text-white px-4 py-1.5 font-medium">{getPostCategory(featuredPost)}</span>
+                          <span className="font-medium">{formatDate(getPostDate(featuredPost))}</span>
                         </div>
-                        <h1 className="font-bold text-3xl group-hover:text-blue-600 mb-3">{getPostTitle(featuredPost)}</h1>
-                        <p className="text-gray-600 text-lg">{getPostExcerpt(featuredPost)}</p>
+                        <h1 className="font-display text-4xl font-bold group-hover:text-gray-600 transition-colors duration-300 mb-3 leading-tight">{getPostTitle(featuredPost)}</h1>
+                        <p className="font-body text-gray-600 text-lg leading-relaxed">{getPostExcerpt(featuredPost)}</p>
                       </div>
                     </div>
                   </Link>
                 ) : (
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6">
+                  <div className="bg-white rounded-xl overflow-hidden shadow-sm p-6">
                     <div className="aspect-[16/9] w-full bg-gray-200 relative flex items-center justify-center">
                       <div className="text-gray-400 text-center">
-                        <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-3">
                           <span className="text-2xl">📷</span>
                         </div>
-                        <p>No featured article available</p>
+                        <p className="font-body">No featured article available</p>
                       </div>
                     </div>
                   </div>
@@ -150,40 +176,74 @@ export default function Home() {
               </div>
 
               {/* Trending Sidebar */}
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {/* Trending This Week */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h2 className="font-bold text-xl mb-4">Trending This Week</h2>
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <h2 className="font-display text-2xl font-bold mb-4">Trending This Week</h2>
                   <div className="space-y-3">
-                    {trendingPosts.map((post, index) => (
-                      <Link key={post.id} href={`/articles/${post.id}`} className="block group">
-                        <div className="flex items-start space-x-3">
-                          <span className="text-sm font-bold text-gray-400">{index + 1}</span>
-                          <div>
-                            <h3 className="font-semibold text-sm group-hover:text-blue-600 line-clamp-2">{getPostTitle(post)}</h3>
-                            <p className="text-xs text-gray-500">{formatDate(getPostDate(post))}</p>
+                    {trendingPosts.length > 0 ? (
+                      trendingPosts.map((post, index) => (
+                        <Link key={post.id} href={`/articles/${post.id}`} className="block group">
+                          <div className="flex items-start space-x-4">
+                            <span className="text-lg font-bold text-gray-300 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">{index + 1}</span>
+                            <div>
+                              <h3 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight mb-1">{getPostTitle(post)}</h3>
+                              <p className="font-body text-sm text-gray-500">{formatDate(getPostDate(post))}</p>
+                            </div>
                           </div>
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      ))
+                    ) : (
+                      // Fallback: show recent articles if no trending articles
+                      posts.slice(0, 3).map((post, index) => (
+                        <Link key={post.id} href={`/articles/${post.id}`} className="block group">
+                          <div className="flex items-start space-x-4">
+                            <span className="text-lg font-bold text-gray-300 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">{index + 1}</span>
+                            <div>
+                              <h3 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight mb-1">{getPostTitle(post)}</h3>
+                              <p className="font-body text-sm text-gray-500">{formatDate(getPostDate(post))}</p>
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    )}
                   </div>
                 </div>
 
                 {/* Newsletter */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h2 className="font-bold text-xl mb-4">Newsletter</h2>
-                  <p className="text-gray-600 text-sm mb-4">
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <h2 className="font-display text-2xl font-bold mb-3">Newsletter</h2>
+                  <p className="font-body text-gray-600 text-sm mb-4 leading-relaxed">
                     Stay updated with the latest cultural news and events from across Alberta.
                   </p>
                   <div className="space-y-3">
                     <input
                       type="email"
                       placeholder="Enter your email"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-body"
                     />
-                    <button className="w-full bg-black text-white py-2 px-4 rounded-md text-sm hover:bg-gray-800 transition-colors">
+                    <button className="w-full bg-black text-white py-3 px-4 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors font-body">
                       Subscribe
                     </button>
+                  </div>
+                  
+                  {/* Social Media Links */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-sm text-gray-600 mb-2 font-body">Follow us:</p>
+                    <div className="flex space-x-3">
+                      <a href="#" className="text-gray-600 hover:text-black transition-colors">
+                        <Instagram className="w-5 h-5" />
+                      </a>
+                      <a href="#" className="text-gray-600 hover:text-black transition-colors">
+                        <Youtube className="w-5 h-5" />
+                      </a>
+                      <a href="#" className="text-gray-600 hover:text-black transition-colors">
+                        <Facebook className="w-5 h-5" />
+                      </a>
+                      <a href="#" className="text-gray-600 hover:text-black transition-colors">
+                        <Twitter className="w-5 h-5" />
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -192,18 +252,18 @@ export default function Home() {
         </section>
 
         {/* Edmonton Spotlight */}
-        <section className="w-full py-12">
+        <section className="w-full py-8">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-bold text-blue-600">Edmonton Spotlight</h2>
-              <Link href="/edmonton" className="text-blue-600 hover:text-blue-700 flex items-center gap-1">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display text-4xl font-bold text-blue-600">Edmonton Spotlight</h2>
+              <Link href="/edmonton" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
                 View All <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {edmontonPosts.map((post) => (
                 <Link key={post.id} href={`/articles/${post.id}`} className="group block">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
                     <div className="aspect-[16/9] w-full bg-gray-200 relative">
                       <Image
                         src={getPostImage(post)}
@@ -214,11 +274,11 @@ export default function Home() {
                       />
                     </div>
                     <div className="p-4">
-                      <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                        <span className="rounded-full bg-blue-100 text-blue-800 px-2 py-1">Edmonton</span>
-                        <span>{formatDate(getPostDate(post))}</span>
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                        <span className="rounded-full bg-blue-100 text-blue-800 px-3 py-1.5 font-medium">Edmonton</span>
+                        <span className="font-medium">{formatDate(getPostDate(post))}</span>
                       </div>
-                      <h3 className="font-bold text-lg group-hover:text-blue-600 line-clamp-2">{getPostTitle(post)}</h3>
+                      <h3 className="font-display font-bold text-xl group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight">{getPostTitle(post)}</h3>
                     </div>
                   </div>
                 </Link>
@@ -228,18 +288,18 @@ export default function Home() {
         </section>
 
         {/* Calgary Spotlight */}
-        <section className="w-full py-12 bg-gray-50">
+        <section className="w-full py-8 bg-gray-50">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-bold text-red-600">Calgary Spotlight</h2>
-              <Link href="/calgary" className="text-red-600 hover:text-red-700 flex items-center gap-1">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display text-4xl font-bold text-red-600">Calgary Spotlight</h2>
+              <Link href="/calgary" className="text-red-600 hover:text-red-700 flex items-center gap-2 font-body font-medium">
                 View All <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {calgaryPosts.map((post) => (
                 <Link key={post.id} href={`/articles/${post.id}`} className="group block">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
                     <div className="aspect-[16/9] w-full bg-gray-200 relative">
                       <Image
                         src={getPostImage(post)}
@@ -250,11 +310,11 @@ export default function Home() {
                       />
                     </div>
                     <div className="p-4">
-                      <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                        <span className="rounded-full bg-red-100 text-red-800 px-2 py-1">Calgary</span>
-                        <span>{formatDate(getPostDate(post))}</span>
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                        <span className="rounded-full bg-red-100 text-red-800 px-3 py-1.5 font-medium">Calgary</span>
+                        <span className="font-medium">{formatDate(getPostDate(post))}</span>
                       </div>
-                      <h3 className="font-bold text-lg group-hover:text-red-600 line-clamp-2">{getPostTitle(post)}</h3>
+                      <h3 className="font-display font-bold text-xl group-hover:text-red-600 transition-colors duration-300 line-clamp-2 leading-tight">{getPostTitle(post)}</h3>
                     </div>
                   </div>
                 </Link>
@@ -264,119 +324,105 @@ export default function Home() {
         </section>
 
         {/* Upcoming Events */}
-        <section className="w-full py-12">
+        <section className="w-full py-8">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-bold">Upcoming Events</h2>
-              <Link href="/events" className="text-blue-600 hover:text-blue-700 flex items-center gap-1">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display text-4xl font-bold">Upcoming Events</h2>
+              <Link href="/events" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
                 View All <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {/* Event Cards */}
-              <div className="bg-white rounded-lg overflow-hidden shadow-sm">
-                <div className="aspect-[16/9] w-full bg-gray-200 relative">
-                  <div className="absolute top-2 left-2 bg-black text-white px-2 py-1 text-xs rounded">
-                    October 12-21, 2024
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-gray-400 text-center">
-                      <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <span className="text-2xl">🎬</span>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {upcomingEvents.length > 0 ? (
+                upcomingEvents.map((event) => (
+                  <div key={event.id} className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                    <div className="aspect-[16/9] w-full bg-gray-200 relative">
+                      <Image
+                        src={getPostImage(event)}
+                        alt={getPostTitle(event)}
+                        width={400}
+                        height={225}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-3 left-3 bg-black text-white px-3 py-1.5 text-sm rounded-lg font-medium">
+                        {formatEventDate(getPostDate(event))}
                       </div>
                     </div>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                    <span className="rounded-full bg-gray-100 px-2 py-1">Edmonton</span>
-                  </div>
-                  <h3 className="font-bold text-lg mb-2">Edmonton International Film Festival</h3>
-                  <p className="text-sm text-gray-600 mb-4">A celebration of cinema from around the world.</p>
-                  <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors">
-                    View Details
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg overflow-hidden shadow-sm">
-                <div className="aspect-[16/9] w-full bg-gray-200 relative">
-                  <div className="absolute top-2 left-2 bg-black text-white px-2 py-1 text-xs rounded">
-                    July 25-28, 2024
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-gray-400 text-center">
-                      <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <span className="text-2xl">🎵</span>
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                        <span className="rounded-full bg-gray-100 px-3 py-1.5 font-medium">{event.location || 'Alberta'}</span>
                       </div>
+                      <h3 className="font-display font-bold text-xl leading-tight mb-2">{getPostTitle(event)}</h3>
+                      <p className="font-body text-sm text-gray-600 line-clamp-2 mb-3">{getPostExcerpt(event)}</p>
+                      <Link href={`/articles/${event.id}`}>
+                        <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
+                          View Details
+                        </button>
+                      </Link>
                     </div>
                   </div>
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                    <span className="rounded-full bg-gray-100 px-2 py-1">Calgary</span>
-                  </div>
-                  <h3 className="font-bold text-lg mb-2">Calgary Folk Music Festival</h3>
-                  <p className="text-sm text-gray-600 mb-4">An annual gathering of folk music enthusiasts.</p>
-                  <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors">
-                    View Details
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg overflow-hidden shadow-sm">
-                <div className="aspect-[16/9] w-full bg-gray-200 relative">
-                  <div className="absolute top-2 left-2 bg-black text-white px-2 py-1 text-xs rounded">
-                    July 18-28, 2024
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-gray-400 text-center">
-                      <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <span className="text-2xl">🍽️</span>
+                ))
+              ) : (
+                // Show placeholder when no events are available
+                <>
+                  <div className="bg-white rounded-xl overflow-hidden shadow-sm">
+                    <div className="aspect-[16/9] w-full bg-gray-200 relative">
+                      <div className="absolute top-3 left-3 bg-black text-white px-3 py-1.5 text-sm rounded-lg font-medium">
+                        Coming Soon
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-gray-400 text-center">
+                          <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-2xl">🎬</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                        <span className="rounded-full bg-gray-100 px-3 py-1.5 font-medium">Alberta</span>
+                      </div>
+                      <h3 className="font-display font-bold text-xl mb-2">No Events Yet</h3>
+                      <p className="font-body text-sm text-gray-600 mb-3">Check back soon for upcoming cultural events!</p>
+                      <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
+                        View Details
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                    <span className="rounded-full bg-gray-100 px-2 py-1">Edmonton</span>
-                  </div>
-                  <h3 className="font-bold text-lg mb-2">Taste of Edmonton</h3>
-                  <p className="text-sm text-gray-600 mb-4">A culinary showcase of Edmonton's diverse food scene.</p>
-                  <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors">
-                    View Details
-                  </button>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           </div>
         </section>
 
         {/* Food & Drink */}
-        <section className="w-full py-12 bg-gray-50">
+        <section className="w-full py-8 bg-gray-50">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-bold">Food & Drink</h2>
-              <Link href="/food-drink" className="text-blue-600 hover:text-blue-700 flex items-center gap-1">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display text-4xl font-bold">Food & Drink</h2>
+              <Link href="/food-drink" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
                 View All <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {foodDrinkPosts.map((post) => (
                 <Link key={post.id} href={`/articles/${post.id}`} className="group block">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
                     <div className="aspect-[16/9] w-full bg-gray-200 relative">
                       <Image
                         src={getPostImage(post)}
                         alt={getPostTitle(post)}
-                        width={600}
-                        height={338}
+                        width={400}
+                        height={225}
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className="p-6">
-                      <h3 className="font-bold text-xl group-hover:text-blue-600 mb-3">{getPostTitle(post)}</h3>
-                      <p className="text-gray-600">{getPostExcerpt(post)}</p>
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                        <span className="rounded-full bg-orange-100 text-orange-800 px-3 py-1.5 font-medium">Food & Drink</span>
+                        <span className="font-medium">{formatDate(getPostDate(post))}</span>
+                      </div>
+                      <h3 className="font-display font-bold text-xl group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight">{getPostTitle(post)}</h3>
                     </div>
                   </div>
                 </Link>
@@ -386,35 +432,76 @@ export default function Home() {
         </section>
 
         {/* Best of Alberta */}
-        <section className="w-full py-12">
+        <section className="w-full py-8">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Best of Alberta</h2>
-              <p className="text-gray-600 max-w-[600px] mx-auto">
+            <div className="text-center mb-6">
+              <h2 className="font-display text-4xl font-bold mb-3">Best of Alberta</h2>
+              <p className="font-body text-gray-600 max-w-[600px] mx-auto text-lg leading-relaxed">
                 Discover the top-rated professionals and businesses across Alberta, from healthcare providers to legal services.
               </p>
             </div>
             
             {/* Navigation Tabs */}
-            <div className="flex items-center justify-center mb-8">
+            <div className="flex items-center justify-center mb-6">
               <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-                <button className="px-4 py-2 text-sm font-medium text-black border-b-2 border-black">Dentists</button>
-                <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-black">Lawyers</button>
-                <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-black">Accountants</button>
-                <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-black">Restaurants</button>
+                <button 
+                  className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
+                    activeBestOfTab === 'dentists' 
+                      ? 'text-black border-b-2 border-black' 
+                      : 'text-gray-600 hover:text-black'
+                  }`}
+                  onClick={() => setActiveBestOfTab('dentists')}
+                >
+                  Dentists
+                </button>
+                <button 
+                  className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
+                    activeBestOfTab === 'lawyers' 
+                      ? 'text-black border-b-2 border-black' 
+                      : 'text-gray-600 hover:text-black'
+                  }`}
+                  onClick={() => setActiveBestOfTab('lawyers')}
+                >
+                  Lawyers
+                </button>
+                <button 
+                  className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
+                    activeBestOfTab === 'accountants' 
+                      ? 'text-black border-b-2 border-black' 
+                      : 'text-gray-600 hover:text-black'
+                  }`}
+                  onClick={() => setActiveBestOfTab('accountants')}
+                >
+                  Accountants
+                </button>
+                <button 
+                  className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
+                    activeBestOfTab === 'restaurants' 
+                      ? 'text-black border-b-2 border-black' 
+                      : 'text-gray-600 hover:text-black'
+                  }`}
+                  onClick={() => setActiveBestOfTab('restaurants')}
+                >
+                  Restaurants
+                </button>
               </div>
-              <Link href="/best-of" className="ml-8 text-blue-600 hover:text-blue-700 flex items-center gap-1">
+              <Link href="/best-of" className="ml-6 text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
                 View All <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 
             {/* Best of Content */}
             <div className="max-w-md mx-auto">
-              <div className="bg-gray-200 rounded-lg p-8 text-center">
-                <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="bg-gray-200 rounded-xl p-6 text-center">
+                <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-3">
                   <span className="text-2xl">📧</span>
                 </div>
-                <p className="text-gray-600">Providing exceptional dental care for the whole family.</p>
+                <p className="font-body text-gray-600">
+                  {activeBestOfTab === 'dentists' && "Providing exceptional dental care for the whole family."}
+                  {activeBestOfTab === 'lawyers' && "Expert legal services for all your needs."}
+                  {activeBestOfTab === 'accountants' && "Professional accounting and tax services."}
+                  {activeBestOfTab === 'restaurants' && "Discover the best dining experiences in Alberta."}
+                </p>
               </div>
             </div>
           </div>

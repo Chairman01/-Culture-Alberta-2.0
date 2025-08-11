@@ -102,11 +102,16 @@ export async function testSupabaseConnection(): Promise<boolean> {
 
 export async function getAllArticles(): Promise<Article[]> {
   try {
+    console.log('=== getAllArticles called ===')
+    
     if (!supabase) {
       console.error('Supabase client is not initialized')
+      console.log('Falling back to file system')
       return getAllArticlesFromFile()
     }
 
+    console.log('Attempting to fetch articles from Supabase...')
+    
     const { data, error } = await supabase
       .from('articles')
       .select('*')
@@ -114,19 +119,43 @@ export async function getAllArticles(): Promise<Article[]> {
 
     if (error) {
       console.warn('Supabase query failed, using file fallback:', error.message)
+      console.log('Falling back to file system due to error')
       return getAllArticlesFromFile()
     }
+
+    console.log('Successfully fetched articles from Supabase:', data?.length || 0, 'articles')
+    console.log('Sample article from Supabase:', data?.[0] ? {
+      id: data[0].id,
+      title: data[0].title,
+      featured_home: data[0].featured_home,
+      featured_edmonton: data[0].featured_edmonton,
+      featured_calgary: data[0].featured_calgary
+    } : 'No articles')
 
     // Map Supabase data to match our Article interface
     const mappedArticles = (data || []).map(article => ({
       ...article,
       imageUrl: article.image, // Map 'image' column to 'imageUrl'
-      date: article.created_at // Map 'created_at' to 'date' for compatibility
+      date: article.created_at, // Map 'created_at' to 'date' for compatibility
+      // Map trending flags from database columns to interface properties
+      trendingHome: article.trending_home || false,
+      trendingEdmonton: article.trending_edmonton || false,
+      trendingCalgary: article.trending_calgary || false,
+      featuredHome: article.featured_home || false,
+      featuredEdmonton: article.featured_edmonton || false,
+      featuredCalgary: article.featured_calgary || false
     }))
+
+    console.log('Mapped articles with featured flags:', mappedArticles.map(a => ({
+      id: a.id,
+      title: a.title,
+      featuredEdmonton: a.featuredEdmonton
+    })))
 
     return mappedArticles
   } catch (error) {
     console.warn('Supabase connection failed, using file fallback:', error)
+    console.log('Falling back to file system due to exception')
     return getAllArticlesFromFile()
   }
 }
@@ -162,7 +191,14 @@ export async function getArticleById(id: string): Promise<Article> {
     const mappedArticle = {
       ...data,
       imageUrl: data.image, // Map 'image' column to 'imageUrl'
-      date: data.created_at // Map 'created_at' to 'date' for compatibility
+      date: data.created_at, // Map 'created_at' to 'date' for compatibility
+      // Map trending flags from database columns to interface properties
+      trendingHome: data.trending_home || false,
+      trendingEdmonton: data.trending_edmonton || false,
+      trendingCalgary: data.trending_calgary || false,
+      featuredHome: data.featured_home || false,
+      featuredEdmonton: data.featured_edmonton || false,
+      featuredCalgary: data.featured_calgary || false
     }
 
     return mappedArticle
@@ -198,7 +234,14 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
       status: article.status || 'published',
       image: article.imageUrl, // Map imageUrl to image column
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      // Add trending flags
+      trending_home: article.trendingHome || false,
+      trending_edmonton: article.trendingEdmonton || false,
+      trending_calgary: article.trendingCalgary || false,
+      featured_home: article.featuredHome || false,
+      featured_edmonton: article.featuredEdmonton || false,
+      featured_calgary: article.featuredCalgary || false
     }
     
     console.log('Article with ID:', articleWithId)
@@ -245,6 +288,10 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
 
 export async function updateArticle(id: string, article: UpdateArticleInput): Promise<Article> {
   try {
+    console.log('=== updateArticle called ===')
+    console.log('Article ID:', id)
+    console.log('Update data:', article)
+    
     if (!supabase) {
       console.error('Supabase client is not initialized, using file fallback')
       return updateArticleInFile(id, article)
@@ -261,8 +308,17 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
       type: article.type,
       status: article.status,
       image: article.imageUrl, // Map imageUrl to image column
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      // Add trending flags
+      trending_home: article.trendingHome,
+      trending_edmonton: article.trendingEdmonton,
+      trending_calgary: article.trendingCalgary,
+      featured_home: article.featuredHome,
+      featured_edmonton: article.featuredEdmonton,
+      featured_calgary: article.featuredCalgary
     }
+
+    console.log('Mapped update data for Supabase:', updateData)
 
     const { data, error } = await supabase
       .from('articles')
@@ -271,14 +327,27 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
       .select()
       .single()
 
+    console.log('Supabase update result:', { data, error })
+
     if (error) {
-      console.error('Error updating article in Supabase:', error)
+      console.error('Error updating article in Supabase:', {
+        message: error?.message || 'Unknown error',
+        details: error?.details || 'No details',
+        hint: error?.hint || 'No hint',
+        code: error?.code || 'No code',
+        fullError: error || 'No error object',
+        errorType: typeof error
+      })
       return updateArticleInFile(id, article)
     }
 
+    console.log('Article updated successfully in Supabase:', data)
     return data
   } catch (error) {
-    console.error('Supabase update failed, using file fallback:', error)
+    console.error('Supabase update failed, using file fallback:', {
+      error: error instanceof Error ? error.message : error,
+      fullError: error
+    })
     return updateArticleInFile(id, article)
   }
 }

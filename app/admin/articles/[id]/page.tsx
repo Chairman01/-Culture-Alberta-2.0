@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
 import { useToast } from "@/hooks/use-toast"
 import { MAIN_CATEGORIES } from "@/lib/data"
@@ -32,6 +33,14 @@ interface Article {
   rating?: number
   featured?: boolean
   image?: string
+  // Trending flags
+  trendingHome?: boolean
+  trendingEdmonton?: boolean
+  trendingCalgary?: boolean
+  // Featured article flags
+  featuredHome?: boolean
+  featuredEdmonton?: boolean
+  featuredCalgary?: boolean
 }
 
 export default function EditArticlePage({ params }: { params: Promise<{ id: string }> }) {
@@ -49,6 +58,16 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  
+  // Trending selection options
+  const [trendingHome, setTrendingHome] = useState(false)
+  const [trendingEdmonton, setTrendingEdmonton] = useState(false)
+  const [trendingCalgary, setTrendingCalgary] = useState(false)
+
+  // Featured article options
+  const [featuredHome, setFeaturedHome] = useState(false)
+  const [featuredEdmonton, setFeaturedEdmonton] = useState(false)
+  const [featuredCalgary, setFeaturedCalgary] = useState(false)
 
   useEffect(() => {
     loadArticle()
@@ -56,7 +75,9 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
 
   const loadArticle = async () => {
     try {
+      console.log('Loading article with ID:', resolvedParams.id)
       const articleData = await getArticleById(resolvedParams.id)
+      console.log('Loaded article data:', articleData)
       setArticle(articleData)
       setTitle(articleData.title || "")
       setCategory(articleData.category || "")
@@ -65,6 +86,14 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setContent(articleData.content || "")
       setAuthor(articleData.author || "")
       setImageUrl(articleData.imageUrl || "")
+      // Load trending flags
+      setTrendingHome(articleData.trendingHome || false)
+      setTrendingEdmonton(articleData.trendingEdmonton || false)
+      setTrendingCalgary(articleData.trendingCalgary || false)
+      // Load featured article flags
+      setFeaturedHome(articleData.featuredHome || false)
+      setFeaturedEdmonton(articleData.featuredEdmonton || false)
+      setFeaturedCalgary(articleData.featuredCalgary || false)
     } catch (error) {
       console.error("Error loading article:", error)
       toast({
@@ -107,8 +136,24 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
 
     setIsSaving(true)
 
+    console.log('Saving article with ID:', resolvedParams.id)
+    console.log('Article data:', {
+      title,
+      category,
+      location: location || "Alberta",
+      excerpt,
+      content,
+      imageUrl: imageUrl,
+      author: author || "Admin",
+      type: "article",
+      status: "published",
+      trendingHome,
+      trendingEdmonton,
+      trendingCalgary
+    })
+
     try {
-      const updatedArticle = await updateArticle(resolvedParams.id, {
+      await updateArticle(resolvedParams.id, {
         title,
         category,
         location: location || "Alberta",
@@ -117,7 +162,15 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         imageUrl: imageUrl,
         author: author || "Admin",
         type: "article",
-        status: "published"
+        status: "published",
+        // Add trending flags
+        trendingHome,
+        trendingEdmonton,
+        trendingCalgary,
+        // Add featured article flags
+        featuredHome,
+        featuredEdmonton,
+        featuredCalgary
       })
 
       toast({
@@ -125,7 +178,6 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         description: "Your article has been updated successfully.",
       })
 
-      // Redirect to the articles list
       router.push("/admin/articles")
     } catch (error) {
       console.error("Error updating article:", error)
@@ -273,6 +325,88 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                 </Button>
               )}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Trending Selection Section */}
+      <div className="border rounded-lg p-6 bg-gray-50">
+        <h3 className="text-lg font-semibold mb-4">Trending Options</h3>
+        <p className="text-sm text-gray-600 mb-4">Select where this article should appear in trending sections:</p>
+        
+        <div className="space-y-3">
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="trending-home" 
+              checked={trendingHome}
+              onCheckedChange={(checked) => setTrendingHome(checked as boolean)}
+            />
+            <Label htmlFor="trending-home" className="text-sm font-medium">
+              Show in Home Page Trending
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="trending-edmonton" 
+              checked={trendingEdmonton}
+              onCheckedChange={(checked) => setTrendingEdmonton(checked as boolean)}
+            />
+            <Label htmlFor="trending-edmonton" className="text-sm font-medium">
+              Show in Edmonton Trending
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="trending-calgary" 
+              checked={trendingCalgary}
+              onCheckedChange={(checked) => setTrendingCalgary(checked as boolean)}
+            />
+            <Label htmlFor="trending-calgary" className="text-sm font-medium">
+              Show in Calgary Trending
+            </Label>
+          </div>
+        </div>
+      </div>
+
+      {/* Featured Article Options Section */}
+      <div className="border rounded-lg p-6 bg-blue-50">
+        <h3 className="text-lg font-semibold mb-4">Featured Article Options</h3>
+        <p className="text-sm text-gray-600 mb-4">Select where this article should appear as the featured article:</p>
+        
+        <div className="space-y-3">
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="featured-home" 
+              checked={featuredHome}
+              onCheckedChange={(checked) => setFeaturedHome(checked as boolean)}
+            />
+            <Label htmlFor="featured-home" className="text-sm font-medium">
+              Show as Home Page Featured Article
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="featured-edmonton" 
+              checked={featuredEdmonton}
+              onCheckedChange={(checked) => setFeaturedEdmonton(checked as boolean)}
+            />
+            <Label htmlFor="featured-edmonton" className="text-sm font-medium">
+              Show as Edmonton Page Featured Article
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="featured-calgary" 
+              checked={featuredCalgary}
+              onCheckedChange={(checked) => setFeaturedCalgary(checked as boolean)}
+            />
+            <Label htmlFor="featured-calgary" className="text-sm font-medium">
+              Show as Calgary Page Featured Article
+            </Label>
           </div>
         </div>
       </div>

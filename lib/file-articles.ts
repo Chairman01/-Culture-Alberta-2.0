@@ -49,6 +49,8 @@ export async function createArticleInFile(article: CreateArticleInput): Promise<
 
 export async function updateArticleInFile(id: string, article: UpdateArticleInput): Promise<Article> {
   try {
+    console.log('updateArticleInFile called with:', { id, article })
+    
     const response = await fetch('/api/articles', {
       method: 'PUT',
       headers: {
@@ -57,10 +59,20 @@ export async function updateArticleInFile(id: string, article: UpdateArticleInpu
       body: JSON.stringify({ id, ...article }),
     })
     
+    console.log('API response status:', response.status)
+    console.log('API response ok:', response.ok)
+    
     if (response.ok) {
-      return response.json()
+      const result = await response.json()
+      console.log('API response data:', result)
+      return result
     }
-    throw new Error('Failed to update article')
+    
+    // Try to get error details
+    const errorText = await response.text()
+    console.error('API error response:', errorText)
+    
+    throw new Error(`Failed to update article: ${response.status} ${errorText}`)
   } catch (error) {
     console.error('Error updating article via API:', error)
     throw new Error('Failed to update article')

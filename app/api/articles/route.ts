@@ -58,23 +58,47 @@ export async function POST(request: NextRequest) {
 // PUT /api/articles - Update an article
 export async function PUT(request: NextRequest) {
   try {
+    console.log('PUT /api/articles called')
+    
     const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-    const body: UpdateArticleInput = await request.json()
+    const idFromParams = searchParams.get('id')
+    const body: UpdateArticleInput & { id?: string } = await request.json()
+    
+    console.log('PUT request data:', { idFromParams, body })
+    
+    // Get ID from either search params or request body
+    const id = idFromParams || body.id
     
     if (!id) {
+      console.error('No ID provided for article update')
       return NextResponse.json(
         { error: 'Article ID is required' },
         { status: 400 }
       )
     }
 
-    const updatedArticle = await updateArticleInFile(id, body)
-    return NextResponse.json(updatedArticle)
+    console.log('Using ID for update:', id)
+
+    // Remove id from body if it exists there
+    const { id: bodyId, ...updateData } = body
+
+    console.log('Update data:', updateData)
+
+    try {
+      const updatedArticle = await updateArticleInFile(id, updateData)
+      console.log('Article updated successfully:', updatedArticle)
+      return NextResponse.json(updatedArticle)
+    } catch (updateError) {
+      console.error('Error in updateArticleInFile:', updateError)
+      return NextResponse.json(
+        { error: `Update failed: ${updateError instanceof Error ? updateError.message : 'Unknown error'}` },
+        { status: 500 }
+      )
+    }
   } catch (error) {
-    console.error('Error updating article:', error)
+    console.error('Error in PUT /api/articles:', error)
     return NextResponse.json(
-      { error: 'Failed to update article' },
+      { error: `Request failed: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     )
   }

@@ -6,8 +6,9 @@ import { ArrowRight, Calendar, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Article } from "@/lib/data"
+import { getAllArticles } from "@/lib/articles"
 import { Footer } from "@/components/footer"
+import { Article } from "@/lib/types/article"
 
 interface ExtendedEvent extends Article {
   description?: string;
@@ -25,51 +26,28 @@ export default function EventsPage() {
     loadEvents()
   }, [])
 
-  const loadEvents = () => {
+  const loadEvents = async () => {
     try {
-      const keys = Object.keys(localStorage)
-      const postKeys = keys.filter(key => key.startsWith('post_') && !key.startsWith('post_image_'))
-      const articleKeys = keys.filter(key => key.startsWith('article_') && !key.startsWith('article_image_'))
+      const allArticles = await getAllArticles()
       
-      const allEvents: ExtendedEvent[] = []
+      // Filter for events only
+      const eventArticles = allArticles.filter(article => article.type === 'event')
       
-      for (const key of [...postKeys, ...articleKeys]) {
-        const savedJson = localStorage.getItem(key)
-        if (savedJson) {
-          const event = JSON.parse(savedJson)
-          
-          // Only include events (articles with future dates or marked as events)
-          const eventDate = new Date(event.date || 0)
-          const isEvent = event.type === 'event' || eventDate > new Date()
-          
-          if (isEvent) {
-            // Handle image loading
-            if (event.image && event.image.startsWith('__BASE64_IMAGE_')) {
-              const imageId = event.image.replace('__BASE64_IMAGE_', '').replace('__', '')
-              const savedImage = localStorage.getItem(`post_image_${imageId}`) || 
-                               localStorage.getItem(`article_image_${imageId}`)
-              if (savedImage) {
-                event.image = savedImage
-              }
-            }
+      // Convert to ExtendedEvent format
+      const allEvents: ExtendedEvent[] = eventArticles.map(article => ({
+        ...article,
+        description: article.content,
+        category: article.category || 'General',
+        location: article.location || 'Alberta',
+        date: article.date || article.createdAt || new Date().toISOString(),
+        imageUrl: article.imageUrl || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(article.title)}`
+      }))
 
-            allEvents.push({
-              ...event,
-              id: key.replace('post_', '').replace('article_', ''),
-              category: event.category || 'General',
-              location: event.location || 'Alberta',
-              date: event.date || new Date().toISOString(),
-              image: event.image || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(event.title)}`
-            })
-          }
-        }
-      }
-
-      // Sort by date
+      // Sort by date (closest first)
       allEvents.sort((a, b) => {
         const dateA = new Date(a.date || 0).getTime()
         const dateB = new Date(b.date || 0).getTime()
-        return dateA - dateB // Sort by closest date first
+        return dateA - dateB
       })
 
       setEvents(allEvents)
@@ -135,10 +113,24 @@ export default function EventsPage() {
 
   const filteredEvents = events.filter(filterEvents)
 
+  const formatEventDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'long',
+        month: 'long', 
+        day: 'numeric', 
+        year: 'numeric' 
+      })
+    } catch {
+      return 'Date TBA'
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/40">
+        <section className="w-full py-16 md:py-24 lg:py-32 bg-muted/40">
           <div className="container mx-auto max-w-7xl px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
@@ -150,7 +142,7 @@ export default function EventsPage() {
             </div>
           </div>
         </section>
-        <section className="w-full py-12 md:py-24 lg:py-32">
+        <section className="w-full py-16 md:py-24 lg:py-32">
           <div className="container mx-auto max-w-7xl px-4 md:px-6">
             {isLoading ? (
               <div className="flex items-center justify-center h-64 w-full">
@@ -208,7 +200,7 @@ export default function EventsPage() {
                       <SelectContent>
                         <SelectGroup>
                           <SelectItem value="all">All Categories</SelectItem>
-                          <SelectItem value="festivals">Festivals</SelectItem>
+                          <SelectItem value="festival">Festivals</SelectItem>
                           <SelectItem value="music">Music</SelectItem>
                           <SelectItem value="dance">Dance</SelectItem>
                           <SelectItem value="theater">Theater</SelectItem>
@@ -247,7 +239,7 @@ export default function EventsPage() {
                       >
                         <div className="md:w-1/3">
                           <img
-                            src={event.image || "/placeholder.svg"}
+                            src={event.imageUrl || "/placeholder.svg"}
                             alt={event.title}
                             className="h-full w-full object-cover"
                             onError={(e) => {
@@ -262,7 +254,7 @@ export default function EventsPage() {
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-4 w-4" />
-                                <span>{event.date}</span>
+                                <span>{formatEventDate(event.date || '')}</span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <MapPin className="h-4 w-4" />
