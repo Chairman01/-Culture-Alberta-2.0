@@ -108,9 +108,9 @@ export default function CalgaryPage() {
                 </div>
                 <div className="mt-4">
                   <span className="inline-block bg-red-100 text-red-600 text-xs px-2 py-1 rounded mr-2">Featured</span>
-                  <span className="text-xs text-gray-500">
-                    Posted {featureArticle.created_at ? timeAgo(featureArticle.created_at) : ""}
-                  </span>
+                                     <span className="text-xs text-gray-500">
+                     Posted {featureArticle.createdAt ? timeAgo(featureArticle.createdAt) : ""}
+                   </span>
                   <h2 className="mt-2 text-3xl font-bold">{featureArticle.title}</h2>
                   <p className="mt-2 text-gray-600">{featureArticle.excerpt}</p>
                 </div>
@@ -133,7 +133,7 @@ export default function CalgaryPage() {
                       </span>
                       <div className="text-center">
                         <h4 className="font-medium group-hover:text-primary">{article.title}</h4>
-                        <p className="text-xs text-muted-foreground">{article.created_at ? new Date(article.created_at).toLocaleDateString() : ""}</p>
+                        <p className="text-xs text-muted-foreground">{article.createdAt ? new Date(article.createdAt).toLocaleDateString() : ""}</p>
                       </div>
                     </Link>
                   ))}
@@ -152,7 +152,7 @@ export default function CalgaryPage() {
                       <h4 className="font-medium group-hover:text-primary">{event.title}</h4>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
                         <Calendar className="h-3 w-3" />
-                        <span>{event.created_at ? new Date(event.created_at).toLocaleDateString() : ""}</span>
+                        <span>{event.createdAt ? new Date(event.createdAt).toLocaleDateString() : ""}</span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
                         <MapPin className="h-3 w-3" />
@@ -231,7 +231,7 @@ export default function CalgaryPage() {
                         </div>
                         <div className="mt-4 space-y-2">
                           <div className="text-xs text-gray-500">{article.category}</div>
-                          <div className="text-xs text-gray-500">{article.created_at ? new Date(article.created_at).toLocaleDateString() : ""}</div>
+                          <div className="text-xs text-gray-500">{article.createdAt ? new Date(article.createdAt).toLocaleDateString() : ""}</div>
                           <h3 className="font-bold text-lg group-hover:text-blue-600 line-clamp-2">{article.title}</h3>
                           {article.excerpt && <p className="text-sm text-gray-600 line-clamp-2">{article.excerpt}</p>}
                         </div>
@@ -256,7 +256,7 @@ export default function CalgaryPage() {
                         </div>
                         <div className="mt-4 space-y-2">
                           <div className="text-xs text-gray-500">{article.category}</div>
-                          <div className="text-xs text-gray-500">{article.created_at ? new Date(article.created_at).toLocaleDateString() : ""}</div>
+                          <div className="text-xs text-gray-500">{article.createdAt ? new Date(article.createdAt).toLocaleDateString() : ""}</div>
                           <h3 className="font-bold text-lg group-hover:text-blue-600 line-clamp-2">{article.title}</h3>
                           {article.excerpt && <p className="text-sm text-gray-600 line-clamp-2">{article.excerpt}</p>}
                         </div>
@@ -281,7 +281,7 @@ export default function CalgaryPage() {
                         </div>
                         <div className="mt-4 space-y-2">
                           <div className="text-xs text-gray-500">{article.category}</div>
-                          <div className="text-xs text-gray-500">{article.created_at ? new Date(article.created_at).toLocaleDateString() : ""}</div>
+                          <div className="text-xs text-gray-500">{article.createdAt ? new Date(article.createdAt).toLocaleDateString() : ""}</div>
                           <h3 className="font-bold text-lg group-hover:text-blue-600 line-clamp-2">{article.title}</h3>
                           {article.excerpt && <p className="text-sm text-gray-600 line-clamp-2">{article.excerpt}</p>}
                         </div>
@@ -306,7 +306,7 @@ export default function CalgaryPage() {
                         </div>
                         <div className="mt-4 space-y-2">
                           <div className="text-xs text-gray-500">{article.category}</div>
-                          <div className="text-xs text-gray-500">{article.created_at ? new Date(article.created_at).toLocaleDateString() : ""}</div>
+                          <div className="text-xs text-gray-500">{article.createdAt ? new Date(article.createdAt).toLocaleDateString() : ""}</div>
                           <h3 className="font-bold text-lg group-hover:text-blue-600 line-clamp-2">{article.title}</h3>
                           {article.excerpt && <p className="text-sm text-gray-600 line-clamp-2">{article.excerpt}</p>}
                         </div>
@@ -340,7 +340,7 @@ export default function CalgaryPage() {
                         </div>
                         <div className="mt-4 space-y-2">
                           <div className="text-xs text-gray-500">{article.category}</div>
-                          <div className="text-xs text-gray-500">{article.created_at ? new Date(article.created_at).toLocaleDateString() : ""}</div>
+                          <div className="text-xs text-gray-500">{article.createdAt ? new Date(article.createdAt).toLocaleDateString() : ""}</div>
                           <h3 className="font-bold text-lg group-hover:text-blue-600 line-clamp-2">{article.title}</h3>
                           {article.excerpt && <p className="text-sm text-gray-600 line-clamp-2">{article.excerpt}</p>}
                         </div>
