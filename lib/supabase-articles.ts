@@ -112,10 +112,20 @@ export async function getAllArticles(): Promise<Article[]> {
 
     console.log('Attempting to fetch articles from Supabase...')
     
-    const { data, error } = await supabase
+    // Add a timeout to prevent long loading times
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Supabase timeout')), 3000)
+    )
+    
+    const supabasePromise = supabase
       .from('articles')
       .select('*')
       .order('created_at', { ascending: false })
+
+    const { data, error } = await Promise.race([
+      supabasePromise,
+      timeoutPromise
+    ]) as any
 
     if (error) {
       console.warn('Supabase query failed, using file fallback:', error.message)
@@ -133,9 +143,9 @@ export async function getAllArticles(): Promise<Article[]> {
     } : 'No articles')
 
     // Map Supabase data to match our Article interface
-    const mappedArticles = (data || []).map(article => ({
+    const mappedArticles = (data || []).map((article: any) => ({
       ...article,
-      imageUrl: article.image, // Map 'image' column to 'imageUrl'
+      imageUrl: article.image_url || article.image, // Map 'image_url' or 'image' column to 'imageUrl'
       date: article.created_at, // Map 'created_at' to 'date' for compatibility
       // Map trending flags from database columns to interface properties
       trendingHome: article.trending_home || false,
@@ -146,7 +156,7 @@ export async function getAllArticles(): Promise<Article[]> {
       featuredCalgary: article.featured_calgary || false
     }))
 
-    console.log('Mapped articles with featured flags:', mappedArticles.map(a => ({
+    console.log('Mapped articles with featured flags:', mappedArticles.map((a: any) => ({
       id: a.id,
       title: a.title,
       featuredEdmonton: a.featuredEdmonton
@@ -190,7 +200,7 @@ export async function getArticleById(id: string): Promise<Article> {
     // Map Supabase data to match our Article interface
     const mappedArticle = {
       ...data,
-      imageUrl: data.image, // Map 'image' column to 'imageUrl'
+      imageUrl: data.image_url || data.image, // Map 'image_url' or 'image' column to 'imageUrl'
       date: data.created_at, // Map 'created_at' to 'date' for compatibility
       // Map trending flags from database columns to interface properties
       trendingHome: data.trending_home || false,
@@ -232,7 +242,7 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
       author: article.author,
       type: article.type || 'article',
       status: article.status || 'published',
-      image: article.imageUrl, // Map imageUrl to image column
+      image_url: article.imageUrl, // Map imageUrl to image_url column
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       // Add trending flags
@@ -307,7 +317,7 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
       author: article.author,
       type: article.type,
       status: article.status,
-      image: article.imageUrl, // Map imageUrl to image column
+      image_url: article.imageUrl, // Map imageUrl to image_url column
       updated_at: new Date().toISOString(),
       // Add trending flags
       trending_home: article.trendingHome,

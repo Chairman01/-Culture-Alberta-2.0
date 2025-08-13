@@ -49,6 +49,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
   const [title, setTitle] = useState(event.title)
   const [category, setCategory] = useState(event.category.toLowerCase())
+  const [type, setType] = useState("event") // Default to event type
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [location, setLocation] = useState(event.location)
@@ -88,9 +89,6 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     setIsSaving(true)
 
     try {
-      // Simulate saving the event
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
       // Format the date range
       const formattedDate = endDate ? `${startDate} - ${endDate}` : startDate
 
@@ -99,6 +97,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         ...event,
         title,
         category: category.charAt(0).toUpperCase() + category.slice(1),
+        type: type, // Include the type field
         date: formattedDate,
         location,
         description,
@@ -109,7 +108,10 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         contactPhone,
       }
 
-      // In a real app, you would save this to your database
+      // Actually save to the database
+      const { updateArticle } = await import('@/lib/articles')
+      await updateArticle(event.id, updatedEvent)
+
       console.log("Updated event:", updatedEvent)
 
       toast({
@@ -162,7 +164,22 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="type">Content Type</Label>
+                  <Select value={type} onValueChange={setType}>
+                    <SelectTrigger id="type">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="event">Event</SelectItem>
+                      <SelectItem value="article">Article</SelectItem>
+                      <SelectItem value="news">News</SelectItem>
+                      <SelectItem value="guide">Guide</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
                   <Select value={category} onValueChange={setCategory}>

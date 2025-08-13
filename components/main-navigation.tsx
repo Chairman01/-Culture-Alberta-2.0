@@ -11,6 +11,12 @@ export function MainNavigation() {
   const pathname = usePathname()
   const isEdmonton = pathname?.includes("/edmonton")
   const isCalgary = pathname?.includes("/calgary")
+  const isAdmin = pathname?.startsWith("/admin")
+  
+  // Don't show navigation on admin pages
+  if (isAdmin) {
+    return null
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -52,8 +58,8 @@ export function MainNavigation() {
           <Link href="/events" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Events
           </Link>
-          <Link href="/arts" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-            Arts
+          <Link href="/culture" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+            Culture
           </Link>
           <Link href="/best-of" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Best of Alberta

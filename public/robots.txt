@@ -1,0 +1,11 @@
+# *
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+# Host
+Host: https://www.culturealberta.com
+
+# Sitemaps
+Sitemap: https://www.culturealberta.com/sitemap.xml

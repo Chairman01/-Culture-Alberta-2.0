@@ -18,6 +18,7 @@ export default function NewEventPage() {
 
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState("")
+  const [type, setType] = useState("event") // Default to event type
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [location, setLocation] = useState("")
@@ -89,10 +90,10 @@ export default function NewEventPage() {
         content: description,
         excerpt: description.substring(0, 150) + (description.length > 150 ? '...' : ''),
         category: category.charAt(0).toUpperCase() + category.slice(1),
+        type: type, // Use the selected type
         location,
         author: organizer || 'Event Organizer',
         imageUrl: imageUrl || '/placeholder.svg',
-        type: 'event',
         status: 'published'
       }
 
@@ -168,7 +169,22 @@ export default function NewEventPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="type">Content Type</Label>
+                  <Select value={type} onValueChange={setType}>
+                    <SelectTrigger id="type">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="event">Event</SelectItem>
+                      <SelectItem value="article">Article</SelectItem>
+                      <SelectItem value="news">News</SelectItem>
+                      <SelectItem value="guide">Guide</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
                   <Select value={category} onValueChange={setCategory}>

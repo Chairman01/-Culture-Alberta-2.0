@@ -24,10 +24,10 @@ import {
   trendingPosts,
   upcomingEvents,
   Article,
-  MAIN_CATEGORIES,
-  MainCategory
+  MAIN_CATEGORIES
 } from "@/lib/data"
 import { getAllArticles, deleteArticle } from "@/lib/articles"
+import { useRouter } from "next/navigation"
 
 interface ExtendedArticle extends Article {
   type?: string;
@@ -50,6 +50,7 @@ export default function AdminArticles() {
   const [category, setCategory] = useState("all")
   const [location, setLocation] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     loadAllArticles()
@@ -98,16 +99,11 @@ export default function AdminArticles() {
 
   const handleEdit = (article: ExtendedArticle) => {
     try {
-      // Store the current article in localStorage for editing
-      const prefix = article.type === 'post' ? 'post_' : 'article_'
-      localStorage.setItem(`${prefix}${article.id}`, JSON.stringify(article))
-      
-      // If there's an image, store it separately
-      if (article.image && article.image.startsWith('data:')) {
-        localStorage.setItem(`${prefix}image_${article.id}`, article.image)
-      }
+      // Instead of storing the entire article, just store the ID and navigate
+      // The edit page will fetch the article data fresh
+      router.push(`/admin/articles/${article.id}`)
     } catch (error) {
-      console.error('Error preparing article for edit:', error)
+      console.error('Error navigating to edit page:', error)
     }
   }
 

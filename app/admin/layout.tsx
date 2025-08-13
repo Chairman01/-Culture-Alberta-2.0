@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { BarChart2, FileText, Calendar, Award } from "lucide-react"
+import { BarChart2, FileText, Calendar, Award, Mail } from "lucide-react"
 
 // Check if we're in development environment
 const isDevelopment = process.env.NODE_ENV === 'development'
@@ -31,10 +31,11 @@ export default function AdminLayout({
   }, [router, pathname])
 
   const navigation = [
-    { name: 'Dashboard', href: '/admin', icon: BarChart2 },
+    { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart2 },
     { name: 'Articles', href: '/admin/articles', icon: FileText },
     { name: 'Events', href: '/admin/events', icon: Calendar },
     { name: 'Best of Alberta', href: '/admin/best-of', icon: Award },
+    { name: 'Newsletter', href: '/admin/newsletter', icon: Mail },
   ]
 
   // Block admin access in production
@@ -59,8 +60,8 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200">
+      {/* Admin Sidebar */}
+      <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50">
         <div className="flex flex-col h-full">
           <div className="flex-1">
             {/* Logo */}
