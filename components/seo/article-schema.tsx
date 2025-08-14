@@ -11,7 +11,7 @@ export function ArticleSchema({ article, baseUrl = 'https://www.culturealberta.c
     "@type": "Article",
     "headline": article.title,
     "description": article.excerpt || article.content?.substring(0, 160),
-    "image": article.image || `${baseUrl}/images/placeholder.jpg`,
+    "image": article.imageUrl || `${baseUrl}/images/placeholder.jpg`,
     "author": {
       "@type": "Organization",
       "name": "Culture Alberta",
