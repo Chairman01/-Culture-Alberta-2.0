@@ -276,7 +276,6 @@ export default function CalgaryPage() {
                   defaultCity="calgary"
                   title="Newsletter"
                   description="Stay updated with the latest cultural news and events from Calgary and across Alberta."
-                  buttonColor="bg-red-600 hover:bg-red-700"
                 />
                 </div>
               </div>

@@ -310,7 +310,6 @@ export default function EdmontonPage() {
                   defaultCity="edmonton"
                   title="Newsletter"
                   description="Stay updated with the latest cultural news and events from Edmonton and across Alberta."
-                  buttonColor="bg-blue-600 hover:bg-blue-700"
                 />
                 </div>
               </div>

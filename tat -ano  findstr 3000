@@ -1,0 +1,5 @@
+[33m0c444d8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m Major SEO improvements: Server-side rendering, sitemap generation, meta tags, and crawlability fixes
+[33m0e60d5a[m Add featured article functionality and multi-page article support
+[33m30d8ec4[m Fix TypeScript error: change created_at to createdAt in Calgary page
+[33m202967e[m Fix event creation and integrate with articles system - Updated admin events and new-event pages to use articles system instead of localStorage - Fixed image display issues with SVG placeholders - Improved Supabase integration and error handling - Events now appear on main pages and city pages
+[33md40495e[m Fix article routing and clean up articles.json with placeholder image

@@ -1,0 +1,21 @@
+{
+  "name": "Culture Alberta",
+  "short_name": "Culture AB",
+  "description": "Discover the best of Alberta's culture, events, and experiences",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["lifestyle", "travel", "entertainment"],
+  "lang": "en-CA",
+  "scope": "/"
+}

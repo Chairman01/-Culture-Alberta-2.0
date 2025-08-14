@@ -10,15 +10,13 @@ interface NewsletterSignupProps {
   title?: string
   description?: string
   className?: string
-  buttonColor?: string
 }
 
 export default function NewsletterSignup({ 
   defaultCity = "", 
   title = "Newsletter",
   description = "Stay updated with the latest cultural news and events from across Alberta.",
-  className = "",
-  buttonColor = "bg-black hover:bg-gray-800"
+  className = ""
 }: NewsletterSignupProps) {
   const [email, setEmail] = useState("")
   const [city, setCity] = useState(defaultCity)
@@ -31,7 +29,7 @@ export default function NewsletterSignup({
   useEffect(() => {
     const testConnection = async () => {
       const result = await testNewsletterConnection()
-      setIsConnected(result.success && result.tableExists || false)
+      setIsConnected(result.success && result.tableExists)
       
       if (!result.success || !result.tableExists) {
         console.error('Newsletter database not ready:', result.error)
@@ -117,7 +115,7 @@ export default function NewsletterSignup({
         <button 
           type="submit"
           disabled={isSubmitting || isConnected === false}
-          className={`w-full ${buttonColor} text-white py-3 px-4 rounded-lg text-sm font-medium transition-colors font-body disabled:opacity-50 disabled:cursor-not-allowed`}
+          className="w-full bg-black text-white py-3 px-4 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors font-body disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? "Subscribing..." : isConnected === false ? "Setting up..." : "Subscribe"}
         </button>

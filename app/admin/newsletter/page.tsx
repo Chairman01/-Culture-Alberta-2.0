@@ -10,13 +10,13 @@ import { ArrowLeft, Mail, Users, MapPin, Calendar } from "lucide-react"
 import Link from "next/link"
 
 interface NewsletterSubscription {
-  id?: string
+  id: string
   email: string
   city: string
   province?: string
   country?: string
-  created_at?: string
-  status?: 'active' | 'unsubscribed'
+  created_at: string
+  status: 'active' | 'unsubscribed'
 }
 
 export default function NewsletterAdmin() {
@@ -44,7 +44,7 @@ export default function NewsletterAdmin() {
           getNewsletterStats()
         ])
         
-        setSubscriptions(subscriptionsData || [])
+        setSubscriptions(subscriptionsData)
         setStats(statsData)
       } catch (error) {
         console.error("Error loading newsletter data:", error)
@@ -212,7 +212,7 @@ export default function NewsletterAdmin() {
                               </span>
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
-                                {formatDate(subscription.created_at || '')}
+                                {formatDate(subscription.created_at)}
                               </span>
                             </div>
                           </div>
