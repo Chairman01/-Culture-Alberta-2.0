@@ -25,8 +25,8 @@ export function ArticleSchema({ article, baseUrl = 'https://www.culturealberta.c
         "url": `${baseUrl}/favicon.svg`
       }
     },
-    "datePublished": article.created_at,
-    "dateModified": article.updated_at || article.created_at,
+    "datePublished": article.createdAt,
+    "dateModified": article.updatedAt || article.createdAt,
     "mainEntityOfPage": {
       "@type": "WebPage",
       "@id": `${baseUrl}/articles/${article.id}`
