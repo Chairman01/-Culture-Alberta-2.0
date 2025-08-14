@@ -10,13 +10,13 @@ import { ArrowLeft, Mail, Users, MapPin, Calendar } from "lucide-react"
 import Link from "next/link"
 
 interface NewsletterSubscription {
-  id: string
+  id?: string
   email: string
   city: string
   province?: string
   country?: string
-  created_at: string
-  status: 'active' | 'unsubscribed'
+  created_at?: string
+  status?: 'active' | 'unsubscribed'
 }
 
 export default function NewsletterAdmin() {
