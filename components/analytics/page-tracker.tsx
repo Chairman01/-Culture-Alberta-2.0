@@ -13,7 +13,9 @@ export function PageTracker({ title }: PageTrackerProps) {
   
   useEffect(() => {
     const pageTitle = title || document.title || 'Culture Alberta'
-    trackPageView(pathname, pageTitle)
+    if (pathname) {
+      trackPageView(pathname, pageTitle)
+    }
   }, [pathname, title])
   
   return null // This component doesn't render anything
