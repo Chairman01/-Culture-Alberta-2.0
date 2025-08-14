@@ -212,7 +212,7 @@ export default function NewsletterAdmin() {
                               </span>
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
-                                {formatDate(subscription.created_at)}
+                                {subscription.created_at ? formatDate(subscription.created_at) : 'Unknown date'}
                               </span>
                             </div>
                           </div>
