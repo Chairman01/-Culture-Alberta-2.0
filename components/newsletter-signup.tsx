@@ -29,7 +29,7 @@ export default function NewsletterSignup({
   useEffect(() => {
     const testConnection = async () => {
       const result = await testNewsletterConnection()
-      setIsConnected(result.success && result.tableExists)
+      setIsConnected(Boolean(result.success && result.tableExists))
       
       if (!result.success || !result.tableExists) {
         console.error('Newsletter database not ready:', result.error)
