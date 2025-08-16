@@ -28,19 +28,54 @@ export default function CulturePage() {
     try {
       const allArticles = await getAllArticles()
       
-      // Filter for culture related articles
+      // Filter for culture related articles (excluding specific festivals that don't belong)
       const cultureArticles: ExtendedArticle[] = allArticles
-        .filter(article => 
-          article.category?.toLowerCase().includes('culture') || 
-          article.category?.toLowerCase().includes('art') ||
-          article.category?.toLowerCase().includes('music') ||
-          article.category?.toLowerCase().includes('theater') ||
-          article.category?.toLowerCase().includes('museum') ||
-          article.category?.toLowerCase().includes('festival') ||
-          article.category?.toLowerCase().includes('heritage') ||
-          article.category?.toLowerCase().includes('indigenous') ||
-          article.category?.toLowerCase().includes('community')
-        )
+        .filter(article => {
+          // Exclude specific articles that shouldn't be on the Culture page
+          if (article.title?.toLowerCase().includes('edmonton folk music festival') ||
+              article.title?.toLowerCase().includes('edmonton folk festival')) {
+            return false;
+          }
+          
+          // Check if article has culture-related categories or tags
+          const hasCultureCategory = article.category?.toLowerCase().includes('culture') || 
+                                    article.category?.toLowerCase().includes('art') ||
+                                    article.category?.toLowerCase().includes('music') ||
+                                    article.category?.toLowerCase().includes('theater') ||
+                                    article.category?.toLowerCase().includes('museum') ||
+                                    article.category?.toLowerCase().includes('festival') ||
+                                    article.category?.toLowerCase().includes('heritage') ||
+                                    article.category?.toLowerCase().includes('indigenous') ||
+                                    article.category?.toLowerCase().includes('community');
+          
+          // Check if article has culture-related categories in the new categories field
+          const hasCultureCategories = article.categories?.some(cat => 
+            cat.toLowerCase().includes('culture') || 
+            cat.toLowerCase().includes('art') ||
+            cat.toLowerCase().includes('music') ||
+            cat.toLowerCase().includes('theater') ||
+            cat.toLowerCase().includes('museum') ||
+            cat.toLowerCase().includes('festival') ||
+            cat.toLowerCase().includes('heritage') ||
+            cat.toLowerCase().includes('indigenous') ||
+            cat.toLowerCase().includes('community')
+          );
+          
+          // Check if article has culture-related tags
+          const hasCultureTags = article.tags?.some(tag => 
+            tag.toLowerCase().includes('culture') || 
+            tag.toLowerCase().includes('art') ||
+            tag.toLowerCase().includes('music') ||
+            tag.toLowerCase().includes('theater') ||
+            tag.toLowerCase().includes('museum') ||
+            tag.toLowerCase().includes('festival') ||
+            tag.toLowerCase().includes('heritage') ||
+            tag.toLowerCase().includes('indigenous') ||
+            tag.toLowerCase().includes('community')
+          );
+          
+          return hasCultureCategory || hasCultureCategories || hasCultureTags;
+        })
         .map(article => ({
           ...article,
           description: article.content,

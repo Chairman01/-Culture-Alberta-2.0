@@ -46,10 +46,27 @@ export default function EdmontonPage() {
           date: a.date 
         })))
         
-        // Filter for Edmonton articles (including events)
+        // Filter for Edmonton articles (including events) - now supports multiple categories
         const edmontonPosts = allArticles.filter(
-          (post) => post.category?.toLowerCase().includes("edmonton") || 
-                    post.location?.toLowerCase().includes("edmonton")
+          (post) => {
+            // Check main category
+            const hasEdmontonCategory = post.category?.toLowerCase().includes("edmonton");
+            
+            // Check location
+            const hasEdmontonLocation = post.location?.toLowerCase().includes("edmonton");
+            
+            // Check new categories field
+            const hasEdmontonCategories = post.categories?.some(cat => 
+              cat.toLowerCase().includes("edmonton")
+            );
+            
+            // Check tags
+            const hasEdmontonTags = post.tags?.some(tag => 
+              tag.toLowerCase().includes("edmonton")
+            );
+            
+            return hasEdmontonCategory || hasEdmontonLocation || hasEdmontonCategories || hasEdmontonTags;
+          }
         )
         
         setArticles(edmontonPosts)

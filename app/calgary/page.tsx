@@ -40,10 +40,27 @@ export default function CalgaryPage() {
           date: a.date 
         })))
         
-        // Filter for Calgary articles (including events)
+        // Filter for Calgary articles (including events) - now supports multiple categories
         const calgaryPosts = allArticles.filter(
-          (post) => post.category?.toLowerCase().includes("calgary") || 
-                    post.location?.toLowerCase().includes("calgary")
+          (post) => {
+            // Check main category
+            const hasCalgaryCategory = post.category?.toLowerCase().includes("calgary");
+            
+            // Check location
+            const hasCalgaryLocation = post.location?.toLowerCase().includes("calgary");
+            
+            // Check new categories field
+            const hasCalgaryCategories = post.categories?.some(cat => 
+              cat.toLowerCase().includes("calgary")
+            );
+            
+            // Check tags
+            const hasCalgaryTags = post.tags?.some(tag => 
+              tag.toLowerCase().includes("calgary")
+            );
+            
+            return hasCalgaryCategory || hasCalgaryLocation || hasCalgaryCategories || hasCalgaryTags;
+          }
         )
         setArticles(calgaryPosts)
         

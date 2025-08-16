@@ -6,6 +6,7 @@ export interface Article {
   description?: string;
   imageUrl?: string;
   category?: string;
+  categories?: string[]; // New field for multiple categories
   location?: string;
   date?: string;
   readTime?: string;
@@ -34,6 +35,7 @@ export interface CreateArticleInput {
   excerpt?: string;
   description?: string;
   category?: string;
+  categories?: string[]; // New field for multiple categories
   location?: string;
   type?: string;
   author?: string;

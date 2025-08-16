@@ -28,16 +28,39 @@ export default function FoodDrinkPage() {
     try {
       const allArticles = await getAllArticles()
       
-      // Filter for food & drink related articles
+      // Filter for food & drink related articles - now supports multiple categories
       const foodArticles: ExtendedArticle[] = allArticles
-        .filter(article => 
-          article.category?.toLowerCase().includes('food') || 
-          article.category?.toLowerCase().includes('drink') ||
-          article.category?.toLowerCase().includes('restaurant') ||
-          article.category?.toLowerCase().includes('cafe') ||
-          article.category?.toLowerCase().includes('brewery') ||
-          article.category?.toLowerCase().includes('food & drink')
-        )
+        .filter(article => {
+          // Check main category
+          const hasFoodCategory = article.category?.toLowerCase().includes('food') || 
+                                 article.category?.toLowerCase().includes('drink') ||
+                                 article.category?.toLowerCase().includes('restaurant') ||
+                                 article.category?.toLowerCase().includes('cafe') ||
+                                 article.category?.toLowerCase().includes('brewery') ||
+                                 article.category?.toLowerCase().includes('food & drink');
+          
+          // Check new categories field
+          const hasFoodCategories = article.categories?.some(cat => 
+            cat.toLowerCase().includes('food') || 
+            cat.toLowerCase().includes('drink') ||
+            cat.toLowerCase().includes('restaurant') ||
+            cat.toLowerCase().includes('cafe') ||
+            cat.toLowerCase().includes('brewery') ||
+            cat.toLowerCase().includes('food & drink')
+          );
+          
+          // Check tags
+          const hasFoodTags = article.tags?.some(tag => 
+            tag.toLowerCase().includes('food') || 
+            tag.toLowerCase().includes('drink') ||
+            tag.toLowerCase().includes('restaurant') ||
+            tag.toLowerCase().includes('cafe') ||
+            tag.toLowerCase().includes('brewery') ||
+            tag.toLowerCase().includes('food & drink')
+          );
+          
+          return hasFoodCategory || hasFoodCategories || hasFoodTags;
+        })
         .map(article => ({
           ...article,
           description: article.content,
