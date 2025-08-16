@@ -17,7 +17,8 @@ import {
   FileText,
   Star,
   BarChart3,
-  Activity
+  Activity,
+  RefreshCw
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -27,6 +28,7 @@ export default function AdminDashboard() {
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
   useEffect(() => {
     // Check authentication using localStorage (same as admin layout)
@@ -39,17 +41,18 @@ export default function AdminDashboard() {
     }
   }, [router])
 
-  useEffect(() => {
-    const fetchAnalyticsData = () => {
-      const realData = getAnalyticsData()
+  const fetchAnalyticsData = async () => {
+    try {
+      const realData = await getAnalyticsData()
       
-      if (realData && realData.totalVisits > 0) {
+      if (realData) {
         setAnalyticsData(realData)
       } else {
         setAnalyticsData({
           totalVisits: 0,
           weeklyVisits: 0,
           dailyVisits: 0,
+          uniqueSessions: 0,
           popularPages: [],
           contentStats: {
             articles: 0,
@@ -58,12 +61,43 @@ export default function AdminDashboard() {
             edmonton: 0,
             calgary: 0,
           },
+          recentActivity: []
         })
       }
+      setLastUpdated(new Date())
+    } catch (error) {
+      console.error('Error fetching analytics data:', error)
+      setAnalyticsData({
+        totalVisits: 0,
+        weeklyVisits: 0,
+        dailyVisits: 0,
+        uniqueSessions: 0,
+        popularPages: [],
+        contentStats: {
+          articles: 0,
+          events: 0,
+          bestOf: 0,
+          edmonton: 0,
+          calgary: 0,
+        },
+        recentActivity: []
+      })
+    } finally {
       setIsLoadingData(false)
     }
+  }
 
-    setTimeout(fetchAnalyticsData, 100)
+  useEffect(() => {
+    setTimeout(() => fetchAnalyticsData(), 100)
+  }, [])
+
+  // Auto-refresh data every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAnalyticsData()
+    }, 30000)
+
+    return () => clearInterval(interval)
   }, [])
 
   if (isLoading || isLoadingData) {
@@ -85,25 +119,41 @@ export default function AdminDashboard() {
           <div>
             <h1 className="text-2xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">Welcome back, Admin</p>
-            {analyticsData && analyticsData.totalVisits > 0 ? (
-              <Badge variant="secondary" className="mt-2">
-                Real-time data
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="mt-2">
-                No data yet
-              </Badge>
-            )}
+            <div className="flex items-center gap-2 mt-2">
+              {analyticsData && analyticsData.totalVisits > 0 ? (
+                <Badge variant="secondary">
+                  Real-time data
+                </Badge>
+              ) : (
+                <Badge variant="outline">
+                  No data yet
+                </Badge>
+              )}
+              <span className="text-xs text-muted-foreground">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </span>
+            </div>
           </div>
-          <Button asChild>
-            <Link href="/">
-              <Home className="mr-2 h-4 w-4" />
-              View Site
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={fetchAnalyticsData}
+              disabled={isLoadingData}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingData ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button asChild>
+              <Link href="/">
+                <Home className="mr-2 h-4 w-4" />
+                View Site
+              </Link>
+            </Button>
+          </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5 mb-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Visits</CardTitle>
@@ -131,6 +181,16 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{analyticsData?.dailyVisits?.toLocaleString() || 0}</div>
               <p className="text-xs text-muted-foreground mt-1">Today</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Unique Sessions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analyticsData?.uniqueSessions?.toLocaleString() || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">Total sessions</p>
             </CardContent>
           </Card>
 

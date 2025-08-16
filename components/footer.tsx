@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Facebook, Instagram, Twitter } from "lucide-react"
+import { Facebook, Instagram, Youtube } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -14,17 +14,25 @@ export function Footer() {
               Celebrating and preserving Alberta's rich cultural heritage through stories, events, and community.
             </p>
             <div className="flex gap-4">
-              <Link href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-black hover:text-gray-700">
+              <Link href="https://www.youtube.com/@CultureAlberta_" target="_blank" rel="noopener noreferrer" className="text-black hover:text-gray-700">
+                <Youtube className="h-5 w-5" />
+                <span className="sr-only">YouTube</span>
+              </Link>
+              <Link href="https://www.facebook.com/profile.php?id=100064044099295" target="_blank" rel="noopener noreferrer" className="text-black hover:text-gray-700">
                 <Facebook className="h-5 w-5" />
-                <span className="sr-only">Facebook</span>
+                <span className="sr-only">Facebook - Culture Alberta</span>
               </Link>
-              <Link href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-black hover:text-gray-700">
+              <Link href="https://www.facebook.com/profile.php?id=100072301249690" target="_blank" rel="noopener noreferrer" className="text-black hover:text-gray-700">
+                <Facebook className="h-5 w-5" />
+                <span className="sr-only">Facebook - Culture YYC</span>
+              </Link>
+              <Link href="https://www.instagram.com/culturealberta._/" target="_blank" rel="noopener noreferrer" className="text-black hover:text-gray-700">
                 <Instagram className="h-5 w-5" />
-                <span className="sr-only">Instagram</span>
+                <span className="sr-only">Instagram - Culture Alberta</span>
               </Link>
-              <Link href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-black hover:text-gray-700">
-                <Twitter className="h-5 w-5" />
-                <span className="sr-only">Twitter</span>
+              <Link href="https://www.instagram.com/cultureyyc._/" target="_blank" rel="noopener noreferrer" className="text-black hover:text-gray-700">
+                <Instagram className="h-5 w-5" />
+                <span className="sr-only">Instagram - Culture YYC</span>
               </Link>
             </div>
           </div>

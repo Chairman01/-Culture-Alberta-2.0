@@ -238,6 +238,7 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
       content: article.content,
       excerpt: article.excerpt,
       category: article.category,
+      categories: article.categories || [article.category], // Add support for multiple categories
       location: article.location,
       author: article.author,
       type: article.type || 'article',
@@ -313,6 +314,7 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
       content: article.content,
       excerpt: article.excerpt,
       category: article.category,
+      categories: article.categories, // Add support for multiple categories
       location: article.location,
       author: article.author,
       type: article.type,

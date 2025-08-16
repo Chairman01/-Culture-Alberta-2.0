@@ -50,6 +50,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [article, setArticle] = useState<Article | null>(null)
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState("")
+  const [categories, setCategories] = useState<string[]>([])
   const [location, setLocation] = useState("")
   const [excerpt, setExcerpt] = useState("")
   const [content, setContent] = useState("")
@@ -81,6 +82,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setArticle(articleData)
       setTitle(articleData.title || "")
       setCategory(articleData.category || "")
+      setCategories(articleData.categories || [])
       setLocation(articleData.location || "")
       setExcerpt(articleData.excerpt || "")
       setContent(articleData.content || "")
@@ -115,6 +117,16 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
     })
   }
 
+  const handleCategoryToggle = (selectedCategory: string) => {
+    setCategories(prev => {
+      if (prev.includes(selectedCategory)) {
+        return prev.filter(cat => cat !== selectedCategory)
+      } else {
+        return [...prev, selectedCategory]
+      }
+    })
+  }
+
   const handleSave = async () => {
     if (!title) {
       toast({
@@ -125,10 +137,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       return
     }
 
-    if (!category) {
+    if (!category && categories.length === 0) {
       toast({
         title: "Missing category",
-        description: "Please select a category for your article.",
+        description: "Please select at least one category for your article.",
         variant: "destructive",
       })
       return
@@ -155,7 +167,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
     try {
       await updateArticle(resolvedParams.id, {
         title,
-        category,
+        category: category || categories[0] || "General",
+        categories: categories.length > 0 ? categories : [category || "General"],
         location: location || "Alberta",
         excerpt,
         content,
@@ -247,19 +260,26 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           </div>
 
           <div>
-            <Label htmlFor="category">Category *</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {MAIN_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
+            <Label>Categories *</Label>
+            <div className="mt-2 space-y-2">
+              {MAIN_CATEGORIES.map((cat) => (
+                <div key={cat} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={cat}
+                    checked={categories.includes(cat)}
+                    onCheckedChange={() => handleCategoryToggle(cat)}
+                  />
+                  <Label htmlFor={cat} className="text-sm font-normal cursor-pointer">
                     {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  </Label>
+                </div>
+              ))}
+            </div>
+            {categories.length > 0 && (
+              <p className="text-sm text-gray-500 mt-2">
+                Selected: {categories.join(", ")}
+              </p>
+            )}
           </div>
 
           <div>

@@ -102,9 +102,11 @@ export default function RootLayout({
                   "url": "https://www.culturealberta.com/favicon.svg"
                 },
                 "sameAs": [
-                  "https://www.facebook.com/culturealberta",
-                  "https://www.instagram.com/culturealberta",
-                  "https://twitter.com/culturealberta"
+                  "https://www.youtube.com/@CultureAlberta_",
+                  "https://www.facebook.com/profile.php?id=100064044099295",
+                  "https://www.facebook.com/profile.php?id=100072301249690",
+                  "https://www.instagram.com/culturealberta._/",
+                  "https://www.instagram.com/cultureyyc._/"
                 ]
               }
             })
@@ -156,6 +158,41 @@ export default function RootLayout({
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', 'G-V7DK0G3JFV');
+          `}
+        </Script>
+        
+        {/* Initialize Analytics */}
+        <Script id="analytics-init" strategy="afterInteractive">
+          {`
+            // Initialize analytics tracking
+            if (typeof window !== 'undefined') {
+              // Track initial page view
+              const trackPageView = (path, title) => {
+                const pageViews = JSON.parse(localStorage.getItem('pageViews') || '[]');
+                const sessionId = localStorage.getItem('analytics_session_id') || 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('analytics_session_id', sessionId);
+                
+                pageViews.push({
+                  path,
+                  title,
+                  timestamp: new Date().toISOString(),
+                  sessionId,
+                });
+                
+                localStorage.setItem('pageViews', JSON.stringify(pageViews.slice(-1000)));
+              };
+              
+              trackPageView(window.location.pathname, document.title);
+              
+              // Track navigation changes
+              const originalPushState = history.pushState;
+              history.pushState = function(...args) {
+                originalPushState.apply(history, args);
+                setTimeout(() => {
+                  trackPageView(window.location.pathname, document.title);
+                }, 100);
+              };
+            }
           `}
         </Script>
         

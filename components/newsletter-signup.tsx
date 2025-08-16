@@ -135,17 +135,50 @@ export default function NewsletterSignup({
       <div className="mt-4 pt-4 border-t border-gray-200">
         <p className="text-sm text-gray-600 mb-2 font-body">Follow us:</p>
         <div className="flex space-x-3">
-          <a href="#" className="text-gray-600 hover:text-black transition-colors">
-            <Instagram className="w-5 h-5" />
-          </a>
-          <a href="#" className="text-gray-600 hover:text-black transition-colors">
+          <a 
+            href="https://www.youtube.com/@CultureAlberta_" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-gray-600 hover:text-black transition-colors"
+            aria-label="YouTube - Culture Alberta"
+          >
             <Youtube className="w-5 h-5" />
           </a>
-          <a href="#" className="text-gray-600 hover:text-black transition-colors">
+          <a 
+            href="https://www.facebook.com/profile.php?id=100064044099295" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-gray-600 hover:text-black transition-colors"
+            aria-label="Facebook - Culture Alberta"
+          >
             <Facebook className="w-5 h-5" />
           </a>
-          <a href="#" className="text-gray-600 hover:text-black transition-colors">
-            <Twitter className="w-5 h-5" />
+          <a 
+            href="https://www.facebook.com/profile.php?id=100072301249690" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-gray-600 hover:text-black transition-colors"
+            aria-label="Facebook - Culture YYC"
+          >
+            <Facebook className="w-5 h-5" />
+          </a>
+          <a 
+            href="https://www.instagram.com/culturealberta._/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-gray-600 hover:text-black transition-colors"
+            aria-label="Instagram - Culture Alberta"
+          >
+            <Instagram className="w-5 h-5" />
+          </a>
+          <a 
+            href="https://www.instagram.com/cultureyyc._/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-gray-600 hover:text-black transition-colors"
+            aria-label="Instagram - Culture YYC"
+          >
+            <Instagram className="w-5 h-5" />
           </a>
         </div>
       </div>

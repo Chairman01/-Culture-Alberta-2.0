@@ -1,4 +1,13 @@
 // Analytics utility for tracking user interactions
+import { 
+  trackAnalyticsEvent as trackDBEvent,
+  trackPageView as trackDBPageView,
+  trackContentView as trackDBContentView,
+  trackSession as trackDBSession,
+  generateSessionId,
+  getAnalyticsData as getDBAnalyticsData
+} from './database-analytics'
+
 export interface AnalyticsEvent {
   action: string
   category: string
@@ -10,29 +19,112 @@ export interface PageView {
   path: string
   title: string
   timestamp: Date
+  sessionId?: string
 }
 
-// Track page views
-export const trackPageView = (path: string, title: string) => {
-  if (typeof window !== 'undefined' && window.gtag) {
-    window.gtag('config', 'G-V7DK0G3JFV', {
-      page_path: path,
-      page_title: title,
-    })
-  }
+export interface ContentView {
+  type: string
+  id: string
+  title: string
+  timestamp: Date
+  location?: string
+}
+
+// Generate a session ID for tracking user sessions
+const getSessionId = () => {
+  if (typeof window === 'undefined') return null
   
-  // Also store in localStorage for local analytics
-  const pageViews = JSON.parse(localStorage.getItem('pageViews') || '[]')
-  pageViews.push({
-    path,
-    title,
-    timestamp: new Date().toISOString(),
+  let sessionId = localStorage.getItem('analytics_session_id')
+  if (!sessionId) {
+    sessionId = generateSessionId()
+    localStorage.setItem('analytics_session_id', sessionId)
+  }
+  return sessionId
+}
+
+// Track page views with enhanced data
+export const trackPageView = async (path: string, title: string) => {
+  try {
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('config', 'G-V7DK0G3JFV', {
+        page_path: path,
+        page_title: title,
+      })
+    }
+    
+    const sessionId = getSessionId()
+    if (!sessionId) return
+    
+    // Track in database (with error handling)
+    try {
+      await trackDBPageView({
+        session_id: sessionId,
+        page_path: path,
+        page_title: title
+      })
+    } catch (error) {
+      console.warn('Failed to track page view in database:', error)
+    }
+    
+    // Track session (with error handling)
+    try {
+      await trackDBSession({
+        id: sessionId,
+        page_count: 1 // Will be updated by session tracking
+      })
+    } catch (error) {
+      console.warn('Failed to track session in database:', error)
+    }
+    
+    // Track analytics event (with error handling)
+    try {
+      await trackDBEvent({
+        event_type: 'page_view',
+        page_path: path,
+        page_title: title,
+        session_id: sessionId
+      })
+    } catch (error) {
+      console.warn('Failed to track analytics event in database:', error)
+    }
+    
+    // Track content type based on path (with error handling)
+    try {
+      if (path.includes('/edmonton')) {
+        await trackContentView('location', 'edmonton', 'Edmonton Page')
+      } else if (path.includes('/calgary')) {
+        await trackContentView('location', 'calgary', 'Calgary Page')
+      } else if (path.includes('/articles/')) {
+        await trackContentView('article', path.split('/').pop() || '', title)
+      } else if (path.includes('/events')) {
+        await trackContentView('event', 'events', 'Events Page')
+      } else if (path.includes('/best-of')) {
+        await trackContentView('bestOf', 'best-of', 'Best of Alberta')
+      }
+    } catch (error) {
+      console.warn('Failed to track content view in database:', error)
+    }
+  } catch (error) {
+    console.warn('Analytics tracking failed:', error)
+  }
+}
+
+// Track content views specifically
+export const trackContentView = async (type: string, id: string, title: string, location?: string) => {
+  const sessionId = getSessionId()
+  if (!sessionId) return
+  
+  await trackDBContentView({
+    session_id: sessionId,
+    content_type: type,
+    content_id: id,
+    content_title: title,
+    location
   })
-  localStorage.setItem('pageViews', JSON.stringify(pageViews.slice(-100))) // Keep last 100
 }
 
 // Track custom events
-export const trackEvent = (event: AnalyticsEvent) => {
+export const trackEvent = async (event: AnalyticsEvent) => {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', event.action, {
       event_category: event.category,
@@ -41,25 +133,35 @@ export const trackEvent = (event: AnalyticsEvent) => {
     })
   }
   
-  // Store events locally
-  const events = JSON.parse(localStorage.getItem('analyticsEvents') || '[]')
-  events.push({
-    ...event,
-    timestamp: new Date().toISOString(),
+  const sessionId = getSessionId()
+  if (!sessionId) return
+  
+  await trackDBEvent({
+    event_type: event.action,
+    session_id: sessionId,
+    page_title: event.label
   })
-  localStorage.setItem('analyticsEvents', JSON.stringify(events.slice(-100)))
 }
 
-// Get analytics data for dashboard
-export const getAnalyticsData = () => {
+// Get comprehensive analytics data for dashboard
+export const getAnalyticsData = async () => {
+  // Try to get data from database first
+  const dbData = await getDBAnalyticsData()
+  if (dbData) {
+    return dbData
+  }
+  
+  // Fallback to localStorage if database is not available
   if (typeof window === 'undefined') return null
   
   const pageViews = JSON.parse(localStorage.getItem('pageViews') || '[]')
+  const contentViews = JSON.parse(localStorage.getItem('contentViews') || '[]')
   const events = JSON.parse(localStorage.getItem('analyticsEvents') || '[]')
   
   const now = new Date()
   const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
   const lastDay = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+  const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   
   // Filter by date
   const weeklyViews = pageViews.filter((view: PageView) => 
@@ -68,34 +170,79 @@ export const getAnalyticsData = () => {
   const dailyViews = pageViews.filter((view: PageView) => 
     new Date(view.timestamp) > lastDay
   )
+  const monthlyViews = pageViews.filter((view: PageView) => 
+    new Date(view.timestamp) > lastMonth
+  )
   
-  // Count page visits
+  // Count page visits for popular pages
   const pageCounts: { [key: string]: number } = {}
-  pageViews.forEach((view: PageView) => {
-    pageCounts[view.path] = (pageCounts[view.path] || 0) + 1
+  monthlyViews.forEach((view: PageView) => {
+    const path = view.path
+    pageCounts[path] = (pageCounts[path] || 0) + 1
   })
   
   const popularPages = Object.entries(pageCounts)
     .sort(([,a], [,b]) => b - a)
     .slice(0, 5)
     .map(([path, count]) => ({
-      name: path === '/' ? 'Homepage' : path.charAt(1).toUpperCase() + path.slice(2),
-      visits: count
+      name: getPageDisplayName(path),
+      visits: count,
+      path
     }))
+  
+  // Count content by type
+  const contentStats = {
+    articles: contentViews.filter((view: ContentView) => view.type === 'article').length,
+    events: contentViews.filter((view: ContentView) => view.type === 'event').length,
+    bestOf: contentViews.filter((view: ContentView) => view.type === 'bestOf').length,
+    edmonton: contentViews.filter((view: ContentView) => view.type === 'location' && view.id === 'edmonton').length,
+    calgary: contentViews.filter((view: ContentView) => view.type === 'location' && view.id === 'calgary').length,
+  }
+  
+  // Get unique sessions
+  const uniqueSessions = new Set(pageViews.map((view: PageView) => view.sessionId)).size
   
   return {
     totalVisits: pageViews.length,
     weeklyVisits: weeklyViews.length,
     dailyVisits: dailyViews.length,
+    uniqueSessions,
     popularPages,
-    contentStats: {
-      articles: events.filter((e: any) => e.category === 'content' && e.action === 'view_article').length,
-      events: events.filter((e: any) => e.category === 'content' && e.action === 'view_event').length,
-      bestOf: events.filter((e: any) => e.category === 'content' && e.action === 'view_best_of').length,
-      edmonton: events.filter((e: any) => e.category === 'location' && e.action === 'view_edmonton').length,
-      calgary: events.filter((e: any) => e.category === 'location' && e.action === 'view_calgary').length,
-    }
+    contentStats,
+    recentActivity: pageViews.slice(-10).reverse().map((view: PageView) => ({
+      path: view.path,
+      title: view.title,
+      timestamp: view.timestamp,
+      timeAgo: getTimeAgo(new Date(view.timestamp))
+    }))
   }
+}
+
+// Helper function to get display names for pages
+const getPageDisplayName = (path: string): string => {
+  if (path === '/') return 'Homepage'
+  if (path === '/edmonton') return 'Edmonton'
+  if (path === '/calgary') return 'Calgary'
+  if (path === '/food-drink') return 'Food & Drink'
+  if (path === '/events') return 'Events'
+  if (path === '/best-of') return 'Best of Alberta'
+  if (path === '/about') return 'About'
+  if (path.startsWith('/articles/')) {
+    const parts = path.split('/')
+    return `Article: ${parts[parts.length - 1]}`
+  }
+  return path.charAt(1).toUpperCase() + path.slice(2)
+}
+
+// Helper function to get time ago
+const getTimeAgo = (date: Date): string => {
+  const now = new Date()
+  const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+  
+  if (diffInMinutes < 1) return 'Just now'
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+  if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
+  return `${Math.floor(diffInMinutes / 1440)}d ago`
 }
 
 // Track article views
@@ -106,6 +253,7 @@ export const trackArticleView = (articleId: string, title: string) => {
     label: title,
   })
   trackPageView(`/articles/${articleId}`, title)
+  trackContentView('article', articleId, title)
 }
 
 // Track location views
@@ -115,6 +263,7 @@ export const trackLocationView = (location: string) => {
     category: 'location',
     label: location,
   })
+  trackContentView('location', location.toLowerCase(), `${location} Page`, location)
 }
 
 // Track admin actions
@@ -134,6 +283,23 @@ export const trackNewsletterSignup = (location: string, email: string) => {
     label: location,
     value: 1,
   })
+}
+
+// Initialize analytics on page load
+export const initializeAnalytics = () => {
+  if (typeof window !== 'undefined') {
+    // Track the initial page view
+    trackPageView(window.location.pathname, document.title)
+    
+    // Set up automatic page view tracking for navigation
+    const originalPushState = history.pushState
+    history.pushState = function(...args) {
+      originalPushState.apply(history, args)
+      setTimeout(() => {
+        trackPageView(window.location.pathname, document.title)
+      }, 100)
+    }
+  }
 }
 
 declare global {

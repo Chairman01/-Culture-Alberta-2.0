@@ -1,4 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <rect width="32" height="32" fill="#2563eb" rx="4"/>
-  <text x="16" y="22" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">CA</text>
+  <!-- Black circular background -->
+  <circle cx="16" cy="16" r="16" fill="black"/>
+  
+  <!-- CULTURE text (smaller, top) -->
+  <text x="16" y="12" font-family="Arial, sans-serif" font-size="6" font-weight="bold" text-anchor="middle" fill="white" letter-spacing="0.5">CULTURE</text>
+  
+  <!-- ALBERTA text (larger, bottom) -->
+  <text x="16" y="24" font-family="Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="white" letter-spacing="0.3">ALBERTA</text>
 </svg>

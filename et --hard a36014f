@@ -1,0 +1,5 @@
+[33m0d16370[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add Google AdSense code and multi-category support for articles
+[33ma36014f[m Fix TypeScript error in calendar: remove unsupported IconLeft/IconRight components
+[33m31dd768[m Fix TypeScript error in article-schema: use camelCase property names (createdAt, updatedAt)
+[33m09510b8[m Fix TypeScript error in article-schema: use imageUrl instead of image property
+[33m3173f12[m Fix TypeScript error in newsletter-signup: use Boolean() to ensure boolean type
