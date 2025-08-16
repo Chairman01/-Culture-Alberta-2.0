@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!-- Black circular background -->
+  <circle cx="96" cy="96" r="96" fill="black"/>
+  
+  <!-- CULTURE text (smaller, top) -->
+  <text x="96" y="66" font-family="Arial, Helvetica, sans-serif" font-size="33" font-weight="bold" text-anchor="middle" fill="white" letter-spacing="4.8">CULTURE</text>
+  
+  <!-- ALBERTA text (larger, bottom) -->
+  <text x="96" y="150" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="bold" text-anchor="middle" fill="white" letter-spacing="2.4">ALBERTA</text>
+</svg>
