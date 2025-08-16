@@ -2,11 +2,17 @@
 export { supabase } from './supabase-simple'
 export type { SupabaseClient } from '@supabase/supabase-js'
 
+// Import test function
+import { testSupabaseConnection } from './supabase-test'
+
 // Debug function
 export const debugSupabaseConfig = () => {
   if (typeof window !== 'undefined') {
     console.log('Using simple Supabase client (no configuration)')
     console.log('Supabase URL: https://itdmwpbznviaszgqfxhk.supabase.co')
     console.log('Testing simple client approach...')
+    
+    // Run connection test
+    testSupabaseConnection()
   }
 }
