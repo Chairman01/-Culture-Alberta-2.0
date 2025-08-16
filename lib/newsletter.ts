@@ -137,7 +137,7 @@ export async function testNewsletterConnection(): Promise<{ success: boolean; er
     }
 
     console.log('Testing newsletter database connection...')
-    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbznviaszgqfxhk.supabase.co')
+    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co')
     
     // Try to query the table
     const { data, error } = await supabase
