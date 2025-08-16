@@ -469,7 +469,7 @@ export const getAnalyticsData = async () => {
     // Get content stats
     const { data: contentViews, error: contentError } = await supabase
       .from('analytics_content_views')
-      .select('content_type')
+      .select('content_type, content_id')
 
     if (contentError) {
       console.error('Error getting content views:', contentError)
