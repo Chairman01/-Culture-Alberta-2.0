@@ -22,14 +22,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if supabase client is available
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database connection not available' },
-        { status: 503 }
-      )
-    }
-
     // Check if email already exists
     const { data: existingEmail } = await supabase
       .from('newsletter_subscriptions')
@@ -112,14 +104,6 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    // Check if supabase client is available
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database connection not available' },
-        { status: 503 }
-      )
-    }
-
     const { data, error } = await supabase
       .from('newsletter_subscriptions')
       .select('*')

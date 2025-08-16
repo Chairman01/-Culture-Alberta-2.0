@@ -1,4 +1,4 @@
-import { supabase, debugSupabaseConfig } from './supabase'
+import { supabase } from './supabase'
 import { Article, CreateArticleInput, UpdateArticleInput } from './types/article'
 import { 
   getAllArticlesFromFile,
@@ -103,9 +103,6 @@ export async function testSupabaseConnection(): Promise<boolean> {
 export async function getAllArticles(): Promise<Article[]> {
   try {
     console.log('=== getAllArticles called ===')
-    
-    // Debug Supabase configuration
-    debugSupabaseConfig()
     
     if (!supabase) {
       console.error('Supabase client is not initialized')
