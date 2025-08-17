@@ -154,7 +154,7 @@ export default function CulturePage() {
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-              Culture365 Blog
+              Culture Alberta
             </h1>
             <p className="max-w-2xl text-lg text-gray-600">
               Discover Alberta's rich cultural tapestry, from Indigenous heritage to contemporary arts and vibrant communities.
