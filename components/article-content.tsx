@@ -91,13 +91,13 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
               {paragraph}
             </p>
           ))
-        } else if (part.type === 'image') {
+        } else if (part.type === 'image' && part.src) {
           return (
             <div key={index} className="my-8 text-center">
               <div className="relative w-full max-w-4xl mx-auto">
                 <Image
                   src={part.src}
-                  alt={part.alt}
+                  alt={part.alt || ''}
                   width={800}
                   height={600}
                   className="rounded-lg shadow-lg"
@@ -167,13 +167,13 @@ export function ArticleContentWithHTML({ content, className = "" }: ArticleConte
               {paragraph}
             </p>
           ))
-        } else if (part.type === 'image') {
+        } else if (part.type === 'image' && part.src) {
           return (
             <div key={index} className="my-8 text-center">
               <div className="relative w-full max-w-4xl mx-auto">
                 <Image
                   src={part.src}
-                  alt={part.alt}
+                  alt={part.alt || ''}
                   width={800}
                   height={600}
                   className="rounded-lg shadow-lg"
