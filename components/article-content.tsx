@@ -44,12 +44,47 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
     return parts
   }
 
-  const contentParts = parseContentWithImages(content)
+  // Function to process content and convert YouTube URLs to embedded videos
+  const processContentWithVideos = (content: string): string => {
+    // Convert YouTube URLs to embedded videos
+    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/g
+    
+    let processedContent = content.replace(youtubeRegex, (match, videoId) => {
+      return `<div class="video-container">
+        <iframe 
+          width="100%" 
+          height="400" 
+          src="https://www.youtube.com/embed/${videoId}" 
+          title="YouTube video player" 
+          frameborder="0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+          allowfullscreen
+        ></iframe>
+      </div>`
+    })
+
+    return processedContent
+  }
+
+  // First process videos, then images
+  const contentWithVideos = processContentWithVideos(content)
+  const contentParts = parseContentWithImages(contentWithVideos)
 
   return (
     <div className={`prose prose-lg max-w-none ${className}`}>
       {contentParts.map((part, index) => {
         if (part.type === 'text') {
+          // Check if this text contains video HTML
+          if (part.content.includes('<div class="video-container">')) {
+            return (
+              <div 
+                key={index} 
+                className="my-8"
+                dangerouslySetInnerHTML={{ __html: part.content }}
+              />
+            )
+          }
+          
           // Split text into paragraphs and render
           return part.content.split('\n\n').map((paragraph, pIndex) => (
             <p key={`${index}-${pIndex}`} className="mb-4 leading-relaxed">

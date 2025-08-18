@@ -12,14 +12,15 @@ export default function AboutPage() {
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">About Us</h1>
+                <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">About Culture Alberta</h1>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl">
-                  Learn about our mission to celebrate and preserve Alberta's cultural heritage.
+                  Celebrating and preserving Alberta's rich cultural heritage through stories, events, and community connections.
                 </p>
               </div>
             </div>
           </div>
         </section>
+
         <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/40">
           <div className="container px-4 md:px-6">
             <div className="grid gap-10 lg:grid-cols-2 lg:gap-12">
@@ -110,24 +111,24 @@ export default function AboutPage() {
               </div>
               <div className="space-y-4">
                 <img
-                  src="/placeholder.svg?height=400&width=600"
-                  alt="Culture Alberta team"
+                  src="/images/calgary-culture.jpg"
+                  alt="Alberta cultural heritage"
                   className="aspect-video w-full overflow-hidden rounded-xl object-cover"
                   width={600}
                   height={400}
                 />
                 <div className="grid grid-cols-2 gap-4">
                   <img
-                    src="/placeholder.svg?height=200&width=300"
-                    alt="Cultural event"
-                    className="aspect-video w-full overflow-hidden rounded-xl object-cover"
+                    src="/images/edmonton-culture.svg"
+                    alt="Edmonton culture"
+                    className="aspect-video w-full overflow-hidden rounded-xl object-cover bg-gray-100"
                     width={300}
                     height={200}
                   />
                   <img
-                    src="/placeholder.svg?height=200&width=300"
-                    alt="Heritage site"
-                    className="aspect-video w-full overflow-hidden rounded-xl object-cover"
+                    src="/images/calgary-culture.svg"
+                    alt="Calgary culture"
+                    className="aspect-video w-full overflow-hidden rounded-xl object-cover bg-gray-100"
                     width={300}
                     height={200}
                   />
@@ -136,66 +137,165 @@ export default function AboutPage() {
             </div>
           </div>
         </section>
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/40">
-          <div className="container px-4 md:px-6">
-            <div className="mx-auto max-w-3xl space-y-8">
-              <div className="space-y-2 text-center">
-                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Our Story</h2>
-              </div>
-              <div className="space-y-4 text-lg text-muted-foreground">
-                <p>
-                  Culture Alberta was founded in 2020 by a group of historians, artists, and cultural advocates who
-                  recognized the need for a dedicated platform to document and celebrate Alberta's rich cultural
-                  heritage.
-                </p>
-                <p>
-                  What began as a small blog has grown into a comprehensive resource for anyone interested in exploring
-                  the diverse cultural traditions that have shaped Alberta's identity. Our team now includes writers,
-                  researchers, photographers, and community organizers from across the province.
-                </p>
-                <p>
-                  We believe that culture is not static but constantly evolving. While we honor traditional practices
-                  and historical perspectives, we also celebrate contemporary expressions and the ways in which
-                  Alberta's cultural landscape continues to be enriched by new influences and ideas.
-                </p>
-                <p>
-                  Through our website, events, and community partnerships, we strive to create opportunities for
-                  Albertans to connect with their cultural heritage and with each other, fostering a deeper
-                  understanding of our shared history and collective future.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+
         <section className="w-full py-12 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
             <div className="mx-auto max-w-3xl space-y-8">
               <div className="space-y-2 text-center">
-                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Our Team</h2>
-                <p className="text-muted-foreground md:text-xl">
-                  Meet the passionate individuals behind Culture Alberta.
-                </p>
+                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Our Vision</h2>
               </div>
-              <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3">
-                {teamMembers.map((member) => (
-                  <div key={member.name} className="flex flex-col items-center space-y-2 text-center">
-                    <img
-                      src={member.image || "/placeholder.svg"}
-                      alt={member.name}
-                      className="h-32 w-32 rounded-full object-cover"
-                      width={128}
-                      height={128}
-                    />
-                    <div>
-                      <h3 className="text-xl font-bold">{member.name}</h3>
-                      <p className="text-sm text-muted-foreground">{member.role}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-4 text-lg text-muted-foreground">
+                <p>
+                  We envision an Alberta where every community's cultural heritage is celebrated, preserved, and shared. 
+                  A province where cultural diversity is not just acknowledged but actively embraced as a source of strength 
+                  and connection.
+                </p>
+                <p>
+                  Our vision extends beyond documentation—we strive to create a living, breathing cultural ecosystem 
+                  where traditions are passed down, new expressions are nurtured, and cultural exchange flourishes 
+                  across all communities.
+                </p>
+                <p>
+                  We believe that by honoring our past while embracing our present, we can build a more inclusive, 
+                  understanding, and vibrant future for all Albertans.
+                </p>
               </div>
             </div>
           </div>
         </section>
+
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/40">
+          <div className="container px-4 md:px-6">
+            <div className="mx-auto max-w-3xl space-y-8">
+              <div className="space-y-2 text-center">
+                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Our Plans & Goals</h2>
+              </div>
+              <div className="grid gap-8 md:grid-cols-2">
+                <div className="space-y-4">
+                  <h3 className="text-xl font-bold">Content & Storytelling</h3>
+                  <ul className="space-y-2 text-muted-foreground">
+                    <li>• Expand our article library with more diverse cultural perspectives</li>
+                    <li>• Launch video content featuring cultural practitioners and events</li>
+                    <li>• Create interactive maps of cultural sites and heritage locations</li>
+                    <li>• Develop educational resources for schools and community groups</li>
+                  </ul>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="text-xl font-bold">Community Engagement</h3>
+                  <ul className="space-y-2 text-muted-foreground">
+                    <li>• Host regular cultural events and workshops across Alberta</li>
+                    <li>• Partner with local cultural organizations and communities</li>
+                    <li>• Create mentorship programs for emerging cultural leaders</li>
+                    <li>• Establish cultural exchange programs between communities</li>
+                  </ul>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="text-xl font-bold">Digital Innovation</h3>
+                  <ul className="space-y-2 text-muted-foreground">
+                    <li>• Develop a mobile app for cultural discovery and events</li>
+                    <li>• Create virtual reality experiences of cultural sites</li>
+                    <li>• Launch a podcast series featuring cultural stories</li>
+                    <li>• Build an online marketplace for cultural artisans</li>
+                  </ul>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="text-xl font-bold">Preservation & Research</h3>
+                  <ul className="space-y-2 text-muted-foreground">
+                    <li>• Digitize and preserve historical cultural materials</li>
+                    <li>• Conduct oral history interviews with cultural elders</li>
+                    <li>• Research and document endangered cultural practices</li>
+                    <li>• Create a comprehensive cultural heritage database</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="w-full py-12 md:py-24 lg:py-32">
+          <div className="container px-4 md:px-6">
+            <div className="mx-auto max-w-3xl space-y-8">
+              <div className="space-y-2 text-center">
+                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Get Involved</h2>
+                <p className="text-muted-foreground md:text-xl">
+                  Join us in celebrating and preserving Alberta's cultural heritage.
+                </p>
+              </div>
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="text-center space-y-4">
+                  <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-primary"
+                    >
+                      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                      <path d="m9 12 2 2 4-4" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-bold">Share Your Story</h3>
+                  <p className="text-muted-foreground">
+                    Contribute articles, photos, or videos about your cultural heritage and experiences.
+                  </p>
+                </div>
+                <div className="text-center space-y-4">
+                  <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-primary"
+                    >
+                      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                      <path d="m9 12 2 2 4-4" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-bold">Attend Events</h3>
+                  <p className="text-muted-foreground">
+                    Join our cultural events, workshops, and community gatherings across Alberta.
+                  </p>
+                </div>
+                <div className="text-center space-y-4">
+                  <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-primary"
+                    >
+                      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                      <path d="m9 12 2 2 4-4" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-bold">Support Our Mission</h3>
+                  <p className="text-muted-foreground">
+                    Help us continue our work through donations, partnerships, or volunteering.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/40">
           <div className="container px-4 md:px-6">
             <div className="mx-auto max-w-3xl space-y-8">
@@ -211,14 +311,14 @@ export default function AboutPage() {
                     <h3 className="text-xl font-bold">Get in Touch</h3>
                     <p className="text-muted-foreground">
                       Email us at{" "}
-                      <a href="mailto:info@culturealberta.ca" className="text-primary hover:underline">
-                        info@culturealberta.ca
+                      <a href="mailto:culturealberta101@gmail.com" className="text-primary hover:underline">
+                        culturealberta101@gmail.com
                       </a>
                     </p>
                     <p className="text-muted-foreground">
                       Call us at{" "}
-                      <a href="tel:+14035551234" className="text-primary hover:underline">
-                        (403) 555-1234
+                      <a href="tel:+12262361828" className="text-primary hover:underline">
+                        (226) 236-1828
                       </a>
                     </p>
                   </div>
@@ -429,37 +529,3 @@ export default function AboutPage() {
     </div>
   )
 }
-
-// Sample data for team members
-const teamMembers = [
-  {
-    name: "Sarah Johnson",
-    role: "Founder & Executive Director",
-    image: "/placeholder.svg?height=128&width=128",
-  },
-  {
-    name: "Michael Chen",
-    role: "Content Director",
-    image: "/placeholder.svg?height=128&width=128",
-  },
-  {
-    name: "Amina Patel",
-    role: "Community Outreach Manager",
-    image: "/placeholder.svg?height=128&width=128",
-  },
-  {
-    name: "Robert Cardinal",
-    role: "Indigenous Heritage Advisor",
-    image: "/placeholder.svg?height=128&width=128",
-  },
-  {
-    name: "Elena Kowalski",
-    role: "Events Coordinator",
-    image: "/placeholder.svg?height=128&width=128",
-  },
-  {
-    name: "David Nguyen",
-    role: "Digital Media Specialist",
-    image: "/placeholder.svg?height=128&width=128",
-  },
-]
