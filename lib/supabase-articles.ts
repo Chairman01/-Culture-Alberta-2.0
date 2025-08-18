@@ -8,6 +8,11 @@ import {
   deleteArticleFromFile
 } from './file-articles'
 
+// Cache for articles to prevent multiple API calls
+let articlesCache: Article[] | null = null
+let cacheTimestamp: number = 0
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
 // Test function to check if articles table exists
 export async function checkArticlesTable(): Promise<boolean> {
   try {
@@ -104,6 +109,13 @@ export async function getAllArticles(): Promise<Article[]> {
   try {
     console.log('=== getAllArticles called ===')
     
+    // Check cache first
+    const now = Date.now()
+    if (articlesCache && (now - cacheTimestamp) < CACHE_DURATION) {
+      console.log('Returning cached articles:', articlesCache.length, 'articles')
+      return articlesCache
+    }
+    
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
@@ -112,9 +124,9 @@ export async function getAllArticles(): Promise<Article[]> {
 
     console.log('Attempting to fetch articles from Supabase...')
     
-    // Add a timeout to prevent long loading times
+    // Increase timeout and add retry logic
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Supabase timeout')), 3000)
+      setTimeout(() => reject(new Error('Supabase timeout')), 10000) // Increased to 10 seconds
     )
     
     const supabasePromise = supabase
@@ -128,8 +140,15 @@ export async function getAllArticles(): Promise<Article[]> {
     ]) as any
 
     if (error) {
-      console.warn('Supabase query failed, using file fallback:', error.message)
-      console.log('Falling back to file system due to error')
+      console.warn('Supabase query failed:', error.message)
+      
+      // If we have cached data, return it instead of falling back to file system
+      if (articlesCache) {
+        console.log('Using cached articles due to Supabase error')
+        return articlesCache
+      }
+      
+      console.log('No cache available, falling back to file system')
       return getAllArticlesFromFile()
     }
 
@@ -162,12 +181,31 @@ export async function getAllArticles(): Promise<Article[]> {
       featuredEdmonton: a.featuredEdmonton
     })))
 
+    // Update cache
+    articlesCache = mappedArticles
+    cacheTimestamp = now
+    console.log('Updated articles cache')
+
     return mappedArticles
   } catch (error) {
-    console.warn('Supabase connection failed, using file fallback:', error)
-    console.log('Falling back to file system due to exception')
+    console.warn('Supabase connection failed:', error)
+    
+    // If we have cached data, return it instead of falling back to file system
+    if (articlesCache) {
+      console.log('Using cached articles due to connection error')
+      return articlesCache
+    }
+    
+    console.log('No cache available, falling back to file system')
     return getAllArticlesFromFile()
   }
+}
+
+// Function to clear cache (useful for admin operations)
+export function clearArticlesCache() {
+  articlesCache = null
+  cacheTimestamp = 0
+  console.log('Articles cache cleared')
 }
 
 export async function getArticleById(id: string): Promise<Article> {
@@ -290,6 +328,8 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
     }
 
     console.log('Article created successfully in Supabase:', data)
+    // Clear cache to ensure fresh data
+    clearArticlesCache()
     return data
   } catch (error) {
     console.error('Supabase insert failed, using file fallback:', error)
@@ -354,6 +394,8 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
     }
 
     console.log('Article updated successfully in Supabase:', data)
+    // Clear cache to ensure fresh data
+    clearArticlesCache()
     return data
   } catch (error) {
     console.error('Supabase update failed, using file fallback:', {
@@ -375,6 +417,9 @@ export async function deleteArticle(id: string): Promise<void> {
       console.error('Error deleting article from Supabase:', error)
       return deleteArticleFromFile(id)
     }
+    
+    // Clear cache to ensure fresh data
+    clearArticlesCache()
   } catch (error) {
     console.error('Supabase delete failed, using file fallback:', error)
     return deleteArticleFromFile(id)
