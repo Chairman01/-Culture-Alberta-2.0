@@ -73,6 +73,7 @@ import { PageTracker } from '@/components/analytics/page-tracker'
 import { trackArticleView } from '@/lib/analytics'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { Footer } from '@/components/footer'
+import { ArticleContent } from '@/components/article-content'
 import './article-styles.css'
 
 export default function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
@@ -446,11 +447,7 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
                   <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
                     <div className="article-content">
                       {article.content ? (
-                        <div 
-                          dangerouslySetInnerHTML={{ 
-                            __html: processContentWithVideos(article.content) 
-                          }} 
-                        />
+                        <ArticleContent content={article.content} />
                       ) : (
                         <p className="text-gray-600 italic">Content coming soon...</p>
                       )}

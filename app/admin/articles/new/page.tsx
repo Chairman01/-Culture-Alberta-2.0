@@ -12,10 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
-import { MultipleImageUploader } from "@/components/admin/multiple-image-uploader"
 import { useToast } from "@/hooks/use-toast"
 import { MAIN_CATEGORIES } from "@/lib/data"
-import { ArticleImage } from "@/lib/types/article"
 
 export default function NewArticlePage() {
   const router = useRouter()
@@ -28,7 +26,6 @@ export default function NewArticlePage() {
   const [content, setContent] = useState("")
   const [author, setAuthor] = useState("")
   const [imageUrl, setImageUrl] = useState("")
-  const [multipleImages, setMultipleImages] = useState<ArticleImage[]>([])
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   
@@ -92,7 +89,6 @@ export default function NewArticlePage() {
         excerpt,
         content,
         imageUrl: imageUrl,
-        multipleImages: multipleImages,
         author: author || "Admin",
         type: "article",
         status: "published",
@@ -215,7 +211,7 @@ export default function NewArticlePage() {
           </div>
 
           <div>
-            <Label>Featured Image (Legacy)</Label>
+            <Label>Featured Image</Label>
             <div className="mt-2">
               {imageUrl ? (
                 <div className="relative">
@@ -332,26 +328,27 @@ export default function NewArticlePage() {
 
       <div>
         <Label htmlFor="content">Content</Label>
+        <div className="mb-2">
+          <p className="text-sm text-gray-600">
+            💡 <strong>Tip:</strong> You can add images anywhere in your content using markdown syntax: <code className="bg-gray-100 px-1 rounded">![alt text](image-url)</code>
+          </p>
+          <p className="text-sm text-gray-500">
+            Example: <code className="bg-gray-100 px-1 rounded">![Beautiful Edmonton skyline](https://example.com/edmonton-skyline.jpg)</code>
+          </p>
+        </div>
         <Textarea
           id="content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Write your article content here..."
-          rows={10}
-          className="mt-2"
-        />
-      </div>
+          placeholder="Write your article content here...
 
-      {/* Multiple Images Section */}
-      <div className="border rounded-lg p-6 bg-green-50">
-        <h3 className="text-lg font-semibold mb-4">Article Images</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Add multiple images to your article. The first image will be used as the featured image.
-        </p>
-        <MultipleImageUploader
-          images={multipleImages}
-          onChange={setMultipleImages}
-          maxImages={10}
+You can add images anywhere in your content using:
+![alt text](image-url)
+
+Example:
+![Beautiful Edmonton skyline](https://example.com/edmonton-skyline.jpg)"
+          rows={12}
+          className="mt-2"
         />
       </div>
 
