@@ -1,10 +1,19 @@
+// Interface for individual image objects
+export interface ArticleImage {
+  url: string;
+  alt?: string;
+  caption?: string;
+  order?: number;
+}
+
 export interface Article {
   id: string;
   title: string;
   content: string;
   excerpt?: string;
   description?: string;
-  imageUrl?: string;
+  imageUrl?: string; // Keep for backward compatibility
+  multipleImages?: ArticleImage[]; // New field for multiple images
   category?: string;
   categories?: string[]; // New field for multiple categories
   location?: string;
@@ -31,7 +40,8 @@ export interface Article {
 export interface CreateArticleInput {
   title: string;
   content: string;
-  imageUrl?: string;
+  imageUrl?: string; // Keep for backward compatibility
+  multipleImages?: ArticleImage[]; // New field for multiple images
   excerpt?: string;
   description?: string;
   category?: string;

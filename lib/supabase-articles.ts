@@ -165,6 +165,7 @@ export async function getAllArticles(): Promise<Article[]> {
     const mappedArticles = (data || []).map((article: any) => ({
       ...article,
       imageUrl: article.image_url || article.image, // Map 'image_url' or 'image' column to 'imageUrl'
+      multipleImages: article.multiple_images || [], // Map multiple_images column
       date: article.created_at, // Map 'created_at' to 'date' for compatibility
       // Map trending flags from database columns to interface properties
       trendingHome: article.trending_home || false,
@@ -282,6 +283,7 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
       type: article.type || 'article',
       status: article.status || 'published',
       image_url: article.imageUrl, // Map imageUrl to image_url column
+      multiple_images: article.multipleImages || [], // Map multipleImages to multiple_images column
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       // Add trending flags
@@ -360,6 +362,7 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
       type: article.type,
       status: article.status,
       image_url: article.imageUrl, // Map imageUrl to image_url column
+      multiple_images: article.multipleImages, // Map multipleImages to multiple_images column
       updated_at: new Date().toISOString(),
       // Add trending flags
       trending_home: article.trendingHome,
