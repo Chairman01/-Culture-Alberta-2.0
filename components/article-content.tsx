@@ -73,7 +73,7 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
   return (
     <div className={`prose prose-lg max-w-none ${className}`}>
       {contentParts.map((part, index) => {
-        if (part.type === 'text') {
+        if (part.type === 'text' && part.content) {
           // Check if this text contains video HTML
           if (part.content.includes('<div class="video-container">')) {
             return (
@@ -161,7 +161,7 @@ export function ArticleContentWithHTML({ content, className = "" }: ArticleConte
   return (
     <div className={`prose prose-lg max-w-none ${className}`}>
       {contentParts.map((part, index) => {
-        if (part.type === 'text') {
+        if (part.type === 'text' && part.content) {
           return part.content.split('\n\n').map((paragraph, pIndex) => (
             <p key={`${index}-${pIndex}`} className="mb-4 leading-relaxed">
               {paragraph}
