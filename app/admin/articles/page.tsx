@@ -89,6 +89,7 @@ export default function AdminArticles() {
         status: a.status || '',
       }))
       console.log('Admin: Normalized articles:', normalized)
+      console.log('Admin: First article sample:', normalized[0])
       setArticles(normalized)
     } catch (error) {
       console.error('Error loading articles:', error)
@@ -124,6 +125,12 @@ export default function AdminArticles() {
     const matchesLocation = location === "all" || article.location === location
     return matchesSearch && matchesCategory && matchesLocation
   })
+
+  console.log('Admin: Total articles:', articles.length)
+  console.log('Admin: Filtered articles:', filteredArticles.length)
+  console.log('Admin: Search term:', searchTerm)
+  console.log('Admin: Category filter:', category)
+  console.log('Admin: Location filter:', location)
 
   const categories = Array.from(new Set(articles.map(a => a.category).filter(cat => cat && cat.trim() !== '')))
   const locations = Array.from(new Set(articles.map(a => a.location).filter(loc => loc && loc.trim() !== '')))
@@ -211,7 +218,7 @@ export default function AdminArticles() {
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 relative rounded overflow-hidden">
                           <img
-                            src={article.image || "/placeholder.svg"}
+                            src={article.imageUrl || article.image || "/placeholder.svg"}
                             alt={article.title}
                             className="object-cover w-full h-full"
                             onError={(e) => {
