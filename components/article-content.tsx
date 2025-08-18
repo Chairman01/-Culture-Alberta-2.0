@@ -96,7 +96,7 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
             <div key={index} className="my-8 text-center">
               <div className="relative w-full max-w-4xl mx-auto">
                 <Image
-                  src={part.src}
+                  src={part.src as string}
                   alt={part.alt || ''}
                   width={800}
                   height={600}
@@ -172,7 +172,7 @@ export function ArticleContentWithHTML({ content, className = "" }: ArticleConte
             <div key={index} className="my-8 text-center">
               <div className="relative w-full max-w-4xl mx-auto">
                 <Image
-                  src={part.src}
+                  src={part.src as string}
                   alt={part.alt || ''}
                   width={800}
                   height={600}

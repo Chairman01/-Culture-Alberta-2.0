@@ -4,6 +4,7 @@ import { Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+// Updated about page with simplified design and updated contact info
 export default function AboutPage() {
   return (
     <div className="flex min-h-screen flex-col">
