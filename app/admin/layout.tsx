@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { BarChart2, FileText, Calendar, Award, Mail } from "lucide-react"
@@ -12,12 +12,22 @@ export default function AdminLayout({
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
+    console.log("Admin layout: Checking authentication...")
+    
     // Check if user is authenticated
     const adminAuthenticated = localStorage.getItem('admin_authenticated')
     const adminToken = localStorage.getItem('admin_token')
     const loginTime = localStorage.getItem('admin_login_time')
+    
+    console.log("Admin layout: Auth check results:", {
+      adminAuthenticated,
+      hasToken: !!adminToken,
+      loginTime
+    })
     
     // Check if token is expired (24 hours)
     if (loginTime) {
@@ -26,19 +36,28 @@ export default function AdminLayout({
       const hoursSinceLogin = (now - loginTimestamp) / (1000 * 60 * 60)
       
       if (hoursSinceLogin > 24) {
+        console.log("Admin layout: Token expired, clearing storage")
         // Token expired, clear storage and redirect to login
         localStorage.removeItem('admin_authenticated')
         localStorage.removeItem('admin_token')
         localStorage.removeItem('admin_user')
         localStorage.removeItem('admin_login_time')
+        setIsLoading(false)
         router.push('/admin/login')
         return
       }
     }
     
     if (!adminAuthenticated || !adminToken) {
+      console.log("Admin layout: Not authenticated, redirecting to login")
+      setIsLoading(false)
       router.push('/admin/login')
+      return
     }
+    
+    console.log("Admin layout: Authenticated successfully")
+    setIsAuthenticated(true)
+    setIsLoading(false)
   }, [router, pathname])
 
   const navigation = [
@@ -54,6 +73,30 @@ export default function AdminLayout({
   // Don't show the layout on the login page
   if (pathname === '/admin/login') {
     return <>{children}</>
+  }
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking admin access...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Only show admin layout if authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
