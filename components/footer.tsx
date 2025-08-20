@@ -43,7 +43,7 @@ export function Footer() {
               <Link href="/calgary" className="text-sm text-muted-foreground hover:text-primary">Calgary</Link>
               <Link href="/food-drink" className="text-sm text-muted-foreground hover:text-primary">Food & Drink</Link>
               <Link href="/events" className="text-sm text-muted-foreground hover:text-primary">Events</Link>
-              <Link href="/arts" className="text-sm text-muted-foreground hover:text-primary">Arts</Link>
+              <Link href="/culture" className="text-sm text-muted-foreground hover:text-primary">Arts</Link>
               <Link href="/best-of" className="text-sm text-muted-foreground hover:text-primary">Best of Alberta</Link>
             </nav>
           </div>
