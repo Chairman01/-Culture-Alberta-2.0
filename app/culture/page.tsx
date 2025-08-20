@@ -152,10 +152,10 @@ export default function CulturePage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+      <div className="flex justify-center items-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600 mx-auto mb-4"></div>
-          <p className="text-purple-600 font-medium">Discovering Alberta's culture...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 border-t-gray-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Discovering Alberta's culture...</p>
         </div>
       </div>
     )
@@ -164,90 +164,83 @@ export default function CulturePage() {
   const categories = getUniqueCategories()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-      {/* Hero Section with Cultural Elements */}
-      <header className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-700 py-20">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }}></div>
-        </div>
-        
-        <div className="container mx-auto px-4 max-w-7xl relative z-10">
-          <div className="flex flex-col items-center justify-center space-y-6 text-center text-white">
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section - Toned Down */}
+      <header className="bg-white border-b border-gray-200 py-16">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="flex flex-col items-center justify-center space-y-6 text-center">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <Palette className="w-6 h-6" />
+              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                <Palette className="w-5 h-5 text-gray-600" />
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <Music className="w-6 h-6" />
+              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                <Music className="w-5 h-5 text-gray-600" />
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <Theater className="w-6 h-6" />
+              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                <Theater className="w-5 h-5 text-gray-600" />
               </div>
             </div>
             
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">
               Alberta's Cultural
-              <span className="block bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
+              <span className="block text-gray-700">
                 Tapestry
               </span>
             </h1>
             
-            <p className="max-w-3xl text-xl text-purple-100 leading-relaxed">
+            <p className="max-w-3xl text-lg text-gray-600 leading-relaxed">
               From Indigenous heritage to contemporary arts, discover the vibrant stories, 
               traditions, and creative expressions that make Alberta truly special.
             </p>
             
-            <div className="flex flex-wrap gap-4 justify-center mt-8">
-              <div className="bg-white/10 backdrop-blur-sm rounded-full px-6 py-2 text-sm font-medium">
-                🎨 Visual Arts
+            <div className="flex flex-wrap gap-3 justify-center mt-6">
+              <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
+                Visual Arts
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-full px-6 py-2 text-sm font-medium">
-                🎵 Music & Festivals
+              <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
+                Music & Festivals
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-full px-6 py-2 text-sm font-medium">
-                🎭 Theater & Performance
+              <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
+                Theater & Performance
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-full px-6 py-2 text-sm font-medium">
-                🏛️ Museums & Heritage
+              <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
+                Museums & Heritage
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Featured Article - Enhanced Design */}
+      {/* Featured Article - Toned Down */}
       {featuredArticle && (
-        <section className="py-20 bg-white">
+        <section className="py-16 bg-white">
           <div className="container mx-auto px-4 max-w-7xl">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Featured Story</h2>
-              <div className="w-24 h-1 bg-gradient-to-r from-purple-500 to-blue-500 mx-auto rounded-full"></div>
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Featured Story</h2>
+              <div className="w-16 h-0.5 bg-gray-300 mx-auto"></div>
             </div>
             
-            <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl overflow-hidden shadow-2xl border border-gray-100">
+            <div className="bg-white rounded-lg overflow-hidden shadow-md border border-gray-200">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                 <div className="relative aspect-[4/3] lg:aspect-square group">
                   <Image
                     src={featuredArticle.imageUrl || "/placeholder.svg"}
                     alt={featuredArticle.title}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
                     priority
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                  <div className="absolute top-6 left-6">
-                    <span className="bg-white/90 backdrop-blur-sm text-purple-700 px-4 py-2 rounded-full font-semibold text-sm">
-                      ✨ Featured
+                  <div className="absolute inset-0 bg-black/10"></div>
+                  <div className="absolute top-4 left-4">
+                    <span className="bg-white text-gray-700 px-3 py-1 rounded-full font-medium text-sm border border-gray-200">
+                      Featured
                     </span>
                   </div>
                 </div>
-                <div className="p-8 lg:p-12 flex flex-col justify-center">
-                  <div className="space-y-6">
+                <div className="p-6 lg:p-8 flex flex-col justify-center">
+                  <div className="space-y-4">
                     <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span className="bg-gradient-to-r from-purple-100 to-blue-100 text-purple-800 px-4 py-2 rounded-full font-semibold text-sm">
+                      <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-medium text-sm">
                         {featuredArticle.category}
                       </span>
                       <span className="flex items-center gap-2 text-gray-500">
@@ -255,18 +248,18 @@ export default function CulturePage() {
                         {formatDate(featuredArticle.date || '')}
                       </span>
                     </div>
-                    <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">
+                    <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 leading-tight">
                       {featuredArticle.title}
                     </h2>
-                    <p className="text-lg text-gray-600 leading-relaxed">
+                    <p className="text-gray-600 leading-relaxed">
                       {featuredArticle.excerpt}
                     </p>
                     <Link 
                       href={`/articles/${featuredArticle.id}`}
-                      className="inline-flex items-center bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-3 rounded-full font-semibold hover:from-purple-700 hover:to-blue-700 transition-all duration-300 group shadow-lg hover:shadow-xl"
+                      className="inline-flex items-center bg-gray-900 text-white px-6 py-2 rounded-md font-medium hover:bg-gray-800 transition-colors group"
                     >
                       Read Full Story
-                      <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                     </Link>
                   </div>
                 </div>
@@ -276,30 +269,30 @@ export default function CulturePage() {
         </section>
       )}
 
-      {/* Interactive Category Navigation */}
+      {/* Category Navigation - Toned Down */}
       {categories.length > 1 && (
-        <section className="py-12 bg-gradient-to-r from-purple-50 to-blue-50">
+        <section className="py-8 bg-gray-50 border-b border-gray-200">
           <div className="container mx-auto px-4 max-w-7xl">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Explore by Category</h2>
-              <p className="text-gray-600">Discover stories that resonate with your interests</p>
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-1">Explore by Category</h2>
+              <p className="text-gray-600 text-sm">Discover stories that resonate with your interests</p>
             </div>
             
-            <div className="flex flex-wrap gap-4 justify-center">
+            <div className="flex flex-wrap gap-3 justify-center">
               {categories.map((category) => {
                 const IconComponent = category.icon
                 return (
                   <button
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
-                    className={`group flex items-center gap-3 px-6 py-4 rounded-xl font-medium text-sm transition-all duration-300 ${
+                    className={`group flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
                       selectedCategory === category.id
-                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg scale-105'
-                        : 'bg-white text-gray-700 hover:bg-purple-50 hover:shadow-md border border-gray-200'
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                     }`}
                   >
-                    <IconComponent className={`w-5 h-5 ${
-                      selectedCategory === category.id ? 'text-white' : 'text-purple-600'
+                    <IconComponent className={`w-4 h-4 ${
+                      selectedCategory === category.id ? 'text-white' : 'text-gray-600'
                     }`} />
                     {category.name}
                   </button>
@@ -310,34 +303,34 @@ export default function CulturePage() {
         </section>
       )}
 
-      {/* Main Content - Enhanced Grid Layout */}
-      <section className="py-20 bg-white">
+      {/* Main Content - Toned Down */}
+      <section className="py-16 bg-white">
         <div className="container mx-auto px-4 max-w-7xl">
-          <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-16">
+          <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-12">
             {/* Articles Grid */}
-            <div className="space-y-12">
+            <div className="space-y-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-1">
                     {selectedCategory === 'all' ? 'All Cultural Stories' : categories.find(c => c.id === selectedCategory)?.name}
                   </h2>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 text-sm">
                     {filterArticlesByCategory(selectedCategory).length} stories to explore
                   </p>
                 </div>
-                <div className="bg-gradient-to-r from-purple-100 to-blue-100 px-4 py-2 rounded-full">
-                  <span className="text-purple-700 font-semibold text-sm">
+                <div className="bg-gray-100 px-3 py-1 rounded-full">
+                  <span className="text-gray-700 font-medium text-sm">
                     {filterArticlesByCategory(selectedCategory).length} articles
                   </span>
                 </div>
               </div>
 
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {filterArticlesByCategory(selectedCategory).map((article, index) => {
                   const IconComponent = getCategoryIcon(article.category || '')
                   return (
                     <Link key={article.id} href={`/articles/${article.id}`} className="group block">
-                      <article className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                      <article className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
                           <div className="md:col-span-1 relative aspect-[4/3] group-hover:scale-105 transition-transform duration-300">
                             <Image
@@ -346,7 +339,7 @@ export default function CulturePage() {
                               fill
                               className="object-cover"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                           </div>
                           <div className="md:col-span-2 p-8 space-y-4">
                             <div className="flex items-center gap-4 text-sm">
@@ -406,17 +399,17 @@ export default function CulturePage() {
               )}
             </div>
 
-            {/* Enhanced Sidebar */}
-            <div className="space-y-8">
-              {/* Newsletter with Cultural Theme */}
-              <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl p-8 border border-purple-100">
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Heart className="w-8 h-8 text-white" />
+            {/* Sidebar - Toned Down */}
+            <div className="space-y-6">
+              {/* Newsletter */}
+              <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                <div className="text-center mb-4">
+                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Heart className="w-6 h-6 text-gray-600" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Stay Connected</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">Stay Connected</h3>
                   <p className="text-gray-600 text-sm">
-                    Get the latest cultural events, art exhibitions, and community stories delivered to your inbox.
+                    Get the latest cultural events and community stories delivered to your inbox.
                   </p>
                 </div>
                 <NewsletterSignup 
@@ -426,24 +419,24 @@ export default function CulturePage() {
                 />
               </div>
 
-              {/* Cultural Categories */}
-              <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-lg">
-                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                  <Tag className="w-5 h-5 text-purple-600" />
+              {/* Categories */}
+              <div className="bg-white rounded-lg p-6 border border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-gray-600" />
                   Explore Categories
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {Array.from(new Set(articles.map(a => a.category).filter(Boolean))).slice(0, 8).map((category) => {
                     const IconComponent = getCategoryIcon(category || '')
                     return (
                       <Link 
                         key={category}
                         href={`/culture?category=${category?.toLowerCase()}`}
-                        className="flex items-center gap-3 text-gray-600 hover:text-purple-600 transition-colors py-3 px-4 rounded-lg hover:bg-purple-50 group"
+                        className="flex items-center gap-3 text-gray-600 hover:text-gray-900 transition-colors py-2 px-3 rounded-md hover:bg-gray-50 group"
                       >
-                        <IconComponent className="w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform" />
-                        <span className="font-medium">{category}</span>
-                        <ArrowRight className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <IconComponent className="w-4 h-4 text-gray-500" />
+                        <span className="font-medium text-sm">{category}</span>
+                        <ArrowRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                       </Link>
                     )
                   })}
@@ -453,13 +446,13 @@ export default function CulturePage() {
                 </div>
               </div>
 
-              {/* Recent Cultural Stories */}
-              <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-lg">
-                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
+              {/* Recent Stories */}
+              <div className="bg-white rounded-lg p-6 border border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-gray-600" />
                   Recent Stories
                 </h3>
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {articles.slice(0, 4).map((article) => {
                     const IconComponent = getCategoryIcon(article.category || '')
                     return (
@@ -468,21 +461,21 @@ export default function CulturePage() {
                         href={`/articles/${article.id}`}
                         className="block group"
                       >
-                        <div className="flex gap-4">
-                          <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
+                        <div className="flex gap-3">
+                          <div className="relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden">
                             <Image
                               src={article.imageUrl || "/placeholder.svg"}
                               alt={article.title}
                               fill
-                              className="object-cover group-hover:scale-110 transition-transform duration-300"
+                              className="object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <IconComponent className="w-3 h-3 text-purple-500" />
-                              <span className="text-xs text-purple-600 font-medium">{article.category}</span>
+                            <div className="flex items-center gap-2 mb-1">
+                              <IconComponent className="w-3 h-3 text-gray-500" />
+                              <span className="text-xs text-gray-600 font-medium">{article.category}</span>
                             </div>
-                            <h4 className="text-sm font-semibold text-gray-900 group-hover:text-purple-600 transition-colors line-clamp-2 leading-tight">
+                            <h4 className="text-sm font-semibold text-gray-900 group-hover:text-gray-700 transition-colors line-clamp-2 leading-tight">
                               {article.title}
                             </h4>
                             <p className="text-xs text-gray-500 mt-1">
@@ -496,15 +489,15 @@ export default function CulturePage() {
                 </div>
               </div>
 
-              {/* Cultural Quote */}
-              <div className="bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl p-8 text-white text-center">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Globe className="w-6 h-6" />
+              {/* Quote */}
+              <div className="bg-gray-900 rounded-lg p-6 text-white text-center">
+                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Globe className="w-5 h-5" />
                 </div>
-                <blockquote className="text-lg font-medium mb-4">
+                <blockquote className="text-sm font-medium mb-2">
                   "Culture is the widening of the mind and of the spirit."
                 </blockquote>
-                <p className="text-purple-100 text-sm">— Jawaharlal Nehru</p>
+                <p className="text-gray-300 text-xs">— Jawaharlal Nehru</p>
               </div>
             </div>
           </div>
