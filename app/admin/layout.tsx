@@ -5,9 +5,6 @@ import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { BarChart2, FileText, Calendar, Award, Mail } from "lucide-react"
 
-// Check if we're in development environment
-const isDevelopment = process.env.NODE_ENV === 'development'
-
 export default function AdminLayout({
   children,
 }: {
@@ -17,15 +14,29 @@ export default function AdminLayout({
   const pathname = usePathname()
 
   useEffect(() => {
-    // Block admin access in production
-    if (!isDevelopment) {
-      router.push('/')
-      return
-    }
-
-    // Check if user is authenticated using the correct key
+    // Check if user is authenticated
     const adminAuthenticated = localStorage.getItem('admin_authenticated')
-    if (!adminAuthenticated && pathname !== '/admin/login') {
+    const adminToken = localStorage.getItem('admin_token')
+    const loginTime = localStorage.getItem('admin_login_time')
+    
+    // Check if token is expired (24 hours)
+    if (loginTime) {
+      const loginTimestamp = parseInt(loginTime)
+      const now = Date.now()
+      const hoursSinceLogin = (now - loginTimestamp) / (1000 * 60 * 60)
+      
+      if (hoursSinceLogin > 24) {
+        // Token expired, clear storage and redirect to login
+        localStorage.removeItem('admin_authenticated')
+        localStorage.removeItem('admin_token')
+        localStorage.removeItem('admin_user')
+        localStorage.removeItem('admin_login_time')
+        router.push('/admin/login')
+        return
+      }
+    }
+    
+    if (!adminAuthenticated || !adminToken) {
       router.push('/admin/login')
     }
   }, [router, pathname])
@@ -38,20 +49,7 @@ export default function AdminLayout({
     { name: 'Newsletter', href: '/admin/newsletter', icon: Mail },
   ]
 
-  // Block admin access in production
-  if (!isDevelopment) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600">Admin panel is only available in development mode.</p>
-          <Link href="/" className="mt-4 inline-block text-blue-600 hover:underline">
-            Return to Home
-          </Link>
-        </div>
-      </div>
-    )
-  }
+
 
   // Don't show the layout on the login page
   if (pathname === '/admin/login') {

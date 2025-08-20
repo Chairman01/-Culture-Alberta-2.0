@@ -9,21 +9,39 @@ export default function AdminLogin() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true)
+    setError("")
     
-    // In a real app, this would be an API call with secure password hashing
-    if (username === "admin" && password === "password") {
-      // Set the correct localStorage keys that the admin dashboard expects
-      localStorage.setItem("admin_authenticated", "true")
-      localStorage.setItem("admin_user", username)
-      localStorage.setItem("admin_login_time", Date.now().toString())
-      
-      router.push("/admin")
-    } else {
-      setError("Invalid credentials")
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        localStorage.setItem("admin_authenticated", "true")
+        localStorage.setItem("admin_user", data.username)
+        localStorage.setItem("admin_login_time", Date.now().toString())
+        localStorage.setItem("admin_token", data.token)
+        
+        router.push("/admin")
+      } else {
+        const errorData = await response.json()
+        setError(errorData.message || "Invalid credentials")
+      }
+    } catch (error) {
+      setError("An error occurred. Please try again.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -31,13 +49,11 @@ export default function AdminLogin() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-6 shadow-lg">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight">Admin Login</h2>
+          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
+            Admin Access
+          </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Use the following credentials:
-          </p>
-          <p className="text-center text-sm text-gray-600">
-            Username: admin<br />
-            Password: password
+            Enter your credentials to access the admin panel
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
@@ -54,6 +70,7 @@ export default function AdminLogin() {
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -68,18 +85,36 @@ export default function AdminLogin() {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
               />
             </div>
           </div>
 
-          {error && <p className="text-center text-sm text-red-600">{error}</p>}
+          {error && (
+            <div className="text-center text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+              {error}
+            </div>
+          )}
 
           <div>
-            <Button type="submit" className="w-full">
-              Sign in
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading}
+            >
+              {isLoading ? "Signing in..." : "Sign in"}
             </Button>
           </div>
         </form>
+        
+        <div className="text-center">
+          <a 
+            href="/" 
+            className="text-sm text-blue-600 hover:text-blue-500 transition-colors"
+          >
+            ← Back to website
+          </a>
+        </div>
       </div>
     </div>
   )

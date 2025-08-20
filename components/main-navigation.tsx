@@ -67,6 +67,9 @@ export function MainNavigation() {
           <Link href="/partner" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Partner with Us
           </Link>
+          <Link href="/contact" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+            Contact
+          </Link>
         </nav>
 
         <div className="flex items-center gap-4">
@@ -78,7 +81,11 @@ export function MainNavigation() {
               className="pl-9 w-[200px] bg-gray-50 border-gray-200 focus:bg-white"
             />
           </div>
-          <Button className={isEdmonton ? "bg-blue-600 hover:bg-blue-700" : "bg-black hover:bg-gray-800"}>
+          <Button className={
+            isEdmonton ? "bg-blue-600 hover:bg-blue-700" : 
+            isCalgary ? "bg-red-600 hover:bg-red-700" : 
+            "bg-black hover:bg-gray-800"
+          }>
             Subscribe
           </Button>
         </div>
