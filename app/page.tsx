@@ -23,13 +23,8 @@ export default function Home() {
     setIsClient(true)
     async function loadPosts() {
       try {
-        // Set a timeout to prevent infinite loading
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Loading timeout')), 5000)
-        )
-        
-        const loadPromise = getAllArticles()
-        const apiArticles = await Promise.race([loadPromise, timeoutPromise]) as Article[]
+        // Temporarily remove timeout to debug the issue
+        const apiArticles = await getAllArticles()
         const allPosts = apiArticles
         
         // Separate events from regular articles
