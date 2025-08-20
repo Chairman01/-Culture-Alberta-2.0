@@ -11,9 +11,25 @@ export async function POST(request: NextRequest) {
     const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH
     const jwtSecret = process.env.JWT_SECRET
 
+    // Debug logging
+    console.log('Login attempt:', { username, hasPassword: !!password })
+    console.log('Environment variables check:', {
+      hasAdminUsername: !!adminUsername,
+      hasAdminPasswordHash: !!adminPasswordHash,
+      hasJwtSecret: !!jwtSecret,
+      adminUsername,
+      adminPasswordHashLength: adminPasswordHash?.length,
+      jwtSecretLength: jwtSecret?.length
+    })
+
     // Check if environment variables are set
     if (!adminUsername || !adminPasswordHash || !jwtSecret) {
       console.error('Admin credentials not configured in environment variables')
+      console.error('Missing variables:', {
+        adminUsername: !adminUsername,
+        adminPasswordHash: !adminPasswordHash,
+        jwtSecret: !jwtSecret
+      })
       return NextResponse.json(
         { message: 'Admin access not configured' },
         { status: 500 }
