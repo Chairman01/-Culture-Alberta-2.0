@@ -18,7 +18,7 @@ export default function AdminLogin() {
     setError("")
     
     try {
-      const response = await fetch('/api/admin/login', {
+      const response = await fetch('/api/admin/login-minimal', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ export default function AdminLogin() {
               <Input
                 id="password"
                 name="password"
-                type="password"
+                type="text"
                 required
                 placeholder="Password"
                 value={password}
@@ -95,6 +95,12 @@ export default function AdminLogin() {
               {error}
             </div>
           )}
+
+          {/* Debug info - remove this later */}
+          <div className="text-center text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">
+            <div>Debug: Current password: <strong>{password}</strong></div>
+            <div>Debug: Password length: {password.length}</div>
+          </div>
 
           <div>
             <Button 
