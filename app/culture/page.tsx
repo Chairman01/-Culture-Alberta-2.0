@@ -8,7 +8,7 @@ import { getAllArticles } from "@/lib/articles"
 import { Footer } from "@/components/footer"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Article } from "@/lib/types/article"
-import { ArrowRight, Clock, MapPin, Star, Users, Calendar, Tag, Palette, Music, Theater, Museum, Heart, Sparkles, Globe, Award } from "lucide-react"
+import { ArrowRight, Clock, MapPin, Star, Users, Calendar, Tag, Palette, Music, Theater, Landmark, Heart, Sparkles, Globe, Award } from "lucide-react"
 
 interface ExtendedArticle extends Article {
   description?: string;
@@ -130,7 +130,7 @@ export default function CulturePage() {
     if (cat.includes('art') || cat.includes('painting') || cat.includes('sculpture')) return Palette
     if (cat.includes('music') || cat.includes('concert') || cat.includes('festival')) return Music
     if (cat.includes('theater') || cat.includes('drama') || cat.includes('performance')) return Theater
-    if (cat.includes('museum') || cat.includes('gallery') || cat.includes('exhibition')) return Museum
+    if (cat.includes('museum') || cat.includes('gallery') || cat.includes('exhibition')) return Landmark
     if (cat.includes('heritage') || cat.includes('indigenous') || cat.includes('tradition')) return Globe
     if (cat.includes('community') || cat.includes('local')) return Heart
     if (cat.includes('award') || cat.includes('recognition')) return Award
