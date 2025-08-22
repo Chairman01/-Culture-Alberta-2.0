@@ -14,9 +14,50 @@ export default {
         disallow: ['/admin/', '/api/', '/test/', '/test-supabase/', '/populate/'],
       },
     ],
-    additionalSitemaps: [
-      'https://www.culturealberta.com/sitemap.xml',
-    ],
+  },
+  additionalPaths: async (config) => {
+    const result = []
+    
+    try {
+      // Add dynamic article pages
+      const articles = await getArticlesFromDatabase()
+      for (const article of articles) {
+        if (article.status === 'published') {
+          result.push({
+            loc: `/articles/${article.id}`,
+            changefreq: 'weekly',
+            priority: 0.8,
+            lastmod: article.updatedAt || article.createdAt || new Date().toISOString(),
+          })
+        }
+      }
+      
+      // Add best-of category pages
+      const bestOfCategories = ['food', 'events', 'culture', 'attractions', 'shopping']
+      for (const category of bestOfCategories) {
+        result.push({
+          loc: `/best-of/${category}`,
+          changefreq: 'weekly',
+          priority: 0.8,
+          lastmod: new Date().toISOString(),
+        })
+      }
+      
+      // Add individual best-of items (if you have them)
+      const bestOfItems = await getBestOfItemsFromDatabase()
+      for (const item of bestOfItems) {
+        result.push({
+          loc: `/best-of/${item.category}/${item.id}`,
+          changefreq: 'monthly',
+          priority: 0.7,
+          lastmod: item.updatedAt || item.createdAt || new Date().toISOString(),
+        })
+      }
+    } catch (error) {
+      console.error('Error generating additional sitemap paths:', error)
+    }
+    
+    return result
   },
   transform: async (config, path) => {
     // Custom priority and changefreq for different page types
@@ -55,4 +96,17 @@ export default {
       alternateRefs: config.alternateRefs ?? [],
     };
   },
+}
+
+// Helper functions to get data from your database
+async function getArticlesFromDatabase() {
+  // This should match how you get articles in your app
+  // For now, returning empty array - you'll need to implement this
+  return []
+}
+
+async function getBestOfItemsFromDatabase() {
+  // This should match how you get best-of items in your app
+  // For now, returning empty array - you'll need to implement this
+  return []
 }
