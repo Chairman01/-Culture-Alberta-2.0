@@ -66,12 +66,94 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
     return processedContent
   }
 
+  // Function to process text content with proper formatting
+  const processTextContent = (text: string) => {
+    // Split into paragraphs
+    const paragraphs = text.split('\n\n').map(paragraph => paragraph.trim()).filter(p => p.length > 0)
+    
+    return paragraphs.map((paragraph, index) => {
+      // Handle quotes (text wrapped in quotes)
+      if (/^["'].*["']$/.test(paragraph)) {
+        const quoteText = paragraph.replace(/^["']|["']$/g, '')
+        return (
+          <blockquote key={index} className="border-l-4 border-blue-500 pl-6 py-4 my-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-r-lg">
+            <p className="text-lg italic text-gray-700 font-medium leading-relaxed">
+              "{quoteText}"
+            </p>
+          </blockquote>
+        )
+      }
+      
+      // Handle numbered lists (main headings)
+      if (/^\d+\./.test(paragraph)) {
+        return (
+          <h2 key={index} className="text-2xl font-bold text-gray-900 mb-4 mt-8 first:mt-0">
+            {paragraph}
+          </h2>
+        )
+      }
+      
+      // Handle "What it is:", "Why locals love it:", etc. (highlight boxes)
+      if (/^(What it is|Why locals love it|Pro tip|Vibe|Try this|Heads-up|Must-try|Key Takeaway|Important|Note):/.test(paragraph)) {
+        const [label, ...rest] = paragraph.split(':')
+        return (
+          <div key={index} className="bg-yellow-50 border-l-4 border-yellow-400 p-4 my-6 rounded-r-lg">
+            <strong className="text-gray-900 text-lg font-semibold">{label}:</strong>
+            <span className="text-gray-700 ml-2">{rest.join(':').trim()}</span>
+          </div>
+        )
+      }
+      
+      // Handle "Honorable Mentions:" and "Bottom line:" (section headers)
+      if (/^(Honorable Mentions|Bottom line|Conclusion|Summary|Final Thoughts):/.test(paragraph)) {
+        return (
+          <h3 key={index} className="text-xl font-semibold text-gray-900 mt-8 mb-4 border-b-2 border-gray-200 pb-2">
+            {paragraph}
+          </h3>
+        )
+      }
+      
+      // Handle subheadings (text ending with :)
+      if (/^[A-Z][^:]*:$/.test(paragraph) && paragraph.length < 100) {
+        return (
+          <h4 key={index} className="text-lg font-semibold text-gray-800 mt-6 mb-3">
+            {paragraph}
+          </h4>
+        )
+      }
+      
+      // Handle regular paragraphs with inline formatting
+      return (
+        <p key={index} className="mb-6 leading-relaxed text-gray-700 text-lg">
+          {formatInlineText(paragraph)}
+        </p>
+      )
+    })
+  }
+
+  // Function to format inline text (bold, italic, etc.)
+  const formatInlineText = (text: string) => {
+    // Handle **bold** text
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+    
+    // Handle *italic* text
+    text = text.replace(/\*(.*?)\*/g, '<em class="italic text-gray-800">$1</em>')
+    
+    // Handle `code` text
+    text = text.replace(/`(.*?)`/g, '<code class="bg-gray-100 px-2 py-1 rounded text-sm font-mono">$1</code>')
+    
+    // Handle links [text](url)
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer">$1</a>')
+    
+    return <span dangerouslySetInnerHTML={{ __html: text }} />
+  }
+
   // First process videos, then images
   const contentWithVideos = processContentWithVideos(content)
   const contentParts = parseContentWithImages(contentWithVideos)
 
   return (
-    <div className={`prose prose-lg max-w-none ${className}`}>
+    <div className={`article-content ${className}`}>
       {contentParts.map((part, index) => {
         if (part.type === 'text' && part.content) {
           // Check if this text contains video HTML
@@ -85,12 +167,8 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
             )
           }
           
-          // Split text into paragraphs and render
-          return part.content.split('\n\n').map((paragraph, pIndex) => (
-            <p key={`${index}-${pIndex}`} className="mb-4 leading-relaxed">
-              {paragraph}
-            </p>
-          ))
+          // Process text content with proper formatting
+          return processTextContent(part.content)
         } else if (part.type === 'image' && part.src) {
           return (
             <div key={index} className="my-8 text-center">
@@ -159,7 +237,7 @@ export function ArticleContentWithHTML({ content, className = "" }: ArticleConte
   const contentParts = parseContentWithHTMLImages(content)
 
   return (
-    <div className={`prose prose-lg max-w-none ${className}`}>
+    <div className={`article-content ${className}`}>
       {contentParts.map((part, index) => {
         if (part.type === 'text' && part.content) {
           return part.content.split('\n\n').map((paragraph, pIndex) => (
