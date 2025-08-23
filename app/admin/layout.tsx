@@ -14,8 +14,15 @@ export default function AdminLayout({
   const pathname = usePathname()
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isClient) return
+
     console.log("Admin layout: Checking authentication...")
     
     // Check if user is authenticated
@@ -58,7 +65,7 @@ export default function AdminLayout({
     console.log("Admin layout: Authenticated successfully")
     setIsAuthenticated(true)
     setIsLoading(false)
-  }, [router, pathname])
+  }, [router, pathname, isClient])
 
   const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart2 },
@@ -68,15 +75,13 @@ export default function AdminLayout({
     { name: 'Newsletter', href: '/admin/newsletter', icon: Mail },
   ]
 
-
-
   // Don't show the layout on the login page
   if (pathname === '/admin/login') {
     return <>{children}</>
   }
 
-  // Show loading state while checking authentication
-  if (isLoading) {
+  // Show loading state while checking authentication or before client hydration
+  if (isLoading || !isClient) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
