@@ -16,6 +16,77 @@ import { useToast } from "@/hooks/use-toast"
 import { MAIN_CATEGORIES } from "@/lib/data"
 import { ArticleContent } from "@/components/article-content"
 
+// Function to process content for preview (same as in article-content.tsx)
+const processContentForPreview = (content: string): string => {
+  // Convert YouTube URLs to embedded videos
+  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/g
+  
+  let processedContent = content.replace(youtubeRegex, (match, videoId) => {
+    return `<div class="video-container">
+      <iframe 
+        width="100%" 
+        height="400" 
+        src="https://www.youtube.com/embed/${videoId}" 
+        title="YouTube video player" 
+        frameborder="0" 
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+        allowfullscreen
+      ></iframe>
+    </div>`
+  })
+
+  // Convert plain text line breaks to proper HTML paragraphs
+  processedContent = processedContent
+    .split('\n\n')
+    .map(paragraph => paragraph.trim())
+    .filter(paragraph => paragraph.length > 0)
+    .map(paragraph => {
+      // Handle numbered lists (main headings)
+      if (/^\d+\./.test(paragraph)) {
+        return `<h2 class="text-2xl font-bold text-gray-900 mb-4">${paragraph}</h2>`
+      }
+      // Handle "What it is:", "Why locals love it:", etc. (highlight boxes)
+      else if (/^(What it is|Why locals love it|Pro tip|Vibe|Try this|Heads-up|Must-try|Key Takeaway|Important|Note):/.test(paragraph)) {
+        const [label, ...rest] = paragraph.split(':')
+        return `<div class="highlight-box">
+          <strong class="text-gray-900 text-lg">${label}:</strong> 
+          <span class="text-gray-700">${rest.join(':').trim()}</span>
+        </div>`
+      }
+      // Handle "Honorable Mentions:" and "Bottom line:" (section headers)
+      else if (/^(Honorable Mentions|Bottom line|Conclusion|Summary|Final Thoughts):/.test(paragraph)) {
+        return `<h3 class="text-xl font-semibold text-gray-900 mt-8 mb-4">${paragraph}</h3>`
+      }
+      // Handle quotes (text wrapped in quotes)
+      else if (/^["'].*["']$/.test(paragraph)) {
+        return `<blockquote>${paragraph.replace(/^["']|["']$/g, '')}</blockquote>`
+      }
+      // Handle subheadings (text ending with :)
+      else if (/^[A-Z][^:]*:$/.test(paragraph) && paragraph.length < 100) {
+        return `<h4 class="text-lg font-semibold text-gray-800 mt-6 mb-3">${paragraph}</h4>`
+      }
+      // Handle bold text (**text**)
+      else if (paragraph.includes('**')) {
+        return `<p>${paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</p>`
+      }
+      // Handle italic text (*text*)
+      else if (paragraph.includes('*') && !paragraph.startsWith('*') && !paragraph.endsWith('*')) {
+        return `<p>${paragraph.replace(/\*(.*?)\*/g, '<em>$1</em>')}</p>`
+      }
+      // Handle code text (`text`)
+      else if (paragraph.includes('`')) {
+        return `<p>${paragraph.replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 rounded">$1</code>')}</p>`
+      }
+      // Regular paragraphs
+      else {
+        return `<p>${paragraph}</p>`
+      }
+    })
+    .join('')
+
+  return processedContent
+}
+
 export default function NewArticlePage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -29,7 +100,7 @@ export default function NewArticlePage() {
   const [imageUrl, setImageUrl] = useState("")
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [showPreview, setShowPreview] = useState(true)
+  const [showPreview, setShowPreview] = useState(false)
   
   // Trending selection options
   const [trendingHome, setTrendingHome] = useState(false)
@@ -142,9 +213,9 @@ export default function NewArticlePage() {
           <Button 
             variant="outline" 
             onClick={() => setShowPreview(!showPreview)}
-            size="sm"
+            className="flex items-center gap-2"
           >
-            {showPreview ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             {showPreview ? "Hide Preview" : "Show Preview"}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
@@ -337,15 +408,13 @@ export default function NewArticlePage() {
               <p className="text-sm text-gray-600 mb-2">
                 💡 <strong>Formatting Tips:</strong>
               </p>
-              <div className="text-xs text-gray-500 space-y-1">
-                <p>• <code className="bg-gray-100 px-1 rounded">**bold text**</code> - Makes text bold</p>
-                <p>• <code className="bg-gray-100 px-1 rounded">*italic text*</code> - Makes text italic</p>
-                <p>• <code className="bg-gray-100 px-1 rounded">`code text`</code> - Highlights code</p>
-                <p>• <code className="bg-gray-100 px-1 rounded">"quoted text"</code> - Creates a quote block</p>
-                <p>• <code className="bg-gray-100 px-1 rounded">![alt text](image-url)</code> - Adds images</p>
-                <p>• <code className="bg-gray-100 px-1 rounded">What it is:</code> - Creates highlight boxes</p>
-                <p>• <code className="bg-gray-100 px-1 rounded">Pro tip:</code> - Creates tip boxes</p>
-              </div>
+              <ul className="text-sm text-gray-500 space-y-1 mb-2">
+                <li>• <code className="bg-gray-100 px-1 rounded">**bold text**</code> for <strong>bold text</strong></li>
+                <li>• <code className="bg-gray-100 px-1 rounded">*italic text*</code> for <em>italic text</em></li>
+                <li>• <code className="bg-gray-100 px-1 rounded">`code text`</code> for <code className="bg-gray-100 px-1 rounded">code text</code></li>
+                <li>• <code className="bg-gray-100 px-1 rounded">"quoted text"</code> for blockquotes</li>
+                <li>• <code className="bg-gray-100 px-1 rounded">![alt text](image-url)</code> for images</li>
+              </ul>
             </div>
             <Textarea
               id="content"
@@ -353,14 +422,13 @@ export default function NewArticlePage() {
               onChange={(e) => setContent(e.target.value)}
               placeholder="Write your article content here...
 
-Use **bold text** for emphasis
-Add *italic text* for style
-Include quoted text for quotes
-Add Pro tip: for helpful tips
-Use What it is: for explanations
+You can use formatting like:
+**This will be bold**
+*This will be italic*
+`This will be code`
 
-You can also add images:
-![alt text](image-url)"
+Or add images:
+![Beautiful Edmonton skyline](https://example.com/edmonton-skyline.jpg)"
               rows={12}
               className="mt-2"
             />
@@ -369,49 +437,98 @@ You can also add images:
 
         {/* Preview Section */}
         {showPreview && (
-          <div className="space-y-4">
-            <div className="sticky top-4">
-              <div className="bg-white border rounded-lg p-4 mb-4">
-                <h3 className="text-lg font-semibold mb-2">Live Preview</h3>
-                <p className="text-sm text-gray-600 mb-4">See how your article will look with formatting applied</p>
-                
-                {title && (
-                  <div className="mb-4">
-                    <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-                    {author && <p className="text-sm text-gray-600 mt-1">By {author}</p>}
-                    {location && <p className="text-sm text-gray-600">{location}</p>}
-                  </div>
-                )}
-
-                {excerpt && (
-                  <div className="mb-4 p-3 bg-gray-50 rounded">
-                    <p className="text-gray-700 italic">{excerpt}</p>
-                  </div>
-                )}
-
-                {imageUrl && (
-                  <div className="mb-4">
-                    <img
-                      src={imageUrl}
-                      alt="Article preview"
-                      className="w-full h-48 object-cover rounded"
-                    />
-                  </div>
-                )}
-
-                {content && (
-                  <div className="border-t pt-4">
-                    <ArticleContent content={content} />
-                  </div>
-                )}
-
-                {!title && !content && (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>Start typing to see the preview...</p>
-                  </div>
-                )}
-              </div>
+          <div className="border rounded-lg p-6 bg-white">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Live Preview</h3>
+            <div className="prose max-w-none">
+              {title && (
+                <h1 className="text-3xl font-bold text-gray-900 mb-4">{title}</h1>
+              )}
+              {excerpt && (
+                <p className="text-lg text-gray-600 mb-6 italic">"{excerpt}"</p>
+              )}
+              {content && (
+                <div 
+                  className="article-content"
+                  style={{
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    lineHeight: "1.8",
+                    color: "#374151",
+                    fontSize: "1.125rem"
+                  }}
+                  dangerouslySetInnerHTML={{ __html: processContentForPreview(content) }}
+                />
+              )}
+              {!content && (
+                <div className="text-gray-400 text-center py-8">
+                  <p>Start typing in the content field to see the preview here</p>
+                </div>
+              )}
             </div>
+            <style jsx>{`
+              .article-content h1,
+              .article-content h2,
+              .article-content h3,
+              .article-content h4 {
+                font-weight: 700;
+                color: #111827;
+                margin-top: 2.5rem;
+                margin-bottom: 1.25rem;
+                line-height: 1.3;
+              }
+              .article-content h1 {
+                font-size: 2.5rem;
+                border-bottom: 2px solid #e5e7eb;
+                padding-bottom: 0.5rem;
+              }
+              .article-content h2 {
+                font-size: 2rem;
+                color: #1f2937;
+              }
+              .article-content h3 {
+                font-size: 1.5rem;
+                color: #374151;
+              }
+              .article-content h4 {
+                font-size: 1.25rem;
+                color: #4b5563;
+              }
+              .article-content p {
+                margin-bottom: 1.5rem;
+              }
+              .article-content blockquote {
+                border-left: 4px solid #3b82f6;
+                background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+                padding: 1.5rem;
+                margin: 2rem 0;
+                border-radius: 0.5rem;
+                font-style: italic;
+                color: #1e40af;
+                font-size: 1.125rem;
+              }
+              .article-content .highlight-box {
+                background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+                border: 1px solid #f59e0b;
+                border-radius: 0.5rem;
+                padding: 1.5rem;
+                margin: 1.5rem 0;
+                box-shadow: 0 2px 4px rgba(245, 158, 11, 0.1);
+              }
+              .article-content code {
+                background-color: #f3f4f6;
+                padding: 0.25rem 0.5rem;
+                border-radius: 0.25rem;
+                font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                font-size: 0.875rem;
+              }
+              .article-content strong {
+                font-weight: 700;
+                color: #111827;
+              }
+              .article-content em {
+                font-style: italic;
+                color: #4b5563;
+              }
+            `}</style>
           </div>
         )}
       </div>
