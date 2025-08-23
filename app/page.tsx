@@ -14,16 +14,13 @@ import { PageTracker } from '@/components/analytics/page-tracker'
 export default function Home() {
   const [posts, setPosts] = useState<Article[]>([])
   const [events, setEvents] = useState<Article[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [isClient, setIsClient] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [activeBestOfTab, setActiveBestOfTab] = useState('dentists')
 
   useEffect(() => {
     setIsClient(true)
     async function loadPosts() {
       try {
-        // Temporarily remove timeout to debug the issue
         const apiArticles = await getAllArticles()
         const allPosts = apiArticles
         
@@ -35,42 +32,15 @@ export default function Home() {
         setEvents(eventPosts)
       } catch (error) {
         console.error("Error loading posts:", error)
-        setError(error instanceof Error ? error.message : 'Unknown error')
         // Set empty arrays to prevent infinite loading
         setPosts([])
         setEvents([])
-      } finally {
-        setIsLoading(false)
       }
     }
     loadPosts()
   }, [])
 
-  // Don't render anything until client-side hydration is complete
-  if (!isClient) {
-    return (
-      <div className="flex min-h-screen flex-col">
-        <main className="flex-1">
-          <div className="flex justify-center items-center min-h-screen">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen flex-col">
-        <main className="flex-1">
-          <div className="flex justify-center items-center min-h-screen">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
+  // Show content immediately, don't wait for client-side hydration
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString)

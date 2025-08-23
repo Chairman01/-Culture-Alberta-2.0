@@ -1,8 +1,3 @@
-[33mea542dc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add Vercel Analytics to track visitor data and page views
-[33md84b862[m Fix TypeScript errors in ArticleContent - add null checks for part.src and part.alt
-[33mce2e046[m Fix TypeScript error in ArticleContent component - add null check for part.content
-[33mbd35f2f[m Update about page: simplified design, removed individual names, added mission/vision/plans focus, updated contact info
-[33mc380e2d[m Add inline images support with ArticleContent component - Add ArticleContent component for parsing markdown images - Update article page to use ArticleContent component - Add instructions for inline images in admin form - Support markdown syntax: ![alt text](image-url)
 
                    SSUUMMMMAARRYY OOFF LLEESSSS CCOOMMMMAANNDDSS
 
@@ -327,8 +322,3 @@
  TAB ...................................... Complete filename & cycle.
  SHIFT-TAB ...................... ESC-TAB   Complete filename & reverse cycle.
  ctrl-L ................................... Complete filename, list all.
-[33m1760594[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m Improve Google sitemap with proper priorities and structure
-[33m755def3[m Improve article readability with enhanced styling and formatting
-[33m26a1b69[m Update admin login to use minimal API with visible password for debugging
-[33m7530bb7[m Update generate-hash script for admin credential generation
-[33mb43f492[m Fix admin login API endpoint - use proper /api/admin/login instead of minimal version

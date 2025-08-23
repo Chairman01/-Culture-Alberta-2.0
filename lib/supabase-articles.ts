@@ -11,7 +11,7 @@ import {
 // Cache for articles to prevent multiple API calls
 let articlesCache: Article[] | null = null
 let cacheTimestamp: number = 0
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+const CACHE_DURATION = 60 * 60 * 1000 // 1 hour (increased from 5 minutes)
 
 // Test function to check if articles table exists
 export async function checkArticlesTable(): Promise<boolean> {
@@ -126,7 +126,7 @@ export async function getAllArticles(): Promise<Article[]> {
     
     // Increase timeout and add retry logic
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Supabase timeout')), 10000) // Increased to 10 seconds
+      setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Reduced from 10 seconds to 5 seconds
     )
     
     const supabasePromise = supabase
@@ -212,6 +212,15 @@ export async function getArticleById(id: string): Promise<Article> {
   try {
     if (!id || id.trim() === '') {
       throw new Error('Article ID is required')
+    }
+
+    // Check cache first for faster loading
+    if (articlesCache) {
+      const cachedArticle = articlesCache.find(article => article.id === id)
+      if (cachedArticle) {
+        console.log('Article found in cache:', id)
+        return cachedArticle
+      }
     }
 
     if (!supabase) {

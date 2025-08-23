@@ -74,6 +74,7 @@ import { trackArticleView } from '@/lib/analytics'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { Footer } from '@/components/footer'
 import { ArticleContent } from '@/components/article-content'
+import { ArticleSkeleton } from '@/components/article-skeleton'
 import './article-styles.css'
 
 export default function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
@@ -89,6 +90,7 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
   const [article, setArticle] = useState<Article | null>(null)
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [newsletterCity, setNewsletterCity] = useState('')
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false)
@@ -101,19 +103,26 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
         return
       }
       
+      setLoading(true)
+      setError(null)
+      
       try {
         const article = await getArticleById(articleId)
-        setArticle(article)
-        
-        // Load related articles
-        const allArticles = await getAllArticles()
-        const related = allArticles
-          .filter(a => a.id !== articleId && a.type !== 'event')
-          .slice(0, 6)
-        setRelatedArticles(related)
+        if (article) {
+          setArticle(article)
+          
+          // Load related articles
+          const allArticles = await getAllArticles()
+          const related = allArticles
+            .filter(a => a.id !== articleId && a.type !== 'event')
+            .slice(0, 6)
+          setRelatedArticles(related)
+        } else {
+          setError('Article not found')
+        }
       } catch (error) {
-        console.error("Article not found:", articleId)
-        setArticle(null)
+        console.error("Error loading article:", error)
+        setError('Failed to load article')
       } finally {
         setLoading(false)
       }
@@ -237,9 +246,17 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
   }
 
   if (loading) {
+    return <ArticleSkeleton />
+  }
+
+  if (error) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-red-600">Error: {error}</h1>
+        <p className="mt-4">The article you're looking for could not be loaded.</p>
+        <Link href="/" className="text-blue-600 hover:underline mt-4 inline-block">
+          ← Back to Home
+        </Link>
       </div>
     )
   }
