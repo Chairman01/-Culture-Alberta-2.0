@@ -11,7 +11,62 @@ import {
 // Cache for articles to prevent multiple API calls
 let articlesCache: Article[] | null = null
 let cacheTimestamp: number = 0
-const CACHE_DURATION = 60 * 60 * 1000 // 1 hour (increased from 5 minutes)
+const CACHE_DURATION = 2 * 60 * 60 * 1000 // 2 hours (increased from 1 hour)
+
+// Preload cache on module load for faster initial access
+let preloadPromise: Promise<Article[]> | null = null
+
+// Function to load articles from database with optimized query
+async function loadArticlesFromDatabase(): Promise<Article[]> {
+  if (!supabase) {
+    console.error('Supabase client is not initialized')
+    return getAllArticlesFromFile()
+  }
+
+  console.log('Fetching articles from Supabase...')
+  
+  // Optimized query with timeout
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Supabase timeout')), 3000) // Reduced to 3 seconds
+  )
+  
+  const supabasePromise = supabase
+    .from('articles')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  try {
+    const { data, error } = await Promise.race([
+      supabasePromise,
+      timeoutPromise
+    ]) as any
+
+    if (error) {
+      console.warn('Supabase query failed:', error.message)
+      return getAllArticlesFromFile()
+    }
+
+    console.log('Successfully fetched articles from Supabase:', data?.length || 0, 'articles')
+
+    // Map Supabase data to match our Article interface
+    const mappedArticles = (data || []).map((article: any) => ({
+      ...article,
+      imageUrl: article.image_url || article.image,
+      date: article.created_at,
+      trendingHome: article.trending_home || false,
+      trendingEdmonton: article.trending_edmonton || false,
+      trendingCalgary: article.trending_calgary || false,
+      featuredHome: article.featured_home || false,
+      featuredEdmonton: article.featured_edmonton || false,
+      featuredCalgary: article.featured_calgary || false
+    }))
+
+    return mappedArticles
+  } catch (error) {
+    console.warn('Supabase connection failed:', error)
+    return getAllArticlesFromFile()
+  }
+}
 
 // Test function to check if articles table exists
 export async function checkArticlesTable(): Promise<boolean> {
@@ -107,96 +162,38 @@ export async function testSupabaseConnection(): Promise<boolean> {
 
 export async function getAllArticles(): Promise<Article[]> {
   try {
-    console.log('=== getAllArticles called ===')
-    
-    // Check cache first
+    // Check if we have valid cached data
     const now = Date.now()
     if (articlesCache && (now - cacheTimestamp) < CACHE_DURATION) {
-      console.log('Returning cached articles:', articlesCache.length, 'articles')
+      console.log('Returning cached articles')
       return articlesCache
     }
-    
-    if (!supabase) {
-      console.error('Supabase client is not initialized')
-      console.log('Falling back to file system')
-      return getAllArticlesFromFile()
+
+    // If preload is already in progress, wait for it
+    if (preloadPromise) {
+      console.log('Waiting for preload to complete')
+      return await preloadPromise
     }
 
-    console.log('Attempting to fetch articles from Supabase...')
+    // Start preloading if not already started
+    preloadPromise = loadArticlesFromDatabase()
     
-    // Increase timeout and add retry logic
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Reduced from 10 seconds to 5 seconds
-    )
-    
-    const supabasePromise = supabase
-      .from('articles')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    const { data, error } = await Promise.race([
-      supabasePromise,
-      timeoutPromise
-    ]) as any
-
-    if (error) {
-      console.warn('Supabase query failed:', error.message)
-      
-      // If we have cached data, return it instead of falling back to file system
-      if (articlesCache) {
-        console.log('Using cached articles due to Supabase error')
-        return articlesCache
-      }
-      
-      console.log('No cache available, falling back to file system')
-      return getAllArticlesFromFile()
+    try {
+      const articles = await preloadPromise
+      articlesCache = articles
+      cacheTimestamp = now
+      console.log(`Loaded ${articles.length} articles from database`)
+      return articles
+    } finally {
+      preloadPromise = null
     }
-
-    console.log('Successfully fetched articles from Supabase:', data?.length || 0, 'articles')
-    console.log('Sample article from Supabase:', data?.[0] ? {
-      id: data[0].id,
-      title: data[0].title,
-      featured_home: data[0].featured_home,
-      featured_edmonton: data[0].featured_edmonton,
-      featured_calgary: data[0].featured_calgary
-    } : 'No articles')
-
-    // Map Supabase data to match our Article interface
-    const mappedArticles = (data || []).map((article: any) => ({
-      ...article,
-      imageUrl: article.image_url || article.image, // Map 'image_url' or 'image' column to 'imageUrl'
-      date: article.created_at, // Map 'created_at' to 'date' for compatibility
-      // Map trending flags from database columns to interface properties
-      trendingHome: article.trending_home || false,
-      trendingEdmonton: article.trending_edmonton || false,
-      trendingCalgary: article.trending_calgary || false,
-      featuredHome: article.featured_home || false,
-      featuredEdmonton: article.featured_edmonton || false,
-      featuredCalgary: article.featured_calgary || false
-    }))
-
-    console.log('Mapped articles with featured flags:', mappedArticles.map((a: any) => ({
-      id: a.id,
-      title: a.title,
-      featuredEdmonton: a.featuredEdmonton
-    })))
-
-    // Update cache
-    articlesCache = mappedArticles
-    cacheTimestamp = now
-    console.log('Updated articles cache')
-
-    return mappedArticles
   } catch (error) {
-    console.warn('Supabase connection failed:', error)
-    
-    // If we have cached data, return it instead of falling back to file system
+    console.error('Error in getAllArticles:', error)
+    // Return cached data even if expired, or fallback to file data
     if (articlesCache) {
-      console.log('Using cached articles due to connection error')
+      console.log('Returning expired cache due to error')
       return articlesCache
     }
-    
-    console.log('No cache available, falling back to file system')
     return getAllArticlesFromFile()
   }
 }

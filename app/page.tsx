@@ -7,6 +7,7 @@ import { getAllArticles } from '@/lib/articles'
 import { Footer } from '@/components/footer'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
+import { HomeSkeleton } from '@/components/home-skeleton'
 
 import { Article } from '@/lib/types/article'
 import { PageTracker } from '@/components/analytics/page-tracker'
@@ -14,13 +15,20 @@ import { PageTracker } from '@/components/analytics/page-tracker'
 export default function Home() {
   const [posts, setPosts] = useState<Article[]>([])
   const [events, setEvents] = useState<Article[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [isClient, setIsClient] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [activeBestOfTab, setActiveBestOfTab] = useState('dentists')
+  const [contentLoaded, setContentLoaded] = useState(false)
 
   useEffect(() => {
     setIsClient(true)
     async function loadPosts() {
       try {
+        setIsLoading(true)
+        setError(null)
+        
+        // Load articles with optimized caching
         const apiArticles = await getAllArticles()
         const allPosts = apiArticles
         
@@ -30,17 +38,28 @@ export default function Home() {
         
         setPosts(regularPosts)
         setEvents(eventPosts)
-      } catch (error) {
-        console.error("Error loading posts:", error)
-        // Set empty arrays to prevent infinite loading
-        setPosts([])
-        setEvents([])
+        setContentLoaded(true)
+      } catch (err) {
+        console.error('Error loading posts:', err)
+        setError('Failed to load content. Please try again.')
+      } finally {
+        setIsLoading(false)
       }
     }
+
+    // Start loading immediately when component mounts
     loadPosts()
   }, [])
 
-  // Show content immediately, don't wait for client-side hydration
+  // Don't render anything until client-side hydration is complete
+  if (!isClient) {
+    return <HomeSkeleton />
+  }
+
+  if (isLoading) {
+    return <HomeSkeleton />
+  }
+
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString)
