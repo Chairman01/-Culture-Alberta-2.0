@@ -6,6 +6,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { getArticleById, getAllArticles } from '@/lib/articles'
+import { use } from 'react'
+import { notFound } from 'next/navigation'
 
 import { Article } from '@/lib/types/article'
 
@@ -75,21 +77,20 @@ import { Footer } from '@/components/footer'
 import { ArticleContent } from '@/components/article-content'
 import './article-styles.css'
 
-export default function ArticlePage() {
+export default function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
-  const params = useParams()
+  const resolvedParams = use(params)
   const [articleId, setArticleId] = useState<string>("")
   
-  // Handle params
+  // Handle async params
   useEffect(() => {
-    if (params?.id) {
-      setArticleId(params.id as string)
-    }
-  }, [params?.id])
+    setArticleId(resolvedParams.id)
+  }, [resolvedParams.id])
   
   const [article, setArticle] = useState<Article | null>(null)
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState(true)
+  const [notFoundError, setNotFoundError] = useState(false)
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [newsletterCity, setNewsletterCity] = useState('')
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false)
@@ -101,134 +102,122 @@ export default function ArticlePage() {
         setLoading(false)
         return
       }
-
+      
       try {
-        console.log('Loading article with ID:', articleId)
+        // Add a small timeout to prevent immediate loading
+        await new Promise(resolve => setTimeout(resolve, 100))
         
-        // Try to get the specific article
-        const articleData = await getArticleById(articleId)
+        const article = await getArticleById(articleId)
         
-        if (articleData) {
-          console.log('Article found:', articleData.title)
-          setArticle(articleData)
-          
-          // Track article view
-          trackArticleView(articleData.id, articleData.title)
-          
-          // Load related articles
-          const allArticles = await getAllArticles()
-          const related = allArticles
-            .filter(a => a.id !== articleId && a.category === articleData.category)
-            .slice(0, 3)
-          setRelatedArticles(related)
-        } else {
-          console.log('Article not found, redirecting to 404')
-          router.push('/404')
+        if (!article) {
+          setNotFoundError(true)
+          setLoading(false)
+          return
         }
+        
+        setArticle(article)
+        
+        // Load related articles in background
+        setTimeout(async () => {
+          try {
+            const allArticles = await getAllArticles()
+            const related = allArticles
+              .filter(a => a.id !== articleId && a.type !== 'event')
+              .slice(0, 6)
+            setRelatedArticles(related)
+          } catch (error) {
+            console.error("Error loading related articles:", error)
+          }
+        }, 500)
+        
       } catch (error) {
-        console.error('Error loading article:', error)
-        router.push('/404')
+        console.error("Article not found:", articleId)
+        setNotFoundError(true)
       } finally {
         setLoading(false)
       }
     }
-
     loadArticle()
-  }, [articleId, router])
+  }, [articleId])
 
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading article...</p>
-        </div>
-      </div>
-    )
-  }
+  useEffect(() => {
+    if (article) {
+      trackArticleView(resolvedParams.id, article.title)
+    }
+  }, [article, resolvedParams.id])
 
-  // Show 404 if article not found
-  if (!article) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6 text-center">
-          <div className="mb-4">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33"
-              />
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Article not found
-          </h2>
-          <p className="text-gray-600 mb-6">
-            The article you're looking for could not be found.
-          </p>
-          <div className="space-y-3">
-            <Link 
-              href="/"
-              className="inline-flex items-center text-blue-600 hover:text-blue-800"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Home
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // Reading progress tracking and newsletter popup
+  useEffect(() => {
+    const updateReadingProgress = () => {
+      // Get the article content element
+      const articleContent = document.querySelector('.article-content') as HTMLElement
+      if (!articleContent) return
+      
+      const rect = articleContent.getBoundingClientRect()
+      const windowHeight = window.innerHeight
+      const contentHeight = articleContent.offsetHeight
+      
+      // Calculate how much of the content has been scrolled past
+      const scrolledPast = windowHeight - rect.top
+      const totalScrollable = contentHeight + windowHeight
+      const scrollPercent = Math.max(0, Math.min(100, (scrolledPast / totalScrollable) * 100))
+      
+      const progressBar = document.getElementById('header-reading-progress')
+      if (progressBar) {
+        progressBar.style.width = `${scrollPercent}%`
+      }
+
+      // Show newsletter popup when user has scrolled 30% through the article
+      const newsletter = document.getElementById('sticky-newsletter')
+      if (newsletter && scrollPercent > 30 && scrollPercent < 90) {
+        newsletter.classList.remove('opacity-0', 'translate-y-full', 'scale-95')
+        newsletter.classList.add('opacity-100', 'translate-y-0', 'scale-100')
+      } else if (newsletter && (scrollPercent <= 30 || scrollPercent >= 90)) {
+        newsletter.classList.add('opacity-0', 'translate-y-full', 'scale-95')
+        newsletter.classList.remove('opacity-100', 'translate-y-0', 'scale-100')
+      }
+    }
+
+    // Initial call
+    setTimeout(updateReadingProgress, 100)
+    
+    window.addEventListener('scroll', updateReadingProgress)
+    window.addEventListener('resize', updateReadingProgress)
+    
+    return () => {
+      window.removeEventListener('scroll', updateReadingProgress)
+      window.removeEventListener('resize', updateReadingProgress)
+    }
+  }, [article])
 
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString)
       return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       })
     } catch {
-      return 'Date not available'
+      return 'Recently'
     }
   }
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: article.title,
-          text: article.excerpt || article.title,
-          url: window.location.href,
-        })
-      } catch (error) {
-        console.log('Error sharing:', error)
-      }
-    } else {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(window.location.href)
-        alert('Link copied to clipboard!')
-      } catch (error) {
-        console.log('Error copying to clipboard:', error)
-      }
+  const handleNewsletterSignup = async () => {
+    if (!newsletterEmail) {
+      alert('Please enter your email address.')
+      return
     }
-  }
-
-  const handleNewsletterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newsletterEmail || !newsletterCity) return
+    
+    if (!newsletterCity) {
+      alert('Please select your city.')
+      return
+    }
 
     setNewsletterSubmitting(true)
+    
     try {
+      // Call your newsletter API to save the email
       const response = await fetch('/api/newsletter', {
         method: 'POST',
         headers: {
@@ -237,192 +226,228 @@ export default function ArticlePage() {
         body: JSON.stringify({
           email: newsletterEmail,
           city: newsletterCity,
+          optIn: true,
+          source: 'article-popup'
         }),
       })
 
-      if (response.ok) {
-        setNewsletterSubmitted(true)
-        setNewsletterEmail('')
-        setNewsletterCity('')
-      } else {
+      if (!response.ok) {
         throw new Error('Failed to subscribe')
       }
+      
+      setNewsletterSubmitted(true)
+      setNewsletterEmail('')
+      setNewsletterCity('')
+      
+      // Hide the popup after successful signup
+      setTimeout(() => {
+        const newsletter = document.getElementById('sticky-newsletter')
+        if (newsletter) {
+          newsletter.classList.add('opacity-0', 'translate-y-full', 'scale-95')
+          newsletter.classList.remove('opacity-100', 'translate-y-0', 'scale-100')
+        }
+      }, 2000)
+      
     } catch (error) {
-      console.error('Newsletter subscription error:', error)
-      alert('Failed to subscribe. Please try again.')
+      alert('There was an error signing you up. Please try again.')
     } finally {
       setNewsletterSubmitting(false)
     }
   }
 
+  // Show blank page while loading
+  if (loading) {
+    return <div className="min-h-screen bg-white"></div>
+  }
+
+  // Redirect to 404 page if article not found
+  if (notFoundError || !article) {
+    notFound()
+  }
+
   return (
     <>
-      <PageTracker />
-      <div className="min-h-screen bg-white">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link href="/" className="text-xl font-bold text-gray-900">
-                Culture Alberta
-              </Link>
-              <nav className="hidden md:flex space-x-8">
-                <Link href="/edmonton" className="text-gray-600 hover:text-gray-900">
-                  Edmonton
+      <PageTracker title={article?.title || 'Article'} />
+      <div className="min-h-screen bg-gray-50">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-700">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Home
                 </Link>
-                <Link href="/calgary" className="text-gray-600 hover:text-gray-900">
-                  Calgary
-                </Link>
-                <Link href="/food-drink" className="text-gray-600 hover:text-gray-900">
-                  Food & Drink
-                </Link>
-                <Link href="/events" className="text-gray-600 hover:text-gray-900">
-                  Events
-                </Link>
-                <Link href="/culture" className="text-gray-600 hover:text-gray-900">
-                  Culture
-                </Link>
-                <Link href="/best-of" className="text-gray-600 hover:text-gray-900">
-                  Best of Alberta
-                </Link>
-              </nav>
+                <div className="hidden md:block">
+                  <h1 className="text-lg font-semibold text-gray-900 truncate max-w-md">
+                    {article?.title}
+                  </h1>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <button className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
+                  <Share2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Share</span>
+                </button>
+                <button className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
+                  <Bookmark className="w-4 h-4" />
+                  <span className="hidden sm:inline">Save</span>
+                </button>
+              </div>
+            </div>
+            {/* Reading Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-3">
+              <div 
+                className="bg-blue-600 h-1 rounded-full transition-all duration-300 ease-out" 
+                style={{ width: '0%' }} 
+                id="header-reading-progress"
+              ></div>
             </div>
           </div>
-        </header>
+        </div>
 
-        {/* Article Content */}
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Breadcrumb */}
-          <nav className="mb-8">
-            <ol className="flex items-center space-x-2 text-sm text-gray-500">
-              <li>
-                <Link href="/" className="hover:text-gray-700">
-                  Home
-                </Link>
-              </li>
-              <li>/</li>
-              <li>
-                <Link href="/articles" className="hover:text-gray-700">
-                  Articles
-                </Link>
-              </li>
-              <li>/</li>
-              <li className="text-gray-900">{article.title}</li>
-            </ol>
-          </nav>
+        {/* Sticky Newsletter Popup */}
+        <div 
+          id="sticky-newsletter"
+          className="fixed bottom-4 right-4 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm opacity-0 translate-y-full scale-95 transition-all duration-300 ease-out"
+        >
+          <div className="flex items-start justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900">Stay Updated</h3>
+            <button 
+              onClick={() => {
+                const newsletter = document.getElementById('sticky-newsletter')
+                if (newsletter) {
+                  newsletter.classList.add('opacity-0', 'translate-y-full', 'scale-95')
+                  newsletter.classList.remove('opacity-100', 'translate-y-0', 'scale-100')
+                }
+              }}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              ×
+            </button>
+          </div>
+          <p className="text-xs text-gray-600 mb-3">
+            Get the latest culture and events in your city
+          </p>
+          <div className="space-y-2">
+            <input
+              type="email"
+              placeholder="Your email"
+              value={newsletterEmail}
+              onChange={(e) => setNewsletterEmail(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            />
+            <select
+              value={newsletterCity}
+              onChange={(e) => setNewsletterCity(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            >
+              <option value="">Select your city</option>
+              <option value="Edmonton">Edmonton</option>
+              <option value="Calgary">Calgary</option>
+              <option value="Other">Other</option>
+            </select>
+            <button
+              onClick={handleNewsletterSignup}
+              disabled={newsletterSubmitting}
+              className="w-full bg-blue-600 text-white py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+            >
+              {newsletterSubmitting ? 'Subscribing...' : 'Subscribe'}
+            </button>
+          </div>
+        </div>
 
-          {/* Article Header */}
-          <article className="mb-12">
-            <header className="mb-8">
-              <div className="mb-4">
-                {article.category && (
-                  <span className="inline-block bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-                    {article.category}
-                  </span>
-                )}
+        {/* Main Content */}
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            {/* Article Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  {formatDate(article?.date || '')}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  5 min read
+                </div>
               </div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight">
-                {article.title}
+              
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+                {article?.title}
               </h1>
-              {article.excerpt && (
+              
+              {article?.excerpt && (
                 <p className="text-xl text-gray-600 mb-6 leading-relaxed">
                   {article.excerpt}
                 </p>
               )}
-              <div className="flex items-center justify-between text-sm text-gray-500">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center">
-                    <Calendar className="h-4 w-4 mr-1" />
-                    {formatDate(article.date || article.createdAt || '')}
-                  </div>
-                  <div className="flex items-center">
-                    <Clock className="h-4 w-4 mr-1" />
-                    5 min read
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={handleShare}
-                    className="flex items-center text-gray-500 hover:text-gray-700"
-                  >
-                    <Share2 className="h-4 w-4 mr-1" />
-                    Share
-                  </button>
-                  <button className="flex items-center text-gray-500 hover:text-gray-700">
-                    <Bookmark className="h-4 w-4 mr-1" />
-                    Save
-                  </button>
-                </div>
-              </div>
-            </header>
-
-            {/* Featured Image */}
-            {article.imageUrl && (
-              <div className="mb-8">
-                <div className="relative h-96 w-full rounded-lg overflow-hidden">
+              
+              {article?.imageUrl && (
+                <div className="relative w-full h-96 md:h-[500px] rounded-lg overflow-hidden mb-8">
                   <Image
                     src={article.imageUrl}
-                    alt={article.title}
+                    alt={article?.title || 'Article image'}
                     fill
                     className="object-cover"
                     priority
                   />
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Article Content */}
-            <div className="prose prose-lg max-w-none">
-              <ArticleContent content={article.content} />
+            <div className="prose prose-lg max-w-none mb-12">
+              <ArticleContent content={article?.content || ''} />
             </div>
-          </article>
 
-          {/* Newsletter Signup */}
-          <div className="bg-gray-50 rounded-lg p-8 mb-12">
-            <NewsletterSignup />
-          </div>
-
-          {/* Related Articles */}
-          {relatedArticles.length > 0 && (
-            <section className="mb-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Related Articles
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {relatedArticles.map((relatedArticle) => (
-                  <Link
-                    key={relatedArticle.id}
-                    href={`/articles/${relatedArticle.id}`}
-                    className="group block"
-                  >
-                    <article className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                      {relatedArticle.imageUrl && (
-                        <div className="relative h-48 w-full rounded-t-lg overflow-hidden">
-                          <Image
-                            src={relatedArticle.imageUrl}
-                            alt={relatedArticle.title}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform"
-                          />
-                        </div>
-                      )}
-                      <div className="p-4">
-                        <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                          {relatedArticle.title}
-                        </h3>
-                        {relatedArticle.excerpt && (
+            {/* Related Articles */}
+            {relatedArticles.length > 0 && (
+              <div className="border-t border-gray-200 pt-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Related Articles</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {relatedArticles.map((relatedArticle) => (
+                    <Link
+                      key={relatedArticle.id}
+                      href={`/articles/${relatedArticle.id}`}
+                      className="group block"
+                    >
+                      <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                        {relatedArticle.imageUrl && (
+                          <div className="relative h-48 rounded-t-lg overflow-hidden">
+                            <Image
+                              src={relatedArticle.imageUrl}
+                              alt={relatedArticle.title}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                        )}
+                        <div className="p-4">
+                          <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                            {relatedArticle.title}
+                          </h3>
                           <p className="text-sm text-gray-600 mt-2 line-clamp-2">
                             {relatedArticle.excerpt}
                           </p>
-                        )}
+                        </div>
                       </div>
-                    </article>
-                  </Link>
-                ))}
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </section>
-          )}
-        </main>
+            )}
+          </div>
+        </div>
+
+        {/* Newsletter Signup Section */}
+        <div className="bg-gray-100 py-12">
+          <div className="container mx-auto px-4">
+            <div className="max-w-2xl mx-auto text-center">
+              <NewsletterSignup />
+            </div>
+          </div>
+        </div>
 
         <Footer />
       </div>
