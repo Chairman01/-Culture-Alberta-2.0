@@ -79,6 +79,16 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       console.log('Loading article with ID:', resolvedParams.id)
       const articleData = await getArticleById(resolvedParams.id)
       console.log('Loaded article data:', articleData)
+      
+      if (!articleData) {
+        toast({
+          title: "Article not found",
+          description: "The article you're trying to edit could not be found.",
+          variant: "destructive",
+        })
+        return
+      }
+      
       setArticle(articleData)
       setTitle(articleData.title || "")
       setCategory(articleData.category || "")
