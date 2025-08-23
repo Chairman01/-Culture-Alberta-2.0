@@ -457,81 +457,38 @@ export default function CalgaryPage() {
                 </Link>
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {/* Kensington */}
-                <Link href="/calgary/neighborhoods/kensington" className="group block">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                    <div className="aspect-[4/3] w-full bg-gray-200 relative">
-                      <Image
-                        src="/images/neighborhoods/kensington.svg"
-                        alt="Kensington"
-                        width={300}
-                        height={225}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-display font-bold text-lg group-hover:text-red-600">Kensington</h3>
-                      <p className="text-sm text-gray-600 mt-1">Vibrant district with boutique shops, cafes, and a strong community feel.</p>
-                    </div>
+                {/* Neighborhood cards will be populated with real articles */}
+                <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
+                  <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                    <p className="text-gray-500 text-sm">Coming Soon</p>
                   </div>
-                </Link>
-
-                {/* Downtown */}
-                <Link href="/calgary/neighborhoods/downtown" className="group block">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                    <div className="aspect-[4/3] w-full bg-gray-200 relative">
-                      <Image
-                        src="/images/neighborhoods/downtown-calgary.svg"
-                        alt="Downtown Calgary"
-                        width={300}
-                        height={225}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-display font-bold text-lg group-hover:text-red-600">Downtown</h3>
-                      <p className="text-sm text-gray-600 mt-1">The heart of Calgary with modern skyscrapers, shopping, and entertainment.</p>
-                    </div>
+                  <h3 className="font-semibold text-lg mb-2">Kensington</h3>
+                  <p className="text-gray-600 text-sm">Vibrant district with boutique shops</p>
+                </div>
+                
+                <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
+                  <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                    <p className="text-gray-500 text-sm">Coming Soon</p>
                   </div>
-                </Link>
-
-                {/* Inglewood */}
-                <Link href="/calgary/neighborhoods/inglewood" className="group block">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                    <div className="aspect-[4/3] w-full bg-gray-200 relative">
-                      <Image
-                        src="/images/neighborhoods/inglewood.svg"
-                        alt="Inglewood"
-                        width={300}
-                        height={225}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-display font-bold text-lg group-hover:text-red-600">Inglewood</h3>
-                      <p className="text-sm text-gray-600 mt-1">Historic neighborhood with antique shops, galleries, and unique dining.</p>
-                    </div>
+                  <h3 className="font-semibold text-lg mb-2">Downtown Calgary</h3>
+                  <p className="text-gray-600 text-sm">Modern skyscrapers and entertainment</p>
+                </div>
+                
+                <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
+                  <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                    <p className="text-gray-500 text-sm">Coming Soon</p>
                   </div>
-                </Link>
-
-                {/* 17th Avenue */}
-                <Link href="/calgary/neighborhoods/17th-avenue" className="group block">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                    <div className="aspect-[4/3] w-full bg-gray-200 relative">
-                      <Image
-                        src="/images/neighborhoods/17th-avenue.svg"
-                        alt="17th Avenue"
-                        width={300}
-                        height={225}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-display font-bold text-lg group-hover:text-red-600">17th Avenue</h3>
-                      <p className="text-sm text-gray-600 mt-1">Trendy area known for its nightlife, restaurants, and shopping district.</p>
-                    </div>
+                  <h3 className="font-semibold text-lg mb-2">Inglewood</h3>
+                  <p className="text-gray-600 text-sm">Historic district with unique shops</p>
+                </div>
+                
+                <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
+                  <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                    <p className="text-gray-500 text-sm">Coming Soon</p>
                   </div>
-                </Link>
+                  <h3 className="font-semibold text-lg mb-2">17th Avenue</h3>
+                  <p className="text-gray-600 text-sm">Trendy area with restaurants and bars</p>
+                </div>
               </div>
             </div>
           </section>

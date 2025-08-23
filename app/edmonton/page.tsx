@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { getAllArticles } from "@/lib/articles"
 import { Article } from "@/lib/types/article"
+import { getEdmontonNeighborhoods } from "@/lib/data/edmonton-neighborhoods"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowRight, Calendar, MapPin } from "lucide-react"
@@ -491,81 +492,23 @@ export default function EdmontonPage() {
                 </Link>
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {/* Whyte Avenue */}
-                <Link href="/edmonton/neighborhoods/whyte-avenue" className="group block">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                    <div className="aspect-[4/3] w-full bg-gray-200 relative">
-                      <Image
-                        src="/images/neighborhoods/whyte-avenue.svg"
-                        alt="Whyte Avenue"
-                        width={300}
-                        height={225}
-                        className="w-full h-full object-cover"
-                      />
+                {getEdmontonNeighborhoods().map((neighborhood) => (
+                  <Link key={neighborhood.id} href={`/edmonton/neighborhoods/${neighborhood.slug}`}>
+                    <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
+                      <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                        <Image
+                          src={neighborhood.imageUrl || "/placeholder.svg"}
+                          alt={neighborhood.name}
+                          width={400}
+                          height={300}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <h3 className="font-semibold text-lg mb-2">{neighborhood.name}</h3>
+                      <p className="text-gray-600 text-sm">{neighborhood.description}</p>
                     </div>
-                    <div className="p-3">
-                      <h3 className="font-display font-bold text-lg group-hover:text-blue-600">Whyte Avenue</h3>
-                      <p className="text-sm text-gray-600 mt-1">Historic district known for its vibrant arts scene, boutique shopping, and nightlife.</p>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* Downtown */}
-                <Link href="/edmonton/neighborhoods/downtown" className="group block">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                    <div className="aspect-[4/3] w-full bg-gray-200 relative">
-                      <Image
-                        src="/images/neighborhoods/downtown-edmonton.svg"
-                        alt="Downtown Edmonton"
-                        width={300}
-                        height={225}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-display font-bold text-lg group-hover:text-blue-600">Downtown</h3>
-                      <p className="text-sm text-gray-600 mt-1">The heart of the city featuring modern architecture, cultural venues, and dining options.</p>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* Old Strathcona */}
-                <Link href="/edmonton/neighborhoods/old-strathcona" className="group block">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                    <div className="aspect-[4/3] w-full bg-gray-200 relative">
-                      <Image
-                        src="/images/neighborhoods/old-strathcona.svg"
-                        alt="Old Strathcona"
-                        width={300}
-                        height={225}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-display font-bold text-lg group-hover:text-blue-600">Old Strathcona</h3>
-                      <p className="text-sm text-gray-600 mt-1">A charming historic district with theaters, independent shops, and farmers' market.</p>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* 124 Street */}
-                <Link href="/edmonton/neighborhoods/124-street" className="group block">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                    <div className="aspect-[4/3] w-full bg-gray-200 relative">
-                      <Image
-                        src="/images/neighborhoods/124-street.svg"
-                        alt="124 Street"
-                        width={300}
-                        height={225}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-display font-bold text-lg group-hover:text-blue-600">124 Street</h3>
-                      <p className="text-sm text-gray-600 mt-1">Trendy area with art galleries, specialty shops, and upscale restaurants.</p>
-                    </div>
-                  </div>
-                </Link>
+                  </Link>
+                ))}
               </div>
             </div>
           </section>
