@@ -127,6 +127,17 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
     }
   }, [article, resolvedParams.id])
 
+  // Redirect to homepage if article not found after loading
+  useEffect(() => {
+    if (!loading && !article) {
+      const timer = setTimeout(() => {
+        router.push('/')
+      }, 1000) // Redirect after 1 second
+      
+      return () => clearTimeout(timer)
+    }
+  }, [loading, article, router])
+
   // Reading progress tracking and newsletter popup
   useEffect(() => {
     const updateReadingProgress = () => {
@@ -239,15 +250,16 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Show nothing while loading - just a blank page */}
+        {/* Show blank loading state instead of spinner */}
       </div>
     )
   }
 
   if (!article) {
+    // Instead of showing error message, redirect to homepage or show blank
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Show nothing if article not found - just a blank page */}
+        {/* Show blank state instead of error message */}
       </div>
     )
   }
