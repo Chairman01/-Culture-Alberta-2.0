@@ -7,7 +7,6 @@ import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { getArticleById, getAllArticles } from '@/lib/articles'
 import { use } from 'react'
-import { notFound } from 'next/navigation'
 
 import { Article } from '@/lib/types/article'
 
@@ -90,7 +89,6 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
   const [article, setArticle] = useState<Article | null>(null)
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState(true)
-  const [notFoundError, setNotFoundError] = useState(false)
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [newsletterCity, setNewsletterCity] = useState('')
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false)
@@ -104,35 +102,18 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
       }
       
       try {
-        // Add a small timeout to prevent immediate loading
-        await new Promise(resolve => setTimeout(resolve, 100))
-        
         const article = await getArticleById(articleId)
-        
-        if (!article) {
-          setNotFoundError(true)
-          setLoading(false)
-          return
-        }
-        
         setArticle(article)
         
-        // Load related articles in background
-        setTimeout(async () => {
-          try {
-            const allArticles = await getAllArticles()
-            const related = allArticles
-              .filter(a => a.id !== articleId && a.type !== 'event')
-              .slice(0, 6)
-            setRelatedArticles(related)
-          } catch (error) {
-            console.error("Error loading related articles:", error)
-          }
-        }, 500)
-        
+        // Load related articles
+        const allArticles = await getAllArticles()
+        const related = allArticles
+          .filter(a => a.id !== articleId && a.type !== 'event')
+          .slice(0, 6)
+        setRelatedArticles(related)
       } catch (error) {
         console.error("Article not found:", articleId)
-        setNotFoundError(true)
+        setArticle(null)
       } finally {
         setLoading(false)
       }
@@ -255,14 +236,20 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
     }
   }
 
-  // Show blank page while loading
   if (loading) {
-    return <div className="min-h-screen bg-white"></div>
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Show nothing while loading - just a blank page */}
+      </div>
+    )
   }
 
-  // Redirect to 404 page if article not found
-  if (notFoundError || !article) {
-    notFound()
+  if (!article) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Show nothing if article not found - just a blank page */}
+      </div>
+    )
   }
 
   return (
@@ -308,149 +295,287 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
 
         {/* Sticky Newsletter Popup */}
         <div 
+          className="fixed bottom-4 right-4 z-40 transform transition-all duration-500 ease-out opacity-0 translate-y-full scale-95" 
           id="sticky-newsletter"
-          className="fixed bottom-4 right-4 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm opacity-0 translate-y-full scale-95 transition-all duration-300 ease-out"
         >
-          <div className="flex items-start justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-900">Stay Updated</h3>
-            <button 
-              onClick={() => {
-                const newsletter = document.getElementById('sticky-newsletter')
-                if (newsletter) {
-                  newsletter.classList.add('opacity-0', 'translate-y-full', 'scale-95')
-                  newsletter.classList.remove('opacity-100', 'translate-y-0', 'scale-100')
-                }
-              }}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ×
-            </button>
-          </div>
-          <p className="text-xs text-gray-600 mb-3">
-            Get the latest culture and events in your city
-          </p>
-          <div className="space-y-2">
-            <input
-              type="email"
-              placeholder="Your email"
-              value={newsletterEmail}
-              onChange={(e) => setNewsletterEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-            />
-            <select
-              value={newsletterCity}
-              onChange={(e) => setNewsletterCity(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-            >
-              <option value="">Select your city</option>
-              <option value="Edmonton">Edmonton</option>
-              <option value="Calgary">Calgary</option>
-              <option value="Other">Other</option>
-            </select>
-            <button
-              onClick={handleNewsletterSignup}
-              disabled={newsletterSubmitting}
-              className="w-full bg-blue-600 text-white py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              {newsletterSubmitting ? 'Subscribing...' : 'Subscribe'}
-            </button>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Article Header */}
-            <div className="mb-8">
-              <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  {formatDate(article?.date || '')}
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-sm">
+            {!newsletterSubmitted ? (
+              <>
+                <div className="flex items-start justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Stay in the loop</h3>
+                  <button 
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    onClick={() => {
+                      const newsletter = document.getElementById('sticky-newsletter')
+                      if (newsletter) {
+                        newsletter.classList.add('opacity-0', 'translate-y-full', 'scale-95')
+                        newsletter.classList.remove('opacity-100', 'translate-y-0', 'scale-100')
+                      }
+                    }}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  5 min read
-                </div>
-              </div>
-              
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
-                {article?.title}
-              </h1>
-              
-              {article?.excerpt && (
-                <p className="text-xl text-gray-600 mb-6 leading-relaxed">
-                  {article.excerpt}
+                <p className="text-sm text-gray-600 mb-4">
+                  Get the latest cultural events and stories delivered to your inbox every week.
                 </p>
-              )}
-              
-              {article?.imageUrl && (
-                <div className="relative w-full h-96 md:h-[500px] rounded-lg overflow-hidden mb-8">
-                  <Image
-                    src={article.imageUrl}
-                    alt={article?.title || 'Article image'}
-                    fill
-                    className="object-cover"
-                    priority
+                <div className="space-y-3">
+                  <input
+                    type="email"
+                    placeholder="Enter your email *"
+                    value={newsletterEmail}
+                    onChange={(e) => setNewsletterEmail(e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      newsletterEmail === '' ? 'border-gray-300' : 'border-green-300'
+                    }`}
                   />
+                  <select
+                    value={newsletterCity}
+                    onChange={(e) => setNewsletterCity(e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      newsletterCity === '' ? 'border-gray-300' : 'border-green-300'
+                    }`}
+                  >
+                    <option value="">Select your city</option>
+                    <option value="calgary">Calgary</option>
+                    <option value="edmonton">Edmonton</option>
+                    <option value="red-deer">Red Deer</option>
+                    <option value="lethbridge">Lethbridge</option>
+                    <option value="medicine-hat">Medicine Hat</option>
+                    <option value="fort-mcmurray">Fort McMurray</option>
+                    <option value="grande-prairie">Grande Prairie</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <button 
+                    className={`w-full font-semibold py-2 px-4 rounded-lg transition-colors ${
+                      newsletterSubmitting 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-red-600 hover:bg-red-700 text-white'
+                    }`}
+                    onClick={handleNewsletterSignup}
+                    disabled={newsletterSubmitting || !newsletterEmail || !newsletterCity}
+                  >
+                    {newsletterSubmitting ? 'Subscribing...' : 'Subscribe'}
+                  </button>
                 </div>
-              )}
-            </div>
-
-            {/* Article Content */}
-            <div className="prose prose-lg max-w-none mb-12">
-              <ArticleContent content={article?.content || ''} />
-            </div>
-
-            {/* Related Articles */}
-            {relatedArticles.length > 0 && (
-              <div className="border-t border-gray-200 pt-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Related Articles</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {relatedArticles.map((relatedArticle) => (
-                    <Link
-                      key={relatedArticle.id}
-                      href={`/articles/${relatedArticle.id}`}
-                      className="group block"
-                    >
-                      <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                        {relatedArticle.imageUrl && (
-                          <div className="relative h-48 rounded-t-lg overflow-hidden">
-                            <Image
-                              src={relatedArticle.imageUrl}
-                              alt={relatedArticle.title}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          </div>
-                        )}
-                        <div className="p-4">
-                          <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
-                            {relatedArticle.title}
-                          </h3>
-                          <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                            {relatedArticle.excerpt}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
+                <p className="text-xs text-gray-500 mt-3 text-center">
+                  Contact us or unsubscribe anytime.
+                </p>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <div className="text-green-500 mb-2">
+                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Successfully subscribed!</h3>
+                <p className="text-sm text-gray-600">
+                  You'll receive our latest updates in your inbox.
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Newsletter Signup Section */}
-        <div className="bg-gray-100 py-12">
-          <div className="container mx-auto px-4">
-            <div className="max-w-2xl mx-auto text-center">
-              <NewsletterSignup />
+        {/* Hero Section */}
+        <div className="bg-white">
+          <div className="container mx-auto px-4 py-8">
+            
+            <div className="max-w-7xl mx-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                {/* Article Content */}
+                <div className="lg:col-span-3 space-y-8">
+                  {/* Article Header */}
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      {article.category && (
+                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
+                          {article.category}
+                        </span>
+                      )}
+                      {article.date && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          {formatDate(article.date)}
+                        </span>
+                      )}
+                      {article.readTime && (
+                        <span className="flex items-center gap-1">
+                          <Bookmark className="w-4 h-4" />
+                          {article.readTime} read
+                        </span>
+                      )}
+                      {article.author && (
+                        <span className="font-medium">By {article.author}</span>
+                      )}
+                    </div>
+                    
+                    <h1 className="text-4xl lg:text-5xl font-bold leading-tight text-gray-900">
+                      {article.title}
+                    </h1>
+                    
+                    {article.excerpt && (
+                      <p className="text-xl text-gray-600 leading-relaxed max-w-3xl">
+                        {article.excerpt}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Featured Image */}
+                  {article.imageUrl && (
+                    <div className="relative w-full h-[400px] lg:h-[500px] rounded-xl overflow-hidden">
+                      <Image
+                        src={article.imageUrl}
+                        alt={article.title || 'Article image'}
+                        fill
+                        className="object-cover"
+                        priority
+                      />
+                    </div>
+                  )}
+
+
+
+                  {/* Article Content */}
+                  <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+                    <div className="article-content">
+                      {article.content ? (
+                        <ArticleContent content={article.content} />
+                      ) : (
+                        <p className="text-gray-600 italic">Content coming soon...</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Article Footer */}
+                  <div className="flex items-center justify-end pt-8 border-t border-gray-200">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <span>Published {formatDate(article.date || '')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sidebar */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Newsletter Signup */}
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <NewsletterSignup 
+                      title="Stay in the Loop"
+                      description="Get the latest cultural events and stories delivered to your inbox every week."
+                      defaultCity=""
+                    />
+                  </div>
+
+                  {/* Latest Articles */}
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h3 className="text-xl font-bold mb-4 text-gray-900">Latest Articles</h3>
+                    <div className="space-y-4">
+                      {relatedArticles.slice(0, 3).map((relatedArticle) => (
+                        <Link 
+                          key={relatedArticle.id} 
+                          href={`/articles/${relatedArticle.id}`}
+                          className="block group"
+                        >
+                          <div className="flex items-start space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                              <Image
+                                src={relatedArticle.imageUrl || "/placeholder.svg"}
+                                alt={relatedArticle.title}
+                                fill
+                                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-sm group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
+                                {relatedArticle.title}
+                              </h4>
+                              <p className="text-xs text-gray-500 mt-2">
+                                {formatDate(relatedArticle.date || '')}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Share Article */}
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h3 className="text-lg font-bold mb-4 text-gray-900">Share This Article</h3>
+                    <div className="flex space-x-3">
+                      <button className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                        <Share2 className="w-4 h-4 inline mr-2" />
+                        Share
+                      </button>
+                      <button className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
+                        <Bookmark className="w-4 h-4 inline mr-2" />
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <Footer />
+        {/* Related Articles Section */}
+        {relatedArticles.length > 0 && (
+          <div className="bg-white py-12">
+            <div className="container mx-auto px-4">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-3xl font-bold text-gray-900">More Stories</h2>
+                <Link href="/" className="text-blue-600 hover:text-blue-700 font-medium">
+                  View All <ArrowRight className="w-4 h-4 inline ml-1" />
+                </Link>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {relatedArticles.slice(0, 6).map((relatedArticle) => (
+                  <Link 
+                    key={relatedArticle.id} 
+                    href={`/articles/${relatedArticle.id}`}
+                    className="group block"
+                  >
+                    <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+                      <div className="relative h-48 overflow-hidden">
+                        <Image
+                          src={relatedArticle.imageUrl || "/placeholder.svg"}
+                          alt={relatedArticle.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                      <div className="p-4">
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                          {relatedArticle.category && (
+                            <span className="bg-gray-100 px-2 py-1 rounded-full">
+                              {relatedArticle.category}
+                            </span>
+                          )}
+                          <span>{formatDate(relatedArticle.date || '')}</span>
+                        </div>
+                        <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors line-clamp-2">
+                          {relatedArticle.title}
+                        </h3>
+                        {relatedArticle.excerpt && (
+                          <p className="text-gray-600 text-sm mt-2 line-clamp-2">
+                            {relatedArticle.excerpt}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+      <Footer />
     </>
   )
 }

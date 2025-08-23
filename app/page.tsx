@@ -7,7 +7,6 @@ import { getAllArticles } from '@/lib/articles'
 import { Footer } from '@/components/footer'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
-import { HomeSkeleton } from '@/components/home-skeleton'
 
 import { Article } from '@/lib/types/article'
 import { PageTracker } from '@/components/analytics/page-tracker'
@@ -19,16 +18,12 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeBestOfTab, setActiveBestOfTab] = useState('dentists')
-  const [contentLoaded, setContentLoaded] = useState(false)
 
   useEffect(() => {
     setIsClient(true)
     async function loadPosts() {
       try {
-        setIsLoading(true)
-        setError(null)
-        
-        // Load articles with optimized caching
+        // Temporarily remove timeout to debug the issue
         const apiArticles = await getAllArticles()
         const allPosts = apiArticles
         
@@ -38,26 +33,34 @@ export default function Home() {
         
         setPosts(regularPosts)
         setEvents(eventPosts)
-        setContentLoaded(true)
-      } catch (err) {
-        console.error('Error loading posts:', err)
-        setError('Failed to load content. Please try again.')
+      } catch (error) {
+        console.error("Error loading posts:", error)
+        setError(error instanceof Error ? error.message : 'Unknown error')
+        // Set empty arrays to prevent infinite loading
+        setPosts([])
+        setEvents([])
       } finally {
         setIsLoading(false)
       }
     }
-
-    // Start loading immediately when component mounts
     loadPosts()
   }, [])
 
   // Don't render anything until client-side hydration is complete
   if (!isClient) {
-    return <HomeSkeleton />
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Show nothing during hydration - just a blank page */}
+      </div>
+    )
   }
 
   if (isLoading) {
-    return <HomeSkeleton />
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Show nothing while loading - just a blank page */}
+      </div>
+    )
   }
 
   const formatDate = (dateString: string) => {

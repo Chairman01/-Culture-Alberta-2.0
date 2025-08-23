@@ -127,6 +127,14 @@ export default function EventsPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Show nothing while loading - just a blank page */}
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
@@ -144,11 +152,7 @@ export default function EventsPage() {
         </section>
         <section className="w-full py-16 md:py-24 lg:py-32">
           <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-64 w-full">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-              </div>
-            ) : filteredEvents.length === 0 ? (
+            {filteredEvents.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-24 w-full min-h-[300px]">
                 <h3 className="text-lg font-semibold">No events found</h3>
                 <p className="text-muted-foreground">Try adjusting your filters to find more events.</p>
