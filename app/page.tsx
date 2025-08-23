@@ -7,6 +7,7 @@ import { getAllArticles } from '@/lib/articles'
 import { Footer } from '@/components/footer'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
+import { PageSEO } from '@/components/seo/page-seo'
 
 import { Article } from '@/lib/types/article'
 import { PageTracker } from '@/components/analytics/page-tracker'
@@ -130,6 +131,10 @@ export default function Home() {
 
   return (
     <>
+      <PageSEO
+        title="Culture Alberta - Home"
+        description="Discover the best of Alberta's culture, events, and local businesses. Stay informed with the latest news and updates."
+      />
       <PageTracker title="Culture Alberta - Home" />
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">

@@ -1,29 +1,5 @@
 [
   {
-    "id": "test-formatted-article",
-    "title": "Test Article with Enhanced Formatting",
-    "category": "Test",
-    "categories": [
-      "Test"
-    ],
-    "location": "Alberta",
-    "excerpt": "This is a test article to demonstrate the enhanced formatting features including quotes, bold text, and special sections.",
-    "content": "# Welcome to Enhanced Article Formatting\n\nThis article demonstrates all the new formatting features that have been added to make articles more readable and visually appealing.\n\n## What it is:\nThis is a **highlighted section** that shows important information in a special box with a yellow background.\n\n## Pro tip:\nHere's a helpful tip that will be displayed in a highlighted box to make it stand out.\n\n## Quotes and Emphasis\n\nHere's a regular paragraph with some **bold text** and *italic text* to show emphasis.\n\n> \"This is a blockquote that will be displayed with a blue left border and gradient background. It's perfect for highlighting important quotes or statements.\"\n\n## Code Examples\n\nYou can also include `code snippets` with special formatting.\n\n## Links\n\nHere's a [link to an external website](https://example.com) that will be properly styled.\n\n## Section Headers\n\n### Subsection\n\nThis demonstrates how different levels of headers are styled with proper typography and spacing.\n\n## Lists\n\n- **Bold list items** work too\n- *Italic items* are supported\n- Regular items are also fine\n\n1. Numbered lists work as well\n2. With proper formatting\n3. And spacing\n\n## Final Thoughts\n\nThis enhanced formatting makes articles much more readable and professional-looking. The combination of proper typography, highlighted sections, and visual hierarchy creates a better reading experience.",
-    "imageUrl": "",
-    "multipleImages": [],
-    "author": "Admin",
-    "type": "article",
-    "status": "published",
-    "trendingHome": false,
-    "trendingEdmonton": false,
-    "trendingCalgary": false,
-    "featuredHome": false,
-    "featuredEdmonton": false,
-    "featuredCalgary": false,
-    "createdAt": "2025-01-27T00:00:00.000Z",
-    "updatedAt": "2025-01-27T00:00:00.000Z"
-  },
-  {
     "id": "article-1755477825611-h50uyz8q8",
     "title": "D",
     "category": "Calgary",

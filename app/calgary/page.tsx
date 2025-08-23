@@ -5,10 +5,11 @@ import { getAllArticles } from "@/lib/articles"
 import { Article } from "@/lib/types/article"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Calendar, MapPin } from "lucide-react"
+import { ArrowRight, Calendar, MapPin, Clock } from "lucide-react"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Footer } from "@/components/footer"
+import { PageSEO } from '@/components/seo/page-seo'
 import { PageTracker } from '@/components/analytics/page-tracker'
 import { trackLocationView } from '@/lib/analytics'
 
@@ -165,14 +166,18 @@ export default function CalgaryPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Show nothing while loading - just a blank page */}
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
       </div>
     )
   }
 
   return (
     <>
+      <PageSEO
+        title="Calgary - Culture Alberta"
+        description="Discover the latest news, events, and stories from Alberta's largest city. Explore Calgary's vibrant neighborhoods, unique attractions, and local culture."
+      />
       <PageTracker title="Calgary - Culture Alberta" />
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">

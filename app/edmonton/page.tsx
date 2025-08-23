@@ -9,6 +9,7 @@ import { ArrowRight, Calendar, MapPin } from "lucide-react"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Footer } from "@/components/footer"
+import { PageSEO } from '@/components/seo/page-seo'
 import { PageTracker } from '@/components/analytics/page-tracker'
 import { trackLocationView } from '@/lib/analytics'
 
@@ -199,14 +200,18 @@ export default function EdmontonPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Show nothing while loading - just a blank page */}
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
       </div>
     )
   }
 
   return (
     <>
+      <PageSEO
+        title="Edmonton - Culture Alberta"
+        description="Discover the latest news, events, and stories from Alberta's capital city. Explore Edmonton's vibrant neighborhoods, cultural venues, and outdoor activities."
+      />
       <PageTracker title="Edmonton - Culture Alberta" />
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">

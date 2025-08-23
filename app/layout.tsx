@@ -11,8 +11,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>Culture Alberta - Discover Alberta's Best Culture, Events & Experiences</title>
-        <meta name="description" content="Discover the best of Alberta's culture, events, restaurants, and experiences. Your guide to Calgary, Edmonton, and beyond. Find local events, cultural activities, and hidden gems across Alberta." />
+        <title>Culture Alberta | Best Culture, Events & Food in Calgary & Edmonton</title>
+        <meta name="description" content="Your guide to Alberta's culture: events, restaurants, festivals & local experiences in Calgary, Edmonton & beyond." />
         <meta name="keywords" content="Alberta culture, Calgary events, Edmonton culture, Alberta tourism, local events, cultural activities, Alberta restaurants, Alberta attractions" />
         <meta name="author" content="Culture Alberta" />
         <meta name="robots" content="index, follow" />
@@ -21,12 +21,18 @@ export default function RootLayout({
         {/* Canonical URL */}
         <link rel="canonical" href="https://www.culturealberta.com" />
         
-        {/* Favicon and Icons */}
+        {/* Favicon and Icons - Fixed for better Google visibility */}
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon-32x32.svg" sizes="32x32" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/favicon.svg" />
         <link rel="shortcut icon" href="/favicon.svg" />
+        <link rel="apple-touch-icon" href="/favicon.svg" />
         <link rel="manifest" href="/manifest.json" />
+        
+        {/* Additional favicon formats for better compatibility */}
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png" />
         
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
@@ -145,6 +151,88 @@ export default function RootLayout({
                   "addressRegion": "Alberta",
                   "addressCountry": "CA"
                 }
+              }
+            })
+          }}
+        />
+        
+        {/* Breadcrumb Schema for better navigation in search results */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                {
+                  "@type": "ListItem",
+                  "position": 1,
+                  "name": "Home",
+                  "item": "https://www.culturealberta.com"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 2,
+                  "name": "Culture",
+                  "item": "https://www.culturealberta.com/culture"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 3,
+                  "name": "Events",
+                  "item": "https://www.culturealberta.com/events"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 4,
+                  "name": "Food & Drink",
+                  "item": "https://www.culturealberta.com/food-drink"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 5,
+                  "name": "Best of Alberta",
+                  "item": "https://www.culturealberta.com/best-of"
+                }
+              ]
+            })
+          }}
+        />
+
+        {/* Local Business Schema for better local search results */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "LocalBusiness",
+              "name": "Culture Alberta",
+              "description": "Your guide to Alberta's culture: events, restaurants, festivals & local experiences",
+              "url": "https://www.culturealberta.com",
+              "logo": "https://www.culturealberta.com/favicon.svg",
+              "image": "https://www.culturealberta.com/images/culture-alberta-og.jpg",
+              "address": {
+                "@type": "PostalAddress",
+                "addressRegion": "Alberta",
+                "addressCountry": "CA"
+              },
+              "areaServed": [
+                {
+                  "@type": "City",
+                  "name": "Calgary"
+                },
+                {
+                  "@type": "City", 
+                  "name": "Edmonton"
+                }
+              ],
+              "serviceType": "Cultural Guide & Local Events",
+              "priceRange": "Free",
+              "openingHours": "Mo-Su 00:00-23:59",
+              "contactPoint": {
+                "@type": "ContactPoint",
+                "contactType": "customer service",
+                "areaServed": "CA-AB"
               }
             })
           }}
