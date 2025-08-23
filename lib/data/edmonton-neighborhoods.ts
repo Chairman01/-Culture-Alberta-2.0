@@ -20,7 +20,7 @@ export const edmontonNeighborhoods: EdmontonNeighborhood[] = [
     description: 'Historic district known for its vibrant arts scene, boutique shopping, and nightlife.',
     category: 'Edmonton Neighborhoods',
     location: 'Edmonton',
-    imageUrl: '/images/neighborhoods/whyte-avenue.jpg',
+    imageUrl: '/placeholder.svg',
     content: `# Whyte Avenue: Edmonton's Cultural Heart
 
 ## What it is:
@@ -58,7 +58,7 @@ Parking can be challenging on weekends - consider taking the LRT or cycling.`,
     description: 'The heart of the city featuring modern architecture, cultural venues, and dining options.',
     category: 'Edmonton Neighborhoods',
     location: 'Edmonton',
-    imageUrl: '/images/neighborhoods/downtown-edmonton.jpg',
+    imageUrl: '/placeholder.svg',
     content: `# Downtown Edmonton: The Urban Core
 
 ## What it is:
@@ -96,7 +96,7 @@ Downtown can be quiet on weekends outside of major events - check what's happeni
     description: 'A charming historic district with theaters, independent shops, and farmers\' market.',
     category: 'Edmonton Neighborhoods',
     location: 'Edmonton',
-    imageUrl: '/images/neighborhoods/old-strathcona.jpg',
+    imageUrl: '/placeholder.svg',
     content: `# Old Strathcona: Historic Charm
 
 ## What it is:
@@ -134,7 +134,7 @@ The area can be busy during market days and theater performances - plan accordin
     description: 'Trendy area with art galleries, specialty shops, and upscale restaurants.',
     category: 'Edmonton Neighborhoods',
     location: 'Edmonton',
-    imageUrl: '/images/neighborhoods/124-street.jpg',
+    imageUrl: '/placeholder.svg',
     content: `# 124 Street: The Art District
 
 ## What it is:

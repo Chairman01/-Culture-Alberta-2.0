@@ -294,7 +294,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="content" className="mt-4">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -305,6 +305,29 @@ export default function AdminDashboard() {
                 <CardContent>
                   <div className="text-3xl font-bold">{analyticsData?.contentStats?.articles || 0}</div>
                   <p className="text-sm text-muted-foreground">Total articles</p>
+                  <Button asChild variant="outline" size="sm" className="mt-2 w-full">
+                    <Link href="/admin/articles">
+                      Manage Articles
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    Neighborhoods
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">4</div>
+                  <p className="text-sm text-muted-foreground">Edmonton neighborhoods</p>
+                  <Button asChild variant="outline" size="sm" className="mt-2 w-full">
+                    <Link href="/admin/neighborhoods">
+                      Manage Neighborhoods
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
 
@@ -318,6 +341,11 @@ export default function AdminDashboard() {
                 <CardContent>
                   <div className="text-3xl font-bold">{analyticsData?.contentStats?.events || 0}</div>
                   <p className="text-sm text-muted-foreground">Total events</p>
+                  <Button asChild variant="outline" size="sm" className="mt-2 w-full">
+                    <Link href="/admin/events">
+                      Manage Events
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
 
@@ -331,6 +359,11 @@ export default function AdminDashboard() {
                 <CardContent>
                   <div className="text-3xl font-bold">{analyticsData?.contentStats?.bestOf || 0}</div>
                   <p className="text-sm text-muted-foreground">Featured content</p>
+                  <Button asChild variant="outline" size="sm" className="mt-2 w-full">
+                    <Link href="/admin/best-of">
+                      Manage Best Of
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             </div>
