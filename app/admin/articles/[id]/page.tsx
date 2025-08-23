@@ -55,6 +55,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [excerpt, setExcerpt] = useState("")
   const [content, setContent] = useState("")
   const [author, setAuthor] = useState("")
+  const [tags, setTags] = useState("")
   const [imageUrl, setImageUrl] = useState("")
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -97,6 +98,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setExcerpt(articleData.excerpt || "")
       setContent(articleData.content || "")
       setAuthor(articleData.author || "")
+      setTags(articleData.tags ? articleData.tags.join(', ') : "")
       setImageUrl(articleData.imageUrl || "")
       // Load trending flags
       setTrendingHome(articleData.trendingHome || false)
@@ -184,6 +186,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         content,
         imageUrl: imageUrl,
         author: author || "Admin",
+        tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
         type: "article",
         status: "published",
         // Add trending flags
@@ -310,6 +313,19 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               onChange={(e) => setAuthor(e.target.value)}
               placeholder="Enter author name"
             />
+          </div>
+
+          <div>
+            <Label htmlFor="tags">Tags</Label>
+            <Input
+              id="tags"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="neighborhood, edmonton, arts, shopping (comma separated)"
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Separate tags with commas. For neighborhood articles, include "neighborhood" as a tag.
+            </p>
           </div>
         </div>
 

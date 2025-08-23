@@ -1,26 +1,18 @@
 "use client"
 
-import { useState, useEffect } from 'react'
-import { getEdmontonNeighborhoods, EdmontonNeighborhood } from '@/lib/data/edmonton-neighborhoods'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Edit, Eye, MapPin, Tag } from 'lucide-react'
+import { Plus, MapPin, Tag, FileText } from 'lucide-react'
 import Link from 'next/link'
 
 export default function NeighborhoodsPage() {
-  const [neighborhoods, setNeighborhoods] = useState<EdmontonNeighborhood[]>([])
-
-  useEffect(() => {
-    setNeighborhoods(getEdmontonNeighborhoods())
-  }, [])
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Edmonton Neighborhoods</h1>
-          <p className="text-gray-600 mt-2">Manage neighborhood articles and content</p>
+          <p className="text-gray-600 mt-2">Create and manage neighborhood articles</p>
         </div>
         <Link href="/admin/dashboard">
           <Button variant="outline">← Back to Dashboard</Button>
@@ -28,76 +20,69 @@ export default function NeighborhoodsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {neighborhoods.map((neighborhood) => (
-          <Card key={neighborhood.id} className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-xl">{neighborhood.name}</CardTitle>
-                  <div className="flex items-center text-sm text-gray-500 mt-1">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    {neighborhood.location}
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  {neighborhood.featuredEdmonton && (
-                    <Badge variant="default" className="text-xs">Featured</Badge>
-                  )}
-                  {neighborhood.trendingEdmonton && (
-                    <Badge variant="secondary" className="text-xs">Trending</Badge>
-                  )}
-                </div>
+        <Card className="border-dashed border-2 border-gray-300 hover:border-gray-400 transition-colors">
+          <CardHeader>
+            <div className="flex justify-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Plus className="w-6 h-6 text-blue-600" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                {neighborhood.description}
-              </p>
-              
-              <div className="flex flex-wrap gap-1 mb-4">
-                {neighborhood.tags.slice(0, 3).map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-xs">
-                    <Tag className="w-3 h-3 mr-1" />
-                    {tag}
-                  </Badge>
-                ))}
-                {neighborhood.tags.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{neighborhood.tags.length - 3} more
-                  </Badge>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <Link href={`/edmonton/neighborhoods/${neighborhood.slug}`} target="_blank">
-                  <Button variant="outline" size="sm" className="w-full">
-                    <Eye className="w-4 h-4 mr-2" />
-                    View
-                  </Button>
-                </Link>
-                <Link href={`/admin/neighborhoods/${neighborhood.slug}/edit`}>
-                  <Button size="sm" className="w-full">
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+            </div>
+            <CardTitle className="text-center">Create New Neighborhood Article</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-gray-600 text-sm mb-4">
+              Add a new neighborhood guide or article
+            </p>
+            <Button asChild className="w-full">
+              <Link href="/admin/articles/new">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Article
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-        <h3 className="font-semibold text-blue-900 mb-2">How to Edit Neighborhood Articles</h3>
-        <p className="text-blue-800 text-sm">
-          Currently, neighborhood articles are stored in the data file. To edit them:
-        </p>
-        <ol className="text-blue-800 text-sm mt-2 list-decimal list-inside space-y-1">
-          <li>Click "Edit" on any neighborhood card above</li>
-          <li>This will show you the current content and allow you to modify it</li>
-          <li>Changes are saved directly to the data file</li>
-          <li>You can also edit the file directly at: <code className="bg-blue-100 px-1 rounded">lib/data/edmonton-neighborhoods.ts</code></li>
-        </ol>
+      <div className="mt-8 p-6 bg-blue-50 rounded-lg">
+        <h3 className="font-semibold text-blue-900 mb-4 text-lg">How to Create Neighborhood Articles</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <h4 className="font-medium text-blue-800 mb-2">Step 1: Create a New Article</h4>
+            <ol className="text-blue-800 text-sm space-y-1 list-decimal list-inside">
+              <li>Click "Create Article" above</li>
+              <li>Fill in the article details</li>
+              <li>Add your neighborhood content</li>
+            </ol>
+          </div>
+          <div>
+            <h4 className="font-medium text-blue-800 mb-2">Step 2: Add Neighborhood Category</h4>
+            <ol className="text-blue-800 text-sm space-y-1 list-decimal list-inside">
+              <li>Set <strong>Category</strong> to "Neighborhood" or "Edmonton Neighborhoods"</li>
+              <li>Add <strong>Location</strong> as "Edmonton"</li>
+              <li>Include <strong>Tags</strong> like "neighborhood", "edmonton", etc.</li>
+            </ol>
+          </div>
+        </div>
+        
+        <div className="mt-4 p-4 bg-blue-100 rounded">
+          <h4 className="font-medium text-blue-900 mb-2">Example Article Setup:</h4>
+          <div className="text-sm text-blue-800 space-y-1">
+            <p><strong>Title:</strong> "Whyte Avenue: Edmonton's Cultural Heart"</p>
+            <p><strong>Category:</strong> "Neighborhood"</p>
+            <p><strong>Location:</strong> "Edmonton"</p>
+            <p><strong>Tags:</strong> "neighborhood", "whyte avenue", "edmonton", "arts", "shopping"</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 p-4 bg-green-50 rounded-lg">
+        <h4 className="font-semibold text-green-900 mb-2">Benefits of This System:</h4>
+        <ul className="text-green-800 text-sm space-y-1 list-disc list-inside">
+          <li>All articles use the same management system</li>
+          <li>Easy to edit through the admin interface</li>
+          <li>Articles can appear in multiple sections</li>
+          <li>Better SEO and organization</li>
+        </ul>
       </div>
     </div>
   )

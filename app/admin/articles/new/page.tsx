@@ -25,6 +25,7 @@ export default function NewArticlePage() {
   const [excerpt, setExcerpt] = useState("")
   const [content, setContent] = useState("")
   const [author, setAuthor] = useState("")
+  const [tags, setTags] = useState("")
   const [imageUrl, setImageUrl] = useState("")
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -90,6 +91,7 @@ export default function NewArticlePage() {
         content,
         imageUrl: imageUrl,
         author: author || "Admin",
+        tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
         type: "article",
         status: "published",
         // Add trending flags
@@ -195,6 +197,19 @@ export default function NewArticlePage() {
               onChange={(e) => setAuthor(e.target.value)}
               placeholder="Enter author name"
             />
+          </div>
+
+          <div>
+            <Label htmlFor="tags">Tags</Label>
+            <Input
+              id="tags"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="neighborhood, edmonton, arts, shopping (comma separated)"
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Separate tags with commas. For neighborhood articles, include "neighborhood" as a tag.
+            </p>
           </div>
         </div>
 

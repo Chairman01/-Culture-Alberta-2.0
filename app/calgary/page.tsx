@@ -452,43 +452,66 @@ export default function CalgaryPage() {
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-3xl font-bold">Calgary Neighborhoods</h2>
-                <Link href="/calgary/neighborhoods" className="text-red-600 hover:text-red-700 flex items-center gap-2 font-body font-medium">
+                <Link href="/articles?category=neighborhood" className="text-red-600 hover:text-red-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {/* Neighborhood cards will be populated with real articles */}
-                <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
-                  <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-                    <p className="text-gray-500 text-sm">Coming Soon</p>
+                {(() => {
+                  const neighborhoodArticles = articles.filter(article => 
+                    article.category?.toLowerCase().includes('neighborhood') ||
+                    article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
+                    article.tags?.some(tag => tag.toLowerCase().includes('neighborhood'))
+                  )
+                  
+                  console.log('All Calgary articles:', articles.map(a => ({ 
+                    id: a.id, 
+                    title: a.title, 
+                    category: a.category, 
+                    categories: a.categories, 
+                    tags: a.tags 
+                  })))
+                  console.log('Calgary neighborhood articles found:', neighborhoodArticles.length)
+                  console.log('Calgary neighborhood articles:', neighborhoodArticles.map(a => ({ 
+                    id: a.id, 
+                    title: a.title, 
+                    category: a.category, 
+                    categories: a.categories, 
+                    tags: a.tags 
+                  })))
+                  
+                  return neighborhoodArticles.slice(0, 4).map((article) => (
+                    <Link key={article.id} href={`/articles/${article.id}`}>
+                      <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
+                        <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                          <Image
+                            src={article.imageUrl || "/placeholder.svg"}
+                            alt={article.title}
+                            width={400}
+                            height={300}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <h3 className="font-semibold text-lg mb-2">{article.title}</h3>
+                        <p className="text-gray-600 text-sm">{article.excerpt}</p>
+                      </div>
+                    </Link>
+                  ))
+                })()}
+                {/* Show placeholder if no neighborhood articles */}
+                {articles.filter(article => 
+                  article.category?.toLowerCase().includes('neighborhood') ||
+                  article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
+                  article.tags?.some(tag => tag.toLowerCase().includes('neighborhood'))
+                ).length === 0 && (
+                  <div className="col-span-full text-center py-12">
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-2xl">🏘️</span>
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">No Neighborhood Articles Yet</h3>
+                    <p className="text-gray-600 text-sm">Create articles with "Neighborhood" category to see them here.</p>
                   </div>
-                  <h3 className="font-semibold text-lg mb-2">Kensington</h3>
-                  <p className="text-gray-600 text-sm">Vibrant district with boutique shops</p>
-                </div>
-                
-                <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
-                  <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-                    <p className="text-gray-500 text-sm">Coming Soon</p>
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">Downtown Calgary</h3>
-                  <p className="text-gray-600 text-sm">Modern skyscrapers and entertainment</p>
-                </div>
-                
-                <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
-                  <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-                    <p className="text-gray-500 text-sm">Coming Soon</p>
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">Inglewood</h3>
-                  <p className="text-gray-600 text-sm">Historic district with unique shops</p>
-                </div>
-                
-                <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
-                  <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-                    <p className="text-gray-500 text-sm">Coming Soon</p>
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">17th Avenue</h3>
-                  <p className="text-gray-600 text-sm">Trendy area with restaurants and bars</p>
-                </div>
+                )}
               </div>
             </div>
           </section>
@@ -498,19 +521,56 @@ export default function CalgaryPage() {
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-3xl font-bold">Calgary Guides</h2>
-                <Link href="/calgary/guides" className="text-red-600 hover:text-red-700 flex items-center gap-2 font-body font-medium">
+                <Link href="/articles?category=guide" className="text-red-600 hover:text-red-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {/* Guide cards will be added here when you create them */}
-                <div className="bg-white rounded-lg overflow-hidden shadow-sm p-4">
-                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-2xl">📖</span>
+                {(() => {
+                  const guideArticles = articles.filter(article => 
+                    article.category?.toLowerCase().includes('guide') ||
+                    article.categories?.some(cat => cat.toLowerCase().includes('guide')) ||
+                    article.tags?.some(tag => tag.toLowerCase().includes('guide')) ||
+                    article.type?.toLowerCase().includes('guide')
+                  )
+                  
+                  console.log('Calgary guide articles found:', guideArticles.length)
+                  console.log('Calgary guide articles:', guideArticles.map(a => ({ 
+                    id: a.id, 
+                    title: a.title, 
+                    category: a.category, 
+                    categories: a.categories, 
+                    tags: a.tags,
+                    type: a.type
+                  })))
+                  
+                  return guideArticles.slice(0, 3).map((article) => (
+                    <Link key={article.id} href={`/articles/${article.id}`}>
+                      <div className="bg-white rounded-lg overflow-hidden shadow-sm p-4">
+                        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <span className="text-2xl">📖</span>
+                        </div>
+                        <h3 className="font-display font-bold text-lg text-center mb-2">{article.title}</h3>
+                        <p className="text-sm text-gray-600 text-center">{article.excerpt}</p>
+                      </div>
+                    </Link>
+                  ))
+                })()}
+                {/* Show placeholder if no guide articles */}
+                {articles.filter(article => 
+                  article.category?.toLowerCase().includes('guide') ||
+                  article.categories?.some(cat => cat.toLowerCase().includes('guide')) ||
+                  article.tags?.some(tag => tag.toLowerCase().includes('guide')) ||
+                  article.type?.toLowerCase().includes('guide')
+                ).length === 0 && (
+                  <div className="col-span-full text-center py-12">
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-2xl">📖</span>
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">No Guide Articles Yet</h3>
+                    <p className="text-gray-600 text-sm">Create articles with "Guide" category or type to see them here.</p>
                   </div>
-                  <h3 className="font-display font-bold text-lg text-center mb-2">Coming Soon</h3>
-                  <p className="text-sm text-gray-600 text-center">Calgary guides will be available here soon.</p>
-                </div>
+                )}
               </div>
             </div>
           </section>

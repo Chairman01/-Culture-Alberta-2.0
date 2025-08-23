@@ -321,11 +321,11 @@ export default function AdminDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">4</div>
-                  <p className="text-sm text-muted-foreground">Edmonton neighborhoods</p>
+                  <div className="text-3xl font-bold">0</div>
+                  <p className="text-sm text-muted-foreground">Neighborhood articles</p>
                   <Button asChild variant="outline" size="sm" className="mt-2 w-full">
-                    <Link href="/admin/neighborhoods">
-                      Manage Neighborhoods
+                    <Link href="/admin/articles">
+                      Create Articles
                     </Link>
                   </Button>
                 </CardContent>

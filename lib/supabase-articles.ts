@@ -326,6 +326,7 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
       categories: article.categories || [article.category], // Add support for multiple categories
       location: article.location,
       author: article.author,
+      tags: article.tags || [], // Add tags field
       type: article.type || 'article',
       status: article.status || 'published',
       image_url: article.imageUrl, // Map imageUrl to image_url column
@@ -404,6 +405,7 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
       categories: article.categories, // Add support for multiple categories
       location: article.location,
       author: article.author,
+      tags: article.tags, // Add tags field
       type: article.type,
       status: article.status,
       image_url: article.imageUrl, // Map imageUrl to image_url column
