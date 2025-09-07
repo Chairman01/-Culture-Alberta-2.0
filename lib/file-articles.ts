@@ -6,7 +6,8 @@ export async function getAllArticlesFromFile(): Promise<Article[]> {
   try {
     // During build time, use the JSON file directly
     if (typeof window === 'undefined') {
-      console.log('Build time: Using articles.json directly')
+      console.log('BUILD TIME: Using articles.json directly - no API calls')
+      console.log('Articles count:', articlesData.length)
       return articlesData as Article[]
     }
     
