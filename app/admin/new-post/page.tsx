@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Upload } from "lucide-react"
-import { createPost } from "@/lib/posts"
+import { createArticle } from "@/lib/articles"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -63,16 +63,15 @@ export default function NewPostPage() {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '')
 
-      // Create the post in Supabase
-      const newPost = await createPost({
+      // Create the article in Supabase
+      const newPost = await createArticle({
         title,
         category: category.charAt(0).toUpperCase() + category.slice(1),
         content,
         excerpt,
-        image_url: imageUrl,
+        imageUrl,
         author: "Admin", // You can update this later with actual user info
-        slug,
-        tags: tags.split(',').map(tag => tag.trim()).join(',')
+        tags: tags.split(',').map(tag => tag.trim())
       })
 
       toast({
@@ -80,8 +79,8 @@ export default function NewPostPage() {
         description: "Your post has been created successfully.",
       })
 
-      // Redirect to the post page
-      router.push(`/articles/${newPost.id}/${newPost.slug}`)
+      // Redirect to the article page
+      router.push(`/articles/${newPost.id}`)
     } catch (error) {
       console.error("Error creating post:", error)
       toast({

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Save, Upload } from "lucide-react"
-import { getPostById, updatePost } from "@/lib/posts"
+import { getArticleById, updateArticle } from "@/lib/articles"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -42,13 +42,13 @@ export default function EditPostPage({ params }: EditPostPageProps) {
   useEffect(() => {
     async function loadPost() {
       try {
-        const post = await getPostById(postId)
+        const post = await getArticleById(postId)
         setTitle(post.title)
         setCategory(post.category.toLowerCase())
         setExcerpt(post.excerpt || "")
         setContent(post.content)
         setTags(post.tags || "")
-        setImageUrl(post.image_url || "")
+        setImageUrl(post.imageUrl || "")
         setIsLoading(false)
       } catch (error) {
         console.error("Error loading post:", error)
@@ -101,15 +101,14 @@ export default function EditPostPage({ params }: EditPostPageProps) {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '')
 
-      // Update the post in Supabase
-      const updatedPost = await updatePost(postId, {
+      // Update the article in Supabase
+      const updatedPost = await updateArticle(postId, {
         title,
         category: category.charAt(0).toUpperCase() + category.slice(1),
         content,
         excerpt,
-        image_url: imageUrl,
-        slug,
-        tags: tags.split(',').map(tag => tag.trim()).join(',')
+        imageUrl,
+        tags: tags.split(',').map(tag => tag.trim())
       })
 
       toast({
@@ -117,8 +116,8 @@ export default function EditPostPage({ params }: EditPostPageProps) {
         description: "Your post has been updated successfully.",
       })
 
-      // Redirect to the post page
-      router.push(`/articles/${updatedPost.id}/${updatedPost.slug}`)
+      // Redirect to the article page
+      router.push(`/articles/${updatedPost.id}`)
     } catch (error) {
       console.error("Error updating post:", error)
       toast({
