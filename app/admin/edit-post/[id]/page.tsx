@@ -52,10 +52,10 @@ export default function EditPostPage({ params }: EditPostPageProps) {
         setIsLoading(false)
         return
       }
-      setTitle(post.title)
-      setCategory(post.category.toLowerCase())
+      setTitle(post.title || "")
+      setCategory(post.category?.toLowerCase() || "")
       setExcerpt(post.excerpt || "")
-      setContent(post.content)
+      setContent(post.content || "")
       setTags(post.tags || "")
       setImageUrl(post.imageUrl || "")
         setIsLoading(false)
