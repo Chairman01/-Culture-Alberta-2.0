@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { getAllArticlesFromFile } from '@/lib/file-articles'
+import { getAllArticles } from '@/lib/articles'
 import { Footer } from '@/components/footer'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
@@ -13,8 +13,8 @@ import { BestOfSection } from '@/components/best-of-section'
 // Server-side data loading
 async function getHomePageData() {
   try {
-    // Use file system for build reliability
-    const apiArticles = await getAllArticlesFromFile()
+    // Use the main articles function which handles build vs runtime properly
+    const apiArticles = await getAllArticles()
     const allPosts = apiArticles
     
     // Separate events from regular articles

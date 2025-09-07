@@ -1,12 +1,12 @@
 import { MetadataRoute } from 'next'
-import { getAllArticlesFromFile } from '@/lib/file-articles'
+import { getAllArticles } from '@/lib/articles'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.culturealberta.com'
   
   try {
-    // Get all articles from file system (more reliable for build time)
-    const articles = await getAllArticlesFromFile()
+    // Get all articles using the main function (handles build vs runtime properly)
+    const articles = await getAllArticles()
     
     // Static pages
     const staticPages = [
