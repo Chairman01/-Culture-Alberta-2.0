@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { 
-  getAllArticlesFromFile, 
-  getArticleByIdFromFile, 
-  createArticleInFile, 
-  updateArticleInFile, 
-  deleteArticleFromFile 
-} from '@/lib/server-file-articles'
+  getAllArticles, 
+  getArticleById, 
+  createArticle, 
+  updateArticle, 
+  deleteArticle 
+} from '@/lib/supabase-articles'
 import { CreateArticleInput, UpdateArticleInput } from '@/lib/types/article'
 
 // GET /api/articles - Get all articles or get article by ID
@@ -16,11 +16,11 @@ export async function GET(request: NextRequest) {
 
     if (id) {
       // Get specific article by ID
-      const article = await getArticleByIdFromFile(id)
+      const article = await getArticleById(id)
       return NextResponse.json(article)
     } else {
       // Get all articles
-      const articles = await getAllArticlesFromFile()
+      const articles = await getAllArticles()
       return NextResponse.json(articles)
     }
   } catch (error) {
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const newArticle = await createArticleInFile(body)
+    const newArticle = await createArticle(body)
     return NextResponse.json(newArticle)
   } catch (error) {
     console.error('Error creating article:', error)
@@ -85,7 +85,7 @@ export async function PUT(request: NextRequest) {
     console.log('Update data:', updateData)
 
     try {
-      const updatedArticle = await updateArticleInFile(id, updateData)
+      const updatedArticle = await updateArticle(id, updateData)
       console.log('Article updated successfully:', updatedArticle)
       return NextResponse.json(updatedArticle)
     } catch (updateError) {
@@ -117,7 +117,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    await deleteArticleFromFile(id)
+    await deleteArticle(id)
     return NextResponse.json({ message: 'Article deleted successfully' })
   } catch (error) {
     console.error('Error deleting article:', error)
