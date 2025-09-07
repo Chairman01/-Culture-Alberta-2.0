@@ -8,12 +8,9 @@ export const isVercelBuild = () => {
 }
 
 export const shouldUseFileSystem = () => {
-  // Use file system during build or when Supabase is not available
-  // In development, always try Supabase first (it has fallback values)
-  if (process.env.NODE_ENV === 'development') {
-    return false // Always use Supabase in development
-  }
-  return isBuildTime() || isVercelBuild() || process.env.NODE_ENV === 'production'
+  // Use file system only during build time, not in production runtime
+  // Always use Supabase in both development and production runtime
+  return isBuildTime() // Only use file system during actual build process
 }
 
 export const getBuildEnvironment = () => {
