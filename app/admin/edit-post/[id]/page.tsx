@@ -42,13 +42,22 @@ export default function EditPostPage({ params }: EditPostPageProps) {
   useEffect(() => {
     async function loadPost() {
       try {
-        const post = await getArticleById(postId)
-        setTitle(post.title)
-        setCategory(post.category.toLowerCase())
-        setExcerpt(post.excerpt || "")
-        setContent(post.content)
-        setTags(post.tags || "")
-        setImageUrl(post.imageUrl || "")
+      const post = await getArticleById(postId)
+      if (!post) {
+        toast({
+          title: "Post not found",
+          description: "The post you're trying to edit could not be found.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        return
+      }
+      setTitle(post.title)
+      setCategory(post.category.toLowerCase())
+      setExcerpt(post.excerpt || "")
+      setContent(post.content)
+      setTags(post.tags || "")
+      setImageUrl(post.imageUrl || "")
         setIsLoading(false)
       } catch (error) {
         console.error("Error loading post:", error)
