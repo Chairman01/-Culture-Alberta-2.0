@@ -56,7 +56,7 @@ export default function EditPostPage({ params }: EditPostPageProps) {
       setCategory(post.category?.toLowerCase() || "")
       setExcerpt(post.excerpt || "")
       setContent(post.content || "")
-      setTags(post.tags || "")
+      setTags(Array.isArray(post.tags) ? post.tags.join(', ') : (post.tags || ""))
       setImageUrl(post.imageUrl || "")
         setIsLoading(false)
       } catch (error) {

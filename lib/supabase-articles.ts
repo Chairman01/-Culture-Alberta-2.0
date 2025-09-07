@@ -13,7 +13,7 @@ import { shouldUseFileSystem } from './build-config'
 let articlesCache: Article[] | null = null
 let articleCache: Map<string, Article> = new Map()
 let cacheTimestamp: number = 0
-const CACHE_DURATION = 10 * 60 * 1000 // 10 minutes (increased from 5)
+const CACHE_DURATION = 2 * 60 * 1000 // 2 minutes for faster updates
 
 // Test function to check if articles table exists
 export async function checkArticlesTable(): Promise<boolean> {
@@ -107,6 +107,150 @@ export async function testSupabaseConnection(): Promise<boolean> {
   }
 }
 
+// Optimized function for homepage that only fetches essential fields
+export async function getHomepageArticles(): Promise<Article[]> {
+  try {
+    console.log('=== getHomepageArticles called ===')
+    
+    // Check cache first
+    const now = Date.now()
+    if (articlesCache && (now - cacheTimestamp) < CACHE_DURATION) {
+      console.log('Returning cached articles for homepage:', articlesCache.length, 'articles')
+      return articlesCache
+    }
+    
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log('Build time detected, using file system')
+      return getAllArticlesFromFile()
+    }
+    
+    if (!supabase) {
+      console.error('Supabase client is not initialized')
+      console.log('Falling back to file system')
+      return getAllArticlesFromFile()
+    }
+
+    console.log('Attempting to fetch homepage articles from Supabase...')
+    
+    // Optimized query for homepage - only essential fields
+    const supabasePromise = supabase
+      .from('articles')
+      .select('id, title, excerpt, category, image_url, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
+      .order('created_at', { ascending: false })
+      .limit(20) // Only fetch 20 most recent for homepage
+
+    const { data, error } = await Promise.race([
+      supabasePromise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Supabase timeout')), 2000) // Shorter timeout for homepage
+      )
+    ]) as any
+
+    if (error) {
+      console.warn('Supabase homepage query failed:', error.message)
+      
+      if (articlesCache) {
+        console.log('Using cached articles for homepage due to Supabase error')
+        return articlesCache
+      }
+      
+      console.log('No cache available, falling back to file system')
+      return getAllArticlesFromFile()
+    }
+
+    console.log('Successfully fetched homepage articles from Supabase:', data?.length || 0, 'articles')
+
+    // Map Supabase data to match our Article interface
+    const mappedArticles = (data || []).map((article: any) => ({
+      ...article,
+      imageUrl: article.image_url || article.image,
+      date: article.created_at,
+      trendingHome: article.trending_home || false,
+      trendingEdmonton: article.trending_edmonton || false,
+      trendingCalgary: article.trending_calgary || false,
+      featuredHome: article.featured_home || false,
+      featuredEdmonton: article.featured_edmonton || false,
+      featuredCalgary: article.featured_calgary || false
+    }))
+
+    // Update cache
+    articlesCache = mappedArticles
+    cacheTimestamp = now
+    console.log('Updated homepage articles cache')
+
+    return mappedArticles
+  } catch (error) {
+    console.warn('Supabase homepage connection failed:', error)
+    
+    if (articlesCache) {
+      console.log('Using cached articles for homepage due to connection error')
+      return articlesCache
+    }
+    
+    console.log('No cache available, falling back to file system')
+    return getAllArticlesFromFile()
+  }
+}
+
+// Optimized function for admin list that only fetches essential fields
+export async function getAdminArticles(): Promise<Article[]> {
+  try {
+    console.log('=== getAdminArticles called ===')
+    
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log('Build time detected, using file system')
+      return getAllArticlesFromFile()
+    }
+    
+    if (!supabase) {
+      console.error('Supabase client is not initialized')
+      console.log('Falling back to file system')
+      return getAllArticlesFromFile()
+    }
+
+    console.log('Attempting to fetch admin articles from Supabase...')
+    
+    // Optimized query for admin - only essential fields for list view
+    const supabasePromise = supabase
+      .from('articles')
+      .select('id, title, category, location, author, created_at, updated_at, status, type, featured_home, featured_edmonton, featured_calgary')
+      .order('created_at', { ascending: false })
+      .limit(100) // Limit to 100 most recent for admin
+
+    const { data, error } = await Promise.race([
+      supabasePromise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Supabase timeout')), 3000)
+      )
+    ]) as any
+
+    if (error) {
+      console.warn('Supabase admin query failed:', error.message)
+      console.log('Falling back to file system')
+      return getAllArticlesFromFile()
+    }
+
+    console.log('Successfully fetched admin articles from Supabase:', data?.length || 0, 'articles')
+
+    // Map Supabase data to match our Article interface
+    const mappedArticles = (data || []).map((article: any) => ({
+      ...article,
+      date: article.created_at,
+      featuredHome: article.featured_home || false,
+      featuredEdmonton: article.featured_edmonton || false,
+      featuredCalgary: article.featured_calgary || false
+    }))
+
+    return mappedArticles
+  } catch (error) {
+    console.warn('Supabase admin connection failed:', error)
+    console.log('Falling back to file system')
+    return getAllArticlesFromFile()
+  }
+}
+
 export async function getAllArticles(): Promise<Article[]> {
   try {
     console.log('=== getAllArticles called ===')
@@ -139,8 +283,9 @@ export async function getAllArticles(): Promise<Article[]> {
     
     const supabasePromise = supabase
       .from('articles')
-      .select('*')
+      .select('id, title, excerpt, content, category, categories, location, author, tags, type, status, image_url, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
       .order('created_at', { ascending: false })
+      .limit(50) // Limit to 50 most recent articles for better performance
 
     const { data, error } = await Promise.race([
       supabasePromise,

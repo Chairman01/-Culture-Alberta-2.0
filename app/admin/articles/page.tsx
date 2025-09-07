@@ -26,7 +26,7 @@ import {
   Article,
   MAIN_CATEGORIES
 } from "@/lib/data"
-import { getAllArticles, deleteArticle } from "@/lib/articles"
+import { getAdminArticles, deleteArticle } from "@/lib/articles"
 import { useRouter } from "next/navigation"
 
 interface ExtendedArticle extends Article {
@@ -77,7 +77,7 @@ export default function AdminArticles() {
     setIsLoading(true)
     try {
       console.log('Admin: Loading articles...')
-      const data = await getAllArticles()
+      const data = await getAdminArticles()
       console.log('Admin: Articles loaded:', data)
       
       // Ensure all required fields are strings
