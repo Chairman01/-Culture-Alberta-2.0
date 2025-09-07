@@ -7,6 +7,7 @@ import {
   updateArticleInFile,
   deleteArticleFromFile
 } from './file-articles'
+import { shouldUseFileSystem } from './build-config'
 
 // Enhanced cache for articles to prevent multiple API calls
 let articlesCache: Article[] | null = null
@@ -117,6 +118,12 @@ export async function getAllArticles(): Promise<Article[]> {
       return articlesCache
     }
     
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log('Build time detected, using file system')
+      return getAllArticlesFromFile()
+    }
+    
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
@@ -127,7 +134,7 @@ export async function getAllArticles(): Promise<Article[]> {
     
     // Reduced timeout for faster fallback
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Reduced to 5 seconds
+      setTimeout(() => reject(new Error('Supabase timeout')), 3000) // Reduced to 3 seconds
     )
     
     const supabasePromise = supabase
@@ -217,6 +224,12 @@ export async function getArticleById(id: string): Promise<Article | null> {
     if (articleCache.has(id)) {
       console.log('Returning cached article:', id)
       return articleCache.get(id) || null
+    }
+    
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log('Build time detected, using file system')
+      return getArticleByIdFromFile(id)
     }
     
     if (!supabase) {
