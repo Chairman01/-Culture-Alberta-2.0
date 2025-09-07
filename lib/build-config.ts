@@ -9,7 +9,7 @@ export const isVercelBuild = () => {
 
 export const shouldUseFileSystem = () => {
   // Use file system during build or when Supabase is not available
-  return isBuildTime() || isVercelBuild() || !process.env.NEXT_PUBLIC_SUPABASE_URL
+  return isBuildTime() || isVercelBuild() || !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NODE_ENV === 'production'
 }
 
 export const getBuildEnvironment = () => {

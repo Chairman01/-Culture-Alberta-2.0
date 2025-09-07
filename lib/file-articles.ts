@@ -1,29 +1,48 @@
 import { Article, CreateArticleInput, UpdateArticleInput } from './types/article'
+import articlesData from './data/articles.json'
 
-// Browser-compatible file operations using API calls
+// Direct file system access for build time
 export async function getAllArticlesFromFile(): Promise<Article[]> {
   try {
+    // During build time, use the JSON file directly
+    if (typeof window === 'undefined') {
+      console.log('Build time: Using articles.json directly')
+      return articlesData as Article[]
+    }
+    
+    // In browser, use API calls
     const response = await fetch('/api/articles')
     if (response.ok) {
       return response.json()
     }
     return []
   } catch (error) {
-    console.error('Error fetching articles from API:', error)
-    return []
+    console.error('Error fetching articles from file:', error)
+    // Fallback to JSON data
+    return articlesData as Article[]
   }
 }
 
-export async function getArticleByIdFromFile(id: string): Promise<Article> {
+export async function getArticleByIdFromFile(id: string): Promise<Article | null> {
   try {
+    // During build time, use the JSON file directly
+    if (typeof window === 'undefined') {
+      console.log('Build time: Finding article by ID in articles.json')
+      const articles = articlesData as Article[]
+      return articles.find(article => article.id === id) || null
+    }
+    
+    // In browser, use API calls
     const response = await fetch(`/api/articles?id=${id}`)
     if (response.ok) {
       return response.json()
     }
-    throw new Error('Article not found')
+    return null
   } catch (error) {
-    console.error('Error fetching article from API:', error)
-    throw new Error('Article not found')
+    console.error('Error fetching article from file:', error)
+    // Fallback to JSON data
+    const articles = articlesData as Article[]
+    return articles.find(article => article.id === id) || null
   }
 }
 
