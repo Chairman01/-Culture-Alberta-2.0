@@ -33,6 +33,7 @@ export function PageSEO({
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
       <meta name="keywords" content={tags.join(', ')} />
+      <meta name="robots" content="index, follow" />
       
       {/* Open Graph */}
       <meta property="og:title" content={fullTitle} />
@@ -56,8 +57,8 @@ export function PageSEO({
       <meta name="twitter:image" content={image} />
       <meta name="twitter:site" content="@culturealberta" />
       
-      {/* Canonical */}
-      <link rel="canonical" href={fullUrl} />
+      {/* Canonical - Only add if URL is provided to avoid duplicate canonical tags */}
+      {url && <link rel="canonical" href={fullUrl} />}
     </Head>
   )
 }

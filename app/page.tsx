@@ -1,6 +1,3 @@
-"use client"
-
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getAllArticles } from '@/lib/articles'
@@ -8,61 +5,74 @@ import { Footer } from '@/components/footer'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { PageSEO } from '@/components/seo/page-seo'
-
 import { Article } from '@/lib/types/article'
 import { PageTracker } from '@/components/analytics/page-tracker'
+import { Suspense } from 'react'
+import { BestOfSection } from '@/components/best-of-section'
 
-export default function Home() {
-  const [posts, setPosts] = useState<Article[]>([])
-  const [events, setEvents] = useState<Article[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isClient, setIsClient] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [activeBestOfTab, setActiveBestOfTab] = useState('dentists')
-
-  useEffect(() => {
-    setIsClient(true)
-    async function loadPosts() {
-      try {
-        // Temporarily remove timeout to debug the issue
-        const apiArticles = await getAllArticles()
-        const allPosts = apiArticles
-        
-        // Separate events from regular articles
-        const regularPosts = allPosts.filter(post => post.type !== 'event')
-        const eventPosts = allPosts.filter(post => post.type === 'event')
-        
-        setPosts(regularPosts)
-        setEvents(eventPosts)
-      } catch (error) {
-        console.error("Error loading posts:", error)
-        setError(error instanceof Error ? error.message : 'Unknown error')
-        // Set empty arrays to prevent infinite loading
-        setPosts([])
-        setEvents([])
-      } finally {
-        setIsLoading(false)
-      }
+// Server-side data loading
+async function getHomePageData() {
+  try {
+    const apiArticles = await getAllArticles()
+    const allPosts = apiArticles
+    
+    // Separate events from regular articles
+    const regularPosts = allPosts.filter(post => post.type !== 'event')
+    const eventPosts = allPosts.filter(post => post.type === 'event')
+    
+    return {
+      posts: regularPosts,
+      events: eventPosts
     }
-    loadPosts()
-  }, [])
-
-  // Don't render anything until client-side hydration is complete
-  if (!isClient) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Show nothing during hydration - just a blank page */}
-      </div>
-    )
+  } catch (error) {
+    console.error("Error loading posts:", error)
+    return {
+      posts: [],
+      events: []
+    }
   }
+}
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Show nothing while loading - just a blank page */}
+// Loading component for better UX
+function HomePageSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 md:px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
+              <div className="aspect-[16/9] w-full bg-gray-200"></div>
+              <div className="p-6">
+                <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
+                <div className="h-8 bg-gray-200 rounded w-3/4 mb-3"></div>
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-sm p-6 animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-start space-x-4">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
+
+export default async function Home() {
+  const { posts, events } = await getHomePageData()
 
   const formatDate = (dateString: string) => {
     try {
@@ -125,10 +135,6 @@ export default function Home() {
   const trendingPosts = posts.filter(post => post.trendingHome === true).slice(0, 5)
   const upcomingEvents = events.slice(0, 3) // Get the first 3 events
 
-  // Debug logging
-  console.log('All posts:', posts.map(p => ({ id: p.id, title: p.title, trendingHome: p.trendingHome })))
-  console.log('Trending posts:', trendingPosts.map(p => ({ id: p.id, title: p.title, trendingHome: p.trendingHome })))
-
   return (
     <>
       <PageSEO
@@ -136,7 +142,8 @@ export default function Home() {
         description="Discover the best of Alberta's culture, events, and local businesses. Stay informed with the latest news and updates."
       />
       <PageTracker title="Culture Alberta - Home" />
-    <div className="flex min-h-screen flex-col">
+      <Suspense fallback={<HomePageSkeleton />}>
+        <div className="flex min-h-screen flex-col">
       <main className="flex-1">
           {/* Featured Article + Trending Sidebar */}
           <section className="w-full py-8 md:py-10 lg:py-12 bg-gradient-to-b from-gray-50 to-white">
@@ -406,83 +413,11 @@ export default function Home() {
         </section>
 
           {/* Best of Alberta */}
-          <section className="w-full py-8">
-          <div className="container mx-auto px-4 md:px-6">
-              <div className="text-center mb-6">
-                <h2 className="font-display text-4xl font-bold mb-3">Best of Alberta</h2>
-                <p className="font-body text-gray-600 max-w-[600px] mx-auto text-lg leading-relaxed">
-                  Discover the top-rated professionals and businesses across Alberta, from healthcare providers to legal services.
-              </p>
-            </div>
-              
-              {/* Navigation Tabs */}
-              <div className="flex items-center justify-center mb-6">
-                <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-                  <button 
-                    className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
-                      activeBestOfTab === 'dentists' 
-                        ? 'text-black border-b-2 border-black' 
-                        : 'text-gray-600 hover:text-black'
-                    }`}
-                    onClick={() => setActiveBestOfTab('dentists')}
-                  >
-                    Dentists
-                  </button>
-                  <button 
-                    className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
-                      activeBestOfTab === 'lawyers' 
-                        ? 'text-black border-b-2 border-black' 
-                        : 'text-gray-600 hover:text-black'
-                    }`}
-                    onClick={() => setActiveBestOfTab('lawyers')}
-                  >
-                    Lawyers
-                  </button>
-                  <button 
-                    className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
-                      activeBestOfTab === 'accountants' 
-                        ? 'text-black border-b-2 border-black' 
-                        : 'text-gray-600 hover:text-black'
-                    }`}
-                    onClick={() => setActiveBestOfTab('accountants')}
-                  >
-                    Accountants
-                  </button>
-                  <button 
-                    className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
-                      activeBestOfTab === 'restaurants' 
-                        ? 'text-black border-b-2 border-black' 
-                        : 'text-gray-600 hover:text-black'
-                    }`}
-                    onClick={() => setActiveBestOfTab('restaurants')}
-                  >
-                    Restaurants
-                  </button>
-                </div>
-                <Link href="/best-of" className="ml-6 text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
-                  View All <ArrowRight className="w-4 h-4" />
-              </Link>
-                </div>
-
-              {/* Best of Content */}
-              <div className="max-w-md mx-auto">
-                <div className="bg-gray-200 rounded-xl p-6 text-center">
-                  <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-2xl">📧</span>
-                </div>
-                  <p className="font-body text-gray-600">
-                    {activeBestOfTab === 'dentists' && "Providing exceptional dental care for the whole family."}
-                    {activeBestOfTab === 'lawyers' && "Expert legal services for all your needs."}
-                    {activeBestOfTab === 'accountants' && "Professional accounting and tax services."}
-                    {activeBestOfTab === 'restaurants' && "Discover the best dining experiences in Alberta."}
-                  </p>
-                </div>
-            </div>
-          </div>
-        </section>
-      </main>
-      <Footer />
-    </div>
+          <BestOfSection />
+        </main>
+        <Footer />
+      </div>
+      </Suspense>
     </>
   )
 }

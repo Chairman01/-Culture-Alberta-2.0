@@ -16,6 +16,7 @@ export default function RootLayout({
         <meta name="keywords" content="Alberta culture, Calgary events, Edmonton culture, Alberta tourism, local events, cultural activities, Alberta restaurants, Alberta attractions" />
         <meta name="author" content="Culture Alberta" />
         <meta name="robots" content="index, follow" />
+        <meta name="google-adsense-account" content="ca-pub-6902227267422426" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         
         {/* Canonical URL */}
@@ -292,8 +293,19 @@ export default function RootLayout({
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6902227267422426"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
         />
+        <Script
+          id="adsense-init"
+          strategy="afterInteractive"
+        >
+          {`
+            (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-6902227267422426",
+              enable_page_level_ads: true
+            });
+          `}
+        </Script>
       </head>
       <body suppressHydrationWarning={true}>
         <MainNavigation />
