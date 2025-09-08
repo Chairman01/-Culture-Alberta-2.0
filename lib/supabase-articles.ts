@@ -255,11 +255,34 @@ export async function getAdminArticles(): Promise<Article[]> {
 export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Article[]> {
   try {
     console.log(`=== getCityArticles called for ${city} ===`)
+    console.log('Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      VERCEL_ENV: process.env.VERCEL_ENV,
+      shouldUseFileSystem: shouldUseFileSystem()
+    })
     
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
       console.log('Build time detected, using file system')
-      return getAllArticlesFromFile()
+      const fileArticles = getAllArticlesFromFile()
+      
+      // Filter file articles by city
+      const filteredFileArticles = fileArticles.filter((article: any) => {
+        const hasCityCategory = article.category?.toLowerCase().includes(city);
+        const hasCityLocation = article.location?.toLowerCase().includes(city);
+        const hasCityCategories = article.categories?.some((cat: string) => 
+          cat.toLowerCase().includes(city)
+        );
+        const hasCityTags = article.tags?.some((tag: string) => 
+          tag.toLowerCase().includes(city)
+        );
+        
+        return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+      });
+      
+      console.log(`Build time: Found ${filteredFileArticles.length} ${city} articles out of ${fileArticles.length} total`)
+      return filteredFileArticles
     }
     
     if (!supabase) {
@@ -274,7 +297,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     const supabasePromise = supabase
       .from('articles')
       .select('id, title, excerpt, category, categories, location, author, tags, type, image_url, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
-      .or(`category.ilike.%${city}%,location.ilike.%${city}%,categories.cs.{${city}},tags.cs.{${city}}`)
+      .or(`category.ilike.%${city}%,location.ilike.%${city}%`)
       .order('created_at', { ascending: false })
       .limit(50) // Limit to 50 most recent for city pages
 
@@ -306,11 +329,44 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
       featuredCalgary: article.featured_calgary || false
     }))
 
-    return mappedArticles
+    // Additional client-side filtering to ensure we get the right city articles
+    const filteredArticles = mappedArticles.filter((article: any) => {
+      const hasCityCategory = article.category?.toLowerCase().includes(city);
+      const hasCityLocation = article.location?.toLowerCase().includes(city);
+      const hasCityCategories = article.categories?.some((cat: string) => 
+        cat.toLowerCase().includes(city)
+      );
+      const hasCityTags = article.tags?.some((tag: string) => 
+        tag.toLowerCase().includes(city)
+      );
+      
+      return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+    });
+
+    console.log(`Filtered ${city} articles:`, filteredArticles.length, 'out of', mappedArticles.length, 'total articles')
+
+    return filteredArticles
   } catch (error) {
     console.warn(`Supabase ${city} connection failed:`, error)
     console.log('Falling back to file system')
-    return getAllArticlesFromFile()
+    const fileArticles = getAllArticlesFromFile()
+    
+    // Filter file articles by city as well
+    const filteredFileArticles = fileArticles.filter((article: any) => {
+      const hasCityCategory = article.category?.toLowerCase().includes(city);
+      const hasCityLocation = article.location?.toLowerCase().includes(city);
+      const hasCityCategories = article.categories?.some((cat: string) => 
+        cat.toLowerCase().includes(city)
+      );
+      const hasCityTags = article.tags?.some((tag: string) => 
+        tag.toLowerCase().includes(city)
+      );
+      
+      return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+    });
+    
+    console.log(`File system fallback: Found ${filteredFileArticles.length} ${city} articles out of ${fileArticles.length} total`)
+    return filteredFileArticles
   }
 }
 
