@@ -12,7 +12,9 @@ import { shouldUseFileSystem } from './build-config'
 // Enhanced cache for articles to prevent multiple API calls
 let articlesCache: Article[] | null = null
 let articleCache: Map<string, Article> = new Map()
+let cityArticlesCache: Map<string, Article[]> = new Map()
 let cacheTimestamp: number = 0
+let cityCacheTimestamp: Map<string, number> = new Map()
 const CACHE_DURATION = 2 * 60 * 1000 // 2 minutes for faster updates
 
 // Test function to check if articles table exists
@@ -251,10 +253,126 @@ export async function getAdminArticles(): Promise<Article[]> {
   }
 }
 
+// Optimized function for events page
+export async function getEventsArticles(): Promise<Article[]> {
+  try {
+    console.log('=== getEventsArticles called ===')
+    
+    // Check cache first
+    const now = Date.now()
+    const eventsCacheTime = cityCacheTimestamp.get('events') || 0
+    if (cityArticlesCache.has('events') && (now - eventsCacheTime) < CACHE_DURATION) {
+      console.log('Returning cached events articles:', cityArticlesCache.get('events')?.length || 0, 'articles')
+      return cityArticlesCache.get('events') || []
+    }
+    
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log('Build time detected, using file system')
+      const fileArticles = await getAllArticlesFromFile()
+      
+      // Filter file articles for events only
+      const filteredFileArticles = fileArticles.filter((article: any) => 
+        article.type === 'event'
+      );
+      
+      console.log(`Build time: Found ${filteredFileArticles.length} events out of ${fileArticles.length} total`)
+      return filteredFileArticles
+    }
+    
+    if (!supabase) {
+      console.error('Supabase client is not initialized')
+      console.log('Falling back to file system')
+      const fileArticles = await getAllArticlesFromFile()
+      
+      // Filter file articles for events only
+      const filteredFileArticles = fileArticles.filter((article: any) => 
+        article.type === 'event'
+      );
+      
+      console.log(`Supabase fallback: Found ${filteredFileArticles.length} events out of ${fileArticles.length} total`)
+      return filteredFileArticles
+    }
+
+    console.log('Attempting to fetch events articles from Supabase...')
+    
+    // Optimized query for events - only essential fields for display
+    const supabasePromise = supabase
+      .from('articles')
+      .select('id, title, excerpt, category, location, image_url, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+      .eq('type', 'event')
+      .order('created_at', { ascending: false })
+      .limit(30) // Reduced limit for faster loading
+
+    const { data, error } = await Promise.race([
+      supabasePromise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Supabase timeout')), 2000) // Reduced timeout to match homepage
+      )
+    ]) as any
+
+    if (error) {
+      console.warn('Supabase events query failed:', error.message)
+      console.log('Falling back to file system')
+      const fileArticles = await getAllArticlesFromFile()
+      
+      // Filter file articles for events only
+      const filteredFileArticles = fileArticles.filter((article: any) => 
+        article.type === 'event'
+      );
+      
+      return filteredFileArticles
+    }
+
+    console.log('Successfully fetched events articles from Supabase:', data?.length || 0, 'articles')
+
+    // Map Supabase data to match our Article interface
+    const mappedArticles = (data || []).map((article: any) => ({
+      ...article,
+      imageUrl: article.image_url || article.image,
+      date: article.created_at,
+      trendingHome: article.trending_home || false,
+      trendingEdmonton: article.trending_edmonton || false,
+      trendingCalgary: article.trending_calgary || false,
+      featuredHome: article.featured_home || false,
+      featuredEdmonton: article.featured_edmonton || false,
+      featuredCalgary: article.featured_calgary || false
+    }))
+
+    // Update cache
+    cityArticlesCache.set('events', mappedArticles)
+    cityCacheTimestamp.set('events', now)
+    console.log('Updated events articles cache')
+
+    return mappedArticles
+  } catch (error) {
+    console.warn('Supabase events connection failed:', error)
+    console.log('Falling back to file system')
+    const fileArticles = await getAllArticlesFromFile()
+    
+    // Filter file articles for events only
+    const filteredFileArticles = fileArticles.filter((article: any) => 
+      article.type === 'event'
+    );
+    
+    console.log(`File system fallback: Found ${filteredFileArticles.length} events out of ${fileArticles.length} total`)
+    return filteredFileArticles
+  }
+}
+
 // Optimized function for city pages (Edmonton/Calgary)
 export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Article[]> {
   try {
     console.log(`=== getCityArticles called for ${city} ===`)
+    
+    // Check cache first
+    const now = Date.now()
+    const cityCacheTime = cityCacheTimestamp.get(city) || 0
+    if (cityArticlesCache.has(city) && (now - cityCacheTime) < CACHE_DURATION) {
+      console.log(`Returning cached ${city} articles:`, cityArticlesCache.get(city)?.length || 0, 'articles')
+      return cityArticlesCache.get(city) || []
+    }
+    
     console.log('Environment check:', {
       NODE_ENV: process.env.NODE_ENV,
       VERCEL: process.env.VERCEL,
@@ -312,18 +430,18 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
 
     console.log(`Attempting to fetch ${city} articles from Supabase...`)
     
-    // Optimized query for city pages - only essential fields
+    // Optimized query for city pages - only essential fields for display
     const supabasePromise = supabase
       .from('articles')
-      .select('id, title, excerpt, category, categories, location, author, tags, type, image_url, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+      .select('id, title, excerpt, category, location, image_url, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
       .or(`category.ilike.%${city}%,location.ilike.%${city}%`)
       .order('created_at', { ascending: false })
-      .limit(50) // Limit to 50 most recent for city pages
+      .limit(30) // Reduced limit for faster loading
 
     const { data, error } = await Promise.race([
       supabasePromise,
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 3000)
+        setTimeout(() => reject(new Error('Supabase timeout')), 2000) // Reduced timeout to match homepage
       )
     ]) as any
 
@@ -363,6 +481,11 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     });
 
     console.log(`Filtered ${city} articles:`, filteredArticles.length, 'out of', mappedArticles.length, 'total articles')
+
+    // Update cache
+    cityArticlesCache.set(city, filteredArticles)
+    cityCacheTimestamp.set(city, now)
+    console.log(`Updated ${city} articles cache`)
 
     return filteredArticles
   } catch (error) {
@@ -496,7 +619,9 @@ export async function getAllArticles(): Promise<Article[]> {
 export function clearArticlesCache() {
   articlesCache = null
   cacheTimestamp = 0
-  console.log('Articles cache cleared')
+  cityArticlesCache.clear()
+  cityCacheTimestamp.clear()
+  console.log('Articles cache cleared (including city cache)')
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {

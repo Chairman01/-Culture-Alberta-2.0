@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { getAllArticles } from '@/lib/articles'
+import { getHomepageArticles } from '@/lib/articles'
 import { Footer } from '@/components/footer'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
@@ -13,8 +13,8 @@ import { BestOfSection } from '@/components/best-of-section'
 // Server-side data loading
 async function getHomePageData() {
   try {
-    // Use the main articles function which handles build vs runtime properly
-    const apiArticles = await getAllArticles()
+    // Use the optimized homepage articles function for better performance
+    const apiArticles = await getHomepageArticles()
     const allPosts = apiArticles
     
     // Separate events from regular articles
@@ -73,7 +73,10 @@ function HomePageSkeleton() {
 }
 
 export default async function Home() {
-  const { posts, events } = await getHomePageData()
+  // Load data in parallel for better performance
+  const [{ posts, events }] = await Promise.all([
+    getHomePageData()
+  ])
 
   const formatDate = (dateString: string) => {
     try {
@@ -162,6 +165,9 @@ export default async function Home() {
                             width={800}
                             height={450}
                             className="w-full h-full object-cover"
+                            priority
+                            placeholder="blur"
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                           />
                         </div>
                         <div className="p-6">

@@ -439,13 +439,21 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
                   {/* Featured Image */}
                   {article.imageUrl && (
                     <div className="relative w-full h-[400px] lg:h-[500px] rounded-xl overflow-hidden">
-                      <Image
-                        src={article.imageUrl}
-                        alt={article.title || 'Article image'}
-                        fill
-                        className="object-cover"
-                        priority
-                      />
+                      {article.imageUrl.startsWith('data:image') || (article.imageUrl.length > 1000 && !article.imageUrl.includes('http')) ? (
+                        <img
+                          src={article.imageUrl.startsWith('data:image') ? article.imageUrl : `data:image/jpeg;base64,${article.imageUrl}`}
+                          alt={article.title || 'Article image'}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Image
+                          src={article.imageUrl}
+                          alt={article.title || 'Article image'}
+                          fill
+                          className="object-cover"
+                          priority
+                        />
+                      )}
                     </div>
                   )}
 
@@ -493,12 +501,20 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
                         >
                           <div className="flex items-start space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
                             <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                              <Image
-                                src={relatedArticle.imageUrl || "/placeholder.svg"}
-                                alt={relatedArticle.title}
-                                fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
+                              {relatedArticle.imageUrl && (relatedArticle.imageUrl.startsWith('data:image') || (relatedArticle.imageUrl.length > 1000 && !relatedArticle.imageUrl.includes('http'))) ? (
+                                <img
+                                  src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
+                                  alt={relatedArticle.title}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              ) : (
+                                <Image
+                                  src={relatedArticle.imageUrl || "/placeholder.svg"}
+                                  alt={relatedArticle.title}
+                                  fill
+                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-sm group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
@@ -554,12 +570,20 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
                   >
                     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
                       <div className="relative h-48 overflow-hidden">
-                        <Image
-                          src={relatedArticle.imageUrl || "/placeholder.svg"}
-                          alt={relatedArticle.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                        {relatedArticle.imageUrl && (relatedArticle.imageUrl.startsWith('data:image') || (relatedArticle.imageUrl.length > 1000 && !relatedArticle.imageUrl.includes('http'))) ? (
+                          <img
+                            src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
+                            alt={relatedArticle.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <Image
+                            src={relatedArticle.imageUrl || "/placeholder.svg"}
+                            alt={relatedArticle.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        )}
                       </div>
                       <div className="p-4">
                         <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">

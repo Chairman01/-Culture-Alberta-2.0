@@ -6,7 +6,7 @@ import { ArrowRight, Calendar, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getAllArticles } from "@/lib/articles"
+import { getEventsArticles } from "@/lib/articles"
 import { Footer } from "@/components/footer"
 import { Article } from "@/lib/types/article"
 
@@ -28,10 +28,7 @@ export default function EventsPage() {
 
   const loadEvents = async () => {
     try {
-      const allArticles = await getAllArticles()
-      
-      // Filter for events only
-      const eventArticles = allArticles.filter(article => article.type === 'event')
+      const eventArticles = await getEventsArticles()
       
       // Convert to ExtendedEvent format
       const allEvents: ExtendedEvent[] = eventArticles.map(article => ({
