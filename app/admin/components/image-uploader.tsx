@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Spinner } from "../../components/ui/spinner"
+import { Spinner } from "@/app/components/ui/spinner"
 
 interface ImageUploaderProps {
   onSelect: (url: string) => void
