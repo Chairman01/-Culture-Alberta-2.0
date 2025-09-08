@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
+import { RichTextEditor } from "@/app/admin/components/rich-text-editor"
 import { useToast } from "@/hooks/use-toast"
 
 export default function NewPostPage() {
@@ -175,12 +176,10 @@ export default function NewPostPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="content">Content</Label>
-                <Textarea
-                  id="content"
-                  placeholder="Write your post content here"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[300px]"
+                <RichTextEditor
+                  content={content}
+                  onChange={setContent}
+                  placeholder="Write your post content here..."
                 />
               </div>
 
