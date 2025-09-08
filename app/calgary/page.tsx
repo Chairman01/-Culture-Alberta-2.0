@@ -332,6 +332,17 @@ export default function CalgaryPage() {
                       </Link>
                     ))}
                   </div>
+                  {articles.length > 3 && (
+                    <div className="mt-6 text-center">
+                      <Link 
+                        href="/calgary/all-articles" 
+                        className="inline-flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                      >
+                        View All Calgary Articles ({articles.length})
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="food" className="mt-4">
@@ -362,6 +373,17 @@ export default function CalgaryPage() {
                       </Link>
                     ))}
                   </div>
+                  {articles.filter((article) => article.category?.toLowerCase().includes('food')).length > 3 && (
+                    <div className="mt-6 text-center">
+                      <Link 
+                        href="/calgary/food-drink" 
+                        className="inline-flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                      >
+                        View All Food & Drink Articles ({articles.filter((article) => article.category?.toLowerCase().includes('food')).length})
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="arts" className="mt-4">
@@ -392,6 +414,17 @@ export default function CalgaryPage() {
                       </Link>
                     ))}
                   </div>
+                  {articles.filter((article) => article.category?.toLowerCase().includes('art')).length > 3 && (
+                    <div className="mt-6 text-center">
+                      <Link 
+                        href="/calgary/arts-culture" 
+                        className="inline-flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                      >
+                        View All Arts & Culture Articles ({articles.filter((article) => article.category?.toLowerCase().includes('art')).length})
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="outdoors" className="mt-4">
@@ -422,6 +455,17 @@ export default function CalgaryPage() {
                       </Link>
                     ))}
                   </div>
+                  {articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).length > 3 && (
+                    <div className="mt-6 text-center">
+                      <Link 
+                        href="/calgary/outdoors" 
+                        className="inline-flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                      >
+                        View All Outdoors Articles ({articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).length})
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>
