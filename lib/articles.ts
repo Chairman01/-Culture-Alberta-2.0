@@ -3,6 +3,7 @@ import {
   getAllArticles as getAllArticlesFromSupabase,
   getHomepageArticles as getHomepageArticlesFromSupabase,
   getAdminArticles as getAdminArticlesFromSupabase,
+  getCityArticles as getCityArticlesFromSupabase,
   getArticleById as getArticleByIdFromSupabase,
   createArticle as createArticleInSupabase,
   updateArticle as updateArticleInSupabase,
@@ -13,6 +14,7 @@ import {
 export const getAllArticles = getAllArticlesFromSupabase
 export const getHomepageArticles = getHomepageArticlesFromSupabase
 export const getAdminArticles = getAdminArticlesFromSupabase
+export const getCityArticles = getCityArticlesFromSupabase
 export const getArticleById = getArticleByIdFromSupabase
 export const createArticle = createArticleInSupabase
 export const updateArticle = updateArticleInSupabase

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getAllArticles } from "@/lib/articles"
+import { getCityArticles } from "@/lib/articles"
 import { Article } from "@/lib/types/article"
 import Link from "next/link"
 import Image from "next/image"
@@ -29,7 +29,7 @@ export default function CalgaryPage() {
   useEffect(() => {
     async function loadCalgaryArticles() {
       try {
-        const allArticles = await getAllArticles()
+        const allArticles = await getCityArticles('calgary')
         
         // Debug: Log all articles to see what we have
         console.log('All articles from database:', allArticles.map(a => ({ 
@@ -41,28 +41,8 @@ export default function CalgaryPage() {
           date: a.date 
         })))
         
-        // Filter for Calgary articles (including events) - now supports multiple categories
-        const calgaryPosts = allArticles.filter(
-          (post) => {
-            // Check main category
-            const hasCalgaryCategory = post.category?.toLowerCase().includes("calgary");
-            
-            // Check location
-            const hasCalgaryLocation = post.location?.toLowerCase().includes("calgary");
-            
-            // Check new categories field
-            const hasCalgaryCategories = post.categories?.some(cat => 
-              cat.toLowerCase().includes("calgary")
-            );
-            
-            // Check tags
-            const hasCalgaryTags = post.tags?.some(tag => 
-              tag.toLowerCase().includes("calgary")
-            );
-            
-            return hasCalgaryCategory || hasCalgaryLocation || hasCalgaryCategories || hasCalgaryTags;
-          }
-        )
+        // Articles are already filtered by the database query for Calgary
+        const calgaryPosts = allArticles
         setArticles(calgaryPosts)
         
         // Featured article: first article with featuredCalgary flag, or first Calgary article (excluding events) as fallback

@@ -251,6 +251,69 @@ export async function getAdminArticles(): Promise<Article[]> {
   }
 }
 
+// Optimized function for city pages (Edmonton/Calgary)
+export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Article[]> {
+  try {
+    console.log(`=== getCityArticles called for ${city} ===`)
+    
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log('Build time detected, using file system')
+      return getAllArticlesFromFile()
+    }
+    
+    if (!supabase) {
+      console.error('Supabase client is not initialized')
+      console.log('Falling back to file system')
+      return getAllArticlesFromFile()
+    }
+
+    console.log(`Attempting to fetch ${city} articles from Supabase...`)
+    
+    // Optimized query for city pages - only essential fields
+    const supabasePromise = supabase
+      .from('articles')
+      .select('id, title, excerpt, category, categories, location, author, tags, type, image_url, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+      .or(`category.ilike.%${city}%,location.ilike.%${city}%,categories.cs.{${city}},tags.cs.{${city}}`)
+      .order('created_at', { ascending: false })
+      .limit(50) // Limit to 50 most recent for city pages
+
+    const { data, error } = await Promise.race([
+      supabasePromise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Supabase timeout')), 3000)
+      )
+    ]) as any
+
+    if (error) {
+      console.warn(`Supabase ${city} query failed:`, error.message)
+      console.log('Falling back to file system')
+      return getAllArticlesFromFile()
+    }
+
+    console.log(`Successfully fetched ${city} articles from Supabase:`, data?.length || 0, 'articles')
+
+    // Map Supabase data to match our Article interface
+    const mappedArticles = (data || []).map((article: any) => ({
+      ...article,
+      imageUrl: article.image_url || article.image,
+      date: article.created_at,
+      trendingHome: article.trending_home || false,
+      trendingEdmonton: article.trending_edmonton || false,
+      trendingCalgary: article.trending_calgary || false,
+      featuredHome: article.featured_home || false,
+      featuredEdmonton: article.featured_edmonton || false,
+      featuredCalgary: article.featured_calgary || false
+    }))
+
+    return mappedArticles
+  } catch (error) {
+    console.warn(`Supabase ${city} connection failed:`, error)
+    console.log('Falling back to file system')
+    return getAllArticlesFromFile()
+  }
+}
+
 export async function getAllArticles(): Promise<Article[]> {
   try {
     console.log('=== getAllArticles called ===')

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getAllArticles } from "@/lib/articles"
+import { getCityArticles } from "@/lib/articles"
 import { Article } from "@/lib/types/article"
 
 import Link from "next/link"
@@ -35,7 +35,7 @@ export default function EdmontonPage() {
           setTimeout(() => reject(new Error('Loading timeout')), 5000)
         )
         
-        const loadPromise = getAllArticles()
+        const loadPromise = getCityArticles('edmonton')
         const allArticles = await Promise.race([loadPromise, timeoutPromise]) as EdmontonArticle[]
         
         // Debug: Log all articles to see what we have
@@ -48,28 +48,8 @@ export default function EdmontonPage() {
           date: a.date 
         })))
         
-        // Filter for Edmonton articles (including events) - now supports multiple categories
-        const edmontonPosts = allArticles.filter(
-          (post) => {
-            // Check main category
-            const hasEdmontonCategory = post.category?.toLowerCase().includes("edmonton");
-            
-            // Check location
-            const hasEdmontonLocation = post.location?.toLowerCase().includes("edmonton");
-            
-            // Check new categories field
-            const hasEdmontonCategories = post.categories?.some(cat => 
-              cat.toLowerCase().includes("edmonton")
-            );
-            
-            // Check tags
-            const hasEdmontonTags = post.tags?.some(tag => 
-              tag.toLowerCase().includes("edmonton")
-            );
-            
-            return hasEdmontonCategory || hasEdmontonLocation || hasEdmontonCategories || hasEdmontonTags;
-          }
-        )
+        // Articles are already filtered by the database query for Edmonton
+        const edmontonPosts = allArticles
         
         setArticles(edmontonPosts)
         
