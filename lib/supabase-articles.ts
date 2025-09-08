@@ -259,7 +259,9 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
       NODE_ENV: process.env.NODE_ENV,
       VERCEL: process.env.VERCEL,
       VERCEL_ENV: process.env.VERCEL_ENV,
-      shouldUseFileSystem: shouldUseFileSystem()
+      shouldUseFileSystem: shouldUseFileSystem(),
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || 'using fallback',
+      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'set' : 'using fallback'
     })
     
     // During build time, always use file system for reliability
@@ -288,7 +290,24 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
-      return getAllArticlesFromFile()
+      const fileArticles = getAllArticlesFromFile()
+      
+      // Filter file articles by city
+      const filteredFileArticles = fileArticles.filter((article: any) => {
+        const hasCityCategory = article.category?.toLowerCase().includes(city);
+        const hasCityLocation = article.location?.toLowerCase().includes(city);
+        const hasCityCategories = article.categories?.some((cat: string) => 
+          cat.toLowerCase().includes(city)
+        );
+        const hasCityTags = article.tags?.some((tag: string) => 
+          tag.toLowerCase().includes(city)
+        );
+        
+        return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+      });
+      
+      console.log(`Supabase fallback: Found ${filteredFileArticles.length} ${city} articles out of ${fileArticles.length} total`)
+      return filteredFileArticles
     }
 
     console.log(`Attempting to fetch ${city} articles from Supabase...`)
