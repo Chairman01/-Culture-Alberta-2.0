@@ -48,6 +48,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
         class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[300px] p-4 border rounded-lg',
       },
     },
+    immediatelyRender: false, // Fix SSR hydration mismatch
   })
 
   const handleImageSelect = (url: string) => {

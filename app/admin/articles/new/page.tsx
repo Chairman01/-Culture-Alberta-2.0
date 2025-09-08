@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
+import { RichTextEditor } from "@/app/admin/components/rich-text-editor"
 import { useToast } from "@/hooks/use-toast"
 import { MAIN_CATEGORIES } from "@/lib/data"
 
@@ -345,25 +346,16 @@ export default function NewArticlePage() {
         <Label htmlFor="content">Content</Label>
         <div className="mb-2">
           <p className="text-sm text-gray-600">
-            💡 <strong>Tip:</strong> You can add images anywhere in your content using markdown syntax: <code className="bg-gray-100 px-1 rounded">![alt text](image-url)</code>
+            💡 <strong>Tip:</strong> You can add images anywhere in your content using the image button in the toolbar or markdown syntax: <code className="bg-gray-100 px-1 rounded">![alt text](image-url)</code>
           </p>
           <p className="text-sm text-gray-500">
             Example: <code className="bg-gray-100 px-1 rounded">![Beautiful Edmonton skyline](https://example.com/edmonton-skyline.jpg)</code>
           </p>
         </div>
-        <Textarea
-          id="content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Write your article content here...
-
-You can add images anywhere in your content using:
-![alt text](image-url)
-
-Example:
-![Beautiful Edmonton skyline](https://example.com/edmonton-skyline.jpg)"
-          rows={12}
-          className="mt-2"
+        <RichTextEditor
+          content={content}
+          onChange={setContent}
+          placeholder="Write your article content here... You can add images using the image button in the toolbar or markdown syntax."
         />
       </div>
 
