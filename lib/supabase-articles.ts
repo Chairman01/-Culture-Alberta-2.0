@@ -267,7 +267,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
       console.log('Build time detected, using file system')
-      const fileArticles = getAllArticlesFromFile()
+      const fileArticles = await getAllArticlesFromFile()
       
       // Filter file articles by city
       const filteredFileArticles = fileArticles.filter((article: any) => {
@@ -290,7 +290,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
-      const fileArticles = getAllArticlesFromFile()
+      const fileArticles = await getAllArticlesFromFile()
       
       // Filter file articles by city
       const filteredFileArticles = fileArticles.filter((article: any) => {
@@ -368,7 +368,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
   } catch (error) {
     console.warn(`Supabase ${city} connection failed:`, error)
     console.log('Falling back to file system')
-    const fileArticles = getAllArticlesFromFile()
+    const fileArticles = await getAllArticlesFromFile()
     
     // Filter file articles by city as well
     const filteredFileArticles = fileArticles.filter((article: any) => {
