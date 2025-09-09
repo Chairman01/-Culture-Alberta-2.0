@@ -34,7 +34,9 @@ function ensureImageFields(fields: string): string {
     fields += `, ${IMAGE_FIELDS.IMAGE}`
   }
   
-  console.warn('⚠️ Image fields were missing from query, automatically added them:', fields)
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('⚠️ Image fields were missing from query, automatically added them:', fields)
+  }
   return fields
 }
 
@@ -45,6 +47,15 @@ function validateImageUrl(imageUrl: any, articleTitle: string): string | undefin
     // Only log missing images in development to avoid spam
     if (process.env.NODE_ENV === 'development') {
       console.warn(`⚠️ No image found for article: "${articleTitle}"`)
+    }
+    return undefined
+  }
+  
+  // Check if it's a valid URL or data URI
+  const isValidUrl = imageUrl.startsWith('http') || imageUrl.startsWith('data:') || imageUrl.startsWith('/')
+  if (!isValidUrl) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`⚠️ Invalid image URL for article "${articleTitle}": ${imageUrl}`)
     }
     return undefined
   }
@@ -195,7 +206,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
     const { data, error } = await Promise.race([
       supabasePromise,
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 2000) // Shorter timeout for homepage
+        setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Increased timeout to 5 seconds for better reliability
       )
     ]) as any
 
@@ -274,7 +285,7 @@ export async function getAdminArticles(): Promise<Article[]> {
     const { data, error } = await Promise.race([
       supabasePromise,
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 3000)
+        setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Increased timeout for better reliability
       )
     ]) as any
 
@@ -359,7 +370,7 @@ export async function getEventsArticles(): Promise<Article[]> {
     const { data, error } = await Promise.race([
       supabasePromise,
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 2000) // Reduced timeout to match homepage
+        setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Increased timeout to 5 seconds for better reliability
       )
     ]) as any
 
@@ -423,6 +434,31 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     if (cityArticlesCache.has(city) && (now - cityCacheTime) < CACHE_DURATION) {
       console.log(`Returning cached ${city} articles:`, cityArticlesCache.get(city)?.length || 0, 'articles')
       return cityArticlesCache.get(city) || []
+    }
+    
+    // Try to use homepage cache first for faster loading
+    if (articlesCache && (now - cacheTimestamp) < CACHE_DURATION) {
+      console.log(`Using homepage cache to filter ${city} articles`)
+      const filteredFromHomepage = articlesCache.filter((article: any) => {
+        const hasCityCategory = article.category?.toLowerCase().includes(city);
+        const hasCityLocation = article.location?.toLowerCase().includes(city);
+        const hasCityCategories = article.categories?.some((cat: string) => 
+          cat.toLowerCase().includes(city)
+        );
+        const hasCityTags = article.tags?.some((tag: string) => 
+          tag.toLowerCase().includes(city)
+        );
+        
+        return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+      });
+      
+      if (filteredFromHomepage.length > 0) {
+        console.log(`Found ${filteredFromHomepage.length} ${city} articles from homepage cache`)
+        // Cache the filtered results
+        cityArticlesCache.set(city, filteredFromHomepage)
+        cityCacheTimestamp.set(city, now)
+        return filteredFromHomepage
+      }
     }
     
     console.log('Environment check:', {
@@ -495,7 +531,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     const { data, error } = await Promise.race([
       supabasePromise,
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 10000) // Increased timeout for city pages
+        setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Increased timeout for better reliability
       )
     ]) as any
 
@@ -593,7 +629,7 @@ export async function getAllArticles(): Promise<Article[]> {
     
     // Reduced timeout for faster fallback
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Supabase timeout')), 3000) // Reduced to 3 seconds
+      setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Increased timeout for better reliability
     )
     
     const fields = ensureImageFields('id, title, slug, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
@@ -855,7 +891,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
     
     // Reduced timeout for faster fallback
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Supabase timeout')), 3000) // Reduced to 3 seconds
+      setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Increased timeout for better reliability
     )
     
     const supabasePromise = supabase

@@ -47,8 +47,18 @@ export function ImageDisplay({
     console.error(`Failed to load image: ${src}`)
     setError(true)
     setLoading(false)
-    // Use a placeholder with the correct dimensions
-    setImgSrc(`/placeholder.svg?height=${height}&width=${width}`)
+    // Use a more informative placeholder
+    setImgSrc(`data:image/svg+xml;base64,${btoa(`
+      <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#f3f4f6"/>
+        <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="14" fill="#9ca3af">
+          Image Placeholder
+        </text>
+        <text x="50%" y="60%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="12" fill="#6b7280">
+          Culture Alberta
+        </text>
+      </svg>
+    `)}`)
   }
 
   const handleLoad = () => {
