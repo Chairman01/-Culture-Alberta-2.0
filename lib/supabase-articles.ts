@@ -724,12 +724,26 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
       console.log('Build time detected, using file system')
-      return getArticleByIdFromFile(slug) // Fallback to ID lookup
+      // Try to find article by slug in file system first
+      const allArticles = getAllArticlesFromFile()
+      const article = allArticles.find(a => a.slug === slug)
+      if (article) {
+        return article
+      }
+      // If not found by slug, try by ID (for backward compatibility)
+      return getArticleByIdFromFile(slug)
     }
     
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
+      // Try to find article by slug in file system first
+      const allArticles = getAllArticlesFromFile()
+      const article = allArticles.find(a => a.slug === slug)
+      if (article) {
+        return article
+      }
+      // If not found by slug, try by ID (for backward compatibility)
       return getArticleByIdFromFile(slug)
     }
 
