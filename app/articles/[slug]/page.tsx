@@ -5,7 +5,7 @@ import { Calendar, Clock, Share2, Bookmark, ArrowLeft, ArrowRight } from 'lucide
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
-import { getArticleById, getArticleBySlug, getAllArticles } from '@/lib/supabase-articles'
+import { getArticleById, getArticleBySlug, getAllArticles, getHomepageArticles } from '@/lib/supabase-articles'
 import { use } from 'react'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
@@ -73,7 +73,6 @@ const processContentWithVideos = (content: string) => {
 import { PageTracker } from '@/components/analytics/page-tracker'
 import { trackArticleView } from '@/lib/analytics'
 import NewsletterSignup from '@/components/newsletter-signup'
-import { Footer } from '@/components/footer'
 import { ArticleContent } from '@/components/article-content'
 // import './article-styles.css' // Removed - file was deleted
 
@@ -119,12 +118,30 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
           // Track article view
           trackArticleView(loadedArticle.id, loadedArticle.title)
           
-          // Load related articles
-          const allArticles = await getAllArticles()
-          const related = allArticles
-            .filter(a => a.id !== loadedArticle.id && a.category === loadedArticle.category)
-            .slice(0, 3)
-          setRelatedArticles(related)
+          // Load related articles more efficiently - use homepage cache if available
+          try {
+            // Try to get homepage articles first (they're usually cached)
+            const homepageArticles = await getHomepageArticles()
+            const allArticles = homepageArticles.length > 0 ? homepageArticles : await getAllArticles()
+            
+            const sameCategory = allArticles
+              .filter(a => a.id !== loadedArticle.id && a.category === loadedArticle.category)
+              .slice(0, 3)
+            
+            const otherArticles = allArticles
+              .filter(a => a.id !== loadedArticle.id && a.category !== loadedArticle.category)
+              .slice(0, 3)
+            
+            // Combine and shuffle to show diverse content
+            const related = [...sameCategory, ...otherArticles]
+              .sort(() => Math.random() - 0.5)
+              .slice(0, 6)
+            
+            setRelatedArticles(related)
+          } catch (error) {
+            console.warn('Failed to load related articles, using empty array:', error)
+            setRelatedArticles([])
+          }
           
           // Show newsletter popup after 3 seconds
           setTimeout(() => {
@@ -439,6 +456,73 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                       <span>Published {formatDate(article.date || '')}</span>
                     </div>
                   </div>
+
+                  {/* More Articles Section */}
+                  {relatedArticles.length > 0 && (
+                    <div className="mt-16 pt-12 border-t border-gray-200">
+                      <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">More Articles</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {relatedArticles.slice(0, 6).map((relatedArticle) => (
+                          <Link 
+                            key={relatedArticle.id} 
+                            href={getArticleUrl(relatedArticle)}
+                            className="group block"
+                          >
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                              <div className="aspect-[16/10] w-full bg-gray-200 relative overflow-hidden">
+                                {relatedArticle.imageUrl ? (
+                                  relatedArticle.imageUrl.startsWith('data:image') || (relatedArticle.imageUrl.length > 1000 && !relatedArticle.imageUrl.includes('http')) ? (
+                                    <img
+                                      src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
+                                      alt={relatedArticle.title}
+                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                    />
+                                  ) : (
+                                    <Image
+                                      src={relatedArticle.imageUrl}
+                                      alt={relatedArticle.title}
+                                      fill
+                                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                                    />
+                                  )
+                                ) : (
+                                  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                    <span className="text-gray-400 text-lg">No Image</span>
+                                  </div>
+                                )}
+                                {/* Bookmark icon overlay */}
+                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                  <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg">
+                                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="p-6">
+                                <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
+                                  <span className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full font-medium text-sm">
+                                    {relatedArticle.category}
+                                  </span>
+                                  {relatedArticle.date && (
+                                    <span className="font-medium">{formatDate(relatedArticle.date)}</span>
+                                  )}
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 mb-3 leading-tight">
+                                  {relatedArticle.title}
+                                </h3>
+                                {relatedArticle.excerpt && (
+                                  <p className="text-gray-600 line-clamp-3 leading-relaxed">
+                                    {relatedArticle.excerpt}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Sidebar */}
@@ -505,8 +589,6 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
           </div>
         </div>
 
-        {/* Footer */}
-        <Footer />
       </div>
     </>
   )
