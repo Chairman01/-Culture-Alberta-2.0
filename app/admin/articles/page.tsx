@@ -27,6 +27,7 @@ import {
   MAIN_CATEGORIES
 } from "@/lib/data"
 import { getAdminArticles, deleteArticle } from "@/lib/articles"
+import { getArticleUrl } from '@/lib/utils/article-url'
 import { useRouter } from "next/navigation"
 
 interface ExtendedArticle extends Article {

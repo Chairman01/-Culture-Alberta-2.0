@@ -9,6 +9,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 import { Footer } from "@/components/footer"
 import { PageSEO } from '@/components/seo/page-seo'
 import { PageTracker } from '@/components/analytics/page-tracker'
+import { getArticleUrl } from '@/lib/utils/article-url'
 
 interface CalgaryArticle extends Article {
   type?: string;
@@ -105,7 +106,7 @@ export default function CalgaryAllArticlesPage() {
                 <>
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {currentArticles.map((article) => (
-                      <Link key={article.id} href={`/articles/${article.id}`} className="group block">
+                      <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
                           <div className="aspect-[4/3] w-full bg-gray-200 relative">
                             <Image

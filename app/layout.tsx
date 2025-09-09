@@ -1,5 +1,6 @@
 import './globals.css'
 import { MainNavigation } from '@/components/main-navigation'
+import { Footer } from '@/components/footer'
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 
@@ -310,6 +311,7 @@ export default function RootLayout({
       <body suppressHydrationWarning={true}>
         <MainNavigation />
         <main>{children}</main>
+        <Footer />
         <Analytics />
       </body>
     </html>

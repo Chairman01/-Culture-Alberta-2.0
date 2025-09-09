@@ -9,6 +9,7 @@ import { Article } from '@/lib/types/article'
 import { PageTracker } from '@/components/analytics/page-tracker'
 import { Suspense } from 'react'
 import { BestOfSection } from '@/components/best-of-section'
+import { getArticleUrl } from '@/lib/utils/article-url'
 
 // Server-side data loading
 async function getHomePageData() {
@@ -156,7 +157,7 @@ export default async function Home() {
                 {/* Featured Article */}
                 <div className="lg:col-span-2">
                   {featuredPost ? (
-                    <Link href={`/articles/${featuredPost.id}`} className="group block">
+                    <Link href={getArticleUrl(featuredPost)} className="group block">
                       <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
                         <div className="aspect-[16/9] w-full bg-gray-200 relative">
                           <Image
@@ -202,7 +203,7 @@ export default async function Home() {
                     <div className="space-y-3">
                       {trendingPosts.length > 0 ? (
                         trendingPosts.map((post, index) => (
-                          <Link key={post.id} href={`/articles/${post.id}`} className="block group">
+                          <Link key={post.id} href={getArticleUrl(post)} className="block group">
                             <div className="flex items-start space-x-4">
                               <span className="text-lg font-bold text-gray-300 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">{index + 1}</span>
                               <div>
@@ -215,7 +216,7 @@ export default async function Home() {
                       ) : (
                         // Fallback: show recent articles if no trending articles
                         posts.slice(0, 3).map((post, index) => (
-                          <Link key={post.id} href={`/articles/${post.id}`} className="block group">
+                          <Link key={post.id} href={getArticleUrl(post)} className="block group">
                             <div className="flex items-start space-x-4">
                               <span className="text-lg font-bold text-gray-300 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">{index + 1}</span>
                               <div>
@@ -250,7 +251,7 @@ export default async function Home() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {edmontonPosts.map((post) => (
-                  <Link key={post.id} href={`/articles/${post.id}`} className="group block">
+                  <Link key={post.id} href={getArticleUrl(post)} className="group block">
                     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
                       <div className="aspect-[16/9] w-full bg-gray-200 relative">
                         <Image
@@ -286,7 +287,7 @@ export default async function Home() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {calgaryPosts.map((post) => (
-                  <Link key={post.id} href={`/articles/${post.id}`} className="group block">
+                  <Link key={post.id} href={getArticleUrl(post)} className="group block">
                     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
                       <div className="aspect-[16/9] w-full bg-gray-200 relative">
                         <Image
@@ -342,7 +343,7 @@ export default async function Home() {
                         </div>
                         <h3 className="font-display font-bold text-xl leading-tight mb-2">{getPostTitle(event)}</h3>
                         <p className="font-body text-sm text-gray-600 line-clamp-2 mb-3">{getPostExcerpt(event)}</p>
-                        <Link href={`/articles/${event.id}`}>
+                        <Link href={getArticleUrl(event)}>
                           <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
                             View Details
                 </button>
@@ -394,7 +395,7 @@ export default async function Home() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {foodDrinkPosts.map((post) => (
-                  <Link key={post.id} href={`/articles/${post.id}`} className="group block">
+                  <Link key={post.id} href={getArticleUrl(post)} className="group block">
                     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
                       <div className="aspect-[16/9] w-full bg-gray-200 relative">
                         <Image

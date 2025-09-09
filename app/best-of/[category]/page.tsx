@@ -9,6 +9,7 @@ import { Article } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ReliableImage } from "@/components/reliable-image"
+import { getArticleUrl } from '@/lib/utils/article-url'
 
 interface ExtendedArticle extends Article {
   description?: string;
@@ -135,7 +136,7 @@ export default function BestOfCategoryPage({ params }: { params: Promise<{ categ
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {items.map((item) => (
-                  <Link key={item.id} href={`/best-of/${category}/${item.id}`} className="group">
+                  <Link key={item.id} href={getArticleUrl(item)} className="group">
                     <div className="overflow-hidden rounded-lg border bg-background">
                       <div className="relative">
                         <ReliableImage

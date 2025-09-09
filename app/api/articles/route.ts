@@ -2,20 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { 
   getAllArticles, 
   getArticleById, 
+  getArticleBySlug,
   createArticle, 
   updateArticle, 
   deleteArticle 
 } from '@/lib/supabase-articles'
 import { CreateArticleInput, UpdateArticleInput } from '@/lib/types/article'
 
-// GET /api/articles - Get all articles or get article by ID
+// GET /api/articles - Get all articles or get article by ID/slug
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
+    const slug = searchParams.get('slug')
 
-    if (id) {
-      // Get specific article by ID
+    if (slug) {
+      // Get specific article by slug
+      const article = await getArticleBySlug(slug)
+      return NextResponse.json(article)
+    } else if (id) {
+      // Get specific article by ID (for backward compatibility)
       const article = await getArticleById(id)
       return NextResponse.json(article)
     } else {

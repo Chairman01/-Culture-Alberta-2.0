@@ -5,13 +5,14 @@ import { Calendar, Clock, Share2, Bookmark, ArrowLeft, ArrowRight } from 'lucide
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
-import { getArticleById, getAllArticles } from '@/lib/articles'
+import { getArticleById, getArticleBySlug, getAllArticles } from '@/lib/supabase-articles'
 import { use } from 'react'
+import { getArticleUrl } from '@/lib/utils/article-url'
 
 import { Article } from '@/lib/types/article'
 
 // Function to process content and convert YouTube URLs to embedded videos
-const processContentWithVideos = (content: string): string => {
+const processContentWithVideos = (content: string) => {
   // Convert YouTube URLs to embedded videos
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/g
   
@@ -74,17 +75,17 @@ import { trackArticleView } from '@/lib/analytics'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { Footer } from '@/components/footer'
 import { ArticleContent } from '@/components/article-content'
-import './article-styles.css'
+// import './article-styles.css' // Removed - file was deleted
 
-export default function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
+export default function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const router = useRouter()
   const resolvedParams = use(params)
-  const [articleId, setArticleId] = useState<string>("")
+  const [slug, setSlug] = useState<string>("")
   
   // Handle async params
   useEffect(() => {
-    setArticleId(resolvedParams.id)
-  }, [resolvedParams.id])
+    setSlug(resolvedParams.slug)
+  }, [resolvedParams.slug])
   
   const [article, setArticle] = useState<Article | null>(null)
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([])
@@ -96,102 +97,64 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
 
   useEffect(() => {
     async function loadArticle() {
-      if (!articleId) {
+      if (!slug) {
         setLoading(false)
         return
       }
       
       try {
-        const article = await getArticleById(articleId)
-        setArticle(article)
+        setLoading(true)
         
-        // Load related articles
-        const allArticles = await getAllArticles()
-        const related = allArticles
-          .filter(a => a.id !== articleId && a.type !== 'event')
-          .slice(0, 6)
-        setRelatedArticles(related)
+        // Try to load by slug first, then fallback to ID
+        let loadedArticle = await getArticleBySlug(slug)
+        
+        // If not found by slug, try by ID (for backward compatibility)
+        if (!loadedArticle) {
+          loadedArticle = await getArticleById(slug)
+        }
+        
+        if (loadedArticle) {
+          setArticle(loadedArticle)
+          
+          // Track article view
+          trackArticleView(loadedArticle.id, loadedArticle.title)
+          
+          // Load related articles
+          const allArticles = await getAllArticles()
+          const related = allArticles
+            .filter(a => a.id !== loadedArticle.id && a.category === loadedArticle.category)
+            .slice(0, 3)
+          setRelatedArticles(related)
+          
+          // Show newsletter popup after 3 seconds
+          setTimeout(() => {
+            const newsletter = document.getElementById('sticky-newsletter')
+            if (newsletter) {
+              newsletter.classList.remove('opacity-0', 'translate-y-full', 'scale-95')
+              newsletter.classList.add('opacity-100', 'translate-y-0', 'scale-100')
+            }
+          }, 3000)
+        }
       } catch (error) {
-        console.error("Article not found:", articleId)
-        setArticle(null)
+        console.error('Error loading article:', error)
       } finally {
         setLoading(false)
       }
     }
+    
     loadArticle()
-  }, [articleId])
-
-  useEffect(() => {
-    if (article) {
-      trackArticleView(resolvedParams.id, article.title)
-    }
-  }, [article, resolvedParams.id])
-
-  // Redirect to homepage if article not found after loading
-  useEffect(() => {
-    if (!loading && !article) {
-      const timer = setTimeout(() => {
-        router.push('/')
-      }, 1000) // Redirect after 1 second
-      
-      return () => clearTimeout(timer)
-    }
-  }, [loading, article, router])
-
-  // Reading progress tracking and newsletter popup
-  useEffect(() => {
-    const updateReadingProgress = () => {
-      // Get the article content element
-      const articleContent = document.querySelector('.article-content') as HTMLElement
-      if (!articleContent) return
-      
-      const rect = articleContent.getBoundingClientRect()
-      const windowHeight = window.innerHeight
-      const contentHeight = articleContent.offsetHeight
-      
-      // Calculate how much of the content has been scrolled past
-      const scrolledPast = windowHeight - rect.top
-      const totalScrollable = contentHeight + windowHeight
-      const scrollPercent = Math.max(0, Math.min(100, (scrolledPast / totalScrollable) * 100))
-      
-      const progressBar = document.getElementById('header-reading-progress')
-      if (progressBar) {
-        progressBar.style.width = `${scrollPercent}%`
-      }
-
-      // Show newsletter popup when user has scrolled 30% through the article
-      const newsletter = document.getElementById('sticky-newsletter')
-      if (newsletter && scrollPercent > 30 && scrollPercent < 90) {
-        newsletter.classList.remove('opacity-0', 'translate-y-full', 'scale-95')
-        newsletter.classList.add('opacity-100', 'translate-y-0', 'scale-100')
-      } else if (newsletter && (scrollPercent <= 30 || scrollPercent >= 90)) {
-        newsletter.classList.add('opacity-0', 'translate-y-full', 'scale-95')
-        newsletter.classList.remove('opacity-100', 'translate-y-0', 'scale-100')
-      }
-    }
-
-    // Initial call
-    setTimeout(updateReadingProgress, 100)
-    
-    window.addEventListener('scroll', updateReadingProgress)
-    window.addEventListener('resize', updateReadingProgress)
-    
-    return () => {
-      window.removeEventListener('scroll', updateReadingProgress)
-      window.removeEventListener('resize', updateReadingProgress)
-    }
-  }, [article])
+  }, [slug])
 
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', { 
+      return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       })
     } catch {
-      return 'Recently'
+      return dateString
     }
   }
 
@@ -496,52 +459,44 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
                       {relatedArticles.slice(0, 3).map((relatedArticle) => (
                         <Link 
                           key={relatedArticle.id} 
-                          href={`/articles/${relatedArticle.id}`}
-                          className="block group"
+                          href={getArticleUrl(relatedArticle)}
+                          className="group block"
                         >
-                          <div className="flex items-start space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                            <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                              {relatedArticle.imageUrl && (relatedArticle.imageUrl.startsWith('data:image') || (relatedArticle.imageUrl.length > 1000 && !relatedArticle.imageUrl.includes('http'))) ? (
-                                <img
-                                  src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
-                                  alt={relatedArticle.title}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                />
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
+                              {relatedArticle.imageUrl ? (
+                                relatedArticle.imageUrl.startsWith('data:image') || (relatedArticle.imageUrl.length > 1000 && !relatedArticle.imageUrl.includes('http')) ? (
+                                  <img
+                                    src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
+                                    alt={relatedArticle.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <Image
+                                    src={relatedArticle.imageUrl}
+                                    alt={relatedArticle.title}
+                                    width={64}
+                                    height={64}
+                                    className="w-full h-full object-cover"
+                                  />
+                                )
                               ) : (
-                                <Image
-                                  src={relatedArticle.imageUrl || "/placeholder.svg"}
-                                  alt={relatedArticle.title}
-                                  fill
-                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                />
+                                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                  <span className="text-gray-400 text-xs">No Image</span>
+                                </div>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-semibold text-sm group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
+                              <h4 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
                                 {relatedArticle.title}
                               </h4>
-                              <p className="text-xs text-gray-500 mt-2">
-                                {formatDate(relatedArticle.date || '')}
+                              <p className="text-xs text-gray-500 mt-1">
+                                {relatedArticle.category}
                               </p>
                             </div>
                           </div>
                         </Link>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* Share Article */}
-                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 className="text-lg font-bold mb-4 text-gray-900">Share This Article</h3>
-                    <div className="flex space-x-3">
-                      <button className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-                        <Share2 className="w-4 h-4 inline mr-2" />
-                        Share
-                      </button>
-                      <button className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
-                        <Bookmark className="w-4 h-4 inline mr-2" />
-                        Save
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -550,68 +505,9 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
           </div>
         </div>
 
-        {/* Related Articles Section */}
-        {relatedArticles.length > 0 && (
-          <div className="bg-white py-12">
-            <div className="container mx-auto px-4">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-3xl font-bold text-gray-900">More Stories</h2>
-                <Link href="/" className="text-blue-600 hover:text-blue-700 font-medium">
-                  View All <ArrowRight className="w-4 h-4 inline ml-1" />
-                </Link>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {relatedArticles.slice(0, 6).map((relatedArticle) => (
-                  <Link 
-                    key={relatedArticle.id} 
-                    href={`/articles/${relatedArticle.id}`}
-                    className="group block"
-                  >
-                    <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-                      <div className="relative h-48 overflow-hidden">
-                        {relatedArticle.imageUrl && (relatedArticle.imageUrl.startsWith('data:image') || (relatedArticle.imageUrl.length > 1000 && !relatedArticle.imageUrl.includes('http'))) ? (
-                          <img
-                            src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
-                            alt={relatedArticle.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        ) : (
-                          <Image
-                            src={relatedArticle.imageUrl || "/placeholder.svg"}
-                            alt={relatedArticle.title}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                          {relatedArticle.category && (
-                            <span className="bg-gray-100 px-2 py-1 rounded-full">
-                              {relatedArticle.category}
-                            </span>
-                          )}
-                          <span>{formatDate(relatedArticle.date || '')}</span>
-                        </div>
-                        <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors line-clamp-2">
-                          {relatedArticle.title}
-                        </h3>
-                        {relatedArticle.excerpt && (
-                          <p className="text-gray-600 text-sm mt-2 line-clamp-2">
-                            {relatedArticle.excerpt}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Footer */}
+        <Footer />
       </div>
-      <Footer />
     </>
   )
 }

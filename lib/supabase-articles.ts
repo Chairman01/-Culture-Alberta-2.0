@@ -8,6 +8,7 @@ import {
   deleteArticleFromFile
 } from './file-articles'
 import { shouldUseFileSystem } from './build-config'
+import { createSlug, generateUniqueSlug } from './utils/slug'
 
 // Constants to prevent typos and ensure consistency
 const IMAGE_FIELDS = {
@@ -183,7 +184,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
     console.log('Attempting to fetch homepage articles from Supabase...')
     
     // Optimized query for homepage - only essential fields
-    const fields = ensureImageFields('id, title, excerpt, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
+    const fields = ensureImageFields('id, title, slug, excerpt, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
     
     const supabasePromise = supabase
       .from('articles')
@@ -346,7 +347,7 @@ export async function getEventsArticles(): Promise<Article[]> {
     console.log('Attempting to fetch events articles from Supabase...')
     
     // Optimized query for events - only essential fields for display
-    const fields = ensureImageFields('id, title, excerpt, category, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    const fields = ensureImageFields('id, title, slug, excerpt, category, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
     
     const supabasePromise = supabase
       .from('articles')
@@ -482,7 +483,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     console.log(`Attempting to fetch ${city} articles from Supabase...`)
     
     // Optimized query for city pages - only essential fields for display
-    const fields = ensureImageFields('id, title, excerpt, category, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    const fields = ensureImageFields('id, title, slug, excerpt, category, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
     
     const supabasePromise = supabase
       .from('articles')
@@ -595,7 +596,7 @@ export async function getAllArticles(): Promise<Article[]> {
       setTimeout(() => reject(new Error('Supabase timeout')), 3000) // Reduced to 3 seconds
     )
     
-    const fields = ensureImageFields('id, title, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    const fields = ensureImageFields('id, title, slug, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
     
     const supabasePromise = supabase
       .from('articles')
@@ -707,6 +708,111 @@ export function testImageFieldSafeguards() {
   console.log('Test 6 - Empty image URL:', validateImageUrl('', 'Test Article'))
   
   console.log('✅ Image field safeguards test completed')
+}
+
+// Function to get article by slug
+export async function getArticleBySlug(slug: string): Promise<Article | null> {
+  try {
+    console.log('=== getArticleBySlug called for:', slug)
+    
+    // Check individual article cache first
+    if (articleCache.has(slug)) {
+      console.log('Returning cached article by slug:', slug)
+      return articleCache.get(slug) || null
+    }
+    
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log('Build time detected, using file system')
+      return getArticleByIdFromFile(slug) // Fallback to ID lookup
+    }
+    
+    if (!supabase) {
+      console.error('Supabase client is not initialized')
+      console.log('Falling back to file system')
+      return getArticleByIdFromFile(slug)
+    }
+
+    console.log('Attempting to fetch article by slug from Supabase...')
+    
+    // Reduced timeout for faster fallback
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Supabase timeout')), 3000)
+    )
+    
+    const fields = ensureImageFields('id, title, slug, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    
+    const supabasePromise = supabase
+      .from('articles')
+      .select(fields)
+      .eq('slug', slug)
+      .single()
+
+    const { data, error } = await Promise.race([
+      supabasePromise,
+      timeoutPromise
+    ]) as any
+
+    if (error) {
+      console.warn('Supabase query failed for slug:', slug, error.message)
+      
+      // Try to find in cache by checking all cached articles
+      if (articlesCache) {
+        const cachedArticle = articlesCache.find(a => a.slug === slug)
+        if (cachedArticle) {
+          console.log('Found article in all articles cache by slug:', slug)
+          articleCache.set(slug, cachedArticle)
+          return cachedArticle
+        }
+      }
+      
+      console.log('Falling back to file system')
+      return getArticleByIdFromFile(slug)
+    }
+
+    if (!data) {
+      console.log('Article not found in Supabase by slug:', slug)
+      return null
+    }
+
+    console.log('Successfully fetched article from Supabase by slug:', slug)
+
+    // Map Supabase data to match our Article interface
+    const mappedArticle = {
+      ...data,
+      imageUrl: validateImageUrl(data.image_url || data.image, data.title),
+      date: data.created_at,
+      trendingHome: data.trending_home || false,
+      trendingEdmonton: data.trending_edmonton || false,
+      trendingCalgary: data.trending_calgary || false,
+      featuredHome: data.featured_home || false,
+      featuredEdmonton: data.featured_edmonton || false,
+      featuredCalgary: data.featured_calgary || false,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    }
+
+    // Cache the individual article
+    articleCache.set(slug, mappedArticle)
+    console.log('Cached individual article by slug:', slug)
+
+    return mappedArticle
+  } catch (error) {
+    console.error('Error fetching article by slug:', slug, error)
+    
+    // Try to find in cache by checking all cached articles
+    if (articlesCache) {
+      const cachedArticle = articlesCache.find(a => a.slug === slug)
+      if (cachedArticle) {
+        console.log('Found article in all articles cache by slug:', slug)
+        articleCache.set(slug, cachedArticle)
+        return cachedArticle
+      }
+    }
+    
+    console.log('Falling back to file system')
+    return getArticleByIdFromFile(slug)
+  }
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {

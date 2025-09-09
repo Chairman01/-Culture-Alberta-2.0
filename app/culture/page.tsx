@@ -8,6 +8,7 @@ import { getAllArticles } from "@/lib/articles"
 import { Footer } from "@/components/footer"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Article } from "@/lib/types/article"
+import { getArticleUrl } from '@/lib/utils/article-url'
 import { ArrowRight, Clock, MapPin, Star, Users, Calendar, Tag, Palette, Music, Theater, Landmark, Heart, Sparkles, Globe, Award } from "lucide-react"
 
 interface ExtendedArticle extends Article {
@@ -255,7 +256,7 @@ export default function CulturePage() {
                       {featuredArticle.excerpt}
                     </p>
                     <Link 
-                      href={`/articles/${featuredArticle.id}`}
+                      href={getArticleUrl(featuredArticle)}
                       className="inline-flex items-center bg-gray-900 text-white px-6 py-2 rounded-md font-medium hover:bg-gray-800 transition-colors group"
                     >
                       Read Full Story
@@ -329,7 +330,7 @@ export default function CulturePage() {
                 {filterArticlesByCategory(selectedCategory).map((article, index) => {
                   const IconComponent = getCategoryIcon(article.category || '')
                   return (
-                    <Link key={article.id} href={`/articles/${article.id}`} className="group block">
+                    <Link key={article.id} href={getArticleUrl(article)} className="group block">
                       <article className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
                           <div className="md:col-span-1 relative aspect-[4/3] group-hover:scale-105 transition-transform duration-300">
@@ -458,7 +459,7 @@ export default function CulturePage() {
                     return (
                       <Link 
                         key={article.id}
-                        href={`/articles/${article.id}`}
+                        href={getArticleUrl(article)}
                         className="block group"
                       >
                         <div className="flex gap-3">

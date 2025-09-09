@@ -6,6 +6,7 @@ import Image from "next/image"
 import { ArrowRight } from "lucide-react"
 import { Article } from "@/lib/data"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getArticleUrl } from '@/lib/utils/article-url'
 
 interface ExtendedArticle extends Article {
   description?: string;
@@ -14,7 +15,7 @@ interface ExtendedArticle extends Article {
 
 function ArticleCard({ article }: { article: ExtendedArticle }) {
   return (
-    <Link href={`/best-of/${article.category.toLowerCase()}/${article.id}`} className="group">
+    <Link href={getArticleUrl(article)} className="group">
       <div className="overflow-hidden rounded-lg">
         <div className="aspect-[4/3] w-full bg-muted relative">
           <Image

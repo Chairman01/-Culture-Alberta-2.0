@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { getEventsArticles } from "@/lib/articles"
 import { Footer } from "@/components/footer"
 import { Article } from "@/lib/types/article"
+import { getArticleUrl } from '@/lib/utils/article-url'
 
 interface ExtendedEvent extends Article {
   description?: string;
@@ -262,7 +263,7 @@ export default function EventsPage() {
                             <p className="text-muted-foreground">{event.excerpt || event.description}</p>
                           </div>
                           <div className="mt-4 flex items-center justify-between">
-                            <Link href={`/articles/${event.id}`}>
+                            <Link href={getArticleUrl(event)}>
                               <Button variant="outline">View Details</Button>
                             </Link>
                             <Button>Register</Button>

@@ -9,6 +9,7 @@ import { Footer } from "@/components/footer"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Article } from "@/lib/types/article"
 import { ArrowRight, Clock, MapPin } from "lucide-react"
+import { getArticleUrl } from '@/lib/utils/article-url'
 
 interface ExtendedArticle extends Article {
   description?: string;
@@ -151,7 +152,7 @@ export default function FoodDrinkPage() {
                   {featuredArticle.excerpt}
                 </p>
                 <Link 
-                  href={`/articles/${featuredArticle.id}`}
+                  href={getArticleUrl(featuredArticle)}
                   className="inline-flex items-center text-orange-600 hover:text-orange-700 font-semibold text-lg group"
                 >
                   Read More 
@@ -197,7 +198,7 @@ export default function FoodDrinkPage() {
 
               <div className="grid gap-8">
                 {articles.map((article) => (
-                  <Link key={article.id} href={`/articles/${article.id}`} className="group">
+                  <Link key={article.id} href={getArticleUrl(article)} className="group">
                     <article className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="relative aspect-[4/3]">

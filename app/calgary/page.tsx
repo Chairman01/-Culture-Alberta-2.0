@@ -12,6 +12,7 @@ import { Footer } from "@/components/footer"
 import { PageSEO } from '@/components/seo/page-seo'
 import { PageTracker } from '@/components/analytics/page-tracker'
 import { trackLocationView } from '@/lib/analytics'
+import { getArticleUrl } from '@/lib/utils/article-url'
 
 // Extend Article locally to include 'type' for filtering
 interface CalgaryArticle extends Article {
@@ -182,7 +183,7 @@ export default function CalgaryPage() {
                 {/* Feature Article (left) */}
                 {featureArticle && (
                   <div className="w-full">
-                    <Link href={`/articles/${featureArticle.id}`} className="group block">
+                    <Link href={getArticleUrl(featureArticle)} className="group block">
                       <div className="aspect-[16/9] rounded-lg overflow-hidden bg-gray-200">
                         <Image
                           src={featureArticle.imageUrl || "/placeholder.svg"}
@@ -216,7 +217,7 @@ export default function CalgaryPage() {
                         trendingArticles.map((article, index) => (
                           <Link
                             key={`trending-${article.id}-${index}`}
-                            href={`/articles/${article.id}`}
+                            href={getArticleUrl(article)}
                             className="block group"
                           >
                             <div className="flex items-start space-x-4">
@@ -233,7 +234,7 @@ export default function CalgaryPage() {
                         articles.slice(0, 3).map((article, index) => (
                           <Link
                             key={`recent-${article.id}-${index}`}
-                            href={`/articles/${article.id}`}
+                            href={getArticleUrl(article)}
                             className="block group"
                           >
                             <div className="flex items-start space-x-4">
@@ -256,7 +257,7 @@ export default function CalgaryPage() {
                        {upcomingEvents.map((event) => (
                          <Link
                            key={`event-${event.id}`}
-                           href={`/articles/${event.id}`}
+                           href={getArticleUrl(event)}
                            className="block group"
                          >
                            <h4 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 mb-1">{event.title}</h4>
@@ -307,7 +308,7 @@ export default function CalgaryPage() {
                 <TabsContent value="all" className="mt-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {articles.slice(0, 3).map((article) => (
-                      <Link key={article.id} href={`/articles/${article.id}`} className="group block">
+                      <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[4/3] w-full bg-gray-200">
                             <Image
@@ -348,7 +349,7 @@ export default function CalgaryPage() {
                 <TabsContent value="food" className="mt-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {articles.filter((article) => article.category?.toLowerCase().includes('food')).slice(0, 3).map((article) => (
-                      <Link key={article.id} href={`/articles/${article.id}`} className="group block">
+                      <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[4/3] w-full bg-gray-200">
                             <Image
@@ -389,7 +390,7 @@ export default function CalgaryPage() {
                 <TabsContent value="arts" className="mt-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {articles.filter((article) => article.category?.toLowerCase().includes('art')).slice(0, 3).map((article) => (
-                      <Link key={article.id} href={`/articles/${article.id}`} className="group block">
+                      <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[4/3] w-full bg-gray-200">
                             <Image
@@ -430,7 +431,7 @@ export default function CalgaryPage() {
                 <TabsContent value="outdoors" className="mt-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).slice(0, 3).map((article) => (
-                      <Link key={article.id} href={`/articles/${article.id}`} className="group block">
+                      <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[4/3] w-full bg-gray-200">
                             <Image
@@ -505,7 +506,7 @@ export default function CalgaryPage() {
                   })))
                   
                   return neighborhoodArticles.slice(0, 4).map((article) => (
-                    <Link key={article.id} href={`/articles/${article.id}`}>
+                    <Link key={article.id} href={getArticleUrl(article)}>
                       <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
                         <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
                           <Image
@@ -569,7 +570,7 @@ export default function CalgaryPage() {
                   })))
                   
                   return guideArticles.slice(0, 3).map((article) => (
-                    <Link key={article.id} href={`/articles/${article.id}`}>
+                    <Link key={article.id} href={getArticleUrl(article)}>
                       <div className="bg-white rounded-lg overflow-hidden shadow-sm p-4">
                         <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
                           <span className="text-2xl">📖</span>
