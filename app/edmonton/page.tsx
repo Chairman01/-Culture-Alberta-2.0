@@ -38,15 +38,6 @@ export default function EdmontonPage() {
         const loadPromise = getCityArticles('edmonton')
         const allArticles = await Promise.race([loadPromise, timeoutPromise]) as EdmontonArticle[]
         
-        // Debug: Log all articles to see what we have
-        console.log('All articles from database:', allArticles.map(a => ({ 
-          id: a.id, 
-          title: a.title, 
-          type: a.type, 
-          location: a.location, 
-          category: a.category, 
-          date: a.date 
-        })))
         
         // Articles are already filtered by the database query for Edmonton
         const edmontonPosts = allArticles
@@ -511,7 +502,7 @@ export default function EdmontonPage() {
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-3xl font-bold">Edmonton Neighborhoods</h2>
-                <Link href="/articles?category=neighborhood" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
+                <Link href="/edmonton/all-articles" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -519,8 +510,13 @@ export default function EdmontonPage() {
                 {(() => {
                   const neighborhoodArticles = articles.filter(article => 
                     article.category?.toLowerCase().includes('neighborhood') ||
+                    article.category?.toLowerCase().includes('neighbourhood') ||
                     article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
-                    article.tags?.some(tag => tag.toLowerCase().includes('neighborhood'))
+                    article.categories?.some(cat => cat.toLowerCase().includes('neighbourhood')) ||
+                    article.tags?.some(tag => tag.toLowerCase().includes('neighborhood')) ||
+                    article.tags?.some(tag => tag.toLowerCase().includes('neighbourhood')) ||
+                    article.title?.toLowerCase().includes('neighbourhood') ||
+                    article.title?.toLowerCase().includes('neighborhood')
                   )
                   
                   console.log('All articles:', articles.map(a => ({ 
@@ -560,8 +556,13 @@ export default function EdmontonPage() {
                 {/* Show placeholder if no neighborhood articles */}
                 {articles.filter(article => 
                   article.category?.toLowerCase().includes('neighborhood') ||
+                  article.category?.toLowerCase().includes('neighbourhood') ||
                   article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
-                  article.tags?.some(tag => tag.toLowerCase().includes('neighborhood'))
+                  article.categories?.some(cat => cat.toLowerCase().includes('neighbourhood')) ||
+                  article.tags?.some(tag => tag.toLowerCase().includes('neighborhood')) ||
+                  article.tags?.some(tag => tag.toLowerCase().includes('neighbourhood')) ||
+                  article.title?.toLowerCase().includes('neighbourhood') ||
+                  article.title?.toLowerCase().includes('neighborhood')
                 ).length === 0 && (
                   <div className="col-span-full text-center py-12">
                     <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -580,7 +581,7 @@ export default function EdmontonPage() {
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-3xl font-bold">Edmonton Guides</h2>
-                <Link href="/articles?category=guide" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
+                <Link href="/edmonton/all-articles" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>

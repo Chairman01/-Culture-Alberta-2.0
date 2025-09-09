@@ -9,6 +9,53 @@ import {
 } from './file-articles'
 import { shouldUseFileSystem } from './build-config'
 
+// Constants to prevent typos and ensure consistency
+const IMAGE_FIELDS = {
+  IMAGE_URL: 'image_url',
+  IMAGE: 'image'
+} as const
+
+// Standard image fields that should always be included in queries
+const STANDARD_IMAGE_FIELDS = `${IMAGE_FIELDS.IMAGE_URL}, ${IMAGE_FIELDS.IMAGE}`
+
+// Helper function to ensure image fields are always included in select queries
+function ensureImageFields(fields: string): string {
+  // Check if both image fields are already included
+  if (fields.includes(IMAGE_FIELDS.IMAGE_URL) && fields.includes(IMAGE_FIELDS.IMAGE)) {
+    return fields
+  }
+  
+  // If only one image field is missing, add it
+  if (!fields.includes(IMAGE_FIELDS.IMAGE_URL)) {
+    fields += `, ${IMAGE_FIELDS.IMAGE_URL}`
+  }
+  if (!fields.includes(IMAGE_FIELDS.IMAGE)) {
+    fields += `, ${IMAGE_FIELDS.IMAGE}`
+  }
+  
+  console.warn('⚠️ Image fields were missing from query, automatically added them:', fields)
+  return fields
+}
+
+// Helper function to validate and clean image URLs
+function validateImageUrl(imageUrl: any, articleTitle: string): string | undefined {
+  // Return undefined for null, undefined, or empty strings
+  if (!imageUrl || imageUrl === '' || imageUrl === 'null' || imageUrl === 'undefined') {
+    // Only log missing images in development to avoid spam
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`⚠️ No image found for article: "${articleTitle}"`)
+    }
+    return undefined
+  }
+  
+  // Log if we found an image URL for debugging (only in development)
+  if (imageUrl && process.env.NODE_ENV === 'development') {
+    console.log(`✅ Found image for "${articleTitle}": ${imageUrl.substring(0, 50)}${imageUrl.length > 50 ? '...' : ''}`)
+  }
+  
+  return imageUrl
+}
+
 // Enhanced cache for articles to prevent multiple API calls
 let articlesCache: Article[] | null = null
 let articleCache: Map<string, Article> = new Map()
@@ -136,9 +183,11 @@ export async function getHomepageArticles(): Promise<Article[]> {
     console.log('Attempting to fetch homepage articles from Supabase...')
     
     // Optimized query for homepage - only essential fields
+    const fields = ensureImageFields('id, title, excerpt, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
+    
     const supabasePromise = supabase
       .from('articles')
-      .select('id, title, excerpt, category, image_url, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
+      .select(fields)
       .order('created_at', { ascending: false })
       .limit(20) // Only fetch 20 most recent for homepage
 
@@ -166,7 +215,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
     // Map Supabase data to match our Article interface
     const mappedArticles = (data || []).map((article: any) => ({
       ...article,
-      imageUrl: article.image_url || article.image,
+      imageUrl: validateImageUrl(article.image_url || article.image, article.title),
       date: article.created_at,
       trendingHome: article.trending_home || false,
       trendingEdmonton: article.trending_edmonton || false,
@@ -297,9 +346,11 @@ export async function getEventsArticles(): Promise<Article[]> {
     console.log('Attempting to fetch events articles from Supabase...')
     
     // Optimized query for events - only essential fields for display
+    const fields = ensureImageFields('id, title, excerpt, category, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    
     const supabasePromise = supabase
       .from('articles')
-      .select('id, title, excerpt, category, location, image_url, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+      .select(fields)
       .eq('type', 'event')
       .order('created_at', { ascending: false })
       .limit(30) // Reduced limit for faster loading
@@ -329,7 +380,7 @@ export async function getEventsArticles(): Promise<Article[]> {
     // Map Supabase data to match our Article interface
     const mappedArticles = (data || []).map((article: any) => ({
       ...article,
-      imageUrl: article.image_url || article.image,
+      imageUrl: validateImageUrl(article.image_url || article.image, article.title),
       date: article.created_at,
       trendingHome: article.trending_home || false,
       trendingEdmonton: article.trending_edmonton || false,
@@ -431,17 +482,19 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     console.log(`Attempting to fetch ${city} articles from Supabase...`)
     
     // Optimized query for city pages - only essential fields for display
+    const fields = ensureImageFields('id, title, excerpt, category, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    
     const supabasePromise = supabase
       .from('articles')
-      .select('id, title, excerpt, category, location, image_url, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
-      .or(`category.ilike.%${city}%,location.ilike.%${city}%`)
+      .select(fields)
+      .or(`category.ilike.%${city}%,location.ilike.%${city}%,title.ilike.%${city}%`)
       .order('created_at', { ascending: false })
       .limit(30) // Reduced limit for faster loading
 
     const { data, error } = await Promise.race([
       supabasePromise,
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 2000) // Reduced timeout to match homepage
+        setTimeout(() => reject(new Error('Supabase timeout')), 10000) // Increased timeout for city pages
       )
     ]) as any
 
@@ -456,7 +509,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     // Map Supabase data to match our Article interface
     const mappedArticles = (data || []).map((article: any) => ({
       ...article,
-      imageUrl: article.image_url || article.image,
+      imageUrl: validateImageUrl(article.image_url || article.image, article.title),
       date: article.created_at,
       trendingHome: article.trending_home || false,
       trendingEdmonton: article.trending_edmonton || false,
@@ -542,9 +595,11 @@ export async function getAllArticles(): Promise<Article[]> {
       setTimeout(() => reject(new Error('Supabase timeout')), 3000) // Reduced to 3 seconds
     )
     
+    const fields = ensureImageFields('id, title, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    
     const supabasePromise = supabase
       .from('articles')
-      .select('id, title, excerpt, content, category, categories, location, author, tags, type, status, image_url, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+      .select(fields)
       .order('created_at', { ascending: false })
       .limit(50) // Limit to 50 most recent articles for better performance
 
@@ -578,7 +633,7 @@ export async function getAllArticles(): Promise<Article[]> {
     // Map Supabase data to match our Article interface
     const mappedArticles = (data || []).map((article: any) => ({
       ...article,
-      imageUrl: article.image_url || article.image, // Map 'image_url' or 'image' column to 'imageUrl'
+      imageUrl: validateImageUrl(article.image_url || article.image, article.title), // Map 'image_url' or 'image' column to 'imageUrl'
       date: article.created_at, // Map 'created_at' to 'date' for compatibility
       // Map trending flags from database columns to interface properties
       trendingHome: article.trending_home || false,
@@ -622,6 +677,36 @@ export function clearArticlesCache() {
   cityArticlesCache.clear()
   cityCacheTimestamp.clear()
   console.log('Articles cache cleared (including city cache)')
+}
+
+// Development helper to test image field safeguards
+export function testImageFieldSafeguards() {
+  if (process.env.NODE_ENV !== 'development') {
+    console.log('Image field safeguards test only available in development')
+    return
+  }
+  
+  console.log('🧪 Testing image field safeguards...')
+  
+  // Test ensureImageFields function
+  const testFields1 = 'id, title, excerpt'
+  const result1 = ensureImageFields(testFields1)
+  console.log('Test 1 - Missing both fields:', result1)
+  
+  const testFields2 = 'id, title, image_url, excerpt'
+  const result2 = ensureImageFields(testFields2)
+  console.log('Test 2 - Missing image field:', result2)
+  
+  const testFields3 = 'id, title, image_url, image, excerpt'
+  const result3 = ensureImageFields(testFields3)
+  console.log('Test 3 - Both fields present:', result3)
+  
+  // Test validateImageUrl function
+  console.log('Test 4 - Valid image URL:', validateImageUrl('data:image/jpeg;base64,/9j/4AAQ...', 'Test Article'))
+  console.log('Test 5 - Null image URL:', validateImageUrl(null, 'Test Article'))
+  console.log('Test 6 - Empty image URL:', validateImageUrl('', 'Test Article'))
+  
+  console.log('✅ Image field safeguards test completed')
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {

@@ -476,7 +476,7 @@ export default function CalgaryPage() {
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-3xl font-bold">Calgary Neighborhoods</h2>
-                <Link href="/articles?category=neighborhood" className="text-red-600 hover:text-red-700 flex items-center gap-2 font-body font-medium">
+                <Link href="/calgary/all-articles" className="text-red-600 hover:text-red-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -545,7 +545,7 @@ export default function CalgaryPage() {
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-3xl font-bold">Calgary Guides</h2>
-                <Link href="/articles?category=guide" className="text-red-600 hover:text-red-700 flex items-center gap-2 font-body font-medium">
+                <Link href="/calgary/all-articles" className="text-red-600 hover:text-red-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
