@@ -92,7 +92,7 @@ export default function BestOfPage() {
     }
   }
 
-  const categories = Array.from(new Set(articles.map(a => a.category).filter(cat => cat && cat.trim() !== '')))
+  const categories = Array.from(new Set(articles.map(a => a.category).filter(cat => cat && cat.trim() !== ''))) as string[]
   const filteredArticles = selectedCategory === "all" 
     ? articles 
     : articles.filter(article => article.category === selectedCategory)
