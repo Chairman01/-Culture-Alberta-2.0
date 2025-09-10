@@ -5,13 +5,6 @@ const nextConfig = {
   ...(process.env.NODE_ENV === 'production' && {
     // Enable compression in production
     compress: true,
-    // Optimize bundle size
-    swcMinify: true,
-    // Enable experimental features for better performance
-    experimental: {
-      optimizeCss: true,
-      optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
-    },
   }),
   images: {
     remotePatterns: [
