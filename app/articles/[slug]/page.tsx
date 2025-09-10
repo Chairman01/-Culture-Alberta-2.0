@@ -122,7 +122,8 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
         
         // If not found by title, try by ID (for backward compatibility)
         if (!loadedArticle) {
-          loadedArticle = await getArticleById(slug)
+          const articleById = await getArticleById(slug)
+          loadedArticle = articleById || undefined
         }
         
         if (loadedArticle) {
