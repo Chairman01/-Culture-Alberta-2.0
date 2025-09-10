@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { getHomepageArticles } from '@/lib/articles'
-import { Footer } from '@/components/footer'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { PageSEO } from '@/components/seo/page-seo'
@@ -423,7 +422,6 @@ export default async function Home() {
           {/* Best of Alberta */}
           <BestOfSection />
         </main>
-        <Footer />
       </div>
       </Suspense>
     </>

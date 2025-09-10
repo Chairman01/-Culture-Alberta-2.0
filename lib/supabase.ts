@@ -9,5 +9,18 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
   auth: {
     persistSession: false, // Disable session persistence for SSR
     autoRefreshToken: false, // Disable auto refresh for SSR
-  }
+  },
+  db: {
+    schema: 'public',
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'culture-alberta-app',
+    },
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
 })

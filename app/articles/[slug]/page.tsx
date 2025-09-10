@@ -5,7 +5,8 @@ import { Calendar, Clock, Share2, Bookmark, ArrowLeft, ArrowRight } from 'lucide
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
-import { getArticleById, getArticleBySlug, getAllArticles, getHomepageArticles } from '@/lib/supabase-articles'
+import { getArticleById, getAllArticles, getHomepageArticles } from '@/lib/supabase-articles'
+import { getTitleFromUrl } from '@/lib/utils/article-url'
 import { use } from 'react'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
@@ -104,10 +105,22 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
       try {
         setLoading(true)
         
-        // Try to load by slug first, then fallback to ID
-        let loadedArticle = await getArticleBySlug(slug)
+        // Get all articles and find by URL match
+        const allArticles = await getAllArticles()
+        let loadedArticle = allArticles.find(article => {
+          // Convert article title to URL format and compare
+          const articleUrlTitle = article.title
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .substring(0, 100)
+          
+          return articleUrlTitle === slug.toLowerCase()
+        })
         
-        // If not found by slug, try by ID (for backward compatibility)
+        // If not found by title, try by ID (for backward compatibility)
         if (!loadedArticle) {
           loadedArticle = await getArticleById(slug)
         }
@@ -122,22 +135,27 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
           try {
             // Try to get homepage articles first (they're usually cached)
             const homepageArticles = await getHomepageArticles()
-            const allArticles = homepageArticles.length > 0 ? homepageArticles : await getAllArticles()
             
-            const sameCategory = allArticles
-              .filter(a => a.id !== loadedArticle.id && a.category === loadedArticle.category)
-              .slice(0, 3)
-            
-            const otherArticles = allArticles
-              .filter(a => a.id !== loadedArticle.id && a.category !== loadedArticle.category)
-              .slice(0, 3)
-            
-            // Combine and shuffle to show diverse content
-            const related = [...sameCategory, ...otherArticles]
-              .sort(() => Math.random() - 0.5)
-              .slice(0, 6)
-            
-            setRelatedArticles(related)
+            if (homepageArticles.length > 0) {
+              // Use cached homepage articles for better performance
+              const sameCategory = homepageArticles
+                .filter(a => a.id !== loadedArticle.id && a.category === loadedArticle.category)
+                .slice(0, 3)
+              
+              const otherArticles = homepageArticles
+                .filter(a => a.id !== loadedArticle.id && a.category !== loadedArticle.category)
+                .slice(0, 3)
+              
+              // Combine and shuffle to show diverse content
+              const related = [...sameCategory, ...otherArticles]
+                .sort(() => Math.random() - 0.5)
+                .slice(0, 6)
+              
+              setRelatedArticles(related)
+            } else {
+              // Fallback to empty array if no cached articles
+              setRelatedArticles([])
+            }
           } catch (error) {
             console.warn('Failed to load related articles, using empty array:', error)
             setRelatedArticles([])

@@ -58,12 +58,6 @@ export default function NewPostPage() {
     setIsSaving(true)
 
     try {
-      // Create slug from title
-      const slug = title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '')
-
       // Create the article in Supabase
       const newPost = await createArticle({
         title,
@@ -80,8 +74,16 @@ export default function NewPostPage() {
         description: "Your post has been created successfully.",
       })
 
-      // Redirect to the article page
-      router.push(`/articles/${newPost.id}`)
+      // Redirect to the article page using title-based URL for better SEO
+      const urlTitle = title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 100)
+      
+      router.push(`/articles/${urlTitle}`)
     } catch (error) {
       console.error("Error creating post:", error)
       toast({

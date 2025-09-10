@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getEventsArticles } from "@/lib/articles"
-import { Footer } from "@/components/footer"
 import { Article } from "@/lib/types/article"
 import { getArticleUrl } from '@/lib/utils/article-url'
 
@@ -278,7 +277,6 @@ export default function EventsPage() {
           </div>
         </section>
       </main>
-      <Footer />
     </div>
   )
 }

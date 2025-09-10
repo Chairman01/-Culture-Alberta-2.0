@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { 
   getAllArticles, 
   getArticleById, 
-  getArticleBySlug,
   createArticle, 
   updateArticle, 
   deleteArticle 
@@ -17,8 +16,18 @@ export async function GET(request: NextRequest) {
     const slug = searchParams.get('slug')
 
     if (slug) {
-      // Get specific article by slug
-      const article = await getArticleBySlug(slug)
+      // Get all articles and find by title match (since we're using title-based URLs)
+      const allArticles = await getAllArticles()
+      const article = allArticles.find(a => 
+        a.title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-') === slug.toLowerCase()
+      )
+      
+      if (!article) {
+        return NextResponse.json(
+          { error: 'Article not found' },
+          { status: 404 }
+        )
+      }
       return NextResponse.json(article)
     } else if (id) {
       // Get specific article by ID (for backward compatibility)

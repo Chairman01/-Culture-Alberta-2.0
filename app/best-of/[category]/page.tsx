@@ -221,20 +221,6 @@ export default function BestOfCategoryPage({ params }: { params: Promise<{ categ
           </div>
         </section>
       </main>
-
-      <footer className="w-full border-t bg-background py-6">
-        <div className="container flex flex-col items-center justify-between gap-4 md:flex-row">
-          <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
-            © 2025 Culture Alberta. All rights reserved.
-          </p>
-          <nav className="flex gap-4 sm:gap-6">
-            <Link href="/about" className="text-sm font-medium hover:underline underline-offset-4">About</Link>
-            <Link href="/contact" className="text-sm font-medium hover:underline underline-offset-4">Contact</Link>
-            <Link href="/privacy" className="text-sm font-medium hover:underline underline-offset-4">Privacy</Link>
-            <Link href="/terms" className="text-sm font-medium hover:underline underline-offset-4">Terms</Link>
-          </nav>
-        </div>
-      </footer>
     </div>
   )
 }

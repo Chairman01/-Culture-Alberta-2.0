@@ -9,7 +9,6 @@ import Image from "next/image"
 import { ArrowRight, Calendar, MapPin } from "lucide-react"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Footer } from "@/components/footer"
 import { PageSEO } from '@/components/seo/page-seo'
 import { PageTracker } from '@/components/analytics/page-tracker'
 import { trackLocationView } from '@/lib/analytics'
@@ -125,6 +124,16 @@ export default function EdmontonPage() {
         setUpcomingEvents(edmontonEvents.slice(0, 3))
       } catch (error) {
         console.error("Error loading Edmonton articles:", error)
+        
+        // Provide more specific error handling
+        if (error instanceof Error) {
+          if (error.message === 'Loading timeout') {
+            console.log('Loading timed out, but this is normal if Supabase is slow')
+          } else {
+            console.log('Other error occurred:', error.message)
+          }
+        }
+        
         // Set empty arrays to prevent infinite loading
         setArticles([])
         setFeatureArticle(null)
@@ -636,7 +645,6 @@ export default function EdmontonPage() {
             </div>
           </section>
         </main>
-        <Footer />
       </div>
     </>
   )

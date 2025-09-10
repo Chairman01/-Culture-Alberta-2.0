@@ -5,7 +5,6 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { getAllArticles } from "@/lib/articles"
-import { Footer } from "@/components/footer"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Article } from "@/lib/types/article"
 import { getArticleUrl } from '@/lib/utils/article-url'
@@ -505,7 +504,6 @@ export default function CulturePage() {
         </div>
       </section>
 
-      <Footer />
     </div>
   )
 }

@@ -1,7 +1,6 @@
 export interface Article {
   id: string;
   title: string;
-  slug?: string; // URL-friendly version of title
   content: string;
   excerpt?: string;
   description?: string;
@@ -32,7 +31,6 @@ export interface Article {
 
 export interface CreateArticleInput {
   title: string;
-  slug?: string; // URL-friendly version of title
   content: string;
   imageUrl?: string; // Keep for backward compatibility
   imageUrls?: string[]; // New field for multiple images

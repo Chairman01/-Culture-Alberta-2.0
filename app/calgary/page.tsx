@@ -8,7 +8,6 @@ import Image from "next/image"
 import { ArrowRight, Calendar, MapPin, Clock } from "lucide-react"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Footer } from "@/components/footer"
 import { PageSEO } from '@/components/seo/page-seo'
 import { PageTracker } from '@/components/analytics/page-tracker'
 import { trackLocationView } from '@/lib/analytics'
@@ -600,7 +599,6 @@ export default function CalgaryPage() {
             </div>
           </section>
         </main>
-        <Footer />
       </div>
     </>
   )
