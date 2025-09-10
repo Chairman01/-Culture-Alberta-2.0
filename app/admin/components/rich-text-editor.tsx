@@ -193,10 +193,10 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
           height: auto;
         }
         .ProseMirror span[style*="font-family"] {
-          font-family: inherit !important;
+          font-family: var(--font-family) !important;
         }
         .ProseMirror span[style*="font-size"] {
-          font-size: inherit !important;
+          font-size: var(--font-size) !important;
         }
       `}</style>
       
@@ -352,8 +352,8 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
                .replace(/<strong>/g, '<strong class="font-semibold text-gray-900">')
                .replace(/<em>/g, '<em class="italic text-gray-800">')
                .replace(/<img([^>]*)>/g, '<img$1 class="rounded-lg shadow-lg my-8 max-w-full h-auto">')
-               .replace(/<span style="font-family:([^"]+)"/g, '<span style="font-family:$1"')
-               .replace(/<span style="font-size:([^"]+)"/g, '<span style="font-size:$1"')
+               .replace(/<span style="font-family:([^"]+)"/g, '<span style="font-family:$1" class="font-custom"')
+               .replace(/<span style="font-size:([^"]+)"/g, '<span style="font-size:$1" class="text-custom"')
            }}
         />
       ) : (

@@ -8,6 +8,8 @@ import {
   deleteArticleFromFile
 } from './file-articles'
 import { shouldUseFileSystem } from './build-config'
+import { getProductionCacheSettings, handleProductionError, trackProductionPerformance } from './production-optimizations'
+import { optimizeDataFetching, trackResourceUsage } from './vercel-optimizations'
 
 // Constants to prevent typos and ensure consistency
 const IMAGE_FIELDS = {
@@ -73,7 +75,13 @@ let articleCache: Map<string, Article> = new Map()
 let cityArticlesCache: Map<string, Article[]> = new Map()
 let cacheTimestamp: number = 0
 let cityCacheTimestamp: Map<string, number> = new Map()
-const CACHE_DURATION = 10 * 60 * 1000 // 10 minutes for better performance
+// Dynamic cache duration based on environment
+const getCacheDuration = () => {
+  const settings = getProductionCacheSettings()
+  const vercelSettings = optimizeDataFetching()
+  // Use the shorter duration between production and Vercel settings
+  return Math.min(settings.cacheDuration, vercelSettings.cacheDuration)
+}
 
 // Test function to check if articles table exists
 export async function checkArticlesTable(): Promise<boolean> {
@@ -169,12 +177,13 @@ export async function testSupabaseConnection(): Promise<boolean> {
 
 // Optimized function for homepage that only fetches essential fields
 export async function getHomepageArticles(): Promise<Article[]> {
+  const startTime = Date.now()
   try {
     console.log('=== getHomepageArticles called ===')
     
     // Check cache first
     const now = Date.now()
-    if (articlesCache && (now - cacheTimestamp) < CACHE_DURATION) {
+    if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
       console.log('Returning cached articles for homepage:', articlesCache.length, 'articles')
       return articlesCache
     }
@@ -205,7 +214,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
     const { data, error } = await Promise.race([
       supabasePromise,
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Increased timeout to 5 seconds for better reliability
+        setTimeout(() => reject(new Error('Supabase timeout')), getProductionCacheSettings().timeoutDuration) // Dynamic timeout based on environment
       )
     ]) as any
 
@@ -240,6 +249,9 @@ export async function getHomepageArticles(): Promise<Article[]> {
     articlesCache = mappedArticles
     cacheTimestamp = now
     console.log('Updated homepage articles cache')
+
+    // Track resource usage
+    trackResourceUsage('getHomepageArticles', startTime)
 
     return mappedArticles
   } catch (error) {
@@ -284,7 +296,7 @@ export async function getAdminArticles(): Promise<Article[]> {
     const { data, error } = await Promise.race([
       supabasePromise,
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 10000) // Increased to 10 seconds for better reliability
+        setTimeout(() => reject(new Error('Supabase timeout')), getProductionCacheSettings().timeoutDuration * 1.5) // Dynamic timeout based on environment
       )
     ]) as any
 
@@ -321,7 +333,7 @@ export async function getEventsArticles(): Promise<Article[]> {
     // Check cache first
     const now = Date.now()
     const eventsCacheTime = cityCacheTimestamp.get('events') || 0
-    if (cityArticlesCache.has('events') && (now - eventsCacheTime) < CACHE_DURATION) {
+    if (cityArticlesCache.has('events') && (now - eventsCacheTime) < getCacheDuration()) {
       console.log('Returning cached events articles:', cityArticlesCache.get('events')?.length || 0, 'articles')
       return cityArticlesCache.get('events') || []
     }
@@ -369,7 +381,7 @@ export async function getEventsArticles(): Promise<Article[]> {
     const { data, error } = await Promise.race([
       supabasePromise,
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Increased timeout to 5 seconds for better reliability
+        setTimeout(() => reject(new Error('Supabase timeout')), getProductionCacheSettings().timeoutDuration) // Dynamic timeout based on environment
       )
     ]) as any
 
@@ -430,13 +442,13 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     // Check cache first
     const now = Date.now()
     const cityCacheTime = cityCacheTimestamp.get(city) || 0
-    if (cityArticlesCache.has(city) && (now - cityCacheTime) < CACHE_DURATION) {
+    if (cityArticlesCache.has(city) && (now - cityCacheTime) < getCacheDuration()) {
       console.log(`Returning cached ${city} articles:`, cityArticlesCache.get(city)?.length || 0, 'articles')
       return cityArticlesCache.get(city) || []
     }
     
     // Try to use homepage cache first for faster loading
-    if (articlesCache && (now - cacheTimestamp) < CACHE_DURATION) {
+    if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
       console.log(`Using homepage cache to filter ${city} articles`)
       const filteredFromHomepage = articlesCache.filter((article: any) => {
         const hasCityCategory = article.category?.toLowerCase().includes(city);
@@ -530,7 +542,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     const { data, error } = await Promise.race([
       supabasePromise,
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 10000) // Increased to 10 seconds for better reliability
+        setTimeout(() => reject(new Error('Supabase timeout')), getProductionCacheSettings().timeoutDuration * 1.5) // Dynamic timeout based on environment
       )
     ]) as any
 
@@ -607,7 +619,7 @@ export async function getAllArticles(): Promise<Article[]> {
     
     // Check cache first
     const now = Date.now()
-    if (articlesCache && (now - cacheTimestamp) < CACHE_DURATION) {
+    if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
       console.log('Returning cached articles:', articlesCache.length, 'articles')
       return articlesCache
     }
@@ -628,7 +640,7 @@ export async function getAllArticles(): Promise<Article[]> {
     
     // Reduced timeout for faster fallback
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Supabase timeout')), 10000) // Increased to 10 seconds for better reliability
+      setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Reduced to 5 seconds for better performance
     )
     
     const fields = ensureImageFields('id, title,  excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
@@ -772,7 +784,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
     
     // Reduced timeout for faster fallback
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Supabase timeout')), 10000) // Increased to 10 seconds for better reliability
+      setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Reduced to 5 seconds for better performance
     )
     
     const supabasePromise = supabase
@@ -921,6 +933,9 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
     console.log('Article created successfully in Supabase:', data)
     // Clear cache to ensure fresh data
     clearArticlesCache()
+    // Force immediate cache refresh for admin
+    articlesCache = null
+    cacheTimestamp = 0
     return data
   } catch (error) {
     console.error('Supabase insert failed, using file fallback:', error)
@@ -988,6 +1003,9 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
     console.log('Article updated successfully in Supabase:', data)
     // Clear cache to ensure fresh data
     clearArticlesCache()
+    // Force immediate cache refresh for admin
+    articlesCache = null
+    cacheTimestamp = 0
     return data
   } catch (error) {
     console.error('Supabase update failed, using file fallback:', {

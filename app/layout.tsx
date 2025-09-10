@@ -3,6 +3,7 @@ import { MainNavigation } from '@/components/main-navigation'
 import { Footer } from '@/components/footer'
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 export default function RootLayout({
   children,
@@ -313,6 +314,7 @@ export default function RootLayout({
         <main>{children}</main>
         <Footer />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { optimizeImageLoading } from "@/lib/vercel-optimizations"
 
 interface ImageDisplayProps {
   src: string
@@ -20,6 +21,12 @@ export function ImageDisplay({
   priority = false,
   ...rest
 }: ImageDisplayProps) {
+  // Get optimized image settings for Vercel
+  const imageSettings = optimizeImageLoading()
+  
+  // Use optimized dimensions in production
+  const optimizedWidth = imageSettings.maxWidth < width ? imageSettings.maxWidth : width
+  const optimizedHeight = imageSettings.maxHeight < height ? imageSettings.maxHeight : height
   const [imgSrc, setImgSrc] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -47,9 +54,9 @@ export function ImageDisplay({
     console.error(`Failed to load image: ${src}`)
     setError(true)
     setLoading(false)
-    // Use a more informative placeholder
+    // Use a more informative placeholder with optimized dimensions
     setImgSrc(`data:image/svg+xml;base64,${btoa(`
-      <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <svg width="${optimizedWidth}" height="${optimizedHeight}" xmlns="http://www.w3.org/2000/svg">
         <rect width="100%" height="100%" fill="#f3f4f6"/>
         <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="14" fill="#9ca3af">
           Image Placeholder
@@ -69,7 +76,7 @@ export function ImageDisplay({
     return (
       <div
         className={`bg-muted animate-pulse flex items-center justify-center ${className}`}
-        style={{ width: width || "100%", height: height || "auto" }}
+        style={{ width: optimizedWidth || "100%", height: optimizedHeight || "auto" }}
       >
         <svg
           className="w-10 h-10 text-muted-foreground"
@@ -92,8 +99,8 @@ export function ImageDisplay({
     <img
       src={imgSrc || "/placeholder.svg"}
       alt={alt}
-      width={width}
-      height={height}
+      width={optimizedWidth}
+      height={optimizedHeight}
       className={className}
       onError={handleError}
       onLoad={handleLoad}
