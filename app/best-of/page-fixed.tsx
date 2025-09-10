@@ -12,7 +12,7 @@ import { getAllArticles } from "@/lib/articles"
 import { Article } from "@/lib/types/article"
 import { getArticleUrl } from '@/lib/utils/article-url'
 
-interface ExtendedArticle extends Article {
+interface ExtendedArticle extends Omit<Article, 'content'> {
   name?: string;
   description?: string;
   rating?: number;
