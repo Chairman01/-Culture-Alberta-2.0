@@ -13,12 +13,14 @@ export const isVercelProduction = () => {
 export const getProductionCacheSettings = () => {
   if (isProduction()) {
     return {
-      // Shorter cache duration in production for faster updates
-      cacheDuration: 3 * 60 * 1000, // 3 minutes
-      // More aggressive timeout for faster fallbacks
-      timeoutDuration: 2000, // 2 seconds
+      // Much shorter cache duration for faster updates
+      cacheDuration: 30 * 1000, // 30 seconds
+      // Longer timeout to prevent unnecessary fallbacks
+      timeoutDuration: 5000, // 5 seconds
       // Enable more aggressive caching
       enableAggressiveCaching: true,
+      // Enable request deduplication
+      enableRequestDeduplication: true,
     }
   }
   
@@ -26,6 +28,7 @@ export const getProductionCacheSettings = () => {
     cacheDuration: 10 * 60 * 1000, // 10 minutes in development
     timeoutDuration: 5000, // 5 seconds in development
     enableAggressiveCaching: false,
+    enableRequestDeduplication: false,
   }
 }
 

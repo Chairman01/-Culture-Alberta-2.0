@@ -10,6 +10,7 @@ import {
 import { shouldUseFileSystem } from './build-config'
 import { getProductionCacheSettings, handleProductionError, trackProductionPerformance } from './production-optimizations'
 import { optimizeDataFetching, trackResourceUsage } from './vercel-optimizations'
+import { deduplicateRequest, generateCacheKey } from './request-deduplication'
 
 // Constants to prevent typos and ensure consistency
 const IMAGE_FIELDS = {
@@ -178,45 +179,50 @@ export async function testSupabaseConnection(): Promise<boolean> {
 // Optimized function for homepage that only fetches essential fields
 export async function getHomepageArticles(): Promise<Article[]> {
   const startTime = Date.now()
-  try {
-    console.log('=== getHomepageArticles called ===')
-    
-    // Check cache first
-    const now = Date.now()
-    if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
-      console.log('Returning cached articles for homepage:', articlesCache.length, 'articles')
-      return articlesCache
-    }
-    
-    // During build time, always use file system for reliability
-    if (shouldUseFileSystem()) {
-      console.log('Build time detected, using file system')
-      return getAllArticlesFromFile()
-    }
-    
-    if (!supabase) {
-      console.error('Supabase client is not initialized')
-      console.log('Falling back to file system')
-      return getAllArticlesFromFile()
-    }
+  
+  // Use request deduplication to prevent multiple identical requests
+  const cacheKey = generateCacheKey('getHomepageArticles')
+  
+  return deduplicateRequest(cacheKey, async () => {
+    try {
+      console.log('=== getHomepageArticles called ===')
+      
+      // Check cache first
+      const now = Date.now()
+      if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
+        console.log('Returning cached articles for homepage:', articlesCache.length, 'articles')
+        return articlesCache
+      }
+      
+      // During build time, always use file system for reliability
+      if (shouldUseFileSystem()) {
+        console.log('Build time detected, using file system')
+        return getAllArticlesFromFile()
+      }
+      
+      if (!supabase) {
+        console.error('Supabase client is not initialized')
+        console.log('Falling back to file system')
+        return getAllArticlesFromFile()
+      }
 
-    console.log('Attempting to fetch homepage articles from Supabase...')
-    
-    // Optimized query for homepage - only essential fields
-    const fields = ensureImageFields('id, title, excerpt, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
-    
-    const supabasePromise = supabase
-      .from('articles')
-      .select(fields)
-      .order('created_at', { ascending: false })
-      .limit(20) // Only fetch 20 most recent for homepage
+      console.log('Attempting to fetch homepage articles from Supabase...')
+      
+      // Optimized query for homepage - only essential fields
+      const fields = ensureImageFields('id, title, excerpt, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
+      
+      const supabasePromise = supabase
+        .from('articles')
+        .select(fields)
+        .order('created_at', { ascending: false })
+        .limit(20) // Only fetch 20 most recent for homepage
 
-    const { data, error } = await Promise.race([
-      supabasePromise,
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), getProductionCacheSettings().timeoutDuration) // Dynamic timeout based on environment
-      )
-    ]) as any
+      const { data, error } = await Promise.race([
+        supabasePromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Supabase timeout')), getProductionCacheSettings().timeoutDuration) // Dynamic timeout based on environment
+        )
+      ]) as any
 
     if (error) {
       console.warn('Supabase homepage query failed:', error.message)
@@ -253,18 +259,19 @@ export async function getHomepageArticles(): Promise<Article[]> {
     // Track resource usage
     trackResourceUsage('getHomepageArticles', startTime)
 
-    return mappedArticles
-  } catch (error) {
-    console.warn('Supabase homepage connection failed:', error)
-    
-    if (articlesCache) {
-      console.log('Using cached articles for homepage due to connection error')
-      return articlesCache
+      return mappedArticles
+    } catch (error) {
+      console.warn('Supabase homepage connection failed:', error)
+      
+      if (articlesCache) {
+        console.log('Using cached articles for homepage due to connection error')
+        return articlesCache
+      }
+      
+      console.log('No cache available, falling back to file system')
+      return getAllArticlesFromFile()
     }
-    
-    console.log('No cache available, falling back to file system')
-    return getAllArticlesFromFile()
-  }
+  })
 }
 
 // Optimized function for admin list that only fetches essential fields

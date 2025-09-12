@@ -107,8 +107,16 @@ export default function AdminArticles() {
       // Reload articles
       await loadAllArticles()
       
+      // Force homepage revalidation (for static generation)
+      try {
+        await fetch('/api/revalidate?path=/', { method: 'POST' })
+        console.log('Homepage revalidation triggered')
+      } catch (revalidateError) {
+        console.log('Revalidation not available, cache cleared instead')
+      }
+      
       // Show success message
-      alert('Cache cleared and articles refreshed! Homepage will now show updated content.')
+      alert('Cache cleared and homepage refreshed! Changes should appear within 30 seconds.')
     } catch (error) {
       console.error('Error refreshing cache:', error)
       alert('Error refreshing cache. Please try again.')

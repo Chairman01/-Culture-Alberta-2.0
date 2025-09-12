@@ -1,3 +1,5 @@
+"use client"
+
 import Link from 'next/link'
 import Image from 'next/image'
 import { getHomepageArticles } from '@/lib/articles'
@@ -6,39 +8,112 @@ import NewsletterSignup from '@/components/newsletter-signup'
 import { PageSEO } from '@/components/seo/page-seo'
 import { Article } from '@/lib/types/article'
 import { PageTracker } from '@/components/analytics/page-tracker'
+import { Suspense, useState, useEffect } from 'react'
 import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl } from '@/lib/utils/article-url'
+import { HomepageLoading } from '@/components/page-loading'
 
-// Static generation with revalidation
-export const revalidate = 30 // Revalidate every 30 seconds
+// Client-side data loading
+function useHomePageData() {
+  const [posts, setPosts] = useState<Article[]>([])
+  const [events, setEvents] = useState<Article[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-// Server-side data loading for static generation
-async function getHomePageData() {
-  try {
-    // Use the optimized homepage articles function for better performance
-    const apiArticles = await getHomepageArticles()
-    const allPosts = apiArticles
-    
-    // Separate events from regular articles
-    const regularPosts = allPosts.filter(post => post.type !== 'event')
-    const eventPosts = allPosts.filter(post => post.type === 'event')
-    
-    return {
-      posts: regularPosts,
-      events: eventPosts
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        // Use the optimized homepage articles function for better performance
+        const apiArticles = await getHomepageArticles()
+        const allPosts = apiArticles
+        
+        // Separate events from regular articles
+        const regularPosts = allPosts.filter(post => post.type !== 'event')
+        const eventPosts = allPosts.filter(post => post.type === 'event')
+        
+        setPosts(regularPosts)
+        setEvents(eventPosts)
+      } catch (err) {
+        console.error("Error loading posts:", err)
+        setError(err instanceof Error ? err.message : 'Failed to load articles')
+      } finally {
+        setIsLoading(false)
+      }
     }
-  } catch (error) {
-    console.error("Error loading posts:", error)
-    return {
-      posts: [],
-      events: []
-    }
-  }
+
+    loadData()
+  }, [])
+
+  return { posts, events, isLoading, error }
 }
 
-export default async function HomeStatic() {
-  // Load data for static generation
-  const { posts, events } = await getHomePageData()
+// Loading component for better UX
+function HomePageSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 md:px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
+              <div className="aspect-[16/9] w-full bg-gray-200"></div>
+              <div className="p-6">
+                <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
+                <div className="h-8 bg-gray-200 rounded w-3/4 mb-3"></div>
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-sm p-6 animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-start space-x-4">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function Home() {
+  // Load data using client-side hook
+  const { posts, events, isLoading, error } = useHomePageData()
+
+  // Show loading state
+  if (isLoading) {
+    return <HomepageLoading />
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Articles</h1>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const formatDate = (dateString: string) => {
     try {
@@ -108,11 +183,12 @@ export default async function HomeStatic() {
         description="Discover the best of Alberta's culture, events, and local businesses. Stay informed with the latest news and updates."
       />
       <PageTracker title="Culture Alberta - Home" />
-      <div className="flex min-h-screen flex-col">
-        <main className="flex-1">
+      <Suspense fallback={<HomePageSkeleton />}>
+        <div className="flex min-h-screen flex-col">
+      <main className="flex-1">
           {/* Featured Article + Trending Sidebar */}
           <section className="w-full py-8 md:py-10 lg:py-12 bg-gradient-to-b from-gray-50 to-white">
-            <div className="container mx-auto px-4 md:px-6">
+          <div className="container mx-auto px-4 md:px-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Featured Article */}
                 <div className="lg:col-span-2">
@@ -384,6 +460,7 @@ export default async function HomeStatic() {
           <BestOfSection />
         </main>
       </div>
+      </Suspense>
     </>
   )
 }
