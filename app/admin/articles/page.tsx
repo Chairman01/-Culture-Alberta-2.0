@@ -165,9 +165,9 @@ export default function AdminArticles() {
   }).sort((a, b) => {
     switch (sortBy) {
       case "newest":
-        return new Date(b.createdAt || b.updatedAt || 0).getTime() - new Date(a.createdAt || a.updatedAt || 0).getTime()
+        return new Date(b.date || b.createdAt || b.updatedAt || 0).getTime() - new Date(a.date || a.createdAt || a.updatedAt || 0).getTime()
       case "oldest":
-        return new Date(a.createdAt || a.updatedAt || 0).getTime() - new Date(b.createdAt || b.updatedAt || 0).getTime()
+        return new Date(a.date || a.createdAt || a.updatedAt || 0).getTime() - new Date(b.date || b.createdAt || b.updatedAt || 0).getTime()
       case "title":
         return a.title.localeCompare(b.title)
       default:

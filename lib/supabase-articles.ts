@@ -309,7 +309,7 @@ export async function getAdminArticles(): Promise<Article[]> {
     // Optimized query for admin - only essential fields for list view
     const supabasePromise = supabase
       .from('articles')
-      .select('id, title, category, location, author, created_at, updated_at, status, type, featured_home, featured_edmonton, featured_calgary')
+      .select('id, title, category, location, author, created_at, updated_at, status, type, featured_home, featured_edmonton, featured_calgary, date')
       .order('created_at', { ascending: false })
       .limit(100) // Limit to 100 most recent for admin
 
@@ -331,7 +331,7 @@ export async function getAdminArticles(): Promise<Article[]> {
     // Map Supabase data to match our Article interface
     const mappedArticles = (data || []).map((article: any) => ({
       ...article,
-      date: article.created_at,
+      date: article.date || article.created_at, // Use actual date field if available, fallback to created_at
       featuredHome: article.featured_home || false,
       featuredEdmonton: article.featured_edmonton || false,
       featuredCalgary: article.featured_calgary || false
