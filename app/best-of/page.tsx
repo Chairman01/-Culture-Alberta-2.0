@@ -56,28 +56,28 @@ export default function BestOfPage() {
       if (bestOfArticles.length === 0) {
         const sampleArticles: ExtendedArticle[] = [
           // Dentists
-          { id: 'dentist-1', title: 'Smile Dental Care', category: 'Dentists', location: 'Edmonton, AB', rating: 4.8, description: 'Award-winning dental practice offering comprehensive care with the latest technology.', image: '/placeholder.svg' },
-          { id: 'dentist-2', title: 'Calgary Family Dentistry', category: 'Dentists', location: 'Calgary, AB', rating: 4.8, description: 'Friendly family dental clinic specializing in preventative care and cosmetic dentistry.', image: '/placeholder.svg' },
-          { id: 'dentist-3', title: 'Downtown Dental Associates', category: 'Dentists', location: 'Edmonton, AB', rating: 4.8, description: 'Modern dental practice offering extended hours and emergency dental services.', image: '/placeholder.svg' },
+          { id: 'dentist-1', title: 'Smile Dental Care', category: 'Dentists', location: 'Edmonton, AB', rating: 4.8, description: 'Award-winning dental practice offering comprehensive care with the latest technology.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { id: 'dentist-2', title: 'Calgary Family Dentistry', category: 'Dentists', location: 'Calgary, AB', rating: 4.8, description: 'Friendly family dental clinic specializing in preventative care and cosmetic dentistry.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { id: 'dentist-3', title: 'Downtown Dental Associates', category: 'Dentists', location: 'Edmonton, AB', rating: 4.8, description: 'Modern dental practice offering extended hours and emergency dental services.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
           
           // Lawyers
-          { id: 'lawyer-1', title: 'Alberta Legal Partners', category: 'Lawyers', location: 'Calgary, AB', rating: 4.8, description: 'Full service law firm with expertise in corporate, family, and real estate law.', image: '/placeholder.svg' },
-          { id: 'lawyer-2', title: 'Edmonton Law Group', category: 'Lawyers', location: 'Edmonton, AB', rating: 4.8, description: 'Experienced legal team specializing in personal injury and insurance claims.', image: '/placeholder.svg' },
-          { id: 'lawyer-3', title: 'Heritage Legal Services', category: 'Lawyers', location: 'Calgary, AB', rating: 4.8, description: 'Boutique law firm focusing on estate planning, wills, and business law.', image: '/placeholder.svg' },
+          { id: 'lawyer-1', title: 'Alberta Legal Partners', category: 'Lawyers', location: 'Calgary, AB', rating: 4.8, description: 'Full service law firm with expertise in corporate, family, and real estate law.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { id: 'lawyer-2', title: 'Edmonton Law Group', category: 'Lawyers', location: 'Edmonton, AB', rating: 4.8, description: 'Experienced legal team specializing in personal injury and insurance claims.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { id: 'lawyer-3', title: 'Heritage Legal Services', category: 'Lawyers', location: 'Calgary, AB', rating: 4.8, description: 'Boutique law firm focusing on estate planning, wills, and business law.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
           
           // Accountants
-          { id: 'accountant-1', title: 'Precision Accounting', category: 'Accountants', location: 'Edmonton, AB', rating: 4.8, description: 'Trusted accounting firm offering tax planning, bookkeeping, and business advisory services.', image: '/placeholder.svg' },
-          { id: 'accountant-2', title: 'Calgary Tax Professionals', category: 'Accountants', location: 'Calgary, AB', rating: 4.8, description: 'Specialized tax services for individuals and small businesses with personalized solutions.', image: '/placeholder.svg' },
-          { id: 'accountant-3', title: 'Alberta Financial Advisors', category: 'Accountants', location: 'Edmonton, AB', rating: 4.8, description: 'Comprehensive financial planning and accounting services for businesses and individuals.', image: '/placeholder.svg' },
+          { id: 'accountant-1', title: 'Precision Accounting', category: 'Accountants', location: 'Edmonton, AB', rating: 4.8, description: 'Trusted accounting firm offering tax planning, bookkeeping, and business advisory services.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { id: 'accountant-2', title: 'Calgary Tax Professionals', category: 'Accountants', location: 'Calgary, AB', rating: 4.8, description: 'Specialized tax services for individuals and small businesses with personalized solutions.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { id: 'accountant-3', title: 'Alberta Financial Advisors', category: 'Accountants', location: 'Edmonton, AB', rating: 4.8, description: 'Comprehensive financial planning and accounting services for businesses and individuals.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
           
           // Restaurants
-          { id: 'restaurant-1', title: 'The Prairie Table', category: 'Restaurants', location: 'Edmonton, AB', rating: 4.8, description: 'Farm-to-table restaurant showcasing the best of Alberta\'s local ingredients and cuisine.', image: '/placeholder.svg' },
-          { id: 'restaurant-2', title: 'Calgary Steakhouse', category: 'Restaurants', location: 'Calgary, AB', rating: 4.8, description: 'Premium steakhouse featuring Alberta\'s world-famous beef and extensive wine selections.', image: '/placeholder.svg' },
-          { id: 'restaurant-3', title: 'Fusion Kitchen', category: 'Restaurants', location: 'Edmonton, AB', rating: 4.8, description: 'Innovative restaurant blending global flavors with local Alberta ingredients.', image: '/placeholder.svg' },
+          { id: 'restaurant-1', title: 'The Prairie Table', category: 'Restaurants', location: 'Edmonton, AB', rating: 4.8, description: 'Farm-to-table restaurant showcasing the best of Alberta\'s local ingredients and cuisine.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { id: 'restaurant-2', title: 'Calgary Steakhouse', category: 'Restaurants', location: 'Calgary, AB', rating: 4.8, description: 'Premium steakhouse featuring Alberta\'s world-famous beef and extensive wine selections.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { id: 'restaurant-3', title: 'Fusion Kitchen', category: 'Restaurants', location: 'Edmonton, AB', rating: 4.8, description: 'Innovative restaurant blending global flavors with local Alberta ingredients.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
           
           // Doctors
-          { id: 'doctor-1', title: 'Alberta Family Medicine', category: 'Doctors', location: 'Calgary, AB', rating: 4.8, description: 'Comprehensive family medical care with experienced physicians and modern facilities.', image: '/placeholder.svg' },
-          { id: 'doctor-2', title: 'Edmonton Medical Clinic', category: 'Doctors', location: 'Edmonton, AB', rating: 4.8, description: 'Full-service medical clinic providing primary care and specialized treatments.', image: '/placeholder.svg' },
+          { id: 'doctor-1', title: 'Alberta Family Medicine', category: 'Doctors', location: 'Calgary, AB', rating: 4.8, description: 'Comprehensive family medical care with experienced physicians and modern facilities.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { id: 'doctor-2', title: 'Edmonton Medical Clinic', category: 'Doctors', location: 'Edmonton, AB', rating: 4.8, description: 'Full-service medical clinic providing primary care and specialized treatments.', image: '/placeholder.svg', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         ]
         
         setArticles(sampleArticles)
