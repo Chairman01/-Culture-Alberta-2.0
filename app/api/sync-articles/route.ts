@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Error syncing articles:', error)
     return NextResponse.json(
-      { error: 'Failed to sync articles', details: error.message },
+      { error: 'Failed to sync articles', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
@@ -134,7 +134,7 @@ export async function GET() {
   } catch (error) {
     console.error('❌ Error syncing articles:', error)
     return NextResponse.json(
-      { error: 'Failed to sync articles', details: error.message },
+      { error: 'Failed to sync articles', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
