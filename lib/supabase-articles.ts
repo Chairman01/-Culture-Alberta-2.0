@@ -806,14 +806,35 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
 
     console.log('Attempting to fetch article by slug from Supabase...')
     
-    // Much faster query - search by title directly in database
+    // Try to use cached articles first for better performance
+    if (articlesCache && (Date.now() - cacheTimestamp) < getCacheDuration()) {
+      console.log('Using cached articles for slug lookup:', slug)
+      const cachedArticle = articlesCache.find(a => {
+        const articleUrlTitle = a.title
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .substring(0, 100)
+        
+        return articleUrlTitle === slug.toLowerCase()
+      })
+      
+      if (cachedArticle) {
+        console.log(`Found article in cache for slug "${slug}": "${cachedArticle.title}"`)
+        return cachedArticle
+      }
+    }
+    
+    // If not in cache, fetch from database with optimized query
     const fields = ensureImageFields('id, title, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
     
     const supabasePromise = supabase
       .from('articles')
       .select(fields)
-      .ilike('title', `%${slug.replace(/-/g, ' ')}%`) // Search for title containing slug words
-      .limit(5) // Limit results for faster query
+      .order('created_at', { ascending: false })
+      .limit(30) // Reduced limit for faster query
 
     const { data, error } = await Promise.race([
       supabasePromise,
@@ -864,7 +885,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
       return null
     }
 
-    // Find exact match from results
+    // Find exact match by converting article titles to slugs
     const exactMatch = data.find((article: any) => {
       const articleUrlTitle = article.title
         .toLowerCase()
@@ -874,11 +895,25 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
         .replace(/^-|-$/g, '')
         .substring(0, 100)
       
-      return articleUrlTitle === slug.toLowerCase()
+      const isMatch = articleUrlTitle === slug.toLowerCase()
+      if (isMatch) {
+        console.log(`Found exact match for slug "${slug}": "${article.title}" -> "${articleUrlTitle}"`)
+      }
+      return isMatch
     })
 
     if (!exactMatch) {
       console.log('No exact match found for slug:', slug)
+      console.log('Available article slugs:', data.slice(0, 5).map((a: any) => {
+        const articleUrlTitle = a.title
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .substring(0, 100)
+        return `"${a.title}" -> "${articleUrlTitle}"`
+      }))
       return null
     }
 
