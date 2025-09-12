@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Plus, Edit, Trash2, Search } from "lucide-react"
+import { Plus, Edit, Trash2, Search, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -29,6 +29,7 @@ import {
 import { getAdminArticles, deleteArticle } from "@/lib/articles"
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { useRouter } from "next/navigation"
+import { invalidateAllCaches } from "@/lib/cache-invalidation"
 
 interface ExtendedArticle extends Article {
   type?: string;
@@ -98,6 +99,22 @@ export default function AdminArticles() {
     }
   }
 
+  const handleRefreshCache = async () => {
+    try {
+      // Clear all caches
+      invalidateAllCaches()
+      
+      // Reload articles
+      await loadAllArticles()
+      
+      // Show success message
+      alert('Cache cleared and articles refreshed! Homepage will now show updated content.')
+    } catch (error) {
+      console.error('Error refreshing cache:', error)
+      alert('Error refreshing cache. Please try again.')
+    }
+  }
+
   const handleEdit = (article: ExtendedArticle) => {
     try {
       // Instead of storing the entire article, just store the ID and navigate
@@ -150,12 +167,22 @@ export default function AdminArticles() {
           <h1 className="text-3xl font-bold">Articles</h1>
           <p className="text-gray-500 mt-1">Total: {filteredArticles.length} articles</p>
         </div>
-        <Link href="/admin/articles/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            New Article
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleRefreshCache}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh Cache
           </Button>
-        </Link>
+          <Link href="/admin/articles/new">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              New Article
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-4">

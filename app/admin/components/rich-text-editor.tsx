@@ -71,7 +71,8 @@ import {
   Redo,
   Eye,
   Edit3,
-  Type
+  Type,
+  RotateCcw
 } from 'lucide-react'
 
 interface RichTextEditorProps {
@@ -193,10 +194,15 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
           height: auto;
         }
         .ProseMirror span[style*="font-family"] {
-          font-family: var(--font-family) !important;
+          font-family: inherit;
         }
+        /* Remove any conflicting font-size overrides */
         .ProseMirror span[style*="font-size"] {
-          font-size: var(--font-size) !important;
+          /* Let the inline style take precedence */
+        }
+        /* Preview mode font size preservation */
+        .prose span[style*="font-size"] {
+          /* Let the inline style take precedence */
         }
       `}</style>
       
@@ -246,13 +252,20 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
          {/* Font Size Dropdown */}
          <Select onValueChange={(value) => {
            if (editor) {
-             editor.chain().focus().setFontSize(value).run()
+             if (value === 'default') {
+               editor.chain().focus().unsetFontSize().run()
+             } else {
+               editor.chain().focus().setFontSize(value).run()
+             }
            }
          }}>
-           <SelectTrigger className="w-20 h-8 text-xs">
-             <SelectValue placeholder="Size" />
+           <SelectTrigger className={`w-20 h-8 text-xs ${editor.getAttributes('textStyle').fontSize ? 'bg-muted' : ''}`}>
+             <SelectValue placeholder="Size">
+               {editor.getAttributes('textStyle').fontSize || 'Size'}
+             </SelectValue>
            </SelectTrigger>
            <SelectContent>
+             <SelectItem value="default">Default</SelectItem>
              <SelectItem value="12px">12px</SelectItem>
              <SelectItem value="14px">14px</SelectItem>
              <SelectItem value="16px">16px</SelectItem>
@@ -265,6 +278,17 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
              <SelectItem value="48px">48px</SelectItem>
            </SelectContent>
          </Select>
+
+         {/* Font Size Reset Button */}
+         <Button
+           variant="ghost"
+           size="sm"
+           onClick={() => editor.chain().focus().unsetFontSize().run()}
+           className={editor.getAttributes('textStyle').fontSize ? 'bg-muted' : ''}
+           title="Reset font size to default"
+         >
+           <RotateCcw className="h-4 w-4" />
+         </Button>
 
          <div className="w-px h-6 bg-border mx-1" />
 
@@ -352,8 +376,8 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
                .replace(/<strong>/g, '<strong class="font-semibold text-gray-900">')
                .replace(/<em>/g, '<em class="italic text-gray-800">')
                .replace(/<img([^>]*)>/g, '<img$1 class="rounded-lg shadow-lg my-8 max-w-full h-auto">')
-               .replace(/<span style="font-family:([^"]+)"/g, '<span style="font-family:$1" class="font-custom"')
-               .replace(/<span style="font-size:([^"]+)"/g, '<span style="font-size:$1" class="text-custom"')
+               .replace(/<span style="font-family:([^"]+)"/g, '<span style="font-family:$1"')
+               .replace(/<span style="font-size:([^"]+)"/g, '<span style="font-size:$1"')
            }}
         />
       ) : (

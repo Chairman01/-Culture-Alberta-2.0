@@ -5,7 +5,7 @@ import { Calendar, Clock, Share2, Bookmark, ArrowLeft, ArrowRight } from 'lucide
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
-import { getArticleById, getAllArticles, getHomepageArticles } from '@/lib/supabase-articles'
+import { getArticleById, getArticleBySlug, getAllArticles, getHomepageArticles } from '@/lib/supabase-articles'
 import { getTitleFromUrl } from '@/lib/utils/article-url'
 import { use } from 'react'
 import { getArticleUrl } from '@/lib/utils/article-url'
@@ -75,6 +75,7 @@ import { PageTracker } from '@/components/analytics/page-tracker'
 import { trackArticleView } from '@/lib/analytics'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { ArticleContent } from '@/components/article-content'
+import { LoadingSpinner, ArticleCardSkeleton, LoadingDots } from '@/components/loading-spinner'
 // import './article-styles.css' // Removed - file was deleted
 
 export default function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -105,25 +106,30 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
       try {
         setLoading(true)
         
-        // Get all articles and find by URL match
-        const allArticles = await getAllArticles()
-        let loadedArticle = allArticles.find(article => {
-          // Convert article title to URL format and compare
-          const articleUrlTitle = article.title
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-|-$/g, '')
-            .substring(0, 100)
-          
-          return articleUrlTitle === slug.toLowerCase()
-        })
+        // Try to get article by slug first (much faster than fetching all articles)
+        let loadedArticle = await getArticleBySlug(slug)
         
-        // If not found by title, try by ID (for backward compatibility)
+        // If not found by slug, try by ID (for backward compatibility)
         if (!loadedArticle) {
-          const articleById = await getArticleById(slug)
-          loadedArticle = articleById || undefined
+          loadedArticle = await getArticleById(slug)
+        }
+        
+        // If still not found, try to find by title match (last resort)
+        if (!loadedArticle) {
+          // Only fetch all articles as last resort
+          const allArticles = await getAllArticles()
+          loadedArticle = allArticles.find(article => {
+            // Convert article title to URL format and compare
+            const articleUrlTitle = article.title
+              .toLowerCase()
+              .replace(/[^a-z0-9\s-]/g, '')
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-')
+              .replace(/^-|-$/g, '')
+              .substring(0, 100)
+            
+            return articleUrlTitle === slug.toLowerCase()
+          })
         }
         
         if (loadedArticle) {
@@ -134,7 +140,7 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
           
           // Load related articles more efficiently - use homepage cache if available
           try {
-            // Try to get homepage articles first (they're usually cached)
+            // Try to get homepage articles first (they're usually cached and faster)
             const homepageArticles = await getHomepageArticles()
             
             if (homepageArticles.length > 0) {
@@ -249,7 +255,95 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Show blank loading state instead of spinner */}
+        {/* Loading Header with Spinner */}
+        <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                <div className="hidden md:block">
+                  <div className="h-6 w-64 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <LoadingDots />
+              </div>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-3">
+              <div className="bg-blue-600 h-1 rounded-full animate-pulse w-1/3"></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white">
+          <div className="container mx-auto px-4 py-8">
+            <div className="max-w-7xl mx-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                <div className="lg:col-span-3 space-y-8">
+                  {/* Article Header Skeleton */}
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+                      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="h-12 w-full bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+
+                  {/* Featured Image Skeleton with Loading Indicator */}
+                  <div className="relative w-full h-[400px] lg:h-[500px] bg-gray-200 rounded-xl overflow-hidden">
+                    <div className="absolute inset-0 bg-gray-200 animate-pulse"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <LoadingSpinner size="lg" text="Loading image..." />
+                    </div>
+                  </div>
+
+                  {/* Article Content Skeleton */}
+                  <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+                    <div className="space-y-4">
+                      <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 w-5/6 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 w-2/3 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sidebar Skeleton */}
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
+                    <div className="space-y-3">
+                      <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Related Articles Skeleton */}
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex gap-3">
+                          <div className="w-16 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-3 w-1/2 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -360,7 +454,7 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                     <option value="other">Other</option>
                   </select>
                   <button 
-                    className={`w-full font-semibold py-2 px-4 rounded-lg transition-colors ${
+                    className={`w-full font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 ${
                       newsletterSubmitting 
                         ? 'bg-gray-400 cursor-not-allowed' 
                         : 'bg-red-600 hover:bg-red-700 text-white'
@@ -368,7 +462,14 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                     onClick={handleNewsletterSignup}
                     disabled={newsletterSubmitting || !newsletterEmail || !newsletterCity}
                   >
-                    {newsletterSubmitting ? 'Subscribing...' : 'Subscribe'}
+                    {newsletterSubmitting ? (
+                      <>
+                        <LoadingSpinner size="sm" />
+                        Subscribing...
+                      </>
+                    ) : (
+                      'Subscribe'
+                    )}
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-3 text-center">
@@ -443,6 +544,8 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                           src={article.imageUrl.startsWith('data:image') ? article.imageUrl : `data:image/jpeg;base64,${article.imageUrl}`}
                           alt={article.title || 'Article image'}
                           className="w-full h-full object-cover"
+                          loading="eager"
+                          decoding="sync"
                         />
                       ) : (
                         <Image
@@ -451,6 +554,10 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                           fill
                           className="object-cover"
                           priority
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          quality={85}
+                          placeholder="blur"
+                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                         />
                       )}
                     </div>
@@ -495,6 +602,8 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                                       src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
                                       alt={relatedArticle.title}
                                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                      loading="lazy"
+                                      decoding="async"
                                     />
                                   ) : (
                                     <Image
@@ -502,6 +611,9 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                                       alt={relatedArticle.title}
                                       fill
                                       className="object-cover group-hover:scale-110 transition-transform duration-500"
+                                      loading="lazy"
+                                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                      quality={75}
                                     />
                                   )
                                 ) : (
@@ -573,6 +685,8 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                                     src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
                                     alt={relatedArticle.title}
                                     className="w-full h-full object-cover"
+                                    loading="lazy"
+                                    decoding="async"
                                   />
                                 ) : (
                                   <Image
@@ -581,6 +695,9 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                                     width={64}
                                     height={64}
                                     className="w-full h-full object-cover"
+                                    loading="lazy"
+                                    sizes="64px"
+                                    quality={60}
                                   />
                                 )
                               ) : (

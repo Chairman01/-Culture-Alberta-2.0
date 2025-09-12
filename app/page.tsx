@@ -1,3 +1,5 @@
+"use client"
+
 import Link from 'next/link'
 import Image from 'next/image'
 import { getHomepageArticles } from '@/lib/articles'
@@ -6,32 +8,46 @@ import NewsletterSignup from '@/components/newsletter-signup'
 import { PageSEO } from '@/components/seo/page-seo'
 import { Article } from '@/lib/types/article'
 import { PageTracker } from '@/components/analytics/page-tracker'
-import { Suspense } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl } from '@/lib/utils/article-url'
+import { HomepageLoading } from '@/components/page-loading'
 
-// Server-side data loading
-async function getHomePageData() {
-  try {
-    // Use the optimized homepage articles function for better performance
-    const apiArticles = await getHomepageArticles()
-    const allPosts = apiArticles
-    
-    // Separate events from regular articles
-    const regularPosts = allPosts.filter(post => post.type !== 'event')
-    const eventPosts = allPosts.filter(post => post.type === 'event')
-    
-    return {
-      posts: regularPosts,
-      events: eventPosts
+// Client-side data loading
+function useHomePageData() {
+  const [posts, setPosts] = useState<Article[]>([])
+  const [events, setEvents] = useState<Article[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        // Use the optimized homepage articles function for better performance
+        const apiArticles = await getHomepageArticles()
+        const allPosts = apiArticles
+        
+        // Separate events from regular articles
+        const regularPosts = allPosts.filter(post => post.type !== 'event')
+        const eventPosts = allPosts.filter(post => post.type === 'event')
+        
+        setPosts(regularPosts)
+        setEvents(eventPosts)
+      } catch (err) {
+        console.error("Error loading posts:", err)
+        setError(err instanceof Error ? err.message : 'Failed to load articles')
+      } finally {
+        setIsLoading(false)
+      }
     }
-  } catch (error) {
-    console.error("Error loading posts:", error)
-    return {
-      posts: [],
-      events: []
-    }
-  }
+
+    loadData()
+  }, [])
+
+  return { posts, events, isLoading, error }
 }
 
 // Loading component for better UX
@@ -72,11 +88,32 @@ function HomePageSkeleton() {
   )
 }
 
-export default async function Home() {
-  // Load data in parallel for better performance
-  const [{ posts, events }] = await Promise.all([
-    getHomePageData()
-  ])
+export default function Home() {
+  // Load data using client-side hook
+  const { posts, events, isLoading, error } = useHomePageData()
+
+  // Show loading state
+  if (isLoading) {
+    return <HomepageLoading />
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Articles</h1>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const formatDate = (dateString: string) => {
     try {

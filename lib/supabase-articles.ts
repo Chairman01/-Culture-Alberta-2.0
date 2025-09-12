@@ -758,6 +758,177 @@ export function testImageFieldSafeguards() {
 }
 
 
+// New optimized function to get article by slug (title-based URL)
+export async function getArticleBySlug(slug: string): Promise<Article | null> {
+  try {
+    console.log('=== getArticleBySlug called for:', slug)
+    
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log('Build time detected, using file system')
+      const fileArticles = await getAllArticlesFromFile()
+      return fileArticles.find(article => {
+        const articleUrlTitle = article.title
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .substring(0, 100)
+        
+        return articleUrlTitle === slug.toLowerCase()
+      }) || null
+    }
+    
+    if (!supabase) {
+      console.error('Supabase client is not initialized')
+      console.log('Falling back to file system')
+      const fileArticles = await getAllArticlesFromFile()
+      return fileArticles.find(article => {
+        const articleUrlTitle = article.title
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .substring(0, 100)
+        
+        return articleUrlTitle === slug.toLowerCase()
+      }) || null
+    }
+
+    console.log('Attempting to fetch article by slug from Supabase...')
+    
+    // Much faster query - search by title directly in database
+    const fields = ensureImageFields('id, title, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    
+    const supabasePromise = supabase
+      .from('articles')
+      .select(fields)
+      .ilike('title', `%${slug.replace(/-/g, ' ')}%`) // Search for title containing slug words
+      .limit(5) // Limit results for faster query
+
+    const { data, error } = await Promise.race([
+      supabasePromise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Supabase timeout')), 3000) // Reduced timeout
+      )
+    ]) as any
+
+    if (error) {
+      console.warn('Supabase slug query failed:', slug, error.message)
+      
+      // Try to get from all articles cache first
+      if (articlesCache) {
+        const cachedArticle = articlesCache.find(a => {
+          const articleUrlTitle = a.title
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .substring(0, 100)
+          
+          return articleUrlTitle === slug.toLowerCase()
+        })
+        if (cachedArticle) {
+          console.log('Found article in all articles cache by slug:', slug)
+          return cachedArticle
+        }
+      }
+      
+      console.log('Falling back to file system')
+      const fileArticles = await getAllArticlesFromFile()
+      return fileArticles.find(article => {
+        const articleUrlTitle = article.title
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .substring(0, 100)
+        
+        return articleUrlTitle === slug.toLowerCase()
+      }) || null
+    }
+
+    if (!data || data.length === 0) {
+      console.log('Article not found in Supabase by slug:', slug)
+      return null
+    }
+
+    // Find exact match from results
+    const exactMatch = data.find((article: any) => {
+      const articleUrlTitle = article.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 100)
+      
+      return articleUrlTitle === slug.toLowerCase()
+    })
+
+    if (!exactMatch) {
+      console.log('No exact match found for slug:', slug)
+      return null
+    }
+
+    console.log('Successfully fetched article by slug from Supabase:', slug)
+
+    // Map Supabase data to match our Article interface
+    const mappedArticle = {
+      ...exactMatch,
+      imageUrl: validateImageUrl(exactMatch.image_url || exactMatch.image, exactMatch.title),
+      date: exactMatch.created_at,
+      trendingHome: exactMatch.trending_home || false,
+      trendingEdmonton: exactMatch.trending_edmonton || false,
+      trendingCalgary: exactMatch.trending_calgary || false,
+      featuredHome: exactMatch.featured_home || false,
+      featuredEdmonton: exactMatch.featured_edmonton || false,
+      featuredCalgary: exactMatch.featured_calgary || false
+    }
+
+    return mappedArticle
+  } catch (error) {
+    console.warn('Supabase connection failed for slug:', slug, error)
+    
+    // Try to get from all articles cache first
+    if (articlesCache) {
+      const cachedArticle = articlesCache.find(a => {
+        const articleUrlTitle = a.title
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .substring(0, 100)
+        
+        return articleUrlTitle === slug.toLowerCase()
+      })
+      if (cachedArticle) {
+        console.log('Found article in all articles cache by slug:', slug)
+        return cachedArticle
+      }
+    }
+    
+    console.log('Falling back to file system')
+    const fileArticles = await getAllArticlesFromFile()
+    return fileArticles.find(article => {
+      const articleUrlTitle = article.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 100)
+      
+      return articleUrlTitle === slug.toLowerCase()
+    }) || null
+  }
+}
+
 export async function getArticleById(id: string): Promise<Article | null> {
   try {
     console.log('=== getArticleById called for:', id)
@@ -784,7 +955,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
     
     // Reduced timeout for faster fallback
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Reduced to 5 seconds for better performance
+      setTimeout(() => reject(new Error('Supabase timeout')), 3000) // Reduced to 3 seconds for better performance
     )
     
     const supabasePromise = supabase
@@ -825,7 +996,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
     // Map Supabase data to match our Article interface
     const mappedArticle = {
       ...data,
-      imageUrl: data.image_url || data.image,
+      imageUrl: validateImageUrl(data.image_url || data.image, data.title),
       date: data.created_at,
       trendingHome: data.trending_home || false,
       trendingEdmonton: data.trending_edmonton || false,

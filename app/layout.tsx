@@ -1,6 +1,7 @@
 import './globals.css'
 import { MainNavigation } from '@/components/main-navigation'
 import { Footer } from '@/components/footer'
+import { LoadingProvider } from '@/components/loading-context'
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
@@ -310,9 +311,11 @@ export default function RootLayout({
         </Script>
       </head>
       <body suppressHydrationWarning={true}>
-        <MainNavigation />
-        <main>{children}</main>
-        <Footer />
+        <LoadingProvider>
+          <MainNavigation />
+          <main>{children}</main>
+          <Footer />
+        </LoadingProvider>
         <Analytics />
         <SpeedInsights />
       </body>
