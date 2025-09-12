@@ -36,6 +36,8 @@ interface ExtendedArticle extends Article {
   content?: string;
   author?: string;
   status?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Define a more complete article type
