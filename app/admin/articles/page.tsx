@@ -51,6 +51,7 @@ export default function AdminArticles() {
   const [searchTerm, setSearchTerm] = useState("")
   const [category, setCategory] = useState("all")
   const [location, setLocation] = useState("all")
+  const [sortBy, setSortBy] = useState("newest") // newest, oldest, title
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
@@ -161,6 +162,17 @@ export default function AdminArticles() {
     const matchesCategory = category === "all" || article.category === category
     const matchesLocation = location === "all" || article.location === location
     return matchesSearch && matchesCategory && matchesLocation
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case "newest":
+        return new Date(b.createdAt || b.updatedAt || 0).getTime() - new Date(a.createdAt || a.updatedAt || 0).getTime()
+      case "oldest":
+        return new Date(a.createdAt || a.updatedAt || 0).getTime() - new Date(b.createdAt || b.updatedAt || 0).getTime()
+      case "title":
+        return a.title.localeCompare(b.title)
+      default:
+        return 0
+    }
   })
 
   const categories = Array.from(new Set(articles.map(a => a.category).filter(cat => cat && cat.trim() !== '')))
@@ -220,7 +232,7 @@ export default function AdminArticles() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {MAIN_CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <SelectItem key={cat} value={cat}>{cat}</SelectItem>
             ))}
           </SelectContent>
@@ -234,6 +246,16 @@ export default function AdminArticles() {
             {locations.map(loc => (
               <SelectItem key={loc} value={loc}>{loc}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest First</SelectItem>
+            <SelectItem value="oldest">Oldest First</SelectItem>
+            <SelectItem value="title">Title A-Z</SelectItem>
           </SelectContent>
         </Select>
       </div>
