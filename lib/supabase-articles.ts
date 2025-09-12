@@ -1334,19 +1334,27 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
 }
 
 export async function deleteArticle(id: string): Promise<void> {
+  console.log('🗑️ Starting delete process for article:', id)
+  
   try {
-    const { error } = await supabase
+    console.log('📡 Attempting to delete from Supabase...')
+    const { data, error } = await supabase
       .from('articles')
       .delete()
       .eq('id', id)
+      .select() // Add select to see what was deleted
 
     if (error) {
-      console.error('Error deleting article from Supabase:', error)
+      console.error('❌ Error deleting article from Supabase:', error)
+      console.log('🔄 Falling back to file deletion...')
       return deleteArticleFromFile(id)
     }
     
+    console.log('✅ Successfully deleted from Supabase:', data)
+    
     // Clear cache to ensure fresh data
     clearArticlesCache()
+    console.log('🧹 Cleared articles cache')
     
     // Automatically sync to local file after successful deletion
     try {
@@ -1358,7 +1366,7 @@ export async function deleteArticle(id: string): Promise<void> {
       // Don't fail the deletion if sync fails
     }
   } catch (error) {
-    console.error('Supabase delete failed, using file fallback:', error)
+    console.error('❌ Supabase delete failed, using file fallback:', error)
     return deleteArticleFromFile(id)
   }
 }

@@ -136,10 +136,22 @@ export default function AdminArticles() {
   const handleDelete = async (article: ExtendedArticle) => {
     if (confirm('Are you sure you want to delete this article?')) {
       try {
+        console.log('🗑️ Deleting article:', article.id, article.title)
         await deleteArticle(article.id)
+        console.log('✅ Article deleted successfully')
+        
+        // Remove from local state
         setArticles(articles.filter(a => a.id !== article.id))
+        
+        // Show success message
+        alert(`Article "${article.title}" has been deleted successfully!`)
+        
+        // Refresh the page to ensure data is up to date
+        await loadAllArticles()
+        
       } catch (error) {
-        console.error('Error deleting article:', error)
+        console.error('❌ Error deleting article:', error)
+        alert(`Failed to delete article "${article.title}". Please try again or check the console for details.`)
       }
     }
   }
