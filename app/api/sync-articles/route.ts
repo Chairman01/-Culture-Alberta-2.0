@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Fetched ${articles.length} articles from Supabase`)
     
     // Transform articles to match our interface
-    const transformedArticles = articles.map(article => ({
+    const transformedArticles = articles.map((article: any) => ({
       id: article.id,
       title: article.title,
       content: article.content,
@@ -98,7 +98,7 @@ export async function GET() {
     
     const articles = await response.json()
     
-    const transformedArticles = articles.map(article => ({
+    const transformedArticles = articles.map((article: any) => ({
       id: article.id,
       title: article.title,
       content: article.content,
