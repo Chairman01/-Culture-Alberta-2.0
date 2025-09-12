@@ -35,7 +35,12 @@ export default function EdmontonPage() {
         
         
         // Articles are already filtered by the database query for Edmonton
-        const edmontonPosts = allArticles
+        // Sort by date (newest first) to ensure latest articles appear first
+        const edmontonPosts = allArticles.sort((a, b) => {
+          const dateA = new Date(a.date || a.createdAt || 0).getTime()
+          const dateB = new Date(b.date || b.createdAt || 0).getTime()
+          return dateB - dateA // Newest first
+        })
         
         setArticles(edmontonPosts)
         

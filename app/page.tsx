@@ -98,9 +98,17 @@ export default async function HomeStatic() {
   }
 
   const featuredPost = posts.find(post => post.featuredHome === true) || posts[0] || null
-  const edmontonPosts = posts.filter(post => post.category === 'Edmonton').slice(0, 3)
-  const calgaryPosts = posts.filter(post => post.category === 'Calgary').slice(0, 3)
-  const foodDrinkPosts = posts.filter(post => post.category === 'Food & Drink').slice(0, 2)
+  
+  // Sort articles by date (newest first) before filtering
+  const sortedPosts = posts.sort((a, b) => {
+    const dateA = new Date(a.date || a.createdAt || 0).getTime()
+    const dateB = new Date(b.date || b.createdAt || 0).getTime()
+    return dateB - dateA // Newest first
+  })
+  
+  const edmontonPosts = sortedPosts.filter(post => post.category === 'Edmonton').slice(0, 3)
+  const calgaryPosts = sortedPosts.filter(post => post.category === 'Calgary').slice(0, 3)
+  const foodDrinkPosts = sortedPosts.filter(post => post.category === 'Food & Drink').slice(0, 2)
   const trendingPosts = posts.filter(post => post.trendingHome === true).slice(0, 5)
   const upcomingEvents = events.slice(0, 3) // Get the first 3 events
 

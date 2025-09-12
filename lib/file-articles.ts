@@ -82,17 +82,31 @@ export async function updateArticleInFile(id: string, article: UpdateArticleInpu
 
 export async function deleteArticleFromFile(id: string): Promise<void> {
   try {
-    // Always use API call to avoid any client-side file system issues
-    const response = await fetch(`/api/articles?id=${id}`, {
-      method: 'DELETE',
-    })
+    // Only run on server side
+    if (typeof window !== 'undefined') {
+      throw new Error('This function can only be called on the server side')
+    }
+
+    // Use dynamic imports to avoid bundling fs in client-side code
+    const fs = await import('fs')
+    const path = await import('path')
     
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Failed to delete article: ${response.status} ${errorText}`)
+    const ARTICLES_FILE = path.join(process.cwd(), 'lib', 'data', 'articles.json')
+    
+    if (!fs.existsSync(ARTICLES_FILE)) {
+      throw new Error('Articles file not found')
     }
     
-    console.log('✅ Article deleted via API:', id)
+    const data = fs.readFileSync(ARTICLES_FILE, 'utf-8')
+    const articles = JSON.parse(data)
+    const filteredArticles = articles.filter((a: any) => a.id !== id)
+    
+    if (filteredArticles.length === articles.length) {
+      throw new Error('Article not found')
+    }
+    
+    fs.writeFileSync(ARTICLES_FILE, JSON.stringify(filteredArticles, null, 2), 'utf-8')
+    console.log('✅ Article deleted from file system:', id)
   } catch (error) {
     console.error('Error deleting article from file:', error)
     throw new Error('Failed to delete article')

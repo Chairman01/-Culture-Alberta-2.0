@@ -9,8 +9,11 @@ export const isVercelBuild = () => {
 }
 
 export const shouldUseFileSystem = () => {
-  // Use file system only during local build time, not in production runtime
-  // Always use Supabase in both development and production runtime
+  // Always use file system in development for faster loading
+  // Use file system during local build time, not in production runtime
+  if (process.env.NODE_ENV === 'development') {
+    return true
+  }
   // Only use file system if we're in a local build environment
   return process.env.NODE_ENV === 'production' && !process.env.VERCEL && !process.env.NEXT_PUBLIC_SUPABASE_URL
 }

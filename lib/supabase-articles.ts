@@ -197,20 +197,16 @@ export async function getHomepageArticles(): Promise<Article[]> {
         return articlesCache!
       }
       
-      // ALWAYS use file system as primary source (fastest)
-      console.log('Using file system as primary source for speed')
-      const fileArticles = await getAllArticlesFromFile()
-      console.log('Found articles in file system:', fileArticles.length, 'articles')
-      
-      // Update cache with file system data
-      articlesCache = fileArticles
-      cacheTimestamp = now
-      return fileArticles
-      
       // During build time, always use file system for reliability
       if (shouldUseFileSystem()) {
         console.log('Build time detected, using file system')
-        return getAllArticlesFromFile()
+        const fileArticles = await getAllArticlesFromFile()
+        console.log('Found articles in file system:', fileArticles.length, 'articles')
+        
+        // Update cache with file system data
+        articlesCache = fileArticles
+        cacheTimestamp = now
+        return fileArticles
       }
       
       if (!supabase) {
@@ -358,28 +354,25 @@ export async function getEventsArticles(): Promise<Article[]> {
       return cityArticlesCache.get('events') || []
     }
     
-    // ALWAYS use file system first for speed
-    console.log('Using file system as primary source for events')
-    const fileArticles = await getAllArticlesFromFile()
-    
-    // Filter file articles for events only
-    const filteredFileArticles = fileArticles.filter((article: any) => 
-      article.type === 'event'
-    );
-    
-    if (filteredFileArticles.length > 0) {
-      console.log(`Found ${filteredFileArticles.length} events in file system out of ${fileArticles.length} total`)
-      // Cache the filtered results
-      cityArticlesCache.set('events', filteredFileArticles)
-      cityCacheTimestamp.set('events', now)
-      return filteredFileArticles
-    }
-    
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
-      console.log('Build time detected, using file system')
-      return filteredFileArticles
+      console.log('Build time detected, using file system for events')
+      const fileArticles = await getAllArticlesFromFile()
+      
+      // Filter file articles for events only
+      const filteredFileArticles = fileArticles.filter((article: any) => 
+        article.type === 'event'
+      );
+      
+      if (filteredFileArticles.length > 0) {
+        console.log(`Found ${filteredFileArticles.length} events in file system out of ${fileArticles.length} total`)
+        // Cache the filtered results
+        cityArticlesCache.set('events', filteredFileArticles)
+        cityCacheTimestamp.set('events', now)
+        return filteredFileArticles
+      }
     }
+    
     
     if (!supabase) {
       console.error('Supabase client is not initialized')
@@ -476,30 +469,32 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
       return cityArticlesCache.get(city) || []
     }
     
-    // ALWAYS use file system first for speed
-    console.log(`Using file system as primary source for ${city} articles`)
-    const fileArticles = await getAllArticlesFromFile()
-    
-    // Filter file articles by city
-    const filteredFileArticles = fileArticles.filter((article: any) => {
-      const hasCityCategory = article.category?.toLowerCase().includes(city);
-      const hasCityLocation = article.location?.toLowerCase().includes(city);
-      const hasCityCategories = article.categories?.some((cat: string) => 
-        cat.toLowerCase().includes(city)
-      );
-      const hasCityTags = article.tags?.some((tag: string) => 
-        tag.toLowerCase().includes(city)
-      );
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log(`Build time detected, using file system for ${city} articles`)
+      const fileArticles = await getAllArticlesFromFile()
       
-      return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
-    });
-    
-    if (filteredFileArticles.length > 0) {
-      console.log(`Found ${filteredFileArticles.length} ${city} articles in file system`)
-      // Cache the filtered results
-      cityArticlesCache.set(city, filteredFileArticles)
-      cityCacheTimestamp.set(city, now)
-      return filteredFileArticles
+      // Filter file articles by city
+      const filteredFileArticles = fileArticles.filter((article: any) => {
+        const hasCityCategory = article.category?.toLowerCase().includes(city);
+        const hasCityLocation = article.location?.toLowerCase().includes(city);
+        const hasCityCategories = article.categories?.some((cat: string) => 
+          cat.toLowerCase().includes(city)
+        );
+        const hasCityTags = article.tags?.some((tag: string) => 
+          tag.toLowerCase().includes(city)
+        );
+        
+        return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+      });
+      
+      if (filteredFileArticles.length > 0) {
+        console.log(`Found ${filteredFileArticles.length} ${city} articles in file system`)
+        // Cache the filtered results
+        cityArticlesCache.set(city, filteredFileArticles)
+        cityCacheTimestamp.set(city, now)
+        return filteredFileArticles
+      }
     }
     
     // Try to use homepage cache as fallback
@@ -535,29 +530,6 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || 'using fallback',
       supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'set' : 'using fallback'
     })
-    
-    // During build time, always use file system for reliability
-    if (shouldUseFileSystem()) {
-      console.log('Build time detected, using file system')
-      const fileArticles = await getAllArticlesFromFile()
-      
-      // Filter file articles by city
-      const filteredFileArticles = fileArticles.filter((article: any) => {
-        const hasCityCategory = article.category?.toLowerCase().includes(city);
-        const hasCityLocation = article.location?.toLowerCase().includes(city);
-        const hasCityCategories = article.categories?.some((cat: string) => 
-          cat.toLowerCase().includes(city)
-        );
-        const hasCityTags = article.tags?.some((tag: string) => 
-          tag.toLowerCase().includes(city)
-        );
-        
-        return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
-      });
-      
-      console.log(`Build time: Found ${filteredFileArticles.length} ${city} articles out of ${fileArticles.length} total`)
-      return filteredFileArticles
-    }
     
     if (!supabase) {
       console.error('Supabase client is not initialized')
@@ -679,20 +651,16 @@ export async function getAllArticles(): Promise<Article[]> {
       return articlesCache
     }
     
-    // ALWAYS use file system as primary source for speed
-    console.log('Using file system as primary source for speed')
-    const fileArticles = await getAllArticlesFromFile()
-    console.log('Found articles in file system:', fileArticles.length, 'articles')
-    
-    // Update cache with file system data
-    articlesCache = fileArticles
-    cacheTimestamp = now
-    return fileArticles
-    
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
       console.log('Build time detected, using file system')
-      return getAllArticlesFromFile()
+      const fileArticles = await getAllArticlesFromFile()
+      console.log('Found articles in file system:', fileArticles.length, 'articles')
+      
+      // Update cache with file system data
+      articlesCache = fileArticles
+      cacheTimestamp = now
+      return fileArticles
     }
     
     if (!supabase) {
@@ -828,33 +796,26 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   try {
     console.log('=== getArticleBySlug called for:', slug)
     
-    // ALWAYS use file system as primary source (fastest)
-    console.log('Using file system as primary source for speed')
-    const fileArticles = await getAllArticlesFromFile()
-    const fileArticle = fileArticles.find(article => {
-      const articleUrlTitle = article.title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-        .substring(0, 100)
-      
-      return articleUrlTitle === slug.toLowerCase()
-    })
-    
-    if (fileArticle) {
-      console.log(`Found article in file system for slug "${slug}": "${fileArticle.title}"`)
-      return fileArticle
-    }
-    
-    console.log('Article not found in file system')
-    return null
-    
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
-      console.log('Build time detected, using file system')
-      return null
+      console.log('Build time detected, using file system for slug lookup')
+      const fileArticles = await getAllArticlesFromFile()
+      const fileArticle = fileArticles.find(article => {
+        const articleUrlTitle = article.title
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .substring(0, 100)
+        
+        return articleUrlTitle === slug.toLowerCase()
+      })
+      
+      if (fileArticle) {
+        console.log(`Found article in file system for slug "${slug}": "${fileArticle.title}"`)
+        return fileArticle
+      }
     }
     
     if (!supabase) {
@@ -1336,49 +1297,74 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
 export async function deleteArticle(id: string): Promise<void> {
   console.log('🗑️ Starting delete process for article:', id)
   
-  // During build time or if file system is preferred, use file deletion
-  if (shouldUseFileSystem()) {
-    console.log('Using file system for deletion')
-    return deleteArticleFromFile(id)
-  }
+  // Check if we're in production (Vercel) or development
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
   
-  if (!supabase) {
-    console.error('Supabase client is not initialized, using file fallback')
-    return deleteArticleFromFile(id)
-  }
-  
-  try {
-    console.log('📡 Attempting to delete from Supabase...')
-    const { data, error } = await supabase
-      .from('articles')
-      .delete()
-      .eq('id', id)
-      .select() // Add select to see what was deleted
-
-    if (error) {
-      console.error('❌ Error deleting article from Supabase:', error)
-      console.log('🔄 Falling back to file deletion...')
-      return deleteArticleFromFile(id)
-    }
-    
-    console.log('✅ Successfully deleted from Supabase:', data)
-    
-    // Clear cache to ensure fresh data
-    clearArticlesCache()
-    console.log('🧹 Cleared articles cache')
-    
-    // Automatically sync to local file after successful deletion
+  // Always try to delete from Supabase first (if available)
+  if (supabase) {
     try {
-      console.log('🔄 Auto-syncing to local file after deletion...')
-      await fetch('/api/sync-articles', { method: 'POST' })
-      console.log('✅ Auto-sync completed successfully')
-    } catch (syncError) {
-      console.warn('⚠️ Auto-sync failed, but Supabase deletion was successful:', syncError)
-      // Don't fail the deletion if sync fails
+      console.log('📡 Attempting to delete from Supabase...')
+      const { data, error } = await supabase
+        .from('articles')
+        .delete()
+        .eq('id', id)
+        .select() // Add select to see what was deleted
+
+      if (error) {
+        console.error('❌ Error deleting article from Supabase:', error)
+        throw error
+      }
+      
+      console.log('✅ Successfully deleted from Supabase:', data)
+      
+      // Clear cache to ensure fresh data
+      clearArticlesCache()
+      console.log('🧹 Cleared articles cache')
+      
+      if (isProduction) {
+        // In production, trigger revalidation instead of file sync
+        console.log('🚀 Production environment - triggering page revalidation')
+        try {
+          await fetch(`${process.env.VERCEL_URL || 'https://culturealberta.com'}/api/revalidate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              paths: ['/', '/edmonton', '/calgary', '/food-drink', '/events']
+            })
+          })
+          console.log('✅ Triggered revalidation for static pages')
+        } catch (revalidateError) {
+          console.warn('⚠️ Revalidation failed, but Supabase deletion was successful:', revalidateError)
+        }
+      } else {
+        // In development, sync to local file
+        try {
+          console.log('🔄 Auto-syncing to local file after deletion...')
+          // Use absolute URL for server-side fetch
+          const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+          await fetch(`${baseUrl}/api/sync-articles`, { method: 'POST' })
+          console.log('✅ Auto-sync completed successfully')
+        } catch (syncError) {
+          console.warn('⚠️ Auto-sync failed, but Supabase deletion was successful:', syncError)
+        }
+      }
+      
+      return // Successfully deleted from Supabase
+    } catch (error) {
+      console.error('❌ Supabase deletion failed:', error)
+      console.log('🔄 Falling back to file deletion...')
     }
-  } catch (error) {
-    console.error('❌ Supabase delete failed, using file fallback:', error)
+  } else {
+    console.log('📡 Supabase not available, using file deletion')
+  }
+  
+  // Fallback to file deletion if Supabase is not available or failed (development only)
+  if (!isProduction) {
     return deleteArticleFromFile(id)
+  } else {
+    throw new Error('Cannot delete article: Supabase not available and file system is read-only in production')
   }
 }
 

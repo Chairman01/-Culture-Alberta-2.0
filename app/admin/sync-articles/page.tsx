@@ -109,8 +109,9 @@ export default function SyncArticlesPage() {
               <h4 className="font-semibold text-blue-900 mb-2">How it works:</h4>
               <ul className="text-sm text-blue-800 space-y-1">
                 <li>• Fetches all articles from Supabase</li>
-                <li>• Updates your local articles.json file</li>
-                <li>• Articles load instantly from local file</li>
+                <li>• <strong>Development:</strong> Updates your local articles.json file</li>
+                <li>• <strong>Production:</strong> Triggers page revalidation to refresh content</li>
+                <li>• Articles load instantly from optimized sources</li>
                 <li>• Run this after making changes in Supabase</li>
               </ul>
             </div>
@@ -118,8 +119,8 @@ export default function SyncArticlesPage() {
             <div className="bg-yellow-50 p-4 rounded-lg">
               <h4 className="font-semibold text-yellow-900 mb-2">Pro Tip:</h4>
               <p className="text-sm text-yellow-800">
-                You can also run <code className="bg-yellow-100 px-1 rounded">npm run sync-articles</code> from your terminal, 
-                or set up automatic syncing with webhooks or cron jobs.
+                <strong>Development:</strong> Run <code className="bg-yellow-100 px-1 rounded">npm run sync-articles</code> from your terminal for local file updates.<br/>
+                <strong>Production:</strong> The sync automatically triggers page revalidation to refresh your live site content.
               </p>
             </div>
           </CardContent>
