@@ -12,6 +12,9 @@ import { getArticleUrl } from '@/lib/utils/article-url'
 // Static generation with revalidation
 export const revalidate = 30 // Revalidate every 30 seconds
 
+// Force static generation
+export const dynamic = 'force-static'
+
 // Server-side data loading for static generation
 async function getHomePageData() {
   try {

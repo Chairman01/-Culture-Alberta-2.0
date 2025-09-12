@@ -969,7 +969,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
       .from('articles')
       .select('*')
       .eq('id', id)
-      .single()
+      .limit(1)
 
     const { data, error } = await Promise.race([
       supabasePromise,
@@ -993,10 +993,13 @@ export async function getArticleById(id: string): Promise<Article | null> {
       return getArticleByIdFromFile(id)
     }
 
-    if (!data) {
+    if (!data || data.length === 0) {
       console.log('Article not found in Supabase:', id)
       return null
     }
+
+    // Get the first article (in case of duplicates)
+    const articleData = Array.isArray(data) ? data[0] : data
 
     console.log('Successfully fetched article from Supabase:', id)
 
