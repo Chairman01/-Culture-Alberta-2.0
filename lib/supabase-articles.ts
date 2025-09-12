@@ -194,7 +194,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
       const now = Date.now()
       if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
         console.log('Returning cached articles for homepage:', articlesCache.length, 'articles')
-        return articlesCache
+        return articlesCache!
       }
       
       // ALWAYS use file system as primary source (fastest)
@@ -242,7 +242,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
       
       if (articlesCache) {
         console.log('Using cached articles for homepage due to Supabase error')
-        return articlesCache
+        return articlesCache!
       }
       
       console.log('No cache available, falling back to file system')
@@ -278,7 +278,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
       
       if (articlesCache) {
         console.log('Using cached articles for homepage due to connection error')
-        return articlesCache
+        return articlesCache!
       }
       
       console.log('No cache available, falling back to file system')
@@ -727,7 +727,7 @@ export async function getAllArticles(): Promise<Article[]> {
       // If we have cached data, return it instead of falling back to file system
       if (articlesCache) {
         console.log('Using cached articles due to Supabase error')
-        return articlesCache
+        return articlesCache!
       }
       
       console.log('No cache available, falling back to file system')
