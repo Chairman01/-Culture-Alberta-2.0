@@ -17,9 +17,12 @@ export function invalidateHomepageCache() {
   }
   
   // Clear server-side cache (if available)
-  if (typeof global !== 'undefined' && (global as any).articlesCache) {
-    (global as any).articlesCache = null
-    (global as any).cacheTimestamp = 0
+  if (typeof global !== 'undefined') {
+    const globalObj = global as any
+    if (globalObj.articlesCache) {
+      globalObj.articlesCache = null
+      globalObj.cacheTimestamp = 0
+    }
   }
   
   console.log('Homepage cache invalidated')
@@ -36,10 +39,11 @@ export function invalidateAllCaches() {
   
   // Clear server-side caches
   if (typeof global !== 'undefined') {
-    (global as any).articlesCache = null
-    (global as any).articleCache = new Map()
-    (global as any).cityArticlesCache = new Map()
-    (global as any).cacheTimestamp = 0
+    const globalObj = global as any
+    globalObj.articlesCache = null
+    globalObj.articleCache = new Map()
+    globalObj.cityArticlesCache = new Map()
+    globalObj.cacheTimestamp = 0
   }
   
   console.log('All caches invalidated')
@@ -58,7 +62,7 @@ export async function forceRefreshHomepage() {
 // Cache status checker
 export function getCacheStatus() {
   const now = Date.now()
-  const cacheTimestamp = (global as any)?.cacheTimestamp || 0
+  const cacheTimestamp = typeof global !== 'undefined' ? (global as any)?.cacheTimestamp || 0 : 0
   const cacheDuration = 2 * 60 * 1000 // 2 minutes
   
   return {
