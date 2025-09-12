@@ -82,7 +82,22 @@ export async function updateArticleInFile(id: string, article: UpdateArticleInpu
 
 export async function deleteArticleFromFile(id: string): Promise<void> {
   try {
-    // Directly modify the articles.json file instead of calling API
+    // Check if we're on the server side
+    if (typeof window !== 'undefined') {
+      // We're on the client side, use API call
+      const response = await fetch(`/api/articles?id=${id}`, {
+        method: 'DELETE',
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete article')
+      }
+      
+      console.log('✅ Article deleted via API:', id)
+      return
+    }
+    
+    // We're on the server side, directly modify the file
     const fs = await import('fs')
     const path = await import('path')
     
