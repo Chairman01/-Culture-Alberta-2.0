@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Image from "next/image"
 import { optimizeImageLoading } from "@/lib/vercel-optimizations"
 
 interface ImageDisplayProps {
@@ -48,19 +47,6 @@ export function ImageDisplay({
       setLoading(false)
     } else {
       setImgSrc(src)
-      
-      // Preload image for better performance
-      if (src && !src.startsWith('data:')) {
-        const img = new window.Image()
-        img.onload = () => setLoading(false)
-        img.onerror = () => {
-          setError(true)
-          setLoading(false)
-        }
-        img.src = src
-      } else {
-        setLoading(false)
-      }
     }
   }, [src, isTheaterImage])
 
@@ -110,18 +96,14 @@ export function ImageDisplay({
   }
 
   return (
-    <Image
+    <img
       src={imgSrc || "/placeholder.svg"}
       alt={alt}
       width={optimizedWidth}
       height={optimizedHeight}
       className={className}
-      priority={priority}
-      loading={priority ? "eager" : "lazy"}
       onError={handleError}
       onLoad={handleLoad}
-      placeholder="blur"
-      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
       {...rest}
     />
   )

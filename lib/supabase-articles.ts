@@ -1051,6 +1051,15 @@ export async function getArticleById(id: string): Promise<Article | null> {
       return articleCache.get(id) || null
     }
     
+    // Always prioritize file system for speed (same as other functions)
+    console.log('Using file system as primary source for speed')
+    const fileArticle = await getArticleByIdFromFile(id)
+    if (fileArticle) {
+      console.log('Found article in file system:', id)
+      articleCache.set(id, fileArticle)
+      return fileArticle
+    }
+    
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
       console.log('Build time detected, using file system')
@@ -1222,6 +1231,17 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
     // Force immediate cache refresh for admin
     articlesCache = null
     cacheTimestamp = 0
+    
+    // Automatically sync to local file after successful creation
+    try {
+      console.log('🔄 Auto-syncing to local file after creation...')
+      await fetch('/api/sync-articles', { method: 'POST' })
+      console.log('✅ Auto-sync completed successfully')
+    } catch (syncError) {
+      console.warn('⚠️ Auto-sync failed, but Supabase creation was successful:', syncError)
+      // Don't fail the creation if sync fails
+    }
+    
     return data
   } catch (error) {
     console.error('Supabase insert failed, using file fallback:', error)
@@ -1292,6 +1312,17 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
     // Force immediate cache refresh for admin
     articlesCache = null
     cacheTimestamp = 0
+    
+    // Automatically sync to local file after successful update
+    try {
+      console.log('🔄 Auto-syncing to local file after update...')
+      await fetch('/api/sync-articles', { method: 'POST' })
+      console.log('✅ Auto-sync completed successfully')
+    } catch (syncError) {
+      console.warn('⚠️ Auto-sync failed, but Supabase update was successful:', syncError)
+      // Don't fail the update if sync fails
+    }
+    
     return data
   } catch (error) {
     console.error('Supabase update failed, using file fallback:', {
@@ -1316,8 +1347,19 @@ export async function deleteArticle(id: string): Promise<void> {
     
     // Clear cache to ensure fresh data
     clearArticlesCache()
+    
+    // Automatically sync to local file after successful deletion
+    try {
+      console.log('🔄 Auto-syncing to local file after deletion...')
+      await fetch('/api/sync-articles', { method: 'POST' })
+      console.log('✅ Auto-sync completed successfully')
+    } catch (syncError) {
+      console.warn('⚠️ Auto-sync failed, but Supabase deletion was successful:', syncError)
+      // Don't fail the deletion if sync fails
+    }
   } catch (error) {
     console.error('Supabase delete failed, using file fallback:', error)
     return deleteArticleFromFile(id)
   }
 }
+
