@@ -9,7 +9,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postbuild": "next-sitemap"
+    "postbuild": "next-sitemap",
+    "sync-articles": "node scripts/sync-articles-to-file.js",
+    "auto-sync": "node scripts/auto-sync.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

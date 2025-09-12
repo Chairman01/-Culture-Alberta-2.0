@@ -24,7 +24,7 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
   },
   realtime: {
     params: {
-      eventsPerSecond: supabaseSettings.realtime.eventsPerSecond,
+      eventsPerSecond: 1, // Minimal events per second
     },
   },
 })

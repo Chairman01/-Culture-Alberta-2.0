@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { BarChart2, FileText, Calendar, Award, Mail } from "lucide-react"
+import { BarChart2, FileText, Calendar, Award, Mail, RefreshCw } from "lucide-react"
 
 export default function AdminLayout({
   children,
@@ -73,6 +73,7 @@ export default function AdminLayout({
     { name: 'Events', href: '/admin/events', icon: Calendar },
     { name: 'Best of Alberta', href: '/admin/best-of', icon: Award },
     { name: 'Newsletter', href: '/admin/newsletter', icon: Mail },
+    { name: 'Sync Articles', href: '/admin/sync-articles', icon: RefreshCw },
   ]
 
   // Don't show the layout on the login page

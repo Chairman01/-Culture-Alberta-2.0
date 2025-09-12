@@ -30,13 +30,8 @@ export default function EdmontonPage() {
   useEffect(() => {
     async function loadEdmontonArticles() {
       try {
-        // Set a timeout to prevent infinite loading
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Loading timeout')), 5000)
-        )
-        
-        const loadPromise = getCityArticles('edmonton')
-        const allArticles = await Promise.race([loadPromise, timeoutPromise]) as EdmontonArticle[]
+        // Load articles directly from file system (fast)
+        const allArticles = await getCityArticles('edmonton') as EdmontonArticle[]
         
         
         // Articles are already filtered by the database query for Edmonton

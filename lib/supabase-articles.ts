@@ -62,9 +62,12 @@ function validateImageUrl(imageUrl: any, articleTitle: string): string | undefin
     return undefined
   }
   
-  // Log if we found an image URL for debugging (only in development)
+  // Optimize base64 images by truncating logging for performance
   if (imageUrl && process.env.NODE_ENV === 'development') {
-    console.log(`✅ Found image for "${articleTitle}": ${imageUrl.substring(0, 50)}${imageUrl.length > 50 ? '...' : ''}`)
+    const truncatedUrl = imageUrl.startsWith('data:') 
+      ? `${imageUrl.substring(0, 30)}...${imageUrl.substring(imageUrl.length - 10)}`
+      : imageUrl.substring(0, 50) + (imageUrl.length > 50 ? '...' : '')
+    console.log(`✅ Found image for "${articleTitle}": ${truncatedUrl}`)
   }
   
   return imageUrl
@@ -193,6 +196,16 @@ export async function getHomepageArticles(): Promise<Article[]> {
         console.log('Returning cached articles for homepage:', articlesCache.length, 'articles')
         return articlesCache
       }
+      
+      // ALWAYS use file system as primary source (fastest)
+      console.log('Using file system as primary source for speed')
+      const fileArticles = await getAllArticlesFromFile()
+      console.log('Found articles in file system:', fileArticles.length, 'articles')
+      
+      // Update cache with file system data
+      articlesCache = fileArticles
+      cacheTimestamp = now
+      return fileArticles
       
       // During build time, always use file system for reliability
       if (shouldUseFileSystem()) {
@@ -345,17 +358,26 @@ export async function getEventsArticles(): Promise<Article[]> {
       return cityArticlesCache.get('events') || []
     }
     
+    // ALWAYS use file system first for speed
+    console.log('Using file system as primary source for events')
+    const fileArticles = await getAllArticlesFromFile()
+    
+    // Filter file articles for events only
+    const filteredFileArticles = fileArticles.filter((article: any) => 
+      article.type === 'event'
+    );
+    
+    if (filteredFileArticles.length > 0) {
+      console.log(`Found ${filteredFileArticles.length} events in file system out of ${fileArticles.length} total`)
+      // Cache the filtered results
+      cityArticlesCache.set('events', filteredFileArticles)
+      cityCacheTimestamp.set('events', now)
+      return filteredFileArticles
+    }
+    
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
       console.log('Build time detected, using file system')
-      const fileArticles = await getAllArticlesFromFile()
-      
-      // Filter file articles for events only
-      const filteredFileArticles = fileArticles.filter((article: any) => 
-        article.type === 'event'
-      );
-      
-      console.log(`Build time: Found ${filteredFileArticles.length} events out of ${fileArticles.length} total`)
       return filteredFileArticles
     }
     
@@ -454,7 +476,33 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
       return cityArticlesCache.get(city) || []
     }
     
-    // Try to use homepage cache first for faster loading
+    // ALWAYS use file system first for speed
+    console.log(`Using file system as primary source for ${city} articles`)
+    const fileArticles = await getAllArticlesFromFile()
+    
+    // Filter file articles by city
+    const filteredFileArticles = fileArticles.filter((article: any) => {
+      const hasCityCategory = article.category?.toLowerCase().includes(city);
+      const hasCityLocation = article.location?.toLowerCase().includes(city);
+      const hasCityCategories = article.categories?.some((cat: string) => 
+        cat.toLowerCase().includes(city)
+      );
+      const hasCityTags = article.tags?.some((tag: string) => 
+        tag.toLowerCase().includes(city)
+      );
+      
+      return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+    });
+    
+    if (filteredFileArticles.length > 0) {
+      console.log(`Found ${filteredFileArticles.length} ${city} articles in file system`)
+      // Cache the filtered results
+      cityArticlesCache.set(city, filteredFileArticles)
+      cityCacheTimestamp.set(city, now)
+      return filteredFileArticles
+    }
+    
+    // Try to use homepage cache as fallback
     if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
       console.log(`Using homepage cache to filter ${city} articles`)
       const filteredFromHomepage = articlesCache.filter((article: any) => {
@@ -631,6 +679,16 @@ export async function getAllArticles(): Promise<Article[]> {
       return articlesCache
     }
     
+    // ALWAYS use file system as primary source for speed
+    console.log('Using file system as primary source for speed')
+    const fileArticles = await getAllArticlesFromFile()
+    console.log('Found articles in file system:', fileArticles.length, 'articles')
+    
+    // Update cache with file system data
+    articlesCache = fileArticles
+    cacheTimestamp = now
+    return fileArticles
+    
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
       console.log('Build time detected, using file system')
@@ -770,21 +828,33 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   try {
     console.log('=== getArticleBySlug called for:', slug)
     
+    // ALWAYS use file system as primary source (fastest)
+    console.log('Using file system as primary source for speed')
+    const fileArticles = await getAllArticlesFromFile()
+    const fileArticle = fileArticles.find(article => {
+      const articleUrlTitle = article.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 100)
+      
+      return articleUrlTitle === slug.toLowerCase()
+    })
+    
+    if (fileArticle) {
+      console.log(`Found article in file system for slug "${slug}": "${fileArticle.title}"`)
+      return fileArticle
+    }
+    
+    console.log('Article not found in file system')
+    return null
+    
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
       console.log('Build time detected, using file system')
-      const fileArticles = await getAllArticlesFromFile()
-      return fileArticles.find(article => {
-        const articleUrlTitle = article.title
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '')
-          .substring(0, 100)
-        
-        return articleUrlTitle === slug.toLowerCase()
-      }) || null
+      return null
     }
     
     if (!supabase) {
