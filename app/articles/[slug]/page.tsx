@@ -129,7 +129,7 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
               .substring(0, 100)
             
             return articleUrlTitle === slug.toLowerCase()
-          })
+          }) || null
         }
         
         if (loadedArticle) {

@@ -5,8 +5,6 @@ const nextConfig = {
   ...(process.env.NODE_ENV === 'production' && {
     // Enable compression in production
     compress: true,
-    // Enable SWC minification
-    swcMinify: true,
     // Optimize bundle
     experimental: {
       optimizeCss: true,
