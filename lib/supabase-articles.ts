@@ -879,7 +879,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     // Try to use cached articles first for better performance
     if (articlesCache && (Date.now() - cacheTimestamp) < getCacheDuration()) {
       console.log('Using cached articles for slug lookup:', slug)
-      const cachedArticle = articlesCache.find(a => {
+      const cachedArticle = articlesCache!.find(a => {
         const articleUrlTitle = a.title
           .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, '')
@@ -918,7 +918,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
       
       // Try to get from all articles cache first
       if (articlesCache) {
-        const cachedArticle = articlesCache.find(a => {
+        const cachedArticle = articlesCache!.find(a => {
           const articleUrlTitle = a.title
             .toLowerCase()
             .replace(/[^a-z0-9\s-]/g, '')
@@ -1008,7 +1008,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     
     // Try to get from all articles cache first
     if (articlesCache) {
-      const cachedArticle = articlesCache.find(a => {
+      const cachedArticle = articlesCache!.find(a => {
         const articleUrlTitle = a.title
           .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, '')
