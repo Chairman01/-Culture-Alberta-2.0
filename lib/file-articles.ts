@@ -82,23 +82,17 @@ export async function updateArticleInFile(id: string, article: UpdateArticleInpu
 
 export async function deleteArticleFromFile(id: string): Promise<void> {
   try {
-    // Check if we're on the server side
-    if (typeof window === 'undefined') {
-      // We're on the server side, use server-only function
-      const { deleteArticleFromFileServer } = await import('./server-file-operations')
-      return deleteArticleFromFileServer(id)
-    } else {
-      // We're on the client side, use API call
-      const response = await fetch(`/api/articles?id=${id}`, {
-        method: 'DELETE',
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete article')
-      }
-      
-      console.log('✅ Article deleted via API:', id)
+    // Always use API call to avoid any client-side file system issues
+    const response = await fetch(`/api/articles?id=${id}`, {
+      method: 'DELETE',
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to delete article: ${response.status} ${errorText}`)
     }
+    
+    console.log('✅ Article deleted via API:', id)
   } catch (error) {
     console.error('Error deleting article from file:', error)
     throw new Error('Failed to delete article')
