@@ -1336,6 +1336,17 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
 export async function deleteArticle(id: string): Promise<void> {
   console.log('🗑️ Starting delete process for article:', id)
   
+  // During build time or if file system is preferred, use file deletion
+  if (shouldUseFileSystem()) {
+    console.log('Using file system for deletion')
+    return deleteArticleFromFile(id)
+  }
+  
+  if (!supabase) {
+    console.error('Supabase client is not initialized, using file fallback')
+    return deleteArticleFromFile(id)
+  }
+  
   try {
     console.log('📡 Attempting to delete from Supabase...')
     const { data, error } = await supabase
