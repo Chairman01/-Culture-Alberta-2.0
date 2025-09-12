@@ -892,8 +892,8 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
       })
       
       if (cachedArticle) {
-        console.log(`Found article in cache for slug "${slug}": "${cachedArticle.title}"`)
-        return cachedArticle
+        console.log(`Found article in cache for slug "${slug}": "${cachedArticle!.title}"`)
+        return cachedArticle!
       }
     }
     
