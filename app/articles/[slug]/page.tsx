@@ -1,16 +1,17 @@
-"use client"
-
-import { useState, useEffect } from 'react'
 import { Calendar, Clock, Share2, Bookmark, ArrowLeft, ArrowRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter, useParams } from 'next/navigation'
-import { getArticleById, getArticleBySlug, getAllArticles, getHomepageArticles } from '@/lib/supabase-articles'
+import { getArticleById, getArticleBySlug, getAllArticles } from '@/lib/supabase-articles'
 import { getTitleFromUrl } from '@/lib/utils/article-url'
-import { use } from 'react'
 import { getArticleUrl } from '@/lib/utils/article-url'
-
 import { Article } from '@/lib/types/article'
+import { PageTracker } from '@/components/analytics/page-tracker'
+import NewsletterSignup from '@/components/newsletter-signup'
+import { ArticleContent } from '@/components/article-content'
+
+// Static generation with revalidation
+export const revalidate = 60 // Revalidate every 60 seconds
+export const dynamic = 'force-static'
 
 // Function to process content and convert YouTube URLs to embedded videos
 const processContentWithVideos = (content: string) => {
@@ -18,36 +19,42 @@ const processContentWithVideos = (content: string) => {
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/g
   
   let processedContent = content.replace(youtubeRegex, (match, videoId) => {
-    return `<div class="video-container">
+    return `<div class="youtube-embed my-8">
       <iframe 
-        width="100%" 
-        height="400" 
+        width="560" 
+        height="315" 
         src="https://www.youtube.com/embed/${videoId}" 
         title="YouTube video player" 
         frameborder="0" 
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
         allowfullscreen
+        class="w-full max-w-2xl mx-auto rounded-lg shadow-lg"
       ></iframe>
     </div>`
   })
-
-  // Convert plain text line breaks to proper HTML paragraphs
+  
+  // Process paragraphs for better formatting
   processedContent = processedContent
     .split('\n\n')
-    .map(paragraph => paragraph.trim())
-    .filter(paragraph => paragraph.length > 0)
     .map(paragraph => {
-      // Handle numbered lists (main headings)
-      if (/^\d+\./.test(paragraph)) {
-        return `<h2 class="text-2xl font-bold text-gray-900 mb-4">${paragraph}</h2>`
+      paragraph = paragraph.trim()
+      if (!paragraph) return ''
+      
+      // Handle numbered lists (1., 2., etc.)
+      if (/^\d+\.\s/.test(paragraph)) {
+        return `<li class="mb-2">${paragraph.replace(/^\d+\.\s/, '')}</li>`
       }
-      // Handle "What it is:", "Why locals love it:", etc. (highlight boxes)
-      else if (/^(What it is|Why locals love it|Pro tip|Vibe|Try this|Heads-up|Must-try|Key Takeaway|Important|Note):/.test(paragraph)) {
-        const [label, ...rest] = paragraph.split(':')
-        return `<div class="highlight-box">
-          <strong class="text-gray-900 text-lg">${label}:</strong> 
-          <span class="text-gray-700">${rest.join(':').trim()}</span>
-        </div>`
+      // Handle bullet points (-, *, •)
+      else if (/^[-*•]\s/.test(paragraph)) {
+        return `<li class="mb-2">${paragraph.replace(/^[-*•]\s/, '')}</li>`
+      }
+      // Handle headings (## Heading)
+      else if (/^##\s/.test(paragraph)) {
+        return `<h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">${paragraph.replace(/^##\s/, '')}</h2>`
+      }
+      // Handle subheadings (### Heading)
+      else if (/^###\s/.test(paragraph)) {
+        return `<h3 class="text-xl font-semibold text-gray-900 mt-6 mb-3">${paragraph.replace(/^###\s/, '')}</h3>`
       }
       // Handle "Honorable Mentions:" and "Bottom line:" (section headers)
       else if (/^(Honorable Mentions|Bottom line|Conclusion|Summary|Final Thoughts):/.test(paragraph)) {
@@ -71,660 +78,230 @@ const processContentWithVideos = (content: string) => {
   return processedContent
 }
 
-import { PageTracker } from '@/components/analytics/page-tracker'
-import { trackArticleView } from '@/lib/analytics'
-import NewsletterSignup from '@/components/newsletter-signup'
-import { ArticleContent } from '@/components/article-content'
-import { LoadingSpinner, ArticleCardSkeleton, LoadingDots } from '@/components/loading-spinner'
-// import './article-styles.css' // Removed - file was deleted
-
-export default function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
-  const router = useRouter()
-  const resolvedParams = use(params)
-  const [slug, setSlug] = useState<string>("")
-  
-  // Handle async params
-  useEffect(() => {
-    setSlug(resolvedParams.slug)
-  }, [resolvedParams.slug])
-  
-  const [article, setArticle] = useState<Article | null>(null)
-  const [relatedArticles, setRelatedArticles] = useState<Article[]>([])
-  const [loading, setLoading] = useState(true)
-  const [newsletterEmail, setNewsletterEmail] = useState('')
-  const [newsletterCity, setNewsletterCity] = useState('')
-  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false)
-  const [newsletterSubmitted, setNewsletterSubmitted] = useState(false)
-
-  useEffect(() => {
-    async function loadArticle() {
-      if (!slug) {
-        setLoading(false)
-        return
-      }
-      
-      try {
-        setLoading(true)
-        
-        // Try to get article by slug first (much faster than fetching all articles)
-        let loadedArticle = await getArticleBySlug(slug)
-        
-        // If not found by slug, try by ID (for backward compatibility)
-        if (!loadedArticle) {
-          loadedArticle = await getArticleById(slug)
-        }
-        
-        // If still not found, try to find by title match (last resort)
-        if (!loadedArticle) {
-          // Only fetch all articles as last resort
-          const allArticles = await getAllArticles()
-          loadedArticle = allArticles.find(article => {
-            // Convert article title to URL format and compare
-            const articleUrlTitle = article.title
-              .toLowerCase()
-              .replace(/[^a-z0-9\s-]/g, '')
-              .replace(/\s+/g, '-')
-              .replace(/-+/g, '-')
-              .replace(/^-|-$/g, '')
-              .substring(0, 100)
-            
-            return articleUrlTitle === slug.toLowerCase()
-          }) || null
-        }
-        
-        if (loadedArticle) {
-          setArticle(loadedArticle)
-          
-          // Track article view
-          trackArticleView(loadedArticle.id, loadedArticle.title)
-          
-          // Load related articles more efficiently - use homepage cache if available
-          try {
-            // Try to get homepage articles first (they're usually cached and faster)
-            const homepageArticles = await getHomepageArticles()
-            
-            if (homepageArticles.length > 0) {
-              // Use cached homepage articles for better performance
-              const sameCategory = homepageArticles
-                .filter(a => a.id !== loadedArticle.id && a.category === loadedArticle.category)
-                .slice(0, 3)
-              
-              const otherArticles = homepageArticles
-                .filter(a => a.id !== loadedArticle.id && a.category !== loadedArticle.category)
-                .slice(0, 3)
-              
-              // Combine and shuffle to show diverse content
-              const related = [...sameCategory, ...otherArticles]
-                .sort(() => Math.random() - 0.5)
-                .slice(0, 6)
-              
-              setRelatedArticles(related)
-            } else {
-              // Fallback to empty array if no cached articles
-              setRelatedArticles([])
-            }
-          } catch (error) {
-            console.warn('Failed to load related articles, using empty array:', error)
-            setRelatedArticles([])
-          }
-          
-          // Show newsletter popup after 3 seconds
-          setTimeout(() => {
-            const newsletter = document.getElementById('sticky-newsletter')
-            if (newsletter) {
-              newsletter.classList.remove('opacity-0', 'translate-y-full', 'scale-95')
-              newsletter.classList.add('opacity-100', 'translate-y-0', 'scale-100')
-            }
-          }, 3000)
-        }
-      } catch (error) {
-        console.error('Error loading article:', error)
-      } finally {
-        setLoading(false)
-      }
+// Server-side data loading
+async function getArticleData(slug: string) {
+  try {
+    console.log('=== Loading article data for:', slug)
+    
+    // Try to get article by slug first (much faster than fetching all articles)
+    let article = await getArticleBySlug(slug)
+    
+    // If not found by slug, try by ID (for backward compatibility)
+    if (!article) {
+      article = await getArticleById(slug)
     }
     
-    loadArticle()
-  }, [slug])
+    // If still not found, try to find by title match (last resort)
+    if (!article) {
+      const allArticles = await getAllArticles()
+      article = allArticles.find(article => {
+        const articleUrlTitle = article.title
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .substring(0, 100)
+        return articleUrlTitle === slug.toLowerCase()
+      }) || null
+    }
+    
+    if (!article) {
+      return { article: null, relatedArticles: [] }
+    }
+    
+    // Get related articles (same category, excluding current article)
+    const allArticles = await getAllArticles()
+    const relatedArticles = allArticles
+      .filter(a => a.id !== article!.id && a.category === article!.category)
+      .slice(0, 3)
+    
+    return { article, relatedArticles }
+  } catch (error) {
+    console.error('Error loading article data:', error)
+    return { article: null, relatedArticles: [] }
+  }
+}
+
+export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params
+  const slug = resolvedParams.slug
+  
+  const { article, relatedArticles } = await getArticleData(slug)
+  
+  if (!article) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Article Not Found</h1>
+          <p className="text-gray-600 mb-4">The article you're looking for doesn't exist.</p>
+          <Link href="/" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
       })
     } catch {
-      return dateString
+      return 'Recently'
     }
   }
 
-  const handleNewsletterSignup = async () => {
-    if (!newsletterEmail) {
-      alert('Please enter your email address.')
-      return
-    }
-    
-    if (!newsletterCity) {
-      alert('Please select your city.')
-      return
-    }
-
-    setNewsletterSubmitting(true)
-    
-    try {
-      // Call your newsletter API to save the email
-      const response = await fetch('/api/newsletter', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: newsletterEmail,
-          city: newsletterCity,
-          optIn: true,
-          source: 'article-popup'
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to subscribe')
-      }
-      
-      setNewsletterSubmitted(true)
-      setNewsletterEmail('')
-      setNewsletterCity('')
-      
-      // Hide the popup after successful signup
-      setTimeout(() => {
-        const newsletter = document.getElementById('sticky-newsletter')
-        if (newsletter) {
-          newsletter.classList.add('opacity-0', 'translate-y-full', 'scale-95')
-          newsletter.classList.remove('opacity-100', 'translate-y-0', 'scale-100')
-        }
-      }, 2000)
-      
-    } catch (error) {
-      alert('There was an error signing you up. Please try again.')
-    } finally {
-      setNewsletterSubmitting(false)
-    }
+  const getReadTime = (content: string) => {
+    const wordsPerMinute = 200
+    const wordCount = content.split(/\s+/).length
+    const readTime = Math.ceil(wordCount / wordsPerMinute)
+    return `${readTime} min read`
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Loading Header with Spinner */}
-        <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
-                <div className="hidden md:block">
-                  <div className="h-6 w-64 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <LoadingDots />
-              </div>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-1 mt-3">
-              <div className="bg-blue-600 h-1 rounded-full animate-pulse w-1/3"></div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white">
-          <div className="container mx-auto px-4 py-8">
-            <div className="max-w-7xl mx-auto">
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                <div className="lg:col-span-3 space-y-8">
-                  {/* Article Header Skeleton */}
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                      <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
-                      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
-                    </div>
-                    <div className="h-12 w-full bg-gray-200 rounded animate-pulse"></div>
-                    <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse"></div>
-                  </div>
-
-                  {/* Featured Image Skeleton with Loading Indicator */}
-                  <div className="relative w-full h-[400px] lg:h-[500px] bg-gray-200 rounded-xl overflow-hidden">
-                    <div className="absolute inset-0 bg-gray-200 animate-pulse"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <LoadingSpinner size="lg" text="Loading image..." />
-                    </div>
-                  </div>
-
-                  {/* Article Content Skeleton */}
-                  <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
-                    <div className="space-y-4">
-                      <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-4 w-5/6 bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-4 w-2/3 bg-gray-200 rounded animate-pulse"></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sidebar Skeleton */}
-                <div className="lg:col-span-2 space-y-6">
-                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
-                    <div className="space-y-3">
-                      <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
-                    </div>
-                  </div>
-                  
-                  {/* Related Articles Skeleton */}
-                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
-                    <div className="space-y-4">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex gap-3">
-                          <div className="w-16 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
-                          <div className="flex-1 space-y-2">
-                            <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
-                            <div className="h-3 w-1/2 bg-gray-200 rounded animate-pulse"></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!article) {
-    // Instead of showing error message, redirect to homepage or show blank
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Show blank state instead of error message */}
-      </div>
-    )
-  }
+  const processedContent = processContentWithVideos(article.content || '')
 
   return (
     <>
-      <PageTracker title={article?.title || 'Article'} />
+      <PageTracker title={article.title} />
       <div className="min-h-screen bg-gray-50">
-        {/* Sticky Header */}
+        {/* Header */}
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-700">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Home
+                <Link href="/" className="text-blue-600 hover:text-blue-700 flex items-center gap-2">
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="font-medium">Back to Home</span>
                 </Link>
                 <div className="hidden md:block">
-                  <h1 className="text-lg font-semibold text-gray-900 truncate max-w-md">
-                    {article?.title}
-                  </h1>
+                  <span className="text-sm text-gray-500">{article.category}</span>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <button className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
-                  <Share2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Share</span>
+                <button className="p-2 text-gray-500 hover:text-gray-700">
+                  <Share2 className="w-5 h-5" />
                 </button>
-                <button className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
-                  <Bookmark className="w-4 h-4" />
-                  <span className="hidden sm:inline">Save</span>
+                <button className="p-2 text-gray-500 hover:text-gray-700">
+                  <Bookmark className="w-5 h-5" />
                 </button>
               </div>
-            </div>
-            {/* Reading Progress Bar */}
-            <div className="w-full bg-gray-200 rounded-full h-1 mt-3">
-              <div 
-                className="bg-blue-600 h-1 rounded-full transition-all duration-300 ease-out" 
-                style={{ width: '0%' }} 
-                id="header-reading-progress"
-              ></div>
             </div>
           </div>
         </div>
 
-        {/* Sticky Newsletter Popup */}
-        <div 
-          className="fixed bottom-4 right-4 z-40 transform transition-all duration-500 ease-out opacity-0 translate-y-full scale-95" 
-          id="sticky-newsletter"
-        >
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-sm">
-            {!newsletterSubmitted ? (
-              <>
-                <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">Stay in the loop</h3>
-                  <button 
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                    onClick={() => {
-                      const newsletter = document.getElementById('sticky-newsletter')
-                      if (newsletter) {
-                        newsletter.classList.add('opacity-0', 'translate-y-full', 'scale-95')
-                        newsletter.classList.remove('opacity-100', 'translate-y-0', 'scale-100')
-                      }
-                    }}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            {/* Article Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                <span className="rounded-full bg-blue-100 text-blue-800 px-3 py-1.5 font-medium">
+                  {article.category}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  <span>{formatDate(article.createdAt)}</span>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">
-                  Get the latest cultural events and stories delivered to your inbox every week.
+                <div className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  <span>{getReadTime(article.content || '')}</span>
+                </div>
+              </div>
+              
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+                {article.title}
+              </h1>
+              
+              {article.excerpt && (
+                <p className="text-xl text-gray-600 leading-relaxed mb-6">
+                  {article.excerpt}
                 </p>
-                <div className="space-y-3">
-                  <input
-                    type="email"
-                    placeholder="Enter your email *"
-                    value={newsletterEmail}
-                    onChange={(e) => setNewsletterEmail(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      newsletterEmail === '' ? 'border-gray-300' : 'border-green-300'
-                    }`}
+              )}
+              
+              <div className="flex items-center gap-4 text-sm text-gray-500">
+                <span>By {article.author || 'Culture Alberta'}</span>
+                {article.location && (
+                  <span>• {article.location}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Featured Image */}
+            {article.imageUrl && (
+              <div className="mb-8">
+                <div className="relative w-full h-[400px] lg:h-[500px] rounded-xl overflow-hidden">
+                  <Image
+                    src={article.imageUrl}
+                    alt={article.title}
+                    fill
+                    className="object-cover"
+                    priority
+                    loading="eager"
+                    decoding="sync"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
+                    quality={90}
+                    placeholder="blur"
+                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                   />
-                  <select
-                    value={newsletterCity}
-                    onChange={(e) => setNewsletterCity(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      newsletterCity === '' ? 'border-gray-300' : 'border-green-300'
-                    }`}
-                  >
-                    <option value="">Select your city</option>
-                    <option value="calgary">Calgary</option>
-                    <option value="edmonton">Edmonton</option>
-                    <option value="red-deer">Red Deer</option>
-                    <option value="lethbridge">Lethbridge</option>
-                    <option value="medicine-hat">Medicine Hat</option>
-                    <option value="fort-mcmurray">Fort McMurray</option>
-                    <option value="grande-prairie">Grande Prairie</option>
-                    <option value="other">Other</option>
-                  </select>
-                  <button 
-                    className={`w-full font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 ${
-                      newsletterSubmitting 
-                        ? 'bg-gray-400 cursor-not-allowed' 
-                        : 'bg-red-600 hover:bg-red-700 text-white'
-                    }`}
-                    onClick={handleNewsletterSignup}
-                    disabled={newsletterSubmitting || !newsletterEmail || !newsletterCity}
-                  >
-                    {newsletterSubmitting ? (
-                      <>
-                        <LoadingSpinner size="sm" />
-                        Subscribing...
-                      </>
-                    ) : (
-                      'Subscribe'
-                    )}
-                  </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-3 text-center">
-                  Contact us or unsubscribe anytime.
-                </p>
-              </>
-            ) : (
-              <div className="text-center py-4">
-                <div className="text-green-500 mb-2">
-                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Successfully subscribed!</h3>
-                <p className="text-sm text-gray-600">
-                  You'll receive our latest updates in your inbox.
-                </p>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Hero Section */}
-        <div className="bg-white">
-          <div className="container mx-auto px-4 py-8">
-            
-            <div className="max-w-7xl mx-auto">
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                {/* Article Content */}
-                <div className="lg:col-span-3 space-y-8">
-                  {/* Article Header */}
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      {article.category && (
-                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
-                          {article.category}
-                        </span>
-                      )}
-                      {article.date && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {formatDate(article.date)}
-                        </span>
-                      )}
-                      {article.readTime && (
-                        <span className="flex items-center gap-1">
-                          <Bookmark className="w-4 h-4" />
-                          {article.readTime} read
-                        </span>
-                      )}
-                      {article.author && (
-                        <span className="font-medium">By {article.author}</span>
-                      )}
-                    </div>
-                    
-                    <h1 className="text-4xl lg:text-5xl font-bold leading-tight text-gray-900">
-                      {article.title}
-                    </h1>
-                    
-                    {article.excerpt && (
-                      <p className="text-xl text-gray-600 leading-relaxed max-w-3xl">
-                        {article.excerpt}
-                      </p>
-                    )}
-                  </div>
+            {/* Article Content */}
+            <div className="prose prose-lg max-w-none">
+              <ArticleContent content={processedContent} />
+            </div>
 
-                  {/* Featured Image */}
-                  {article.imageUrl && (
-                    <div className="relative w-full h-[400px] lg:h-[500px] rounded-xl overflow-hidden">
-                      {article.imageUrl.startsWith('data:image') || (article.imageUrl.length > 1000 && !article.imageUrl.includes('http')) ? (
-                        <img
-                          src={article.imageUrl.startsWith('data:image') ? article.imageUrl : `data:image/jpeg;base64,${article.imageUrl}`}
-                          alt={article.title || 'Article image'}
-                          className="w-full h-full object-cover"
-                          loading="eager"
-                          decoding="sync"
-                        />
-                      ) : (
-                        <Image
-                          src={article.imageUrl}
-                          alt={article.title || 'Article image'}
-                          fill
-                          className="object-cover"
-                          priority
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          quality={85}
-                          placeholder="blur"
-                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                        />
-                      )}
-                    </div>
-                  )}
-
-
-
-                  {/* Article Content */}
-                  <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
-                    <div className="article-content">
-                      {article.content ? (
-                        <ArticleContent content={article.content} />
-                      ) : (
-                        <p className="text-gray-600 italic">Content coming soon...</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Article Footer */}
-                  <div className="flex items-center justify-end pt-8 border-t border-gray-200">
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <span>Published {formatDate(article.date || '')}</span>
-                    </div>
-                  </div>
-
-                  {/* More Articles Section */}
-                  {relatedArticles.length > 0 && (
-                    <div className="mt-16 pt-12 border-t border-gray-200">
-                      <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">More Articles</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {relatedArticles.slice(0, 6).map((relatedArticle) => (
-                          <Link 
-                            key={relatedArticle.id} 
-                            href={getArticleUrl(relatedArticle)}
-                            className="group block"
-                          >
-                            <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                              <div className="aspect-[16/10] w-full bg-gray-200 relative overflow-hidden">
-                                {relatedArticle.imageUrl ? (
-                                  relatedArticle.imageUrl.startsWith('data:image') || (relatedArticle.imageUrl.length > 1000 && !relatedArticle.imageUrl.includes('http')) ? (
-                                    <img
-                                      src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
-                                      alt={relatedArticle.title}
-                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                      loading="lazy"
-                                      decoding="async"
-                                    />
-                                  ) : (
-                                    <Image
-                                      src={relatedArticle.imageUrl}
-                                      alt={relatedArticle.title}
-                                      fill
-                                      className="object-cover group-hover:scale-110 transition-transform duration-500"
-                                      loading="lazy"
-                                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                      quality={75}
-                                    />
-                                  )
-                                ) : (
-                                  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                                    <span className="text-gray-400 text-lg">No Image</span>
-                                  </div>
-                                )}
-                                {/* Bookmark icon overlay */}
-                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                  <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg">
-                                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                                    </svg>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="p-6">
-                                <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
-                                  <span className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full font-medium text-sm">
-                                    {relatedArticle.category}
-                                  </span>
-                                  {relatedArticle.date && (
-                                    <span className="font-medium">{formatDate(relatedArticle.date)}</span>
-                                  )}
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 mb-3 leading-tight">
-                                  {relatedArticle.title}
-                                </h3>
-                                {relatedArticle.excerpt && (
-                                  <p className="text-gray-600 line-clamp-3 leading-relaxed">
-                                    {relatedArticle.excerpt}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Sidebar */}
-                <div className="lg:col-span-2 space-y-6">
-                  {/* Newsletter Signup */}
-                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <NewsletterSignup 
-                      title="Stay in the Loop"
-                      description="Get the latest cultural events and stories delivered to your inbox every week."
-                      defaultCity=""
-                    />
-                  </div>
-
-                  {/* Latest Articles */}
-                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 className="text-xl font-bold mb-4 text-gray-900">Latest Articles</h3>
-                    <div className="space-y-4">
-                      {relatedArticles.slice(0, 3).map((relatedArticle) => (
-                        <Link 
-                          key={relatedArticle.id} 
-                          href={getArticleUrl(relatedArticle)}
-                          className="group block"
-                        >
-                          <div className="flex gap-3">
-                            <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
-                              {relatedArticle.imageUrl ? (
-                                relatedArticle.imageUrl.startsWith('data:image') || (relatedArticle.imageUrl.length > 1000 && !relatedArticle.imageUrl.includes('http')) ? (
-                                  <img
-                                    src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
-                                    alt={relatedArticle.title}
-                                    className="w-full h-full object-cover"
-                                    loading="lazy"
-                                    decoding="async"
-                                  />
-                                ) : (
-                                  <Image
-                                    src={relatedArticle.imageUrl}
-                                    alt={relatedArticle.title}
-                                    width={64}
-                                    height={64}
-                                    className="w-full h-full object-cover"
-                                    loading="lazy"
-                                    sizes="64px"
-                                    quality={60}
-                                  />
-                                )
-                              ) : (
-                                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                                  <span className="text-gray-400 text-xs">No Image</span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
-                                {relatedArticle.title}
-                              </h4>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {relatedArticle.category}
-                              </p>
-                            </div>
+            {/* Related Articles */}
+            {relatedArticles.length > 0 && (
+              <div className="mt-16">
+                <h2 className="text-3xl font-bold text-gray-900 mb-8">Related Articles</h2>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {relatedArticles.map((relatedArticle) => (
+                    <Link key={relatedArticle.id} href={getArticleUrl(relatedArticle)} className="group block">
+                      <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                        <div className="aspect-[16/9] w-full bg-gray-200 relative">
+                          <Image
+                            src={relatedArticle.imageUrl || '/placeholder.svg'}
+                            alt={relatedArticle.title}
+                            width={400}
+                            height={225}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            quality={75}
+                          />
+                        </div>
+                        <div className="p-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                            <span className="rounded-full bg-gray-100 px-3 py-1.5 font-medium">
+                              {relatedArticle.category}
+                            </span>
+                            <span className="font-medium">{formatDate(relatedArticle.createdAt)}</span>
                           </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
+                          <h3 className="font-display font-bold text-xl group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight">
+                            {relatedArticle.title}
+                          </h3>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </div>
+            )}
+
+            {/* Newsletter Signup */}
+            <div className="mt-16">
+              <NewsletterSignup 
+                title="Stay Updated"
+                description="Get the latest cultural news and events from across Alberta delivered to your inbox."
+              />
             </div>
           </div>
         </div>
-
       </div>
     </>
   )
