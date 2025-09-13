@@ -284,9 +284,9 @@ export async function getHomepageArticles(): Promise<Article[]> {
 }
 
 // Optimized function for admin list that only fetches essential fields
-export async function getAdminArticles(): Promise<Article[]> {
+export async function getAdminArticles(forceRefresh: boolean = false): Promise<Article[]> {
   try {
-    console.log('=== getAdminArticles called ===')
+    console.log('=== getAdminArticles called ===', forceRefresh ? '(force refresh)' : '')
     
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
@@ -301,6 +301,10 @@ export async function getAdminArticles(): Promise<Article[]> {
     }
 
     console.log('Attempting to fetch admin articles from Supabase...')
+    
+    // For admin operations, always fetch fresh data to ensure accuracy
+    // Add a cache-busting parameter to ensure we get fresh data
+    const cacheBuster = forceRefresh ? `?t=${Date.now()}` : ''
     
     // Optimized query for admin - only essential fields for list view
     const supabasePromise = supabase

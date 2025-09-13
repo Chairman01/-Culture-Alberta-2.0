@@ -78,11 +78,11 @@ export default function AdminArticles() {
     }
   }
 
-  const loadAllArticles = async () => {
+  const loadAllArticles = async (forceRefresh: boolean = false) => {
     setIsLoading(true)
     try {
-      console.log('Admin: Loading articles...')
-      const data = await getAdminArticles()
+      console.log('Admin: Loading articles...', forceRefresh ? '(force refresh)' : '')
+      const data = await getAdminArticles(forceRefresh)
       console.log('Admin: Articles loaded:', data)
       
       // Ensure all required fields are strings
@@ -145,15 +145,24 @@ export default function AdminArticles() {
         await deleteArticle(article.id)
         console.log('✅ Article deleted successfully')
         
+        // Remove the article from the local state immediately for better UX
+        setArticles(prevArticles => prevArticles.filter(a => a.id !== article.id))
+        
         // Show success message
         alert(`Article "${article.title}" has been deleted successfully!`)
         
         // Refresh the articles list to ensure data is up to date
-        await loadAllArticles()
+        // Add a small delay to ensure the database operation has completed
+        setTimeout(async () => {
+          await loadAllArticles(true) // Force refresh to get latest data
+        }, 500)
         
       } catch (error) {
         console.error('❌ Error deleting article:', error)
         alert(`Failed to delete article "${article.title}". Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        
+        // If deletion failed, reload the articles to get the current state
+        await loadAllArticles(true) // Force refresh to get latest data
       }
     }
   }
