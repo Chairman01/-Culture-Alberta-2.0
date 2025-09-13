@@ -150,28 +150,14 @@ export default function AdminArticles() {
         const deleteResult = await deleteArticle(article.id)
         console.log('✅ Article deleted successfully, result:', deleteResult)
         
-        // Remove the article from the local state immediately for better UX
-        setArticles(prevArticles => {
-          const filtered = prevArticles.filter(a => a.id !== article.id)
-          console.log('📝 Updated local state:', {
-            originalCount: prevArticles.length,
-            newCount: filtered.length,
-            removed: prevArticles.length - filtered.length,
-            articleId: article.id,
-            remainingIds: filtered.map(a => a.id)
-          })
-          return filtered
-        })
-        
-        // Force a re-render by updating a dummy state
-        setSearchTerm(prev => prev)
+        // Page will refresh after deletion, so no need to update local state
         
         // Show success message
         alert(`Article "${article.title}" has been deleted successfully!`)
         
-        // Refresh the articles list to ensure data is up to date
-        console.log('🔄 Refreshing articles list immediately...')
-        await loadAllArticles(true) // Force refresh to get latest data
+        // Force a complete page refresh to ensure the UI is updated
+        console.log('🔄 Refreshing page to show updated article list...')
+        window.location.reload()
         
       } catch (error) {
         console.error('❌ Error deleting article:', error)
