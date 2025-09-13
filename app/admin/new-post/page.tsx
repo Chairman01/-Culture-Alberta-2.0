@@ -74,16 +74,8 @@ export default function NewPostPage() {
         description: "Your post has been created successfully.",
       })
 
-      // Redirect to the article page using title-based URL for better SEO
-      const urlTitle = title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-        .substring(0, 100)
-      
-      router.push(`/articles/${urlTitle}`)
+      // Redirect back to admin articles list to see the new article
+      router.push('/admin/articles')
     } catch (error) {
       console.error("Error creating post:", error)
       toast({

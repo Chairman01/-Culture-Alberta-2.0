@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Upload } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,7 @@ import { createArticle } from "@/lib/articles"
 
 export default function NewEventPage() {
   const { toast } = useToast()
+  const router = useRouter()
 
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState("")
@@ -106,18 +108,8 @@ export default function NewEventPage() {
         description: "Your event has been created successfully.",
       })
 
-      // Reset the form
-      setTitle("")
-      setCategory("")
-      setStartDate("")
-      setEndDate("")
-      setLocation("")
-      setDescription("")
-      setImageUrl("")
-      setTicketUrl("")
-      setOrganizer("")
-      setContactEmail("")
-      setContactPhone("")
+      // Redirect back to admin articles list to see the new event
+      router.push('/admin/articles')
     } catch (error) {
       console.error("Error creating event:", error)
       toast({

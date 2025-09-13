@@ -30,6 +30,7 @@ import { getAdminArticles, deleteArticle } from "@/lib/articles"
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { useRouter } from "next/navigation"
 import { invalidateAllCaches } from "@/lib/cache-invalidation"
+import { useToast } from "@/hooks/use-toast"
 
 interface ExtendedArticle extends Article {
   type?: string;
@@ -56,9 +57,35 @@ export default function AdminArticles() {
   const [sortBy, setSortBy] = useState("newest") // newest, oldest, title
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const { toast } = useToast()
 
   useEffect(() => {
     loadAllArticles()
+  }, [])
+
+  // Refresh articles when the page becomes visible (e.g., returning from creation)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('🔄 Page became visible, refreshing articles...')
+        loadAllArticles(true) // Force refresh
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Also refresh on focus (when user returns to tab)
+    const handleFocus = () => {
+      console.log('🔄 Page focused, refreshing articles...')
+      loadAllArticles(true) // Force refresh
+    }
+
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [])
 
   const formatDate = (dateString: string | undefined) => {
@@ -119,10 +146,17 @@ export default function AdminArticles() {
       }
       
       // Show success message
-      alert('Cache cleared and homepage refreshed! Changes should appear within 30 seconds.')
+      toast({
+        title: "Cache cleared",
+        description: "Homepage refreshed! Changes should appear within 30 seconds.",
+      })
     } catch (error) {
       console.error('Error refreshing cache:', error)
-      alert('Error refreshing cache. Please try again.')
+      toast({
+        title: "Error refreshing cache",
+        description: "Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -151,14 +185,19 @@ export default function AdminArticles() {
         const deleteResult = await deleteArticle(article.id)
         console.log('✅ Article deleted successfully, result:', deleteResult)
         
-        // Page will refresh after deletion, so no need to update local state
+        // Immediately remove from local state for better UX
+        setArticles(prevArticles => prevArticles.filter(a => a.id !== article.id))
         
         // Show success message
-        alert(`Article "${article.title}" has been deleted successfully!`)
+        toast({
+          title: "Article deleted",
+          description: `"${article.title}" has been deleted successfully!`,
+        })
         
-        // Force a complete page refresh to ensure the UI is updated
-        console.log('🔄 Refreshing page to show updated article list...')
-        window.location.reload()
+        // Clear cache and reload articles to ensure consistency
+        console.log('🔄 Clearing cache and reloading articles...')
+        await invalidateAllCaches()
+        await loadAllArticles(true) // Force refresh to get latest data
         
       } catch (error) {
         console.error('❌ Error deleting article:', error)
@@ -167,7 +206,11 @@ export default function AdminArticles() {
           stack: error instanceof Error ? error.stack : 'No stack',
           error: error
         })
-        alert(`Failed to delete article "${article.title}". Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast({
+          title: "Error deleting article",
+          description: `Failed to delete "${article.title}". ${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: "destructive",
+        })
         
         // If deletion failed, reload the articles to get the current state
         await loadAllArticles(true) // Force refresh to get latest data
@@ -218,6 +261,15 @@ export default function AdminArticles() {
           <p className="text-gray-500 mt-1">Total: {filteredArticles.length} articles</p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => loadAllArticles(true)}
+            disabled={isLoading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Button 
             variant="outline" 
             onClick={handleRefreshCache}
