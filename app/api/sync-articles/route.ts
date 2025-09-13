@@ -63,9 +63,9 @@ export async function POST(request: NextRequest) {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
     
     if (isProduction) {
-      // In production, we can't write to the file system
-      // Instead, we'll trigger a revalidation of the static pages
-      console.log('🚀 Production environment detected - triggering revalidation instead of file write')
+      // In production, we can't write to the file system directly
+      // Instead, we'll trigger a rebuild with fresh data from Supabase
+      console.log('🚀 Production environment detected - triggering rebuild with fresh data')
       
       // Trigger revalidation of the homepage and other static pages
       try {
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       
       return NextResponse.json({ 
         success: true, 
-        message: `Synced ${transformedArticles.length} articles and triggered page revalidation`,
+        message: `Synced ${transformedArticles.length} articles and triggered page rebuild`,
         timestamp: new Date().toISOString(),
         environment: 'production'
       })
@@ -171,9 +171,9 @@ export async function GET() {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
     
     if (isProduction) {
-      // In production, we can't write to the file system
-      // Instead, we'll trigger a revalidation of the static pages
-      console.log('🚀 Production environment detected - triggering revalidation instead of file write')
+      // In production, we can't write to the file system directly
+      // Instead, we'll trigger a rebuild with fresh data from Supabase
+      console.log('🚀 Production environment detected - triggering rebuild with fresh data')
       
       // Trigger revalidation of the homepage and other static pages
       try {
@@ -193,7 +193,7 @@ export async function GET() {
       
       return NextResponse.json({ 
         success: true, 
-        message: `Synced ${transformedArticles.length} articles and triggered page revalidation`,
+        message: `Synced ${transformedArticles.length} articles and triggered page rebuild`,
         timestamp: new Date().toISOString(),
         environment: 'production'
       })
