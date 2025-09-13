@@ -11,13 +11,15 @@ import {
   deleteArticle as deleteArticleFromSupabase
 } from './supabase-articles'
 
-// Re-export Supabase functions with the same names for backward compatibility
+// Public-facing functions use optimized file system for speed
 export const getAllArticles = getAllArticlesFromSupabase
 export const getHomepageArticles = getHomepageArticlesFromSupabase
-export const getAdminArticles = getAdminArticlesFromSupabase
 export const getCityArticles = getCityArticlesFromSupabase
 export const getEventsArticles = getEventsArticlesFromSupabase
 export const getArticleById = getArticleByIdFromSupabase
+
+// Admin functions always use Supabase for write operations
+export const getAdminArticles = getAdminArticlesFromSupabase
 export const createArticle = createArticleInSupabase
 export const updateArticle = updateArticleInSupabase
 export const deleteArticle = deleteArticleFromSupabase 
