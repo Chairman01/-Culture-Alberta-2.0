@@ -1,5 +1,27 @@
 import { Article, CreateArticleInput, UpdateArticleInput } from './types/article'
 
+// Cache for articles data to handle module-level caching
+let cachedArticlesData: Article[] | null = null
+
+// Function to clear the cache (called after sync operations)
+export function clearFileArticlesCache() {
+  cachedArticlesData = null
+  // Clear the module cache for the articles.json file
+  if (typeof require !== 'undefined') {
+    delete require.cache[require.resolve('./data/articles.json')]
+  }
+}
+
+// Function to get articles data with cache invalidation support
+function getArticlesData(): Article[] {
+  if (cachedArticlesData === null) {
+    // Import fresh data
+    const articlesData = require('./data/articles.json')
+    cachedArticlesData = articlesData as Article[]
+  }
+  return cachedArticlesData
+}
+
 // Direct file system access for build time
 export async function getAllArticlesFromFile(): Promise<Article[]> {
   try {
@@ -13,17 +35,11 @@ export async function getAllArticlesFromFile(): Promise<Article[]> {
       return []
     }
 
-    // Server side - read file directly
-    const fs = await import('fs')
-    const path = await import('path')
-    
-    const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
-    const fileContent = await fs.promises.readFile(articlesPath, 'utf-8')
-    const articlesData = JSON.parse(fileContent)
-    
+    // Server side - use cached data with invalidation support
     console.log('Using articles.json directly - no API calls')
+    const articlesData = getArticlesData()
     console.log('Articles count:', articlesData.length)
-    return articlesData as Article[]
+    return articlesData
   } catch (error) {
     console.error('Error fetching articles from file:', error)
     // Fallback to empty array
@@ -43,16 +59,9 @@ export async function getArticleByIdFromFile(id: string): Promise<Article | null
       return null
     }
 
-    // Server side - read file directly
-    const fs = await import('fs')
-    const path = await import('path')
-    
-    const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
-    const fileContent = await fs.promises.readFile(articlesPath, 'utf-8')
-    const articlesData = JSON.parse(fileContent)
-    
+    // Server side - use cached data
     console.log('Finding article by ID in articles.json')
-    const articles = articlesData as Article[]
+    const articles = getArticlesData()
     return articles.find(article => article.id === id) || null
   } catch (error) {
     console.error('Error fetching article from file:', error)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
+import { clearFileArticlesCache } from '@/lib/file-articles'
 
 // API endpoint to sync articles from Supabase to local file
 export async function POST(request: NextRequest) {
@@ -88,6 +89,9 @@ export async function POST(request: NextRequest) {
       // In development, write to the local file
       const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
       await fs.writeFile(articlesPath, JSON.stringify(transformedArticles, null, 2))
+      
+      // Clear the file articles cache so fresh data is loaded
+      clearFileArticlesCache()
       
       console.log(`💾 Updated articles.json with ${transformedArticles.length} articles`)
       
@@ -189,6 +193,9 @@ export async function GET() {
       // In development, write to the local file
       const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
       await fs.writeFile(articlesPath, JSON.stringify(transformedArticles, null, 2))
+      
+      // Clear the file articles cache so fresh data is loaded
+      clearFileArticlesCache()
       
       console.log(`💾 Updated articles.json with ${transformedArticles.length} articles`)
       

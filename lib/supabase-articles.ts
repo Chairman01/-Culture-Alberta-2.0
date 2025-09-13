@@ -5,7 +5,8 @@ import {
   getArticleByIdFromFile,
   createArticleInFile,
   updateArticleInFile,
-  deleteArticleFromFile
+  deleteArticleFromFile,
+  clearFileArticlesCache
 } from './file-articles'
 import { shouldUseFileSystem, shouldUseSupabaseForAdmin } from './build-config'
 import { getProductionCacheSettings, handleProductionError, trackProductionPerformance } from './production-optimizations'
@@ -206,67 +207,6 @@ export async function getHomepageArticles(): Promise<Article[]> {
       articlesCache = fileArticles
       cacheTimestamp = now
       return fileArticles
-      
-      if (!supabase) {
-        console.error('Supabase client is not initialized')
-        console.log('Falling back to file system')
-        return getAllArticlesFromFile()
-      }
-
-      console.log('Attempting to fetch homepage articles from Supabase...')
-      
-      // Optimized query for homepage - only essential fields
-      const fields = ensureImageFields('id, title, excerpt, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
-      
-      const supabasePromise = supabase
-        .from('articles')
-        .select(fields)
-        .order('created_at', { ascending: false })
-        .limit(20) // Only fetch 20 most recent for homepage
-
-      const { data, error } = await Promise.race([
-        supabasePromise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Supabase timeout')), getProductionCacheSettings().timeoutDuration) // Dynamic timeout based on environment
-        )
-      ]) as any
-
-    if (error) {
-      console.warn('Supabase homepage query failed:', error.message)
-      
-      if (articlesCache) {
-        console.log('Using cached articles for homepage due to Supabase error')
-        return articlesCache!
-      }
-      
-      console.log('No cache available, falling back to file system')
-      return getAllArticlesFromFile()
-    }
-
-    console.log('Successfully fetched homepage articles from Supabase:', data?.length || 0, 'articles')
-
-    // Map Supabase data to match our Article interface
-    const mappedArticles = (data || []).map((article: any) => ({
-      ...article,
-      imageUrl: validateImageUrl(article.image_url || article.image, article.title),
-      date: article.created_at,
-      trendingHome: article.trending_home || false,
-      trendingEdmonton: article.trending_edmonton || false,
-      trendingCalgary: article.trending_calgary || false,
-      featuredHome: article.featured_home || false,
-      featuredEdmonton: article.featured_edmonton || false,
-      featuredCalgary: article.featured_calgary || false
-    }))
-
-    // Update cache
-    articlesCache = mappedArticles
-    cacheTimestamp = now
-    console.log('Updated homepage articles cache')
-
-    // Track resource usage
-    trackResourceUsage('getHomepageArticles', startTime)
-
-      return mappedArticles
     } catch (error) {
       console.warn('Supabase homepage connection failed:', error)
       
@@ -1207,6 +1147,7 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
     // Automatically sync to local file after successful creation
     try {
       console.log('🔄 Auto-syncing articles.json after creation...')
+      clearFileArticlesCache() // Clear cache immediately
       await fetch('/api/sync-articles', { method: 'POST' })
       console.log('✅ Articles.json synced successfully')
     } catch (syncError) {
@@ -1293,6 +1234,7 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
     // Automatically sync to local file after successful update
     try {
       console.log('🔄 Auto-syncing to local file after update...')
+      clearFileArticlesCache() // Clear cache immediately
       await fetch('/api/sync-articles', { method: 'POST' })
       console.log('✅ Auto-sync completed successfully')
     } catch (syncError) {
@@ -1407,6 +1349,7 @@ export async function deleteArticle(id: string): Promise<void> {
         // In development, sync to local file
         try {
           console.log('🔄 Auto-syncing to local file after deletion...')
+          clearFileArticlesCache() // Clear cache immediately
           // Use absolute URL for server-side fetch
           const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
           await fetch(`${baseUrl}/api/sync-articles`, { method: 'POST' })
