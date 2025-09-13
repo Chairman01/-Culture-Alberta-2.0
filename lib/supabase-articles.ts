@@ -1312,27 +1312,45 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
 }
 
 export async function deleteArticle(id: string): Promise<void> {
-  console.log('🗑️ Starting delete process for article:', id)
+  console.log('🗑️ Starting delete process for article:', {
+    id,
+    type: typeof id,
+    length: id?.length,
+    environment: process.env.NODE_ENV,
+    vercel: process.env.VERCEL
+  })
   
   // Check if we're in production (Vercel) or development
   const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
+  console.log('🏗️ Environment check:', { isProduction, NODE_ENV: process.env.NODE_ENV, VERCEL: process.env.VERCEL })
   
   // Always try to delete from Supabase first (if available)
   if (supabase) {
     try {
       console.log('📡 Attempting to delete from Supabase...')
+      console.log('📡 Supabase client available:', !!supabase)
+      
       const { data, error } = await supabase
         .from('articles')
         .delete()
         .eq('id', id)
         .select() // Add select to see what was deleted
 
+      console.log('📡 Supabase delete response:', { data, error })
+
       if (error) {
         console.error('❌ Error deleting article from Supabase:', error)
+        console.error('❌ Full Supabase error:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
         throw error
       }
       
       console.log('✅ Successfully deleted from Supabase:', data)
+      console.log('✅ Deleted records count:', data?.length || 0)
       
       // Clear cache to ensure fresh data
       clearArticlesCache()
@@ -1371,16 +1389,24 @@ export async function deleteArticle(id: string): Promise<void> {
       return // Successfully deleted from Supabase
     } catch (error) {
       console.error('❌ Supabase deletion failed:', error)
+      console.error('❌ Full deletion error:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack',
+        error: error
+      })
       console.log('🔄 Falling back to file deletion...')
     }
   } else {
     console.log('📡 Supabase not available, using file deletion')
+    console.log('📡 Supabase client status:', !!supabase)
   }
   
   // Fallback to file deletion if Supabase is not available or failed (development only)
   if (!isProduction) {
+    console.log('🔄 Using file deletion fallback')
     return deleteArticleFromFile(id)
   } else {
+    console.error('❌ Cannot delete article: Supabase not available and file system is read-only in production')
     throw new Error('Cannot delete article: Supabase not available and file system is read-only in production')
   }
 }

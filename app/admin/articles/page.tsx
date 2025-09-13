@@ -139,14 +139,27 @@ export default function AdminArticles() {
   const handleDelete = async (article: ExtendedArticle) => {
     if (confirm('Are you sure you want to delete this article?')) {
       try {
-        console.log('🗑️ Deleting article:', article.id, article.title)
+        console.log('🗑️ Deleting article:', {
+          id: article.id,
+          title: article.title,
+          type: typeof article.id,
+          idLength: article.id?.length
+        })
         
         // Call the delete function
-        await deleteArticle(article.id)
-        console.log('✅ Article deleted successfully')
+        const deleteResult = await deleteArticle(article.id)
+        console.log('✅ Article deleted successfully, result:', deleteResult)
         
         // Remove the article from the local state immediately for better UX
-        setArticles(prevArticles => prevArticles.filter(a => a.id !== article.id))
+        setArticles(prevArticles => {
+          const filtered = prevArticles.filter(a => a.id !== article.id)
+          console.log('📝 Updated local state:', {
+            originalCount: prevArticles.length,
+            newCount: filtered.length,
+            removed: prevArticles.length - filtered.length
+          })
+          return filtered
+        })
         
         // Show success message
         alert(`Article "${article.title}" has been deleted successfully!`)
@@ -154,11 +167,17 @@ export default function AdminArticles() {
         // Refresh the articles list to ensure data is up to date
         // Add a small delay to ensure the database operation has completed
         setTimeout(async () => {
+          console.log('🔄 Refreshing articles list...')
           await loadAllArticles(true) // Force refresh to get latest data
         }, 500)
         
       } catch (error) {
         console.error('❌ Error deleting article:', error)
+        console.error('❌ Full error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : 'No stack',
+          error: error
+        })
         alert(`Failed to delete article "${article.title}". Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
         
         // If deletion failed, reload the articles to get the current state
