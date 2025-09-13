@@ -197,17 +197,15 @@ export async function getHomepageArticles(): Promise<Article[]> {
         return articlesCache!
       }
       
-      // During build time, always use file system for reliability
-      if (shouldUseFileSystem()) {
-        console.log('Build time detected, using file system')
-        const fileArticles = await getAllArticlesFromFile()
-        console.log('Found articles in file system:', fileArticles.length, 'articles')
-        
-        // Update cache with file system data
-        articlesCache = fileArticles
-        cacheTimestamp = now
-        return fileArticles
-      }
+      // Always use file system for public pages (fast loading)
+      console.log('Public page - using file system for speed')
+      const fileArticles = await getAllArticlesFromFile()
+      console.log('Found articles in file system:', fileArticles.length, 'articles')
+      
+      // Update cache with file system data
+      articlesCache = fileArticles
+      cacheTimestamp = now
+      return fileArticles
       
       if (!supabase) {
         console.error('Supabase client is not initialized')
@@ -303,12 +301,12 @@ export async function getAdminArticles(forceRefresh: boolean = false): Promise<A
     // Add a cache-busting parameter to ensure we get fresh data
     const cacheBuster = forceRefresh ? `?t=${Date.now()}` : ''
     
-    // Optimized query for admin - only essential fields for list view
+    // Ultra-fast query for admin - minimal fields only
     const supabasePromise = supabase
       .from('articles')
-      .select('id, title, category, location, author, created_at, updated_at, status, type, featured_home, featured_edmonton, featured_calgary, date')
+      .select('id, title, category, location, author, created_at, status, type')
       .order('created_at', { ascending: false })
-      .limit(100) // Limit to 100 most recent for admin
+      .limit(30) // Reduced limit for faster loading
 
     const { data, error } = await Promise.race([
       supabasePromise,
@@ -355,23 +353,21 @@ export async function getEventsArticles(): Promise<Article[]> {
       return cityArticlesCache.get('events') || []
     }
     
-    // During build time, always use file system for reliability
-    if (shouldUseFileSystem()) {
-      console.log('Build time detected, using file system for events')
-      const fileArticles = await getAllArticlesFromFile()
-      
-      // Filter file articles for events only
-      const filteredFileArticles = fileArticles.filter((article: any) => 
-        article.type === 'event'
-      );
-      
-      if (filteredFileArticles.length > 0) {
-        console.log(`Found ${filteredFileArticles.length} events in file system out of ${fileArticles.length} total`)
-        // Cache the filtered results
-        cityArticlesCache.set('events', filteredFileArticles)
-        cityCacheTimestamp.set('events', now)
-        return filteredFileArticles
-      }
+    // Always use file system for public pages (fast loading)
+    console.log('Public page - using file system for events')
+    const fileArticles = await getAllArticlesFromFile()
+    
+    // Filter file articles for events only
+    const filteredFileArticles = fileArticles.filter((article: any) => 
+      article.type === 'event'
+    );
+    
+    if (filteredFileArticles.length > 0) {
+      console.log(`Found ${filteredFileArticles.length} events in file system out of ${fileArticles.length} total`)
+      // Cache the filtered results
+      cityArticlesCache.set('events', filteredFileArticles)
+      cityCacheTimestamp.set('events', now)
+      return filteredFileArticles
     }
     
     
@@ -470,32 +466,30 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
       return cityArticlesCache.get(city) || []
     }
     
-    // During build time, always use file system for reliability
-    if (shouldUseFileSystem()) {
-      console.log(`Build time detected, using file system for ${city} articles`)
-      const fileArticles = await getAllArticlesFromFile()
+    // Always use file system for public pages (fast loading)
+    console.log(`Public page - using file system for ${city} articles`)
+    const fileArticles = await getAllArticlesFromFile()
+    
+    // Filter file articles by city
+    const filteredFileArticles = fileArticles.filter((article: any) => {
+      const hasCityCategory = article.category?.toLowerCase().includes(city);
+      const hasCityLocation = article.location?.toLowerCase().includes(city);
+      const hasCityCategories = article.categories?.some((cat: string) => 
+        cat.toLowerCase().includes(city)
+      );
+      const hasCityTags = article.tags?.some((tag: string) => 
+        tag.toLowerCase().includes(city)
+      );
       
-      // Filter file articles by city
-      const filteredFileArticles = fileArticles.filter((article: any) => {
-        const hasCityCategory = article.category?.toLowerCase().includes(city);
-        const hasCityLocation = article.location?.toLowerCase().includes(city);
-        const hasCityCategories = article.categories?.some((cat: string) => 
-          cat.toLowerCase().includes(city)
-        );
-        const hasCityTags = article.tags?.some((tag: string) => 
-          tag.toLowerCase().includes(city)
-        );
-        
-        return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
-      });
-      
-      if (filteredFileArticles.length > 0) {
-        console.log(`Found ${filteredFileArticles.length} ${city} articles in file system`)
-        // Cache the filtered results
-        cityArticlesCache.set(city, filteredFileArticles)
-        cityCacheTimestamp.set(city, now)
-        return filteredFileArticles
-      }
+      return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+    });
+    
+    if (filteredFileArticles.length > 0) {
+      console.log(`Found ${filteredFileArticles.length} ${city} articles in file system`)
+      // Cache the filtered results
+      cityArticlesCache.set(city, filteredFileArticles)
+      cityCacheTimestamp.set(city, now)
+      return filteredFileArticles
     }
     
     // Try to use homepage cache as fallback
@@ -652,17 +646,15 @@ export async function getAllArticles(): Promise<Article[]> {
       return articlesCache
     }
     
-    // During build time, always use file system for reliability
-    if (shouldUseFileSystem()) {
-      console.log('Build time detected, using file system')
-      const fileArticles = await getAllArticlesFromFile()
-      console.log('Found articles in file system:', fileArticles.length, 'articles')
-      
-      // Update cache with file system data
-      articlesCache = fileArticles
-      cacheTimestamp = now
-      return fileArticles
-    }
+    // Always use file system for public pages (fast loading)
+    console.log('Public page - using file system for speed')
+    const fileArticles = await getAllArticlesFromFile()
+    console.log('Found articles in file system:', fileArticles.length, 'articles')
+    
+    // Update cache with file system data
+    articlesCache = fileArticles
+    cacheTimestamp = now
+    return fileArticles
     
     if (!supabase) {
       console.error('Supabase client is not initialized')
