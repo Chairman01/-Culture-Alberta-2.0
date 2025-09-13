@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     
     const articles = await response.json()
     console.log(`✅ Fetched ${articles.length} articles from Supabase`)
-    console.log(`📋 Latest articles:`, articles.slice(0, 3).map(a => ({ id: a.id, title: a.title, created_at: a.created_at })))
+    console.log(`📋 Latest articles:`, articles.slice(0, 3).map((a: any) => ({ id: a.id, title: a.title, created_at: a.created_at })))
     
     // Transform articles to match our interface
     const transformedArticles = articles.map((article: any) => ({

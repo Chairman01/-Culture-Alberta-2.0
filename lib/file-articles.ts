@@ -155,26 +155,9 @@ export async function deleteArticleFromFile(id: string): Promise<void> {
       return
     }
 
-    // Server side - read file directly
-    const fs = await import('fs')
-    const path = await import('path')
-    
-    const ARTICLES_FILE = path.join(process.cwd(), 'lib', 'data', 'articles.json')
-    
-    if (!fs.existsSync(ARTICLES_FILE)) {
-      throw new Error('Articles file not found')
-    }
-    
-    const data = fs.readFileSync(ARTICLES_FILE, 'utf-8')
-    const articles = JSON.parse(data)
-    const filteredArticles = articles.filter((a: any) => a.id !== id)
-    
-    if (filteredArticles.length === articles.length) {
-      throw new Error('Article not found')
-    }
-    
-    fs.writeFileSync(ARTICLES_FILE, JSON.stringify(filteredArticles, null, 2), 'utf-8')
-    console.log('✅ Article deleted from file system:', id)
+    // Server side - this function should not be called directly
+    // Use the API endpoint instead for file operations
+    throw new Error('File deletion should be handled via API endpoints')
   } catch (error) {
     console.error('Error deleting article from file:', error)
     throw new Error('Failed to delete article')
