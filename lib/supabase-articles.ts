@@ -288,13 +288,8 @@ export async function getAdminArticles(forceRefresh: boolean = false): Promise<A
   try {
     console.log('=== getAdminArticles called ===', forceRefresh ? '(force refresh)' : '')
     
-    // For admin operations, always use Supabase to get real-time data
-    if (shouldUseSupabaseForAdmin()) {
-      console.log('Admin operation detected, using Supabase')
-    } else if (shouldUseFileSystem()) {
-      console.log('Build time detected, using file system')
-      return getAllArticlesFromFile()
-    }
+    // Admin operations always use Supabase for real-time data (ignore file system setting)
+    console.log('Admin operation - using Supabase for real-time data')
     
     if (!supabase) {
       console.error('Supabase client is not initialized')
