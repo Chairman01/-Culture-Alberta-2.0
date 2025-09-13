@@ -109,6 +109,11 @@ export default function AdminArticles() {
     setIsLoading(true)
     try {
       console.log('Admin: Loading articles...', forceRefresh ? '(force refresh)' : '')
+      console.log('Admin: Environment check:', {
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL: process.env.VERCEL,
+        window: typeof window !== 'undefined'
+      })
       const data = await getAdminArticles(forceRefresh)
       console.log('Admin: Articles loaded:', data)
       
@@ -179,6 +184,11 @@ export default function AdminArticles() {
           type: typeof article.id,
           idLength: article.id?.length,
           fullArticle: article
+        })
+        console.log('🗑️ Environment during delete:', {
+          NODE_ENV: process.env.NODE_ENV,
+          VERCEL: process.env.VERCEL,
+          window: typeof window !== 'undefined'
         })
         
         // Call the delete function
