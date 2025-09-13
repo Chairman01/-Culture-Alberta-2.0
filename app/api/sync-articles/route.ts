@@ -12,8 +12,11 @@ export async function POST(request: NextRequest) {
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
     const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
     
-    // Fetch articles from Supabase
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*`, {
+    // Add a small delay to ensure Supabase has processed any recent changes
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    // Fetch articles from Supabase with ordering to ensure we get the latest
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*&order=created_at.desc`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -27,6 +30,7 @@ export async function POST(request: NextRequest) {
     
     const articles = await response.json()
     console.log(`✅ Fetched ${articles.length} articles from Supabase`)
+    console.log(`📋 Latest articles:`, articles.slice(0, 3).map(a => ({ id: a.id, title: a.title, created_at: a.created_at })))
     
     // Transform articles to match our interface
     const transformedArticles = articles.map((article: any) => ({
@@ -121,7 +125,10 @@ export async function GET() {
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
     const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
     
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*`, {
+    // Add a small delay to ensure Supabase has processed any recent changes
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*&order=created_at.desc`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -134,6 +141,7 @@ export async function GET() {
     }
     
     const articles = await response.json()
+    console.log(`✅ GET endpoint: Fetched ${articles.length} articles from Supabase`)
     
     const transformedArticles = articles.map((article: any) => ({
       id: article.id,

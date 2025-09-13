@@ -8,18 +8,37 @@ export function clearFileArticlesCache() {
   cachedArticlesData = null
   // Clear the module cache for the articles.json file
   if (typeof require !== 'undefined') {
-    delete require.cache[require.resolve('./data/articles.json')]
+    try {
+      const resolvedPath = require.resolve('./data/articles.json')
+      delete require.cache[resolvedPath]
+      console.log('🧹 Cleared module cache for articles.json')
+    } catch (error) {
+      console.log('⚠️ Could not clear module cache:', error)
+    }
   }
+  console.log('🧹 Cleared cachedArticlesData')
 }
 
 // Function to get articles data with cache invalidation support
 function getArticlesData(): Article[] {
-  if (cachedArticlesData === null) {
+  // Always load fresh data to ensure we get the latest articles
+  console.log('📁 Loading fresh articles data from file...')
+  try {
+    // Clear module cache first
+    if (typeof require !== 'undefined') {
+      const resolvedPath = require.resolve('./data/articles.json')
+      delete require.cache[resolvedPath]
+    }
     // Import fresh data
     const articlesData = require('./data/articles.json')
     cachedArticlesData = articlesData as Article[]
+    console.log(`📁 Loaded ${cachedArticlesData.length} articles from file`)
+    return cachedArticlesData
+  } catch (error) {
+    console.error('❌ Error loading articles from file:', error)
+    // Return cached data if available, otherwise empty array
+    return cachedArticlesData || []
   }
-  return cachedArticlesData
 }
 
 // Direct file system access for build time
