@@ -10,10 +10,10 @@ import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
 // Static generation with revalidation
-export const revalidate = 30 // Revalidate every 30 seconds
+export const revalidate = 0 // Revalidate immediately when triggered
 
-// Force static generation
-export const dynamic = 'force-static'
+// Allow dynamic rendering for better cache invalidation
+export const dynamic = 'auto'
 
 // Server-side data loading for static generation
 async function getHomePageData() {

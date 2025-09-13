@@ -3,17 +3,20 @@ import { revalidatePath } from 'next/cache'
 
 export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const path = searchParams.get('path') || '/'
+    const body = await request.json()
+    const paths = body.paths || ['/']
     
-    // Revalidate the specified path
-    revalidatePath(path)
-    
-    console.log(`✅ Revalidated path: ${path}`)
+    // Revalidate all specified paths
+    const revalidatedPaths = []
+    for (const path of paths) {
+      revalidatePath(path)
+      revalidatedPaths.push(path)
+      console.log(`✅ Revalidated path: ${path}`)
+    }
     
     return NextResponse.json({ 
       revalidated: true, 
-      path,
+      paths: revalidatedPaths,
       timestamp: new Date().toISOString()
     })
   } catch (error) {

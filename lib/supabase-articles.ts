@@ -757,6 +757,19 @@ export function clearArticlesCache() {
   cacheTimestamp = 0
   cityArticlesCache.clear()
   cityCacheTimestamp.clear()
+  
+  // Also clear any Next.js cache for the homepage
+  if (typeof window === 'undefined') {
+    try {
+      // Clear Next.js cache for homepage
+      const { revalidatePath } = require('next/cache')
+      revalidatePath('/')
+      console.log('✅ Cleared Next.js cache for homepage')
+    } catch (error) {
+      console.log('⚠️ Could not clear Next.js cache:', error)
+    }
+  }
+  
   console.log('Articles cache cleared (including city cache)')
 }
 
