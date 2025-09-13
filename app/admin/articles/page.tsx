@@ -156,20 +156,22 @@ export default function AdminArticles() {
           console.log('📝 Updated local state:', {
             originalCount: prevArticles.length,
             newCount: filtered.length,
-            removed: prevArticles.length - filtered.length
+            removed: prevArticles.length - filtered.length,
+            articleId: article.id,
+            remainingIds: filtered.map(a => a.id)
           })
           return filtered
         })
+        
+        // Force a re-render by updating a dummy state
+        setSearchTerm(prev => prev)
         
         // Show success message
         alert(`Article "${article.title}" has been deleted successfully!`)
         
         // Refresh the articles list to ensure data is up to date
-        // Add a small delay to ensure the database operation has completed
-        setTimeout(async () => {
-          console.log('🔄 Refreshing articles list...')
-          await loadAllArticles(true) // Force refresh to get latest data
-        }, 500)
+        console.log('🔄 Refreshing articles list immediately...')
+        await loadAllArticles(true) // Force refresh to get latest data
         
       } catch (error) {
         console.error('❌ Error deleting article:', error)
