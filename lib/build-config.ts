@@ -9,8 +9,13 @@ export const isVercelBuild = () => {
 }
 
 export const shouldUseFileSystem = () => {
-  // Always use file system for faster loading in both development and production
-  // The articles.json file is built during deployment and should be the primary source
+  // Use file system only for read operations during build time
+  // Admin operations (create/update/delete) should always use Supabase
+  return process.env.NODE_ENV === 'production' && !process.env.VERCEL && typeof window === 'undefined'
+}
+
+export const shouldUseSupabaseForAdmin = () => {
+  // Admin operations should always use Supabase for write operations
   return true
 }
 

@@ -7,7 +7,7 @@ import {
   updateArticleInFile,
   deleteArticleFromFile
 } from './file-articles'
-import { shouldUseFileSystem } from './build-config'
+import { shouldUseFileSystem, shouldUseSupabaseForAdmin } from './build-config'
 import { getProductionCacheSettings, handleProductionError, trackProductionPerformance } from './production-optimizations'
 import { optimizeDataFetching, trackResourceUsage } from './vercel-optimizations'
 import { deduplicateRequest, generateCacheKey } from './request-deduplication'
@@ -288,8 +288,10 @@ export async function getAdminArticles(forceRefresh: boolean = false): Promise<A
   try {
     console.log('=== getAdminArticles called ===', forceRefresh ? '(force refresh)' : '')
     
-    // During build time, always use file system for reliability
-    if (shouldUseFileSystem()) {
+    // For admin operations, always use Supabase to get real-time data
+    if (shouldUseSupabaseForAdmin()) {
+      console.log('Admin operation detected, using Supabase')
+    } else if (shouldUseFileSystem()) {
       console.log('Build time detected, using file system')
       return getAllArticlesFromFile()
     }
@@ -1137,6 +1139,11 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
   console.log('Article input:', article)
   
   try {
+    // Admin operations should always use Supabase
+    if (shouldUseSupabaseForAdmin()) {
+      console.log('Admin create operation detected, using Supabase')
+    }
+    
     if (!supabase) {
       console.error('Supabase client is not initialized, using file fallback')
       return createArticleInFile(article)
@@ -1233,6 +1240,11 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
     console.log('Article ID:', id)
     console.log('Update data:', article)
     
+    // Admin operations should always use Supabase
+    if (shouldUseSupabaseForAdmin()) {
+      console.log('Admin update operation detected, using Supabase')
+    }
+    
     if (!supabase) {
       console.error('Supabase client is not initialized, using file fallback')
       return updateArticleInFile(id, article)
@@ -1319,6 +1331,11 @@ export async function deleteArticle(id: string): Promise<void> {
     environment: process.env.NODE_ENV,
     vercel: process.env.VERCEL
   })
+  
+  // Admin operations should always use Supabase
+  if (shouldUseSupabaseForAdmin()) {
+    console.log('Admin delete operation detected, using Supabase')
+  }
   
   // Check if we're in production (Vercel) or development
   const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
