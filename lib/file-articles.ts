@@ -18,7 +18,7 @@ export async function getAllArticlesFromFile(): Promise<Article[]> {
     const path = await import('path')
     
     const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
-    const fileContent = await fs.readFile(articlesPath, 'utf-8')
+    const fileContent = await fs.promises.readFile(articlesPath, 'utf-8')
     const articlesData = JSON.parse(fileContent)
     
     console.log('Using articles.json directly - no API calls')
@@ -48,7 +48,7 @@ export async function getArticleByIdFromFile(id: string): Promise<Article | null
     const path = await import('path')
     
     const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
-    const fileContent = await fs.readFile(articlesPath, 'utf-8')
+    const fileContent = await fs.promises.readFile(articlesPath, 'utf-8')
     const articlesData = JSON.parse(fileContent)
     
     console.log('Finding article by ID in articles.json')
