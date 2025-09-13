@@ -1330,6 +1330,23 @@ export async function deleteArticle(id: string): Promise<void> {
       console.log('📡 Attempting to delete from Supabase...')
       console.log('📡 Supabase client available:', !!supabase)
       
+      // First, let's check if the article exists
+      console.log('🔍 Checking if article exists before deletion...')
+      const { data: checkData, error: checkError } = await supabase
+        .from('articles')
+        .select('id, title')
+        .eq('id', id)
+        .limit(1)
+      
+      console.log('🔍 Article check result:', { checkData, checkError })
+      
+      if (!checkData || checkData.length === 0) {
+        console.log('❌ Article not found in database:', id)
+        throw new Error(`Article with ID ${id} not found in database`)
+      }
+      
+      console.log('✅ Article found, proceeding with deletion:', checkData[0])
+      
       const { data, error } = await supabase
         .from('articles')
         .delete()

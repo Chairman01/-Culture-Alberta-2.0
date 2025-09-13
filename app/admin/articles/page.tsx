@@ -143,7 +143,8 @@ export default function AdminArticles() {
           id: article.id,
           title: article.title,
           type: typeof article.id,
-          idLength: article.id?.length
+          idLength: article.id?.length,
+          fullArticle: article
         })
         
         // Call the delete function
