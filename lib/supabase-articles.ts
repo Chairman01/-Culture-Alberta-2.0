@@ -1206,11 +1206,11 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
     
     // Automatically sync to local file after successful creation
     try {
-      console.log('🔄 Auto-syncing to local file after creation...')
+      console.log('🔄 Auto-syncing articles.json after creation...')
       await fetch('/api/sync-articles', { method: 'POST' })
-      console.log('✅ Auto-sync completed successfully')
+      console.log('✅ Articles.json synced successfully')
     } catch (syncError) {
-      console.warn('⚠️ Auto-sync failed, but Supabase creation was successful:', syncError)
+      console.warn('⚠️ Failed to sync articles.json:', syncError)
       // Don't fail the creation if sync fails
     }
     
@@ -1376,6 +1376,15 @@ export async function deleteArticle(id: string): Promise<void> {
       // Clear cache to ensure fresh data
       clearArticlesCache()
       console.log('🧹 Cleared articles cache')
+      
+      // Sync articles.json file with Supabase after deletion
+      try {
+        console.log('🔄 Syncing articles.json after deletion...')
+        await fetch('/api/sync-articles', { method: 'POST' })
+        console.log('✅ Articles.json synced successfully')
+      } catch (syncError) {
+        console.warn('⚠️ Failed to sync articles.json:', syncError)
+      }
       
       if (isProduction) {
         // In production, trigger revalidation instead of file sync
