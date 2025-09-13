@@ -1,10 +1,15 @@
 import { Article, CreateArticleInput, UpdateArticleInput } from './types/article'
-import articlesData from './data/articles.json'
+import { promises as fs } from 'fs'
+import path from 'path'
 
 // Direct file system access for build time
 export async function getAllArticlesFromFile(): Promise<Article[]> {
   try {
-    // Always use the JSON file directly for maximum speed
+    // Read the file dynamically to avoid static import caching
+    const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
+    const fileContent = await fs.readFile(articlesPath, 'utf-8')
+    const articlesData = JSON.parse(fileContent)
+    
     console.log('Using articles.json directly - no API calls')
     console.log('Articles count:', articlesData.length)
     return articlesData as Article[]
@@ -17,7 +22,11 @@ export async function getAllArticlesFromFile(): Promise<Article[]> {
 
 export async function getArticleByIdFromFile(id: string): Promise<Article | null> {
   try {
-    // Always use the JSON file directly for maximum speed
+    // Read the file dynamically to avoid static import caching
+    const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
+    const fileContent = await fs.readFile(articlesPath, 'utf-8')
+    const articlesData = JSON.parse(fileContent)
+    
     console.log('Finding article by ID in articles.json')
     const articles = articlesData as Article[]
     return articles.find(article => article.id === id) || null
