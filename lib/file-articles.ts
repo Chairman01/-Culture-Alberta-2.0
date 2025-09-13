@@ -1,11 +1,22 @@
 import { Article, CreateArticleInput, UpdateArticleInput } from './types/article'
-import { promises as fs } from 'fs'
-import path from 'path'
 
 // Direct file system access for build time
 export async function getAllArticlesFromFile(): Promise<Article[]> {
   try {
-    // Read the file dynamically to avoid static import caching
+    // Check if we're on the server side
+    if (typeof window !== 'undefined') {
+      // Client side - use API call instead
+      const response = await fetch('/api/articles')
+      if (response.ok) {
+        return await response.json()
+      }
+      return []
+    }
+
+    // Server side - read file directly
+    const fs = await import('fs')
+    const path = await import('path')
+    
     const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
     const fileContent = await fs.readFile(articlesPath, 'utf-8')
     const articlesData = JSON.parse(fileContent)
@@ -22,7 +33,20 @@ export async function getAllArticlesFromFile(): Promise<Article[]> {
 
 export async function getArticleByIdFromFile(id: string): Promise<Article | null> {
   try {
-    // Read the file dynamically to avoid static import caching
+    // Check if we're on the server side
+    if (typeof window !== 'undefined') {
+      // Client side - use API call instead
+      const response = await fetch(`/api/articles/${id}`)
+      if (response.ok) {
+        return await response.json()
+      }
+      return null
+    }
+
+    // Server side - read file directly
+    const fs = await import('fs')
+    const path = await import('path')
+    
     const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
     const fileContent = await fs.readFile(articlesPath, 'utf-8')
     const articlesData = JSON.parse(fileContent)
@@ -91,12 +115,19 @@ export async function updateArticleInFile(id: string, article: UpdateArticleInpu
 
 export async function deleteArticleFromFile(id: string): Promise<void> {
   try {
-    // Only run on server side
+    // Check if we're on the server side
     if (typeof window !== 'undefined') {
-      throw new Error('This function can only be called on the server side')
+      // Client side - use API call instead
+      const response = await fetch(`/api/articles/${id}`, {
+        method: 'DELETE'
+      })
+      if (!response.ok) {
+        throw new Error('Failed to delete article via API')
+      }
+      return
     }
 
-    // Use dynamic imports to avoid bundling fs in client-side code
+    // Server side - read file directly
     const fs = await import('fs')
     const path = await import('path')
     
