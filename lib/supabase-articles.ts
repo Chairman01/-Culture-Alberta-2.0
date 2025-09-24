@@ -1200,6 +1200,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
     console.log('Attempting to fetch article from Supabase...')
     
     // Use proper timeout duration based on environment
+    const timeoutDuration = process.env.NODE_ENV === 'production' ? 2000 : 5000 // 2s in prod, 5s in dev
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
     )
