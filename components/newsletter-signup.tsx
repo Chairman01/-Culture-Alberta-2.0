@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { subscribeToNewsletter, testNewsletterConnection } from "@/lib/newsletter"
+import { testNewsletterConnection } from "@/lib/newsletter"
 import { trackNewsletterSignup } from "@/lib/analytics"
 import { Instagram, Youtube, Facebook, Twitter } from "lucide-react"
 
@@ -60,9 +60,23 @@ export default function NewsletterSignup({
     setMessage("")
 
     try {
-      const result = await subscribeToNewsletter(email, city)
+      // Use API route instead of direct function call
+      const response = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          city,
+          optIn: true,
+          source: 'website'
+        })
+      })
       
-      if (result.success) {
+      const result = await response.json()
+      
+      if (response.ok && result.success) {
         setMessage("Successfully subscribed to newsletter!")
         setMessageType("success")
         setEmail("")

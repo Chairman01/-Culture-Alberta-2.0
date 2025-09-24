@@ -9,9 +9,9 @@ export const isVercelBuild = () => {
 }
 
 export const shouldUseFileSystem = () => {
-  // Always use file system for public pages (fast)
-  // Admin operations will handle sync separately
-  return true
+  // Use file system only for read operations during build time
+  // Admin operations (create/update/delete) should always use Supabase
+  return process.env.NODE_ENV === 'production' && !process.env.VERCEL && typeof window === 'undefined'
 }
 
 export const shouldUseSupabaseForAdmin = () => {

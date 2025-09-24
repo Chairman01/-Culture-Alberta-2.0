@@ -1,64 +1,13 @@
 import { Article, CreateArticleInput, UpdateArticleInput } from './types/article'
-
-// Cache for articles data to handle module-level caching
-let cachedArticlesData: Article[] | null = null
-
-// Function to clear the cache (called after sync operations)
-export function clearFileArticlesCache() {
-  cachedArticlesData = null
-  // Clear the module cache for the articles.json file
-  if (typeof require !== 'undefined') {
-    try {
-      const resolvedPath = require.resolve('./data/articles.json')
-      delete require.cache[resolvedPath]
-      console.log('🧹 Cleared module cache for articles.json')
-    } catch (error) {
-      console.log('⚠️ Could not clear module cache:', error)
-    }
-  }
-  console.log('🧹 Cleared cachedArticlesData')
-}
-
-// Function to get articles data with cache invalidation support
-function getArticlesData(): Article[] {
-  // Always load fresh data to ensure we get the latest articles
-  console.log('📁 Loading fresh articles data from file...')
-  try {
-    // Clear module cache first
-    if (typeof require !== 'undefined') {
-      const resolvedPath = require.resolve('./data/articles.json')
-      delete require.cache[resolvedPath]
-    }
-    // Import fresh data
-    const articlesData = require('./data/articles.json')
-    cachedArticlesData = articlesData as Article[]
-    console.log(`📁 Loaded ${cachedArticlesData.length} articles from file`)
-    return cachedArticlesData
-  } catch (error) {
-    console.error('❌ Error loading articles from file:', error)
-    // Return cached data if available, otherwise empty array
-    return cachedArticlesData || []
-  }
-}
+import articlesData from './data/articles.json'
 
 // Direct file system access for build time
 export async function getAllArticlesFromFile(): Promise<Article[]> {
   try {
-    // Check if we're on the server side
-    if (typeof window !== 'undefined') {
-      // Client side - use API call instead
-      const response = await fetch('/api/articles')
-      if (response.ok) {
-        return await response.json()
-      }
-      return []
-    }
-
-    // Server side - use cached data with invalidation support
+    // Always use the JSON file directly for maximum speed
     console.log('Using articles.json directly - no API calls')
-    const articlesData = getArticlesData()
     console.log('Articles count:', articlesData.length)
-    return articlesData
+    return articlesData as Article[]
   } catch (error) {
     console.error('Error fetching articles from file:', error)
     // Fallback to empty array
@@ -68,19 +17,9 @@ export async function getAllArticlesFromFile(): Promise<Article[]> {
 
 export async function getArticleByIdFromFile(id: string): Promise<Article | null> {
   try {
-    // Check if we're on the server side
-    if (typeof window !== 'undefined') {
-      // Client side - use API call instead
-      const response = await fetch(`/api/articles/${id}`)
-      if (response.ok) {
-        return await response.json()
-      }
-      return null
-    }
-
-    // Server side - use cached data
+    // Always use the JSON file directly for maximum speed
     console.log('Finding article by ID in articles.json')
-    const articles = getArticlesData()
+    const articles = articlesData as Article[]
     return articles.find(article => article.id === id) || null
   } catch (error) {
     console.error('Error fetching article from file:', error)
@@ -143,21 +82,31 @@ export async function updateArticleInFile(id: string, article: UpdateArticleInpu
 
 export async function deleteArticleFromFile(id: string): Promise<void> {
   try {
-    // Check if we're on the server side
+    // Only run on server side
     if (typeof window !== 'undefined') {
-      // Client side - use API call instead
-      const response = await fetch(`/api/articles/${id}`, {
-        method: 'DELETE'
-      })
-      if (!response.ok) {
-        throw new Error('Failed to delete article via API')
-      }
-      return
+      throw new Error('This function can only be called on the server side')
     }
 
-    // Server side - this function should not be called directly
-    // Use the API endpoint instead for file operations
-    throw new Error('File deletion should be handled via API endpoints')
+    // Use dynamic imports to avoid bundling fs in client-side code
+    const fs = await import('fs')
+    const path = await import('path')
+    
+    const ARTICLES_FILE = path.join(process.cwd(), 'lib', 'data', 'articles.json')
+    
+    if (!fs.existsSync(ARTICLES_FILE)) {
+      throw new Error('Articles file not found')
+    }
+    
+    const data = fs.readFileSync(ARTICLES_FILE, 'utf-8')
+    const articles = JSON.parse(data)
+    const filteredArticles = articles.filter((a: any) => a.id !== id)
+    
+    if (filteredArticles.length === articles.length) {
+      throw new Error('Article not found')
+    }
+    
+    fs.writeFileSync(ARTICLES_FILE, JSON.stringify(filteredArticles, null, 2), 'utf-8')
+    console.log('✅ Article deleted from file system:', id)
   } catch (error) {
     console.error('Error deleting article from file:', error)
     throw new Error('Failed to delete article')

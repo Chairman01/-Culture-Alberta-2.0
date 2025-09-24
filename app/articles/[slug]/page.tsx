@@ -6,6 +6,7 @@ import { getArticleById, getArticleBySlug, getAllArticles, getHomepageArticles }
 import { getTitleFromUrl } from '@/lib/utils/article-url'
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { Article } from '@/lib/types/article'
+import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 
 // Function to process content and convert YouTube URLs to embedded videos
 const processContentWithVideos = (content: string) => {
@@ -75,18 +76,25 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const slug = resolvedParams.slug
   
   try {
+    console.log('Looking for article with slug:', slug)
+    
     // Try to get article by slug first (much faster than fetching all articles)
     let loadedArticle = await getArticleBySlug(slug)
+    console.log('Article found by slug:', !!loadedArticle)
     
     // If not found by slug, try by ID (for backward compatibility)
     if (!loadedArticle) {
       loadedArticle = await getArticleById(slug)
+      console.log('Article found by ID:', !!loadedArticle)
     }
     
     // If still not found, try to find by title match (last resort)
     if (!loadedArticle) {
+      console.log('Trying to find article by title match...')
       // Only fetch all articles as last resort
       const allArticles = await getAllArticles()
+      console.log('Total articles available:', allArticles.length)
+      
       loadedArticle = allArticles.find(article => {
         // Convert article title to URL format and compare
         const articleUrlTitle = article.title
@@ -97,11 +105,17 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           .replace(/^-|-$/g, '')
           .substring(0, 100)
         
-        return articleUrlTitle === slug.toLowerCase()
+        const matches = articleUrlTitle === slug.toLowerCase()
+        if (matches) {
+          console.log('Found matching article:', article.title)
+        }
+        return matches
       }) || null
     }
     
     if (!loadedArticle) {
+      console.log('Article not found, showing 404')
+      console.log('Available articles:', (await getAllArticles()).map(a => a.title))
       notFound()
     }
 
@@ -274,6 +288,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       <span>Published {formatDate(loadedArticle.date || '')}</span>
                     </div>
                   </div>
+
+                  {/* Newsletter Signup - Now floating/sticky */}
+                  <ArticleNewsletterSignup 
+                    articleTitle={loadedArticle.title}
+                    articleCategory={loadedArticle.category}
+                  />
 
                   {/* More Articles Section */}
                   {relatedArticles.length > 0 && (

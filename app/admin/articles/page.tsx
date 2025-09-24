@@ -288,30 +288,6 @@ export default function AdminArticles() {
             <RefreshCw className="w-4 h-4" />
             Refresh Cache
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={async () => {
-              try {
-                console.log('🔄 Manual sync of articles.json...')
-                await fetch('/api/sync-articles', { method: 'POST' })
-                toast({
-                  title: "Sync completed",
-                  description: "articles.json has been synced with Supabase",
-                })
-              } catch (error) {
-                console.error('Sync failed:', error)
-                toast({
-                  title: "Sync failed",
-                  description: "Failed to sync articles.json with Supabase",
-                  variant: "destructive",
-                })
-              }
-            }}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Sync Files
-          </Button>
           <Link href="/admin/articles/new">
             <Button>
               <Plus className="w-4 h-4 mr-2" />

@@ -9,14 +9,14 @@ export const isVercelProduction = () => {
   return process.env.VERCEL === '1' && process.env.VERCEL_ENV === 'production'
 }
 
-// Production-optimized cache settings
+// SPEED OPTIMIZED: Production cache settings for maximum performance
 export const getProductionCacheSettings = () => {
   if (isProduction()) {
     return {
-      // Much shorter cache duration for faster updates
-      cacheDuration: 30 * 1000, // 30 seconds
-      // Longer timeout to prevent unnecessary fallbacks
-      timeoutDuration: 5000, // 5 seconds
+      // SPEED OPTIMIZATION: Much longer cache duration for maximum speed
+      cacheDuration: 60 * 60 * 1000, // 1 hour in production
+      // SPEED OPTIMIZATION: Shorter timeout for faster fallback
+      timeoutDuration: 2000, // 2 seconds in production
       // Enable more aggressive caching
       enableAggressiveCaching: true,
       // Enable request deduplication

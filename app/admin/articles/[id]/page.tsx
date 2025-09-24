@@ -5,7 +5,7 @@ import { use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Upload } from "lucide-react"
-import { getArticleById, updateArticle } from "@/lib/articles"
+import { updateArticle } from "@/lib/articles"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -79,7 +79,13 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const loadArticle = async () => {
     try {
       console.log('Loading article with ID:', resolvedParams.id)
-      const articleData = await getArticleById(resolvedParams.id)
+      // Use API route instead of direct function call for client-side compatibility
+      const response = await fetch(`/api/articles?id=${resolvedParams.id}`)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch article: ${response.status}`)
+      }
+      
+      const articleData = await response.json()
       console.log('Loaded article data:', articleData)
       
       if (!articleData) {

@@ -1,17 +1,19 @@
 import { supabase } from './supabase'
 import { Article, CreateArticleInput, UpdateArticleInput } from './types/article'
-import { 
-  getAllArticlesFromFile,
-  getArticleByIdFromFile,
-  createArticleInFile,
-  updateArticleInFile,
-  deleteArticleFromFile,
-  clearFileArticlesCache
-} from './file-articles'
+// Conditional import for file system operations (server-side only)
+let fileArticlesModule: any = null
+if (typeof window === 'undefined') {
+  try {
+    fileArticlesModule = require('./file-articles')
+  } catch (error) {
+    console.warn('File articles module not available:', error)
+  }
+}
 import { shouldUseFileSystem, shouldUseSupabaseForAdmin } from './build-config'
 import { getProductionCacheSettings, handleProductionError, trackProductionPerformance } from './production-optimizations'
 import { optimizeDataFetching, trackResourceUsage } from './vercel-optimizations'
 import { deduplicateRequest, generateCacheKey } from './request-deduplication'
+import { startBackgroundSyncIfNeeded } from './background-sync'
 
 // Constants to prevent typos and ensure consistency
 const IMAGE_FIELDS = {
@@ -80,12 +82,20 @@ let articleCache: Map<string, Article> = new Map()
 let cityArticlesCache: Map<string, Article[]> = new Map()
 let cacheTimestamp: number = 0
 let cityCacheTimestamp: Map<string, number> = new Map()
-// Dynamic cache duration based on environment
+
+// SPEED OPTIMIZATION: Much longer cache duration for maximum performance
 const getCacheDuration = () => {
-  const settings = getProductionCacheSettings()
-  const vercelSettings = optimizeDataFetching()
-  // Use the shorter duration between production and Vercel settings
-  return Math.min(settings.cacheDuration, vercelSettings.cacheDuration)
+  // Use file system as primary source - cache for 1 hour in production
+  if (process.env.NODE_ENV === 'production') {
+    return 60 * 60 * 1000 // 1 hour cache in production
+  }
+  return 10 * 60 * 1000 // 10 minutes in development
+}
+
+// SPEED OPTIMIZATION: Always try file system first
+const shouldUseFileSystemFirst = () => {
+  // Always prioritize file system for read operations
+  return typeof window === 'undefined' // Server-side only
 }
 
 // Test function to check if articles table exists
@@ -180,7 +190,7 @@ export async function testSupabaseConnection(): Promise<boolean> {
   }
 }
 
-// Optimized function for homepage that only fetches essential fields
+// SPEED OPTIMIZED: Homepage articles with file system priority
 export async function getHomepageArticles(): Promise<Article[]> {
   const startTime = Date.now()
   
@@ -191,22 +201,118 @@ export async function getHomepageArticles(): Promise<Article[]> {
     try {
       console.log('=== getHomepageArticles called ===')
       
-      // Check cache first
+      // SPEED OPTIMIZATION: Check cache first with longer duration
       const now = Date.now()
       if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
-        console.log('Returning cached articles for homepage:', articlesCache.length, 'articles')
+        console.log('✅ Returning cached articles for homepage:', articlesCache.length, 'articles')
         return articlesCache!
       }
       
-      // Always use file system for public pages (fast loading)
-      console.log('Public page - using file system for speed')
-      const fileArticles = await getAllArticlesFromFile()
-      console.log('Found articles in file system:', fileArticles.length, 'articles')
+      // SPEED OPTIMIZATION: Always try file system first (not just build time)
+      if (shouldUseFileSystemFirst() && fileArticlesModule) {
+        console.log('🚀 SPEED: Using file system as primary source')
+        try {
+          const fileArticles = await fileArticlesModule.getAllArticlesFromFile()
+          console.log('✅ Found articles in file system:', fileArticles.length, 'articles')
+          
+          // Update cache with file system data
+          articlesCache = fileArticles
+          cacheTimestamp = now
+          
+          // Start background sync to keep file system updated
+          startBackgroundSyncIfNeeded().catch(error => {
+            console.warn('Background sync failed:', error)
+          })
+          
+          return fileArticles
+        } catch (fileError) {
+          console.warn('⚠️ File system failed, falling back to Supabase:', fileError)
+        }
+      }
       
-      // Update cache with file system data
-      articlesCache = fileArticles
-      cacheTimestamp = now
-      return fileArticles
+      // During build time, always use file system for reliability
+      if (shouldUseFileSystem()) {
+        console.log('Build time detected, using file system')
+        const fileArticles = fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+        console.log('Found articles in file system:', fileArticles.length, 'articles')
+        
+        // Update cache with file system data
+        articlesCache = fileArticles
+        cacheTimestamp = now
+        return fileArticles
+      }
+      
+      if (!supabase) {
+        console.error('Supabase client is not initialized')
+        console.log('Falling back to file system')
+        return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+      }
+
+      console.log('🐌 SLOW: Attempting to fetch homepage articles from Supabase...')
+      
+      // SPEED OPTIMIZATION: Reduced timeout for faster fallback
+      const timeoutDuration = process.env.NODE_ENV === 'production' ? 2000 : 5000 // 2s in prod, 5s in dev
+      
+      // Optimized query for homepage - only essential fields
+      const fields = ensureImageFields('id, title, excerpt, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
+      
+      const supabasePromise = supabase
+        .from('articles')
+        .select(fields)
+        .order('created_at', { ascending: false })
+        .limit(20) // Fetch 20 articles to ensure trending section has enough content
+
+      const { data, error } = await Promise.race([
+        supabasePromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
+        )
+      ]) as any
+
+    if (error) {
+      console.warn('Supabase homepage query failed:', error.message)
+      
+      if (articlesCache) {
+        console.log('Using cached articles for homepage due to Supabase error')
+        return articlesCache!
+      }
+      
+      console.log('No cache available, falling back to file system')
+      return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+    }
+
+    console.log('Successfully fetched homepage articles from Supabase:', data?.length || 0, 'articles')
+
+    // Map Supabase data to match our Article interface - optimized
+    const mappedArticles = (data || []).map((article: any) => {
+      // Only process image if it's not already a valid URL
+      let imageUrl = article.image_url || article.image
+      if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+        imageUrl = validateImageUrl(imageUrl, article.title)
+      }
+      
+      return {
+        ...article,
+        imageUrl,
+        date: article.created_at,
+        trendingHome: article.trending_home || false,
+        trendingEdmonton: article.trending_edmonton || false,
+        trendingCalgary: article.trending_calgary || false,
+        featuredHome: article.featured_home || false,
+        featuredEdmonton: article.featured_edmonton || false,
+        featuredCalgary: article.featured_calgary || false
+      }
+    })
+
+    // Update cache
+    articlesCache = mappedArticles
+    cacheTimestamp = now
+    console.log('Updated homepage articles cache')
+
+    // Track resource usage
+    trackResourceUsage('getHomepageArticles', startTime)
+
+      return mappedArticles
     } catch (error) {
       console.warn('Supabase homepage connection failed:', error)
       
@@ -216,7 +322,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
       }
       
       console.log('No cache available, falling back to file system')
-      return getAllArticlesFromFile()
+      return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     }
   })
 }
@@ -232,7 +338,7 @@ export async function getAdminArticles(forceRefresh: boolean = false): Promise<A
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
-      return getAllArticlesFromFile()
+      return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     }
 
     console.log('Attempting to fetch admin articles from Supabase...')
@@ -241,12 +347,12 @@ export async function getAdminArticles(forceRefresh: boolean = false): Promise<A
     // Add a cache-busting parameter to ensure we get fresh data
     const cacheBuster = forceRefresh ? `?t=${Date.now()}` : ''
     
-    // Ultra-fast query for admin - minimal fields only
+    // Optimized query for admin - only essential fields for list view
     const supabasePromise = supabase
       .from('articles')
-      .select('id, title, category, location, author, created_at, status, type')
+      .select('id, title, category, location, author, created_at, updated_at, status, type, featured_home, featured_edmonton, featured_calgary, date')
       .order('created_at', { ascending: false })
-      .limit(30) // Reduced limit for faster loading
+      .limit(100) // Limit to 100 most recent for admin
 
     const { data, error } = await Promise.race([
       supabasePromise,
@@ -258,7 +364,7 @@ export async function getAdminArticles(forceRefresh: boolean = false): Promise<A
     if (error) {
       console.warn('Supabase admin query failed:', error.message)
       console.log('Falling back to file system')
-      return getAllArticlesFromFile()
+      return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     }
 
     console.log('Successfully fetched admin articles from Supabase:', data?.length || 0, 'articles')
@@ -276,7 +382,7 @@ export async function getAdminArticles(forceRefresh: boolean = false): Promise<A
   } catch (error) {
     console.warn('Supabase admin connection failed:', error)
     console.log('Falling back to file system')
-    return getAllArticlesFromFile()
+    return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
   }
 }
 
@@ -293,28 +399,30 @@ export async function getEventsArticles(): Promise<Article[]> {
       return cityArticlesCache.get('events') || []
     }
     
-    // Always use file system for public pages (fast loading)
-    console.log('Public page - using file system for events')
-    const fileArticles = await getAllArticlesFromFile()
-    
-    // Filter file articles for events only
-    const filteredFileArticles = fileArticles.filter((article: any) => 
-      article.type === 'event'
-    );
-    
-    if (filteredFileArticles.length > 0) {
-      console.log(`Found ${filteredFileArticles.length} events in file system out of ${fileArticles.length} total`)
-      // Cache the filtered results
-      cityArticlesCache.set('events', filteredFileArticles)
-      cityCacheTimestamp.set('events', now)
-      return filteredFileArticles
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log('Build time detected, using file system for events')
+      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+      
+      // Filter file articles for events only
+      const filteredFileArticles = fileArticles.filter((article: any) => 
+        article.type === 'event'
+      );
+      
+      if (filteredFileArticles.length > 0) {
+        console.log(`Found ${filteredFileArticles.length} events in file system out of ${fileArticles.length} total`)
+        // Cache the filtered results
+        cityArticlesCache.set('events', filteredFileArticles)
+        cityCacheTimestamp.set('events', now)
+        return filteredFileArticles
+      }
     }
     
     
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
-      const fileArticles = await getAllArticlesFromFile()
+      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
       
       // Filter file articles for events only
       const filteredFileArticles = fileArticles.filter((article: any) => 
@@ -347,7 +455,7 @@ export async function getEventsArticles(): Promise<Article[]> {
     if (error) {
       console.warn('Supabase events query failed:', error.message)
       console.log('Falling back to file system')
-      const fileArticles = await getAllArticlesFromFile()
+      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
       
       // Filter file articles for events only
       const filteredFileArticles = fileArticles.filter((article: any) => 
@@ -381,7 +489,7 @@ export async function getEventsArticles(): Promise<Article[]> {
   } catch (error) {
     console.warn('Supabase events connection failed:', error)
     console.log('Falling back to file system')
-    const fileArticles = await getAllArticlesFromFile()
+    const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     
     // Filter file articles for events only
     const filteredFileArticles = fileArticles.filter((article: any) => 
@@ -393,43 +501,77 @@ export async function getEventsArticles(): Promise<Article[]> {
   }
 }
 
-// Optimized function for city pages (Edmonton/Calgary)
+// SPEED OPTIMIZED: City articles with file system priority
 export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Article[]> {
   try {
     console.log(`=== getCityArticles called for ${city} ===`)
     
-    // Check cache first
+    // SPEED OPTIMIZATION: Check cache first with longer duration
     const now = Date.now()
     const cityCacheTime = cityCacheTimestamp.get(city) || 0
     if (cityArticlesCache.has(city) && (now - cityCacheTime) < getCacheDuration()) {
-      console.log(`Returning cached ${city} articles:`, cityArticlesCache.get(city)?.length || 0, 'articles')
+      console.log(`✅ Returning cached ${city} articles:`, cityArticlesCache.get(city)?.length || 0, 'articles')
       return cityArticlesCache.get(city) || []
     }
     
-    // Always use file system for public pages (fast loading)
-    console.log(`Public page - using file system for ${city} articles`)
-    const fileArticles = await getAllArticlesFromFile()
+    // SPEED OPTIMIZATION: Always try file system first (not just build time)
+    if (shouldUseFileSystemFirst() && fileArticlesModule) {
+      console.log(`🚀 SPEED: Using file system as primary source for ${city} articles`)
+      try {
+        const fileArticles = await fileArticlesModule.getAllArticlesFromFile()
+        
+        // Filter file articles by city
+        const filteredFileArticles = fileArticles.filter((article: any) => {
+          const hasCityCategory = article.category?.toLowerCase().includes(city);
+          const hasCityLocation = article.location?.toLowerCase().includes(city);
+          const hasCityCategories = article.categories?.some((cat: string) => 
+            cat.toLowerCase().includes(city)
+          );
+          const hasCityTags = article.tags?.some((tag: string) => 
+            tag.toLowerCase().includes(city)
+          );
+          
+          return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+        });
+        
+        if (filteredFileArticles.length > 0) {
+          console.log(`✅ Found ${filteredFileArticles.length} ${city} articles in file system`)
+          // Cache the filtered results
+          cityArticlesCache.set(city, filteredFileArticles)
+          cityCacheTimestamp.set(city, now)
+          return filteredFileArticles
+        }
+      } catch (fileError) {
+        console.warn(`⚠️ File system failed for ${city}, falling back to Supabase:`, fileError)
+      }
+    }
     
-    // Filter file articles by city
-    const filteredFileArticles = fileArticles.filter((article: any) => {
-      const hasCityCategory = article.category?.toLowerCase().includes(city);
-      const hasCityLocation = article.location?.toLowerCase().includes(city);
-      const hasCityCategories = article.categories?.some((cat: string) => 
-        cat.toLowerCase().includes(city)
-      );
-      const hasCityTags = article.tags?.some((tag: string) => 
-        tag.toLowerCase().includes(city)
-      );
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log(`Build time detected, using file system for ${city} articles`)
+      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
       
-      return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
-    });
-    
-    if (filteredFileArticles.length > 0) {
-      console.log(`Found ${filteredFileArticles.length} ${city} articles in file system`)
-      // Cache the filtered results
-      cityArticlesCache.set(city, filteredFileArticles)
-      cityCacheTimestamp.set(city, now)
-      return filteredFileArticles
+      // Filter file articles by city
+      const filteredFileArticles = fileArticles.filter((article: any) => {
+        const hasCityCategory = article.category?.toLowerCase().includes(city);
+        const hasCityLocation = article.location?.toLowerCase().includes(city);
+        const hasCityCategories = article.categories?.some((cat: string) => 
+          cat.toLowerCase().includes(city)
+        );
+        const hasCityTags = article.tags?.some((tag: string) => 
+          tag.toLowerCase().includes(city)
+        );
+        
+        return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+      });
+      
+      if (filteredFileArticles.length > 0) {
+        console.log(`Found ${filteredFileArticles.length} ${city} articles in file system`)
+        // Cache the filtered results
+        cityArticlesCache.set(city, filteredFileArticles)
+        cityCacheTimestamp.set(city, now)
+        return filteredFileArticles
+      }
     }
     
     // Try to use homepage cache as fallback
@@ -469,7 +611,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
-      const fileArticles = await getAllArticlesFromFile()
+      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
       
       // Filter file articles by city
       const filteredFileArticles = fileArticles.filter((article: any) => {
@@ -511,7 +653,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     if (error) {
       console.warn(`Supabase ${city} query failed:`, error.message)
       console.log('Falling back to file system')
-      return getAllArticlesFromFile()
+      return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     }
 
     console.log(`Successfully fetched ${city} articles from Supabase:`, data?.length || 0, 'articles')
@@ -554,7 +696,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
   } catch (error) {
     console.warn(`Supabase ${city} connection failed:`, error)
     console.log('Falling back to file system')
-    const fileArticles = await getAllArticlesFromFile()
+    const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     
     // Filter file articles by city as well
     const filteredFileArticles = fileArticles.filter((article: any) => {
@@ -575,38 +717,58 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
   }
 }
 
+// SPEED OPTIMIZED: All articles with file system priority
 export async function getAllArticles(): Promise<Article[]> {
   try {
     console.log('=== getAllArticles called ===')
     
-    // Check cache first
+    // SPEED OPTIMIZATION: Check cache first with longer duration
     const now = Date.now()
     if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
-      console.log('Returning cached articles:', articlesCache.length, 'articles')
+      console.log('✅ Returning cached articles:', articlesCache.length, 'articles')
       return articlesCache
     }
     
-    // Always use file system for public pages (fast loading)
-    console.log('Public page - using file system for speed')
-    const fileArticles = await getAllArticlesFromFile()
-    console.log('Found articles in file system:', fileArticles.length, 'articles')
+    // SPEED OPTIMIZATION: Always try file system first (not just build time)
+    if (shouldUseFileSystemFirst() && fileArticlesModule) {
+      console.log('🚀 SPEED: Using file system as primary source')
+      try {
+        const fileArticles = await fileArticlesModule.getAllArticlesFromFile()
+        console.log('✅ Found articles in file system:', fileArticles.length, 'articles')
+        
+        // Update cache with file system data
+        articlesCache = fileArticles
+        cacheTimestamp = now
+        return fileArticles
+      } catch (fileError) {
+        console.warn('⚠️ File system failed, falling back to Supabase:', fileError)
+      }
+    }
     
-    // Update cache with file system data
-    articlesCache = fileArticles
-    cacheTimestamp = now
-    return fileArticles
+    // During build time, always use file system for reliability
+    if (shouldUseFileSystem()) {
+      console.log('Build time detected, using file system')
+      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+      console.log('Found articles in file system:', fileArticles.length, 'articles')
+      
+      // Update cache with file system data
+      articlesCache = fileArticles
+      cacheTimestamp = now
+      return fileArticles
+    }
     
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
-      return getAllArticlesFromFile()
+      return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     }
 
-    console.log('Attempting to fetch articles from Supabase...')
+    console.log('🐌 SLOW: Attempting to fetch articles from Supabase...')
     
-    // Reduced timeout for faster fallback
+    // SPEED OPTIMIZATION: Reduced timeout for faster fallback
+    const timeoutDuration = process.env.NODE_ENV === 'production' ? 2000 : 5000 // 2s in prod, 5s in dev
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Supabase timeout')), 5000) // Reduced to 5 seconds for better performance
+      setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
     )
     
     const fields = ensureImageFields('id, title,  excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
@@ -632,7 +794,7 @@ export async function getAllArticles(): Promise<Article[]> {
       }
       
       console.log('No cache available, falling back to file system')
-      return getAllArticlesFromFile()
+      return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     }
 
     console.log('Successfully fetched articles from Supabase:', data?.length || 0, 'articles')
@@ -680,7 +842,7 @@ export async function getAllArticles(): Promise<Article[]> {
     }
     
     console.log('No cache available, falling back to file system')
-    return getAllArticlesFromFile()
+    return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
   }
 }
 
@@ -742,11 +904,43 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   try {
     console.log('=== getArticleBySlug called for:', slug)
     
+    // SPEED OPTIMIZATION: Always try file system first (same as other functions)
+    if (shouldUseFileSystemFirst() && fileArticlesModule) {
+      console.log('🚀 SPEED: Using file system as primary source for slug lookup')
+      try {
+        const fileArticles = await fileArticlesModule.getAllArticlesFromFile()
+        const fileArticle = fileArticles.find((article: any) => {
+          const articleUrlTitle = article.title
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .substring(0, 100)
+          
+          return articleUrlTitle === slug.toLowerCase()
+        })
+        
+        if (fileArticle) {
+          console.log(`✅ Found article in file system for slug "${slug}": "${fileArticle.title}"`)
+          // Start background sync to keep file system updated
+          startBackgroundSyncIfNeeded().catch(error => {
+            console.warn('Background sync failed:', error)
+          })
+          return fileArticle
+        } else {
+          console.log(`❌ Article not found in file system for slug: ${slug}`)
+        }
+      } catch (fileError) {
+        console.warn('⚠️ File system failed for slug lookup, falling back to Supabase:', fileError)
+      }
+    }
+    
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
       console.log('Build time detected, using file system for slug lookup')
-      const fileArticles = await getAllArticlesFromFile()
-      const fileArticle = fileArticles.find(article => {
+      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+      const fileArticle = fileArticles.find((article: any) => {
         const articleUrlTitle = article.title
           .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, '')
@@ -767,8 +961,8 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
-      const fileArticles = await getAllArticlesFromFile()
-      return fileArticles.find(article => {
+      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+      return fileArticles.find((article: any) => {
         const articleUrlTitle = article.title
           .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, '')
@@ -782,6 +976,9 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     }
 
     console.log('Attempting to fetch article by slug from Supabase...')
+    
+    // SPEED OPTIMIZATION: Reduced timeout for faster fallback
+    const timeoutDuration = process.env.NODE_ENV === 'production' ? 2000 : 5000 // 2s in prod, 5s in dev
     
     // Try to use cached articles first for better performance
     if (articlesCache && (Date.now() - cacheTimestamp) < getCacheDuration()) {
@@ -815,9 +1012,9 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
 
     const { data, error } = await Promise.race([
       supabasePromise,
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 3000) // Reduced timeout
-      )
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
+        )
     ]) as any
 
     if (error) {
@@ -843,8 +1040,8 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
       }
       
       console.log('Falling back to file system')
-      const fileArticles = await getAllArticlesFromFile()
-      return fileArticles.find(article => {
+      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+      return fileArticles.find((article: any) => {
         const articleUrlTitle = article.title
           .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, '')
@@ -933,8 +1130,8 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     }
     
     console.log('Falling back to file system')
-    const fileArticles = await getAllArticlesFromFile()
-    return fileArticles.find(article => {
+    const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+    return fileArticles.find((article: any) => {
       const articleUrlTitle = article.title
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '')
@@ -948,42 +1145,63 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   }
 }
 
+// SPEED OPTIMIZED: Get article by ID with file system priority
 export async function getArticleById(id: string): Promise<Article | null> {
   try {
     console.log('=== getArticleById called for:', id)
+    console.log('🔍 Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      window: typeof window !== 'undefined',
+      shouldUseFileSystemFirst: shouldUseFileSystemFirst(),
+      fileArticlesModule: !!fileArticlesModule
+    })
     
-    // Check individual article cache first
+    // SPEED OPTIMIZATION: Check individual article cache first
     if (articleCache.has(id)) {
-      console.log('Returning cached article:', id)
+      console.log('✅ Returning cached article:', id)
       return articleCache.get(id) || null
     }
     
-    // Always prioritize file system for speed (same as other functions)
-    console.log('Using file system as primary source for speed')
-    const fileArticle = await getArticleByIdFromFile(id)
-    if (fileArticle) {
-      console.log('Found article in file system:', id)
-      articleCache.set(id, fileArticle)
-      return fileArticle
+    // SPEED OPTIMIZATION: Always try file system first (not just build time)
+    if (shouldUseFileSystemFirst() && fileArticlesModule) {
+      console.log('🚀 SPEED: Using file system as primary source for article by ID')
+      try {
+        const fileArticle = await fileArticlesModule.getArticleByIdFromFile(id)
+        if (fileArticle) {
+          console.log('✅ Found article in file system:', id)
+          articleCache.set(id, fileArticle)
+          return fileArticle
+        } else {
+          console.log('❌ Article not found in file system:', id)
+        }
+      } catch (fileError) {
+        console.warn('⚠️ File system failed for article by ID, falling back to Supabase:', fileError)
+      }
+    } else {
+      console.log('⚠️ Skipping file system check:', {
+        shouldUseFileSystemFirst: shouldUseFileSystemFirst(),
+        fileArticlesModule: !!fileArticlesModule
+      })
     }
     
     // During build time, always use file system for reliability
     if (shouldUseFileSystem()) {
       console.log('Build time detected, using file system')
-      return getArticleByIdFromFile(id)
+      return fileArticlesModule?.getArticleByIdFromFile(id)
     }
     
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
-      return getArticleByIdFromFile(id)
+      return fileArticlesModule?.getArticleByIdFromFile(id)
     }
 
     console.log('Attempting to fetch article from Supabase...')
     
-    // Reduced timeout for faster fallback
+    // Use proper timeout duration based on environment
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Supabase timeout')), 3000) // Reduced to 3 seconds for better performance
+      setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
     )
     
     const supabasePromise = supabase
@@ -1011,7 +1229,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
       }
       
       console.log('Falling back to file system')
-      return getArticleByIdFromFile(id)
+      return fileArticlesModule?.getArticleByIdFromFile(id)
     }
 
     if (!data || data.length === 0) {
@@ -1056,7 +1274,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
     }
     
     console.log('Falling back to file system')
-    return getArticleByIdFromFile(id)
+    return fileArticlesModule?.getArticleByIdFromFile(id)
   }
 }
 
@@ -1073,7 +1291,7 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
     
     if (!supabase) {
       console.error('Supabase client is not initialized, using file fallback')
-      return createArticleInFile(article)
+      return fileArticlesModule?.createArticleInFile(article)
     }
 
     console.log('Creating article in Supabase:', { title: article.title, category: article.category })
@@ -1134,7 +1352,7 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
         errorStringified: JSON.stringify(error, null, 2)
       })
       console.log('Falling back to file system...')
-      return createArticleInFile(article)
+      return fileArticlesModule?.createArticleInFile(article)
     }
 
     console.log('Article created successfully in Supabase:', data)
@@ -1146,19 +1364,18 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
     
     // Automatically sync to local file after successful creation
     try {
-      console.log('🔄 Auto-syncing articles.json after creation...')
-      clearFileArticlesCache() // Clear cache immediately
+      console.log('🔄 Auto-syncing to local file after creation...')
       await fetch('/api/sync-articles', { method: 'POST' })
-      console.log('✅ Articles.json synced successfully')
+      console.log('✅ Auto-sync completed successfully')
     } catch (syncError) {
-      console.warn('⚠️ Failed to sync articles.json:', syncError)
+      console.warn('⚠️ Auto-sync failed, but Supabase creation was successful:', syncError)
       // Don't fail the creation if sync fails
     }
     
     return data
   } catch (error) {
     console.error('Supabase insert failed, using file fallback:', error)
-    return createArticleInFile(article)
+    return fileArticlesModule?.createArticleInFile(article)
   }
 }
 
@@ -1175,7 +1392,7 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
     
     if (!supabase) {
       console.error('Supabase client is not initialized, using file fallback')
-      return updateArticleInFile(id, article)
+      return fileArticlesModule?.updateArticleInFile(id, article)
     }
 
     // Map fields to match Supabase schema
@@ -1221,7 +1438,7 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
         fullError: error || 'No error object',
         errorType: typeof error
       })
-      return updateArticleInFile(id, article)
+      return fileArticlesModule?.updateArticleInFile(id, article)
     }
 
     console.log('Article updated successfully in Supabase:', data)
@@ -1234,7 +1451,6 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
     // Automatically sync to local file after successful update
     try {
       console.log('🔄 Auto-syncing to local file after update...')
-      clearFileArticlesCache() // Clear cache immediately
       await fetch('/api/sync-articles', { method: 'POST' })
       console.log('✅ Auto-sync completed successfully')
     } catch (syncError) {
@@ -1248,7 +1464,7 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
       error: error instanceof Error ? error.message : error,
       fullError: error
     })
-    return updateArticleInFile(id, article)
+    return fileArticlesModule?.updateArticleInFile(id, article)
   }
 }
 
@@ -1319,15 +1535,6 @@ export async function deleteArticle(id: string): Promise<void> {
       clearArticlesCache()
       console.log('🧹 Cleared articles cache')
       
-      // Sync articles.json file with Supabase after deletion
-      try {
-        console.log('🔄 Syncing articles.json after deletion...')
-        await fetch('/api/sync-articles', { method: 'POST' })
-        console.log('✅ Articles.json synced successfully')
-      } catch (syncError) {
-        console.warn('⚠️ Failed to sync articles.json:', syncError)
-      }
-      
       if (isProduction) {
         // In production, trigger revalidation instead of file sync
         console.log('🚀 Production environment - triggering page revalidation')
@@ -1349,7 +1556,6 @@ export async function deleteArticle(id: string): Promise<void> {
         // In development, sync to local file
         try {
           console.log('🔄 Auto-syncing to local file after deletion...')
-          clearFileArticlesCache() // Clear cache immediately
           // Use absolute URL for server-side fetch
           const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
           await fetch(`${baseUrl}/api/sync-articles`, { method: 'POST' })
@@ -1377,7 +1583,7 @@ export async function deleteArticle(id: string): Promise<void> {
   // Fallback to file deletion if Supabase is not available or failed (development only)
   if (!isProduction) {
     console.log('🔄 Using file deletion fallback')
-    return deleteArticleFromFile(id)
+    return fileArticlesModule?.deleteArticleFromFile(id)
   } else {
     console.error('❌ Cannot delete article: Supabase not available and file system is read-only in production')
     throw new Error('Cannot delete article: Supabase not available and file system is read-only in production')

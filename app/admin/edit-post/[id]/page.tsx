@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Save, Upload } from "lucide-react"
-import { getArticleById, updateArticle } from "@/lib/articles"
+import { updateArticle } from "@/lib/articles"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -42,23 +42,35 @@ export default function EditPostPage({ params }: EditPostPageProps) {
   // Load the post data when the component mounts
   useEffect(() => {
     async function loadPost() {
+      if (!postId) return // Wait for postId to be set
+      
       try {
-      const post = await getArticleById(postId)
-      if (!post) {
-        toast({
-          title: "Post not found",
-          description: "The post you're trying to edit could not be found.",
-          variant: "destructive",
-        })
-        setIsLoading(false)
-        return
-      }
-      setTitle(post.title || "")
-      setCategory(post.category?.toLowerCase() || "")
-      setExcerpt(post.excerpt || "")
-      setContent(post.content || "")
-      setTags(Array.isArray(post.tags) ? post.tags.join(', ') : (post.tags || ""))
-      setImageUrl(post.imageUrl || "")
+        console.log('Loading post for edit:', postId)
+        // Use API route instead of direct function call for client-side compatibility
+        const response = await fetch(`/api/articles?id=${postId}`)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch article: ${response.status}`)
+        }
+        
+        const post = await response.json()
+        console.log('Post loaded for edit:', post)
+        
+        if (!post) {
+          toast({
+            title: "Post not found",
+            description: "The post you're trying to edit could not be found.",
+            variant: "destructive",
+          })
+          setIsLoading(false)
+          return
+        }
+        
+        setTitle(post.title || "")
+        setCategory(post.category?.toLowerCase() || "")
+        setExcerpt(post.excerpt || "")
+        setContent(post.content || "")
+        setTags(Array.isArray(post.tags) ? post.tags.join(', ') : (post.tags || ""))
+        setImageUrl(post.imageUrl || "")
         setIsLoading(false)
       } catch (error) {
         console.error("Error loading post:", error)

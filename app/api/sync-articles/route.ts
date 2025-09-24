@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
-import { clearFileArticlesCache } from '@/lib/file-articles'
 
 // API endpoint to sync articles from Supabase to local file
 export async function POST(request: NextRequest) {
@@ -12,11 +11,8 @@ export async function POST(request: NextRequest) {
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
     const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
     
-    // Add a small delay to ensure Supabase has processed any recent changes
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Fetch articles from Supabase with ordering to ensure we get the latest
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*&order=created_at.desc`, {
+    // Fetch articles from Supabase
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -30,7 +26,6 @@ export async function POST(request: NextRequest) {
     
     const articles = await response.json()
     console.log(`✅ Fetched ${articles.length} articles from Supabase`)
-    console.log(`📋 Latest articles:`, articles.slice(0, 3).map((a: any) => ({ id: a.id, title: a.title, created_at: a.created_at })))
     
     // Transform articles to match our interface
     const transformedArticles = articles.map((article: any) => ({
@@ -63,9 +58,9 @@ export async function POST(request: NextRequest) {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
     
     if (isProduction) {
-      // In production, we can't write to the file system directly
-      // Instead, we'll trigger a rebuild with fresh data from Supabase
-      console.log('🚀 Production environment detected - triggering rebuild with fresh data')
+      // In production, we can't write to the file system
+      // Instead, we'll trigger a revalidation of the static pages
+      console.log('🚀 Production environment detected - triggering revalidation instead of file write')
       
       // Trigger revalidation of the homepage and other static pages
       try {
@@ -85,7 +80,7 @@ export async function POST(request: NextRequest) {
       
       return NextResponse.json({ 
         success: true, 
-        message: `Synced ${transformedArticles.length} articles and triggered page rebuild`,
+        message: `Synced ${transformedArticles.length} articles and triggered page revalidation`,
         timestamp: new Date().toISOString(),
         environment: 'production'
       })
@@ -93,9 +88,6 @@ export async function POST(request: NextRequest) {
       // In development, write to the local file
       const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
       await fs.writeFile(articlesPath, JSON.stringify(transformedArticles, null, 2))
-      
-      // Clear the file articles cache so fresh data is loaded
-      clearFileArticlesCache()
       
       console.log(`💾 Updated articles.json with ${transformedArticles.length} articles`)
       
@@ -125,10 +117,7 @@ export async function GET() {
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
     const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
     
-    // Add a small delay to ensure Supabase has processed any recent changes
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*&order=created_at.desc`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -141,7 +130,6 @@ export async function GET() {
     }
     
     const articles = await response.json()
-    console.log(`✅ GET endpoint: Fetched ${articles.length} articles from Supabase`)
     
     const transformedArticles = articles.map((article: any) => ({
       id: article.id,
@@ -171,9 +159,9 @@ export async function GET() {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
     
     if (isProduction) {
-      // In production, we can't write to the file system directly
-      // Instead, we'll trigger a rebuild with fresh data from Supabase
-      console.log('🚀 Production environment detected - triggering rebuild with fresh data')
+      // In production, we can't write to the file system
+      // Instead, we'll trigger a revalidation of the static pages
+      console.log('🚀 Production environment detected - triggering revalidation instead of file write')
       
       // Trigger revalidation of the homepage and other static pages
       try {
@@ -193,7 +181,7 @@ export async function GET() {
       
       return NextResponse.json({ 
         success: true, 
-        message: `Synced ${transformedArticles.length} articles and triggered page rebuild`,
+        message: `Synced ${transformedArticles.length} articles and triggered page revalidation`,
         timestamp: new Date().toISOString(),
         environment: 'production'
       })
@@ -201,9 +189,6 @@ export async function GET() {
       // In development, write to the local file
       const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
       await fs.writeFile(articlesPath, JSON.stringify(transformedArticles, null, 2))
-      
-      // Clear the file articles cache so fresh data is loaded
-      clearFileArticlesCache()
       
       console.log(`💾 Updated articles.json with ${transformedArticles.length} articles`)
       

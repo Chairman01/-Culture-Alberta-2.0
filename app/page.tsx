@@ -110,6 +110,11 @@ export default async function HomeStatic() {
   const calgaryPosts = sortedPosts.filter(post => post.category === 'Calgary').slice(0, 3)
   const foodDrinkPosts = sortedPosts.filter(post => post.category === 'Food & Drink').slice(0, 2)
   const trendingPosts = posts.filter(post => post.trendingHome === true).slice(0, 5)
+  
+  // Debug logging for trending posts
+  console.log('Total posts loaded:', posts.length)
+  console.log('Posts with trendingHome flag:', posts.filter(post => post.trendingHome === true).length)
+  console.log('Trending posts selected:', trendingPosts.length)
   const upcomingEvents = events.slice(0, 3) // Get the first 3 events
 
   return (

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, Calendar, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Article } from '@/lib/data'
+import { ArticleSEO } from '@/components/seo/article-seo'
 
 interface ExtendedArticle extends Partial<Article> {
   name?: string;
@@ -135,15 +136,29 @@ export default function BestOfDetailPage({ params }: { params: Promise<PageParam
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <Button variant="ghost" asChild>
-          <Link href="/best-of">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Best Of
-          </Link>
-        </Button>
-      </div>
+    <>
+      {item && (
+        <ArticleSEO
+          title={item.title || ""}
+          description={item.excerpt || item.description || ""}
+          url={`/best-of/${resolvedParams?.category}/${resolvedParams?.id}`}
+          image={item.image}
+          publishedTime={item.date}
+          author="Culture Alberta"
+          section={category}
+          tags={[category, item.location].filter(Boolean)}
+          category={category}
+        />
+      )}
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <Button variant="ghost" asChild>
+            <Link href="/best-of">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Best Of
+            </Link>
+          </Button>
+        </div>
 
       <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
         <div>
@@ -224,5 +239,6 @@ export default function BestOfDetailPage({ params }: { params: Promise<PageParam
         </div>
       </div>
     </div>
+    </>
   )
 }

@@ -25,10 +25,11 @@ export default function RootLayout({
         {/* Canonical URL */}
         <link rel="canonical" href="https://www.culturealberta.com" />
         
-        {/* Favicon and Icons - Fixed for better Google visibility */}
+        {/* Favicon and Icons - Enhanced for better Google visibility */}
+        <link rel="icon" href="/favicon.ico" type="image/x-icon" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon-32x32.svg" sizes="32x32" type="image/svg+xml" />
-        <link rel="shortcut icon" href="/favicon.svg" />
+        <link rel="shortcut icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/favicon.svg" />
         <link rel="manifest" href="/manifest.json" />
         
@@ -37,6 +38,10 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png" />
+        
+        {/* Enhanced favicon for search engines */}
+        <meta name="msapplication-TileImage" content="/favicon.svg" />
+        <meta name="msapplication-config" content="/browserconfig.xml" />
         
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
@@ -112,7 +117,9 @@ export default function RootLayout({
                 "url": "https://www.culturealberta.com",
                 "logo": {
                   "@type": "ImageObject",
-                  "url": "https://www.culturealberta.com/favicon.svg"
+                  "url": "https://www.culturealberta.com/favicon.svg",
+                  "width": "32",
+                  "height": "32"
                 },
                 "sameAs": [
                   "https://www.youtube.com/@CultureAlberta_",
@@ -135,7 +142,12 @@ export default function RootLayout({
               "@type": "Organization",
               "name": "Culture Alberta",
               "url": "https://www.culturealberta.com",
-              "logo": "https://www.culturealberta.com/favicon.svg",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://www.culturealberta.com/favicon.svg",
+                "width": "32",
+                "height": "32"
+              },
               "description": "Your guide to Alberta's best culture, events, and experiences",
               "address": {
                 "@type": "PostalAddress",
@@ -213,7 +225,12 @@ export default function RootLayout({
               "name": "Culture Alberta",
               "description": "Your guide to Alberta's culture: events, restaurants, festivals & local experiences",
               "url": "https://www.culturealberta.com",
-              "logo": "https://www.culturealberta.com/favicon.svg",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://www.culturealberta.com/favicon.svg",
+                "width": "32",
+                "height": "32"
+              },
               "image": "https://www.culturealberta.com/images/culture-alberta-og.jpg",
               "address": {
                 "@type": "PostalAddress",

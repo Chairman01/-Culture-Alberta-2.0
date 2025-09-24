@@ -31,7 +31,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(article)
     } else if (id) {
       // Get specific article by ID (for backward compatibility)
+      console.log('🔍 API: Getting article by ID:', id)
+      console.log('🔍 API: Environment check:', {
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL: process.env.VERCEL,
+        window: typeof window !== 'undefined'
+      })
       const article = await getArticleById(id)
+      console.log('🔍 API: Article result:', article ? 'Found' : 'Not found')
       return NextResponse.json(article)
     } else {
       // Get all articles
