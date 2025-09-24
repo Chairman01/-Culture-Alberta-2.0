@@ -146,7 +146,7 @@ export default function BestOfDetailPage({ params }: { params: Promise<PageParam
           publishedTime={item.date}
           author="Culture Alberta"
           section={category}
-          tags={[category, item.location].filter(Boolean)}
+          tags={[category, item.location].filter(Boolean) as string[]}
           category={category}
         />
       )}
