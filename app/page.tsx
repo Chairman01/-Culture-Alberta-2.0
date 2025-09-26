@@ -137,12 +137,13 @@ export default async function HomeStatic() {
     return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
   }).slice(0, 3)
   const foodDrinkPosts = sortedPosts.filter(post => post.category === 'Food & Drink').slice(0, 2)
-  const trendingPosts = posts.filter(post => post.trendingHome === true).slice(0, 5)
+  // Show top 5 most recent articles instead of only trending ones
+  const trendingPosts = sortedPosts.slice(0, 5)
   
   // Debug logging for homepage articles
   console.log('Total posts loaded:', posts.length)
   console.log('Posts with trendingHome flag:', posts.filter(post => post.trendingHome === true).length)
-  console.log('Trending posts selected:', trendingPosts.length)
+  console.log('Top 5 articles selected:', trendingPosts.length)
   console.log('Featured post found:', featuredPost ? featuredPost.title : 'None')
   console.log('First few posts:', posts.slice(0, 3).map(p => ({ title: p.title, type: p.type, featuredHome: p.featuredHome })))
   
