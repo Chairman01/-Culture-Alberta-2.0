@@ -22,29 +22,19 @@ export default function RootLayout({
         <meta name="robots" content="index, follow" />
         <meta name="google-adsense-account" content="ca-pub-6902227267422426" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-        {/* Canonical URL */}
         <link rel="canonical" href="https://www.culturealberta.com" />
-
-        {/* Favicon and Icons */}
         <link rel="icon" href="/favicon.ico" type="image/x-icon" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/favicon.svg" />
-
-        {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://www.culturealberta.com" />
         <meta property="og:title" content="Culture Alberta - Discover Alberta's Best Culture, Events & Experiences" />
         <meta property="og:description" content="Discover the best of Alberta's culture, events, restaurants, and experiences. Your guide to Calgary, Edmonton, and beyond." />
         <meta property="og:image" content="https://www.culturealberta.com/images/culture-alberta-og.jpg" />
-
-        {/* Twitter */}
         <meta property="twitter:card" content="summary_large_image" />
         <meta property="twitter:title" content="Culture Alberta - Discover Alberta's Best Culture, Events & Experiences" />
         <meta property="twitter:description" content="Discover the best of Alberta's culture, events, restaurants, and experiences. Your guide to Calgary, Edmonton, and beyond." />
         <meta property="twitter:image" content="https://www.culturealberta.com/images/culture-alberta-og.jpg" />
-
-        {/* Google Analytics */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-V7DK0G3JFV"
           strategy="afterInteractive"
@@ -57,8 +47,6 @@ export default function RootLayout({
             gtag('config', 'G-V7DK0G3JFV');
           `}
         </Script>
-
-        {/* Google AdSense */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6902227267422426"
