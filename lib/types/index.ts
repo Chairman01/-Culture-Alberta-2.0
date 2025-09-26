@@ -1,1 +1,1 @@
-export { Article, CreateArticleInput, UpdateArticleInput } from './article'
+export type { Article, CreateArticleInput, UpdateArticleInput } from './article'
