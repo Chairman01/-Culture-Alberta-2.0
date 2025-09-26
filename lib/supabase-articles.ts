@@ -89,7 +89,7 @@ const getCacheDuration = () => {
   if (process.env.NODE_ENV === 'production') {
     return 60 * 60 * 1000 // 1 hour cache in production
   }
-  return 10 * 60 * 1000 // 10 minutes in development
+  return 30 * 1000 // 30 seconds in development for faster updates
 }
 
 // SPEED OPTIMIZATION: Always try file system first

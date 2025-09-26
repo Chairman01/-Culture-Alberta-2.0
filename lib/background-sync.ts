@@ -95,6 +95,15 @@ export async function backgroundSync(): Promise<void> {
     const articles = await response.json()
     console.log(`✅ Background sync: Fetched ${articles.length} articles from Supabase`)
     
+    // Debug: Check if "hello" article is in the response
+    const helloArticle = articles.find((a: any) => a.title?.toLowerCase().includes('hello'))
+    if (helloArticle) {
+      console.log('✅ Found "hello" article in Supabase:', helloArticle.title, helloArticle.status)
+    } else {
+      console.log('❌ "hello" article not found in Supabase response')
+      console.log('Available articles:', articles.map((a: any) => a.title).slice(0, 5))
+    }
+    
     // Transform articles to match our interface
     const transformedArticles = articles.map((article: any) => ({
       id: article.id,
