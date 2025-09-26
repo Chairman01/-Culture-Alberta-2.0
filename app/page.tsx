@@ -270,6 +270,7 @@ export default async function HomeStatic() {
                           width={400}
                           height={225}
                           className="w-full h-full object-cover"
+                          loading="lazy"
                         />
                       </div>
                       <div className="p-4">
@@ -306,6 +307,7 @@ export default async function HomeStatic() {
                           width={400}
                           height={225}
                           className="w-full h-full object-cover"
+                          loading="lazy"
                         />
                       </div>
                       <div className="p-4">
@@ -414,6 +416,7 @@ export default async function HomeStatic() {
                           width={400}
                           height={225}
                           className="w-full h-full object-cover"
+                          loading="lazy"
                         />
                       </div>
                       <div className="p-4">
