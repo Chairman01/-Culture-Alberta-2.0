@@ -1245,15 +1245,15 @@ export async function getArticleById(id: string): Promise<Article | null> {
 
     // Map Supabase data to match our Article interface
     const mappedArticle = {
-      ...data,
-      imageUrl: validateImageUrl(data.image_url || data.image, data.title),
-      date: data.created_at,
-      trendingHome: data.trending_home || false,
-      trendingEdmonton: data.trending_edmonton || false,
-      trendingCalgary: data.trending_calgary || false,
-      featuredHome: data.featured_home || false,
-      featuredEdmonton: data.featured_edmonton || false,
-      featuredCalgary: data.featured_calgary || false
+      ...articleData,
+      imageUrl: validateImageUrl(articleData.image_url || articleData.image, articleData.title),
+      date: articleData.created_at,
+      trendingHome: articleData.trending_home || false,
+      trendingEdmonton: articleData.trending_edmonton || false,
+      trendingCalgary: articleData.trending_calgary || false,
+      featuredHome: articleData.featured_home || false,
+      featuredEdmonton: articleData.featured_edmonton || false,
+      featuredCalgary: articleData.featured_calgary || false
     }
 
     // Cache the individual article

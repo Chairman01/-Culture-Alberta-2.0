@@ -7,6 +7,8 @@ import { getTitleFromUrl } from '@/lib/utils/article-url'
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
+import { ArticleSEO } from '@/components/seo/article-seo'
+import { ArticleReadingFeatures } from '@/components/article-reading-features'
 
 // Function to process content and convert YouTube URLs to embedded videos
 const processContentWithVideos = (content: string) => {
@@ -159,7 +161,22 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     }
 
     return (
-      <div className="min-h-screen bg-gray-50">
+      <>
+        <ArticleSEO
+          title={loadedArticle.title}
+          description={loadedArticle.excerpt || loadedArticle.description || `Read about ${loadedArticle.title} on Culture Alberta`}
+          url={`/articles/${slug}`}
+          image={loadedArticle.imageUrl}
+          publishedTime={loadedArticle.date}
+          modifiedTime={loadedArticle.updatedAt}
+          author={loadedArticle.author || 'Culture Alberta'}
+          section={loadedArticle.category}
+          tags={loadedArticle.tags || []}
+          category={loadedArticle.category}
+          slug={slug}
+        />
+        <ArticleReadingFeatures />
+        <div className="min-h-screen bg-gray-50">
         {/* Sticky Header */}
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
           <div className="container mx-auto px-4 py-4">
@@ -438,6 +455,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         </div>
 
       </div>
+      </>
     )
   } catch (error) {
     console.error('Error loading article:', error)

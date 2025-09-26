@@ -47,13 +47,23 @@ export default function EditPostPage({ params }: EditPostPageProps) {
       try {
         console.log('Loading post for edit:', postId)
         // Use API route instead of direct function call for client-side compatibility
-        const response = await fetch(`/api/articles?id=${postId}`)
+        // Add timestamp to bypass cache and ensure fresh data
+        const response = await fetch(`/api/articles?id=${postId}&t=${Date.now()}`)
         if (!response.ok) {
           throw new Error(`Failed to fetch article: ${response.status}`)
         }
         
         const post = await response.json()
         console.log('Post loaded for edit:', post)
+        console.log('Post fields:', {
+          title: post.title,
+          category: post.category,
+          readTime: post.readTime,
+          excerpt: post.excerpt,
+          content: post.content ? 'Content present' : 'No content',
+          tags: post.tags,
+          imageUrl: post.imageUrl
+        })
         
         if (!post) {
           toast({
@@ -67,6 +77,7 @@ export default function EditPostPage({ params }: EditPostPageProps) {
         
         setTitle(post.title || "")
         setCategory(post.category?.toLowerCase() || "")
+        setReadTime(post.readTime || "5")
         setExcerpt(post.excerpt || "")
         setContent(post.content || "")
         setTags(Array.isArray(post.tags) ? post.tags.join(', ') : (post.tags || ""))

@@ -29,12 +29,21 @@ export function ArticleSEO({
 }: ArticleSEOProps) {
   const fullTitle = title.includes('Culture Alberta') ? title : `${title} | Culture Alberta`
   const fullUrl = url ? `https://www.culturealberta.com${url}` : 'https://www.culturealberta.com'
-  const articleImage = image || 'https://www.culturealberta.com/images/culture-alberta-og.jpg'
+  // Handle image URL properly - use article image if available, otherwise use default
+  const articleImage = image || '/images/culture-alberta-og.jpg'
   
   // Ensure image URL is absolute
   const absoluteImageUrl = articleImage.startsWith('http') 
     ? articleImage 
     : `https://www.culturealberta.com${articleImage}`
+  
+  // Debug logging for SEO image
+  console.log('ArticleSEO Image Debug:', {
+    originalImage: image,
+    articleImage,
+    absoluteImageUrl,
+    title
+  })
 
   return (
     <Head>

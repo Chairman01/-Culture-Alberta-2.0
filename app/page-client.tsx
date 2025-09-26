@@ -170,11 +170,40 @@ export default function Home() {
   }
 
   const featuredPost = posts.find(post => post.featuredHome === true) || posts[0] || null
-  const edmontonPosts = posts.filter(post => post.category === 'Edmonton').slice(0, 3)
-  const calgaryPosts = posts.filter(post => post.category === 'Calgary').slice(0, 3)
+  // Use the same flexible filtering logic as getCityArticles
+  const edmontonPosts = posts.filter(post => {
+    const hasCityCategory = post.category?.toLowerCase().includes('edmonton');
+    const hasCityLocation = post.location?.toLowerCase().includes('edmonton');
+    const hasCityCategories = post.categories?.some((cat: string) => 
+      cat.toLowerCase().includes('edmonton')
+    );
+    const hasCityTags = post.tags?.some((tag: string) => 
+      tag.toLowerCase().includes('edmonton')
+    );
+    
+    return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+  }).slice(0, 3)
+  
+  const calgaryPosts = posts.filter(post => {
+    const hasCityCategory = post.category?.toLowerCase().includes('calgary');
+    const hasCityLocation = post.location?.toLowerCase().includes('calgary');
+    const hasCityCategories = post.categories?.some((cat: string) => 
+      cat.toLowerCase().includes('calgary')
+    );
+    const hasCityTags = post.tags?.some((tag: string) => 
+      tag.toLowerCase().includes('calgary')
+    );
+    
+    return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+  }).slice(0, 3)
   const foodDrinkPosts = posts.filter(post => post.category === 'Food & Drink').slice(0, 2)
   const trendingPosts = posts.filter(post => post.trendingHome === true).slice(0, 5)
   const upcomingEvents = events.slice(0, 3) // Get the first 3 events
+  
+  // Debug logging for Edmonton posts
+  console.log('Total posts loaded:', posts.length)
+  console.log('Edmonton posts found:', edmontonPosts.length)
+  console.log('Edmonton posts:', edmontonPosts.map(p => ({ title: p.title, category: p.category, location: p.location })))
 
   return (
     <>

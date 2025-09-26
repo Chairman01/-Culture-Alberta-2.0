@@ -10,13 +10,15 @@ interface NewsletterSignupProps {
   title?: string
   description?: string
   className?: string
+  compact?: boolean
 }
 
 export default function NewsletterSignup({ 
   defaultCity = "", 
   title = "Newsletter",
   description = "Stay updated with the latest cultural news and events from across Alberta.",
-  className = ""
+  className = "",
+  compact = false
 }: NewsletterSignupProps) {
   const [email, setEmail] = useState("")
   const [city, setCity] = useState(defaultCity)
@@ -94,6 +96,44 @@ export default function NewsletterSignup({
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (compact) {
+    return (
+      <div className="space-y-3">
+        <div className="space-y-2">
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <select
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select your city</option>
+            <option value="Edmonton">Edmonton</option>
+            <option value="Calgary">Calgary</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting || !email}
+          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isSubmitting ? "Subscribing..." : "Subscribe"}
+        </button>
+        {message && (
+          <p className={`text-sm ${messageType === "success" ? "text-green-600" : "text-red-600"}`}>
+            {message}
+          </p>
+        )}
+      </div>
+    )
   }
 
   return (
