@@ -17,6 +17,7 @@ export interface Article {
   tags?: string[];
   rating?: number;
   featured?: boolean;
+  slug?: string; // URL slug for the article
   createdAt: string;
   updatedAt: string;
   // Trending flags
