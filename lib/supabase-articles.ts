@@ -190,7 +190,7 @@ export async function testSupabaseConnection(): Promise<boolean> {
   }
 }
 
-// SPEED OPTIMIZED: Homepage articles with file system priority
+// SMART CACHE: Homepage articles with intelligent caching
 export async function getHomepageArticles(): Promise<Article[]> {
   const startTime = Date.now()
   
@@ -201,57 +201,27 @@ export async function getHomepageArticles(): Promise<Article[]> {
     try {
       console.log('=== getHomepageArticles called ===')
       
-      // SPEED OPTIMIZATION: Check cache first with longer duration
+      // SMART CACHE: Check if we have recent cache (less than 30 seconds old)
       const now = Date.now()
-      if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
-        console.log('✅ Returning cached articles for homepage:', articlesCache.length, 'articles')
+      const cacheAge = now - cacheTimestamp
+      const maxCacheAge = 30 * 1000 // 30 seconds
+      
+      if (articlesCache && cacheAge < maxCacheAge) {
+        console.log('⚡ SPEED: Using recent cache (age:', Math.round(cacheAge/1000), 'seconds)')
         return articlesCache!
       }
       
-      // SPEED OPTIMIZATION: Always try file system first (not just build time)
-      if (shouldUseFileSystemFirst() && fileArticlesModule) {
-        console.log('🚀 SPEED: Using file system as primary source')
-        try {
-          const fileArticles = await fileArticlesModule.getAllArticlesFromFile()
-          console.log('✅ Found articles in file system:', fileArticles.length, 'articles')
-          
-          // Update cache with file system data
-          articlesCache = fileArticles
-          cacheTimestamp = now
-          
-          // Start background sync to keep file system updated
-          startBackgroundSyncIfNeeded().catch(error => {
-            console.warn('Background sync failed:', error)
-          })
-          
-          return fileArticles
-        } catch (fileError) {
-          console.warn('⚠️ File system failed, falling back to Supabase:', fileError)
-        }
-      }
-      
-      // During build time, always use file system for reliability
-      if (shouldUseFileSystem()) {
-        console.log('Build time detected, using file system')
-        const fileArticles = fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
-        console.log('Found articles in file system:', fileArticles.length, 'articles')
-        
-        // Update cache with file system data
-        articlesCache = fileArticles
-        cacheTimestamp = now
-        return fileArticles
-      }
+      // If cache is stale, fetch fresh data from Supabase
+      console.log('🔄 UPDATING: Cache is stale, fetching fresh data from Supabase...')
       
       if (!supabase) {
         console.error('Supabase client is not initialized')
         console.log('Falling back to file system')
         return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
       }
-
-      console.log('🐌 SLOW: Attempting to fetch homepage articles from Supabase...')
       
-      // SPEED OPTIMIZATION: Reduced timeout for faster fallback
-      const timeoutDuration = process.env.NODE_ENV === 'production' ? 2000 : 5000 // 2s in prod, 5s in dev
+      // REAL-TIME: Use longer timeout since we're prioritizing accuracy over speed
+      const timeoutDuration = process.env.NODE_ENV === 'production' ? 5000 : 10000 // 5s in prod, 10s in dev
       
       // Optimized query for homepage - only essential fields
       const fields = ensureImageFields('id, title, excerpt, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
@@ -271,17 +241,11 @@ export async function getHomepageArticles(): Promise<Article[]> {
 
     if (error) {
       console.warn('Supabase homepage query failed:', error.message)
-      
-      if (articlesCache) {
-        console.log('Using cached articles for homepage due to Supabase error')
-        return articlesCache!
-      }
-      
-      console.log('No cache available, falling back to file system')
+      console.log('Falling back to file system')
       return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     }
 
-    console.log('Successfully fetched homepage articles from Supabase:', data?.length || 0, 'articles')
+    console.log('✅ SMART CACHE: Successfully fetched homepage articles from Supabase:', data?.length || 0, 'articles')
 
     // Map Supabase data to match our Article interface - optimized
     const mappedArticles = (data || []).map((article: any) => {
@@ -304,27 +268,28 @@ export async function getHomepageArticles(): Promise<Article[]> {
       }
     })
 
-    // Update cache
+    // Update cache with fresh data
     articlesCache = mappedArticles
     cacheTimestamp = now
-    console.log('Updated homepage articles cache')
+    console.log('💾 CACHE: Updated homepage cache with fresh data')
 
     // Track resource usage
     trackResourceUsage('getHomepageArticles', startTime)
 
-      return mappedArticles
+    return mappedArticles
     } catch (error) {
       console.warn('Supabase homepage connection failed:', error)
-      
-      if (articlesCache) {
-        console.log('Using cached articles for homepage due to connection error')
-        return articlesCache!
-      }
-      
-      console.log('No cache available, falling back to file system')
+      console.log('Falling back to file system')
       return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     }
   })
+}
+
+// Function to invalidate homepage cache when articles are modified
+export function invalidateHomepageCache(): void {
+  console.log('🗑️ CACHE: Invalidating homepage cache due to article changes')
+  articlesCache = null
+  cacheTimestamp = 0
 }
 
 // Optimized function for admin list that only fetches essential fields
@@ -1362,6 +1327,8 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
     // Force immediate cache refresh for admin
     articlesCache = null
     cacheTimestamp = 0
+    // Invalidate homepage cache so it shows the new article immediately
+    invalidateHomepageCache()
     
     // Automatically sync to local file after successful creation
     try {
@@ -1448,6 +1415,8 @@ export async function updateArticle(id: string, article: UpdateArticleInput): Pr
     // Force immediate cache refresh for admin
     articlesCache = null
     cacheTimestamp = 0
+    // Invalidate homepage cache so it shows the updated article immediately
+    invalidateHomepageCache()
     
     // Automatically sync to local file after successful update
     try {
@@ -1535,6 +1504,8 @@ export async function deleteArticle(id: string): Promise<void> {
       // Clear cache to ensure fresh data
       clearArticlesCache()
       console.log('🧹 Cleared articles cache')
+      // Invalidate homepage cache so it removes the deleted article immediately
+      invalidateHomepageCache()
       
       if (isProduction) {
         // In production, trigger revalidation instead of file sync
