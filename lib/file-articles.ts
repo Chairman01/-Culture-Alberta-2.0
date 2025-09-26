@@ -1,13 +1,13 @@
 import { Article, CreateArticleInput, UpdateArticleInput } from './types/article'
-import articlesData from './data/articles.json'
 
 // Direct file system access for build time
 export async function getAllArticlesFromFile(): Promise<Article[]> {
   try {
-    // Always use the JSON file directly for maximum speed
+    // Use dynamic import to avoid webpack parsing issues
+    const articlesData = await import('./data/articles')
     console.log('Using articles.json directly - no API calls')
-    console.log('Articles count:', articlesData.length)
-    return articlesData as Article[]
+    console.log('Articles count:', articlesData.default.length)
+    return articlesData.default as Article[]
   } catch (error) {
     console.error('Error fetching articles from file:', error)
     // Fallback to empty array
@@ -17,9 +17,10 @@ export async function getAllArticlesFromFile(): Promise<Article[]> {
 
 export async function getArticleByIdFromFile(id: string): Promise<Article | null> {
   try {
-    // Always use the JSON file directly for maximum speed
+    // Use dynamic import to avoid webpack parsing issues
+    const articlesData = await import('./data/articles')
     console.log('Finding article by ID in articles.json')
-    const articles = articlesData as Article[]
+    const articles = articlesData.default as Article[]
     return articles.find(article => article.id === id) || null
   } catch (error) {
     console.error('Error fetching article from file:', error)

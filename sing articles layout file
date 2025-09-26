@@ -1,0 +1,2 @@
+[33m4be44f7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m Implement smart caching system for homepage: Fast cache with real-time updates when articles are modified
+[33mafe8f87[m Fix articles.json encoding: Recreate file with proper UTF-8 encoding to resolve build errors
