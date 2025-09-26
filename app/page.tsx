@@ -97,7 +97,11 @@ export default async function HomeStatic() {
     return post.author || 'Culture Alberta'
   }
 
-  const featuredPost = posts.find(post => post.featuredHome === true) || posts[0] || null
+  // Try to find a featured article, but fall back to any article if none are marked as featured
+  const featuredPost = posts.find(post => post.featuredHome === true) || 
+                      posts.find(post => post.type !== 'event') || 
+                      posts[0] || 
+                      null
   
   // Sort articles by date (newest first) before filtering
   const sortedPosts = posts.sort((a, b) => {
@@ -135,10 +139,12 @@ export default async function HomeStatic() {
   const foodDrinkPosts = sortedPosts.filter(post => post.category === 'Food & Drink').slice(0, 2)
   const trendingPosts = posts.filter(post => post.trendingHome === true).slice(0, 5)
   
-  // Debug logging for trending posts
+  // Debug logging for homepage articles
   console.log('Total posts loaded:', posts.length)
   console.log('Posts with trendingHome flag:', posts.filter(post => post.trendingHome === true).length)
   console.log('Trending posts selected:', trendingPosts.length)
+  console.log('Featured post found:', featuredPost ? featuredPost.title : 'None')
+  console.log('First few posts:', posts.slice(0, 3).map(p => ({ title: p.title, type: p.type, featuredHome: p.featuredHome })))
   
   // Debug logging for Edmonton posts
   console.log('Edmonton posts found:', edmontonPosts.length)
