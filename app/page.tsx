@@ -78,7 +78,11 @@ export default async function HomeStatic() {
   }
 
   const getPostExcerpt = (post: Article) => {
-    return post.excerpt || post.content?.substring(0, 100) + '...' || 'No excerpt available'
+    if (post.excerpt) return post.excerpt
+    if (post.content && post.content.trim()) {
+      return post.content.substring(0, 150) + '...'
+    }
+    return 'Article content coming soon...'
   }
 
   const getPostImage = (post: Article) => {

@@ -79,6 +79,15 @@ export default function NewArticlePage() {
       return
     }
 
+    if (!content || content.trim() === '') {
+      toast({
+        title: "Missing content",
+        description: "Please add content to your article. Articles without content will show 'Content coming soon...' to visitors.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSaving(true)
 
     try {

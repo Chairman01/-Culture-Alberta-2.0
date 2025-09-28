@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Performance optimizations
+  swcMinify: true,
+  compress: true,
   // Production optimizations
   ...(process.env.NODE_ENV === 'production' && {
     // Enable compression in production
@@ -9,6 +12,10 @@ const nextConfig = {
     experimental: {
       optimizeCss: true,
       optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+      // Enable static optimization
+      staticGenerationRetryCount: 3,
+      // Optimize memory usage
+      memoryBasedWorkersCount: true,
     },
   }),
   images: {

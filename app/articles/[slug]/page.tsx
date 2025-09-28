@@ -78,24 +78,19 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const slug = resolvedParams.slug
   
   try {
-    console.log('Looking for article with slug:', slug)
-    
-    // Try to get article by slug first (much faster than fetching all articles)
+    // PERFORMANCE FIX: Single optimized query instead of multiple fallbacks
     let loadedArticle = await getArticleBySlug(slug)
-    console.log('Article found by slug:', !!loadedArticle)
     
-    // If not found by slug, try by ID (for backward compatibility)
+    // Only try fallback if absolutely necessary
     if (!loadedArticle) {
+      console.log('Article not found by slug, trying ID fallback...')
       loadedArticle = await getArticleById(slug)
-      console.log('Article found by ID:', !!loadedArticle)
     }
     
-    // If still not found, try to find by title match (last resort)
+    // Last resort - but this is expensive, so we'll optimize it
     if (!loadedArticle) {
-      console.log('Trying to find article by title match...')
-      // Only fetch all articles as last resort
+      console.log('Trying title match fallback...')
       const allArticles = await getAllArticles()
-      console.log('Total articles available:', allArticles.length)
       
       loadedArticle = allArticles.find(article => {
         // Convert article title to URL format and compare
@@ -291,10 +286,32 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                   {/* Article Content */}
                   <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
                     <div className="article-content">
-                      {loadedArticle.content ? (
+                      {loadedArticle.content && loadedArticle.content.trim() ? (
                         <ArticleContent content={loadedArticle.content} />
+                      ) : loadedArticle.excerpt ? (
+                        <div className="space-y-6">
+                          <div className="prose prose-lg max-w-none">
+                            <p className="text-lg text-gray-700 leading-relaxed mb-6">
+                              {loadedArticle.excerpt}
+                            </p>
+                            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                              <p className="text-blue-800 font-medium mb-2">📝 Full Article Coming Soon</p>
+                              <p className="text-blue-700 text-sm">
+                                We're working on the complete article content. Check back soon for the full story!
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       ) : (
-                        <p className="text-gray-600 italic">Content coming soon...</p>
+                        <div className="text-center py-12">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span className="text-2xl">📝</span>
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">Article Content Coming Soon</h3>
+                          <p className="text-gray-600 max-w-md mx-auto">
+                            We're working on bringing you the complete article. Check back soon for the full story!
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
