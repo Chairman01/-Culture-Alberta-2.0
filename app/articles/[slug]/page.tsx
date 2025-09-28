@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { Calendar, Clock, Share2, Bookmark, ArrowLeft, ArrowRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { getOptimizedArticleById, getOptimizedArticleBySlug, getOptimizedAllArticles } from '@/lib/optimized-articles'
+import { getArticleById, getArticleBySlug, getAllArticles } from '@/lib/supabase-articles'
 import { getTitleFromUrl } from '@/lib/utils/article-url'
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { Article } from '@/lib/types/article'
@@ -79,18 +79,18 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   
   try {
     // PERFORMANCE FIX: Use optimized article loading functions
-    let loadedArticle = await getOptimizedArticleBySlug(slug)
+    let loadedArticle = await getArticleBySlug(slug)
     
     // Only try fallback if absolutely necessary
     if (!loadedArticle) {
       console.log('Article not found by slug, trying ID fallback...')
-      loadedArticle = await getOptimizedArticleById(slug)
+      loadedArticle = await getArticleById(slug)
     }
     
     // Last resort - but this is expensive, so we'll optimize it
     if (!loadedArticle) {
       console.log('Trying title match fallback...')
-      const allArticles = await getOptimizedAllArticles()
+      const allArticles = await getAllArticles()
       
       loadedArticle = allArticles.find(article => {
         // Convert article title to URL format and compare
@@ -112,7 +112,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     
     if (!loadedArticle) {
       console.log('Article not found, showing 404')
-      console.log('Available articles:', (await getOptimizedAllArticles()).map(a => a.title))
+      console.log('Available articles:', (await getAllArticles()).map(a => a.title))
       notFound()
     }
 
@@ -120,7 +120,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     let relatedArticles: Article[] = []
     try {
       // Try to get homepage articles first (they're usually cached and faster)
-      const homepageArticles = await getOptimizedAllArticles()
+      const homepageArticles = await getAllArticles()
       
       if (homepageArticles.length > 0) {
         // Use cached homepage articles for better performance

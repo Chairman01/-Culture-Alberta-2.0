@@ -26,6 +26,61 @@ function loadFromFile(filename: string): any {
   return null
 }
 
+// Fallback to database when files aren't available (production)
+async function fallbackToDatabase(): Promise<Article[]> {
+  try {
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
+    
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    
+    const { data: articles, error } = await supabase
+      .from('articles')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Database fallback failed:', error)
+      return []
+    }
+    
+    return articles?.map((article: any) => ({
+      id: article.id,
+      title: article.title,
+      content: article.content,
+      excerpt: article.excerpt,
+      category: article.category,
+      categories: article.categories || [article.category],
+      location: article.location,
+      author: article.author,
+      tags: article.tags || [],
+      type: article.type || 'article',
+      status: article.status || 'published',
+      imageUrl: article.image_url,
+      date: article.created_at,
+      createdAt: article.created_at,
+      updatedAt: article.updated_at,
+      trendingHome: article.trending_home || false,
+      trendingEdmonton: article.trending_edmonton || false,
+      trendingCalgary: article.trending_calgary || false,
+      featuredHome: article.featured_home || false,
+      featuredEdmonton: article.featured_edmonton || false,
+      featuredCalgary: article.featured_calgary || false,
+      slug: article.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 100)
+    })) || []
+  } catch (error) {
+    console.error('Database fallback error:', error)
+    return []
+  }
+}
+
 // Get homepage articles (lightweight, fast)
 export async function getOptimizedHomepageArticles(): Promise<Article[]> {
   const now = Date.now()
