@@ -286,6 +286,14 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                   {/* Article Content */}
                   <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
                     <div className="article-content">
+                      {/* DEBUG: Log content status */}
+                      {console.log('DEBUG - Content check:', {
+                        hasContent: !!loadedArticle.content,
+                        contentLength: loadedArticle.content?.length || 0,
+                        contentTrimmed: loadedArticle.content?.trim()?.length || 0,
+                        hasExcerpt: !!loadedArticle.excerpt,
+                        excerptLength: loadedArticle.excerpt?.length || 0
+                      })}
                       {loadedArticle.content && loadedArticle.content.trim() ? (
                         <ArticleContent content={loadedArticle.content} />
                       ) : loadedArticle.excerpt ? (
