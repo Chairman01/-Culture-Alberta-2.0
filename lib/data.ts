@@ -23,7 +23,7 @@ export const MAIN_CATEGORIES = [
   "Calgary",
   "Food & Drink",
   "Events",
-  "Arts",
+  "Culture",
   "Best of Alberta",
   "Partner with us"
 ] as const

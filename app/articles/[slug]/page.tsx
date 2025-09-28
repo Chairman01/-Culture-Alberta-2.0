@@ -8,7 +8,7 @@ import { getArticleUrl } from '@/lib/utils/article-url'
 import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { ArticleSEO } from '@/components/seo/article-seo'
-import { ArticleReadingFeatures } from '@/components/article-reading-features'
+// import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
 
 // Function to process content and convert YouTube URLs to embedded videos
 const processContentWithVideos = (content: string) => {
@@ -183,7 +183,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           category={loadedArticle.category}
           slug={slug}
         />
-        <ArticleReadingFeatures />
+        {/* ArticleReadingFeatures removed - was causing duplicate newsletter */}
         <div className="min-h-screen bg-gray-50">
         {/* Sticky Header */}
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
