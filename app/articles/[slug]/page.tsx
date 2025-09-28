@@ -222,6 +222,32 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
 
+        {/* Reading Progress Script */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('scroll', function() {
+                const article = document.querySelector('.article-content');
+                if (!article) return;
+                
+                const articleTop = article.offsetTop;
+                const articleHeight = article.offsetHeight;
+                const scrollTop = window.pageYOffset;
+                
+                let progress = 0;
+                if (scrollTop >= articleTop) {
+                  const scrolled = Math.min(scrollTop - articleTop, articleHeight);
+                  progress = Math.min((scrolled / articleHeight) * 100, 100);
+                }
+                
+                const progressBar = document.getElementById('header-reading-progress');
+                if (progressBar) {
+                  progressBar.style.width = progress + '%';
+                }
+              });
+            `
+          }}
+        />
 
         {/* Hero Section */}
         <div className="bg-white">

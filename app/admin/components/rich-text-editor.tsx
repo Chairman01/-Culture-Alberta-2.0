@@ -206,8 +206,8 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
         }
       `}</style>
       
-      {/* Toolbar */}
-      <div className="border-b p-2 flex flex-wrap gap-1">
+      {/* Toolbar - Sticky */}
+      <div className="sticky top-0 z-10 bg-white border-b p-2 flex flex-wrap gap-1 shadow-sm">
         <Button
           variant="ghost"
           size="sm"
