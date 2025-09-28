@@ -306,7 +306,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                         });
                         return null;
                       })()}
-                      {loadedArticle.content && loadedArticle.content.trim() ? (
+                      {loadedArticle.content && loadedArticle.content.trim() && loadedArticle.content.length > 10 ? (
                         <ArticleContent content={loadedArticle.content} />
                       ) : loadedArticle.excerpt ? (
                         <div className="space-y-6">
