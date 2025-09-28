@@ -116,6 +116,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       notFound()
     }
 
+    // DEBUG: Log article content status
+    console.log('=== ARTICLE DEBUG ===')
+    console.log('Title:', loadedArticle.title)
+    console.log('Content length:', loadedArticle.content?.length || 0)
+    console.log('Content preview:', loadedArticle.content?.substring(0, 100) || 'NO CONTENT')
+    console.log('Excerpt length:', loadedArticle.excerpt?.length || 0)
+    console.log('Has content:', !!loadedArticle.content)
+    console.log('Content trimmed length:', loadedArticle.content?.trim()?.length || 0)
+
     // Load related articles more efficiently - use homepage cache if available
     let relatedArticles: Article[] = []
     try {
@@ -287,13 +296,16 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                   <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
                     <div className="article-content">
                       {/* DEBUG: Log content status */}
-                      {console.log('DEBUG - Content check:', {
-                        hasContent: !!loadedArticle.content,
-                        contentLength: loadedArticle.content?.length || 0,
-                        contentTrimmed: loadedArticle.content?.trim()?.length || 0,
-                        hasExcerpt: !!loadedArticle.excerpt,
-                        excerptLength: loadedArticle.excerpt?.length || 0
-                      })}
+                      {(() => {
+                        console.log('DEBUG - Content check:', {
+                          hasContent: !!loadedArticle.content,
+                          contentLength: loadedArticle.content?.length || 0,
+                          contentTrimmed: loadedArticle.content?.trim()?.length || 0,
+                          hasExcerpt: !!loadedArticle.excerpt,
+                          excerptLength: loadedArticle.excerpt?.length || 0
+                        });
+                        return null;
+                      })()}
                       {loadedArticle.content && loadedArticle.content.trim() ? (
                         <ArticleContent content={loadedArticle.content} />
                       ) : loadedArticle.excerpt ? (
