@@ -9,11 +9,9 @@ import { PageTracker } from '@/components/analytics/page-tracker'
 import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
-// Static generation with revalidation
-export const revalidate = 0 // Revalidate immediately when triggered
-
-// Allow dynamic rendering for better cache invalidation
-export const dynamic = 'auto'
+// Force dynamic rendering to prevent caching issues
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 // Server-side data loading for static generation
 async function getHomePageData() {

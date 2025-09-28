@@ -27,6 +27,7 @@ function useHomePageData() {
         setError(null)
         
         // Use the optimized homepage articles function for better performance
+        // Add cache-busting to ensure fresh data
         const apiArticles = await getHomepageArticles()
         const allPosts = apiArticles
         

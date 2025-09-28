@@ -51,7 +51,11 @@ export default function RootLayout({
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6902227267422426"
           crossOrigin="anonymous"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
+          onError={(e) => {
+            // AdSense blocked by ad blocker - this is normal
+            console.log('AdSense script blocked by ad blocker (normal behavior)')
+          }}
         />
       </head>
       <body suppressHydrationWarning={true}>
