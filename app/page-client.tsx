@@ -44,6 +44,7 @@ function useHomePageData() {
               excerpt: 'Discover the best of Alberta\'s culture, events, and experiences. From Calgary to Edmonton, we bring you the stories that matter.',
               content: 'Welcome to Culture Alberta! We\'re working on bringing you amazing content about Alberta\'s vibrant culture, events, and experiences.',
               category: 'Culture',
+              categories: ['Culture'],
               location: 'Alberta',
               imageUrl: '/images/culture-alberta-og.jpg',
               author: 'Culture Alberta',
@@ -53,7 +54,8 @@ function useHomePageData() {
               featuredHome: true,
               trendingHome: true,
               type: 'article',
-              status: 'published'
+              status: 'published',
+              tags: ['Alberta', 'Culture', 'Welcome']
             }
           ]
           setPosts(fallbackPosts)
@@ -75,6 +77,7 @@ function useHomePageData() {
             excerpt: 'Discover the best of Alberta\'s culture, events, and experiences. From Calgary to Edmonton, we bring you the stories that matter.',
             content: 'Welcome to Culture Alberta! We\'re working on bringing you amazing content about Alberta\'s vibrant culture, events, and experiences.',
             category: 'Culture',
+            categories: ['Culture'],
             location: 'Alberta',
             imageUrl: '/images/culture-alberta-og.jpg',
             author: 'Culture Alberta',
@@ -84,7 +87,8 @@ function useHomePageData() {
             featuredHome: true,
             trendingHome: true,
             type: 'article',
-            status: 'published'
+            status: 'published',
+            tags: ['Alberta', 'Culture', 'Welcome']
           }
         ]
         setPosts(fallbackPosts)
