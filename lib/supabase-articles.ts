@@ -223,8 +223,8 @@ export async function getHomepageArticles(): Promise<Article[]> {
       // REAL-TIME: Use longer timeout since we're prioritizing accuracy over speed
       const timeoutDuration = process.env.NODE_ENV === 'production' ? 5000 : 10000 // 5s in prod, 10s in dev
       
-      // Optimized query for homepage - only essential fields
-      const fields = ensureImageFields('id, title, excerpt, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
+    // Optimized query for homepage - include content field
+    const fields = ensureImageFields('id, title, excerpt, content, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
       
       const supabasePromise = supabase
         .from('articles')

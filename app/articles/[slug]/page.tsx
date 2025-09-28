@@ -69,7 +69,7 @@ const processContentWithVideos = (content: string) => {
   return processedContent
 }
 
-import NewsletterSignup from '@/components/newsletter-signup'
+// import NewsletterSignup from '@/components/newsletter-signup' // Removed - using ArticleNewsletterSignup instead
 import { ArticleContent } from '@/components/article-content'
 // import './article-styles.css' // Removed - file was deleted
 
@@ -124,6 +124,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     console.log('Excerpt length:', loadedArticle.excerpt?.length || 0)
     console.log('Has content:', !!loadedArticle.content)
     console.log('Content trimmed length:', loadedArticle.content?.trim()?.length || 0)
+    console.log('Content type:', typeof loadedArticle.content)
+    console.log('Content is string:', typeof loadedArticle.content === 'string')
+    console.log('Content is not empty string:', loadedArticle.content !== '')
+    console.log('Content is not null/undefined:', loadedArticle.content != null)
 
     // Load related articles more efficiently - use homepage cache if available
     let relatedArticles: Article[] = []
@@ -306,7 +310,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                         });
                         return null;
                       })()}
-                      {loadedArticle.content && loadedArticle.content.trim() && loadedArticle.content.length > 10 ? (
+                      {loadedArticle.content && 
+                       typeof loadedArticle.content === 'string' && 
+                       loadedArticle.content.trim().length > 10 && 
+                       loadedArticle.content !== 'null' && 
+                       loadedArticle.content !== 'undefined' ? (
                         <ArticleContent content={loadedArticle.content} />
                       ) : loadedArticle.excerpt ? (
                         <div className="space-y-6">
@@ -425,13 +433,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 {/* Sidebar */}
                 <div className="lg:col-span-2 space-y-6">
                   {/* Newsletter Signup */}
-                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <NewsletterSignup 
-                      title="Stay in the Loop"
-                      description="Get the latest cultural events and stories delivered to your inbox every week."
-                      defaultCity=""
-                    />
-                  </div>
+                  {/* Newsletter signup removed - using ArticleNewsletterSignup instead */}
 
                   {/* Latest Articles */}
                   <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
