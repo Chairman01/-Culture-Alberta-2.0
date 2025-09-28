@@ -34,11 +34,59 @@ function useHomePageData() {
         const regularPosts = allPosts.filter(post => post.type !== 'event')
         const eventPosts = allPosts.filter(post => post.type === 'event')
         
-        setPosts(regularPosts)
-        setEvents(eventPosts)
+        // CRITICAL: If no posts are found, create fallback content to prevent empty homepage
+        if (regularPosts.length === 0) {
+          console.warn('⚠️ No articles found in database, creating fallback content')
+          const fallbackPosts = [
+            {
+              id: 'fallback-client-empty-1',
+              title: 'Welcome to Culture Alberta',
+              excerpt: 'Discover the best of Alberta\'s culture, events, and experiences. From Calgary to Edmonton, we bring you the stories that matter.',
+              content: 'Welcome to Culture Alberta! We\'re working on bringing you amazing content about Alberta\'s vibrant culture, events, and experiences.',
+              category: 'Culture',
+              location: 'Alberta',
+              imageUrl: '/images/culture-alberta-og.jpg',
+              author: 'Culture Alberta',
+              date: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              featuredHome: true,
+              trendingHome: true,
+              type: 'article',
+              status: 'published'
+            }
+          ]
+          setPosts(fallbackPosts)
+          setEvents([])
+        } else {
+          setPosts(regularPosts)
+          setEvents(eventPosts)
+        }
       } catch (err) {
         console.error("Error loading posts:", err)
         setError(err instanceof Error ? err.message : 'Failed to load articles')
+        
+        // CRITICAL: Set fallback content instead of leaving empty
+        console.warn('⚠️ Database error, using fallback content to prevent empty homepage')
+        const fallbackPosts = [
+          {
+            id: 'fallback-client-1',
+            title: 'Welcome to Culture Alberta',
+            excerpt: 'Discover the best of Alberta\'s culture, events, and experiences. From Calgary to Edmonton, we bring you the stories that matter.',
+            content: 'Welcome to Culture Alberta! We\'re working on bringing you amazing content about Alberta\'s vibrant culture, events, and experiences.',
+            category: 'Culture',
+            location: 'Alberta',
+            imageUrl: '/images/culture-alberta-hero.jpg',
+            author: 'Culture Alberta',
+            date: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            featuredHome: true,
+            trendingHome: true,
+            type: 'article',
+            status: 'published'
+          }
+        ]
+        setPosts(fallbackPosts)
+        setEvents([])
       } finally {
         setIsLoading(false)
       }
