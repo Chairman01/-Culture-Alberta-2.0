@@ -48,11 +48,14 @@ export async function getOptimizedHomepageArticles(): Promise<Article[]> {
   homepageCache = allArticles.slice(0, 20).map(article => ({
     id: article.id,
     title: article.title,
+    content: article.content,
     excerpt: article.excerpt,
     category: article.category,
     location: article.location,
     imageUrl: article.imageUrl,
     date: article.date,
+    createdAt: article.createdAt,
+    updatedAt: article.updatedAt,
     slug: article.slug,
     trendingHome: article.trendingHome,
     featuredHome: article.featuredHome

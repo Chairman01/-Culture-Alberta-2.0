@@ -2,7 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   // Performance optimizations
-  swcMinify: true,
   compress: true,
   // Production optimizations
   ...(process.env.NODE_ENV === 'production' && {
