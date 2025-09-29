@@ -968,10 +968,10 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     // SPEED OPTIMIZATION: Reduced timeout for faster fallback
     const timeoutDuration = process.env.NODE_ENV === 'production' ? 3000 : 8000 // 3s in prod, 8s in dev
     
-    // CACHE BUST: Force fresh lookup to bypass any cached 404 responses
-    console.log('🚫 CACHE BUST: Skipping cache to force fresh lookup')
+    // PRODUCTION FIX: Always query Supabase directly for reliability
+    console.log('🚀 PRODUCTION FIX: Querying Supabase directly for maximum reliability')
     
-    // Try to use cached articles first for better performance (but skip for now to force fresh lookup)
+    // Skip cache completely in production to ensure fresh data
     if (false && articlesCache && (Date.now() - cacheTimestamp) < getCacheDuration()) {
       console.log('Using cached articles for slug lookup:', slug)
       const cachedArticle = articlesCache!.find(a => {
