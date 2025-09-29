@@ -869,24 +869,98 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   try {
     console.log('=== getArticleBySlug called for:', slug)
     console.log('🔄 CACHE BUST: Forcing fresh lookup for slug:', slug)
+    console.log('🌍 Environment:', process.env.NODE_ENV)
+    console.log('🔗 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'NOT SET')
+    console.log('🔑 Supabase Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET')
+    console.log('📡 Supabase client:', supabase ? 'INITIALIZED' : 'NOT INITIALIZED')
     
     // CRITICAL FIX: For article lookups, prioritize Supabase over file system
     // because file system might not have the latest articles
     if (!supabase) {
-      console.error('Supabase client is not initialized')
-      console.log('Falling back to file system')
-      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
-      return fileArticles.find((article: any) => {
-        const articleUrlTitle = article.title
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '')
-          .substring(0, 100)
+      console.error('❌ CRITICAL ERROR: Supabase client is not initialized')
+      console.error('Environment variables check:')
+      console.error('- NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+      console.error('- NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET')
+      
+      // EMERGENCY FALLBACK: Create Supabase client directly
+      console.log('🚨 EMERGENCY FALLBACK: Creating Supabase client directly')
+      try {
+        const { createClient } = await import('@supabase/supabase-js')
+        const emergencySupabase = createClient(
+          'https://itdmwpbsnviassgqfhxk.supabase.co',
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
+        )
         
-        return articleUrlTitle === slug.toLowerCase()
-      }) || null
+        console.log('✅ Emergency Supabase client created successfully')
+        
+        // Use emergency client to fetch articles
+        const { data, error } = await emergencySupabase
+          .from('articles')
+          .select('id, title, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, image_url, image')
+          .order('created_at', { ascending: false })
+          .limit(50)
+        
+        if (error) {
+          console.error('Emergency Supabase query failed:', error)
+          throw error
+        }
+        
+        if (!data || data.length === 0) {
+          console.log('No articles found in emergency query')
+          return null
+        }
+        
+        // Find exact match by converting article titles to slugs
+        const exactMatch = data.find((article: any) => {
+          const articleUrlTitle = article.title
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .substring(0, 100)
+          
+          const isMatch = articleUrlTitle === slug.toLowerCase()
+          if (isMatch) {
+            console.log(`✅ EMERGENCY: Found exact match for slug "${slug}": "${article.title}" -> "${articleUrlTitle}"`)
+          }
+          return isMatch
+        })
+        
+        if (exactMatch) {
+          console.log('✅ EMERGENCY: Successfully fetched article using emergency client')
+          return {
+            ...exactMatch,
+            imageUrl: exactMatch.image_url || exactMatch.image,
+            date: exactMatch.created_at,
+            trendingHome: exactMatch.trending_home || false,
+            trendingEdmonton: exactMatch.trending_edmonton || false,
+            trendingCalgary: exactMatch.trending_calgary || false,
+            featuredHome: exactMatch.featured_home || false,
+            featuredEdmonton: exactMatch.featured_edmonton || false,
+            featuredCalgary: exactMatch.featured_calgary || false,
+          }
+        }
+        
+        console.log('No exact match found in emergency query')
+        return null
+        
+      } catch (emergencyError) {
+        console.error('Emergency Supabase client creation failed:', emergencyError)
+        console.log('Falling back to file system')
+        const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+        return fileArticles.find((article: any) => {
+          const articleUrlTitle = article.title
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .substring(0, 100)
+          
+          return articleUrlTitle === slug.toLowerCase()
+        }) || null
+      }
     }
 
     console.log('Attempting to fetch article by slug from Supabase...')
