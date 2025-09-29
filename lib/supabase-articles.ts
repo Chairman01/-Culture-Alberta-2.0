@@ -869,60 +869,8 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   try {
     console.log('=== getArticleBySlug called for:', slug)
     
-    // SPEED OPTIMIZATION: Always try file system first (same as other functions)
-    if (shouldUseFileSystemFirst() && fileArticlesModule) {
-      console.log('🚀 SPEED: Using file system as primary source for slug lookup')
-      try {
-        const fileArticles = await fileArticlesModule.getAllArticlesFromFile()
-        const fileArticle = fileArticles.find((article: any) => {
-          const articleUrlTitle = article.title
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-|-$/g, '')
-            .substring(0, 100)
-          
-          return articleUrlTitle === slug.toLowerCase()
-        })
-        
-        if (fileArticle) {
-          console.log(`✅ Found article in file system for slug "${slug}": "${fileArticle.title}"`)
-          // Start background sync to keep file system updated
-          startBackgroundSyncIfNeeded().catch(error => {
-            console.warn('Background sync failed:', error)
-          })
-          return fileArticle
-        } else {
-          console.log(`❌ Article not found in file system for slug: ${slug}`)
-        }
-      } catch (fileError) {
-        console.warn('⚠️ File system failed for slug lookup, falling back to Supabase:', fileError)
-      }
-    }
-    
-    // During build time, always use file system for reliability
-    if (shouldUseFileSystem()) {
-      console.log('Build time detected, using file system for slug lookup')
-      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
-      const fileArticle = fileArticles.find((article: any) => {
-        const articleUrlTitle = article.title
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '')
-          .substring(0, 100)
-        
-        return articleUrlTitle === slug.toLowerCase()
-      })
-      
-      if (fileArticle) {
-        console.log(`Found article in file system for slug "${slug}": "${fileArticle.title}"`)
-        return fileArticle
-      }
-    }
-    
+    // CRITICAL FIX: For article lookups, prioritize Supabase over file system
+    // because file system might not have the latest articles
     if (!supabase) {
       console.error('Supabase client is not initialized')
       console.log('Falling back to file system')
@@ -943,7 +891,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     console.log('Attempting to fetch article by slug from Supabase...')
     
     // SPEED OPTIMIZATION: Reduced timeout for faster fallback
-    const timeoutDuration = process.env.NODE_ENV === 'production' ? 2000 : 5000 // 2s in prod, 5s in dev
+    const timeoutDuration = process.env.NODE_ENV === 'production' ? 3000 : 8000 // 3s in prod, 8s in dev
     
     // Try to use cached articles first for better performance
     if (articlesCache && (Date.now() - cacheTimestamp) < getCacheDuration()) {
@@ -973,7 +921,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
       .from('articles')
       .select(fields)
       .order('created_at', { ascending: false })
-      .limit(30) // Reduced limit for faster query
+      .limit(50) // Increased limit to ensure we find the article
 
     const { data, error } = await Promise.race([
       supabasePromise,
