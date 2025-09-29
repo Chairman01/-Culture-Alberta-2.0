@@ -868,6 +868,7 @@ export function testImageFieldSafeguards() {
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
   try {
     console.log('=== getArticleBySlug called for:', slug)
+    console.log('🔄 CACHE BUST: Forcing fresh lookup for slug:', slug)
     
     // CRITICAL FIX: For article lookups, prioritize Supabase over file system
     // because file system might not have the latest articles
@@ -893,8 +894,11 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     // SPEED OPTIMIZATION: Reduced timeout for faster fallback
     const timeoutDuration = process.env.NODE_ENV === 'production' ? 3000 : 8000 // 3s in prod, 8s in dev
     
-    // Try to use cached articles first for better performance
-    if (articlesCache && (Date.now() - cacheTimestamp) < getCacheDuration()) {
+    // CACHE BUST: Force fresh lookup to bypass any cached 404 responses
+    console.log('🚫 CACHE BUST: Skipping cache to force fresh lookup')
+    
+    // Try to use cached articles first for better performance (but skip for now to force fresh lookup)
+    if (false && articlesCache && (Date.now() - cacheTimestamp) < getCacheDuration()) {
       console.log('Using cached articles for slug lookup:', slug)
       const cachedArticle = articlesCache!.find(a => {
         const articleUrlTitle = a.title
