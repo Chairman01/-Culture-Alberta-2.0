@@ -965,17 +965,39 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
 
     console.log('Attempting to fetch article by slug from Supabase...')
     
-    // SPEED OPTIMIZATION: Reduced timeout for faster fallback
-    const timeoutDuration = process.env.NODE_ENV === 'production' ? 3000 : 8000 // 3s in prod, 8s in dev
+    // SMART FALLBACK: Try Supabase first, fallback to file system if slow
+    const timeoutDuration = process.env.NODE_ENV === 'production' ? 2000 : 5000 // 2s in prod, 5s in dev
     
-    // PRODUCTION FIX: Always query Supabase directly for reliability
-    console.log('🚀 PRODUCTION FIX: Querying Supabase directly for maximum reliability')
+    console.log('🚀 SMART FALLBACK: Trying Supabase first, file system fallback if slow')
     
-    // Skip cache completely in production to ensure fresh data
-    if (false && articlesCache && (Date.now() - cacheTimestamp) < getCacheDuration()) {
-      console.log('Using cached articles for slug lookup:', slug)
-      const cachedArticle = articlesCache!.find(a => {
-        const articleUrlTitle = a.title
+    // Try Supabase with timeout
+    try {
+      const fields = ensureImageFields('id, title, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+      
+      const supabasePromise = supabase
+        .from('articles')
+        .select(fields)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      const { data, error } = await Promise.race([
+        supabasePromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
+        )
+      ]) as any
+
+      if (error) {
+        throw new Error(`Supabase error: ${error.message}`)
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error('No articles found in Supabase')
+      }
+
+      // Find exact match by converting article titles to slugs
+      const exactMatch = data.find((article: any) => {
+        const articleUrlTitle = article.title
           .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, '')
           .replace(/\s+/g, '-')
@@ -983,38 +1005,38 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
           .replace(/^-|-$/g, '')
           .substring(0, 100)
         
-        return articleUrlTitle === slug.toLowerCase()
+        const isMatch = articleUrlTitle === slug.toLowerCase()
+        if (isMatch) {
+          console.log(`✅ SUPABASE: Found exact match for slug "${slug}": "${article.title}"`)
+        }
+        return isMatch
       })
-      
-      if (cachedArticle) {
-        console.log(`Found article in cache for slug "${slug}": "${cachedArticle!.title}"`)
-        return cachedArticle!
+
+      if (exactMatch) {
+        console.log('✅ SUPABASE: Successfully fetched article from Supabase')
+        return {
+          ...exactMatch,
+          imageUrl: validateImageUrl(exactMatch.image_url || exactMatch.image, exactMatch.title),
+          date: exactMatch.created_at,
+          trendingHome: exactMatch.trending_home || false,
+          trendingEdmonton: exactMatch.trending_edmonton || false,
+          trendingCalgary: exactMatch.trending_calgary || false,
+          featuredHome: exactMatch.featured_home || false,
+          featuredEdmonton: exactMatch.featured_edmonton || false,
+          featuredCalgary: exactMatch.featured_calgary || false,
+        }
       }
-    }
-    
-    // If not in cache, fetch from database with optimized query
-    const fields = ensureImageFields('id, title, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
-    
-    const supabasePromise = supabase
-      .from('articles')
-      .select(fields)
-      .order('created_at', { ascending: false })
-      .limit(50) // Increased limit to ensure we find the article
 
-    const { data, error } = await Promise.race([
-      supabasePromise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
-        )
-    ]) as any
-
-    if (error) {
-      console.warn('Supabase slug query failed:', slug, error.message)
+      throw new Error('Article not found in Supabase')
       
-      // Try to get from all articles cache first
-      if (articlesCache) {
-        const cachedArticle = articlesCache!.find(a => {
-          const articleUrlTitle = a.title
+    } catch (supabaseError) {
+      console.log('⚠️ SUPABASE: Failed or slow, falling back to file system:', supabaseError.message)
+      
+      // FALLBACK: Try file system
+      try {
+        const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+        const fileArticle = fileArticles.find((article: any) => {
+          const articleUrlTitle = article.title
             .toLowerCase()
             .replace(/[^a-z0-9\s-]/g, '')
             .replace(/\s+/g, '-')
@@ -1024,115 +1046,33 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
           
           return articleUrlTitle === slug.toLowerCase()
         })
-        if (cachedArticle) {
-          console.log('Found article in all articles cache by slug:', slug)
-          return cachedArticle!
+        
+        if (fileArticle) {
+          console.log(`✅ FILE SYSTEM: Found article in file system for slug "${slug}": "${fileArticle.title}"`)
+          return {
+            ...fileArticle,
+            imageUrl: fileArticle.image_url || fileArticle.image,
+            date: fileArticle.created_at,
+            trendingHome: fileArticle.trending_home || false,
+            trendingEdmonton: fileArticle.trending_edmonton || false,
+            trendingCalgary: fileArticle.trending_calgary || false,
+            featuredHome: fileArticle.featured_home || false,
+            featuredEdmonton: fileArticle.featured_edmonton || false,
+            featuredCalgary: fileArticle.featured_calgary || false,
+          }
         }
-      }
-      
-      console.log('Falling back to file system')
-      const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
-      return fileArticles.find((article: any) => {
-        const articleUrlTitle = article.title
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '')
-          .substring(0, 100)
         
-        return articleUrlTitle === slug.toLowerCase()
-      }) || null
-    }
-
-    if (!data || data.length === 0) {
-      console.log('Article not found in Supabase by slug:', slug)
-      return null
-    }
-
-    // Find exact match by converting article titles to slugs
-    const exactMatch = data.find((article: any) => {
-      const articleUrlTitle = article.title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-        .substring(0, 100)
-      
-      const isMatch = articleUrlTitle === slug.toLowerCase()
-      if (isMatch) {
-        console.log(`Found exact match for slug "${slug}": "${article.title}" -> "${articleUrlTitle}"`)
+        console.log('❌ FILE SYSTEM: Article not found in file system either')
+        return null
+        
+      } catch (fileError) {
+        console.error('❌ FILE SYSTEM: Error reading file system:', fileError)
+        return null
       }
-      return isMatch
-    })
-
-    if (!exactMatch) {
-      console.log('No exact match found for slug:', slug)
-      console.log('Available article slugs:', data.slice(0, 5).map((a: any) => {
-        const articleUrlTitle = a.title
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '')
-          .substring(0, 100)
-        return `"${a.title}" -> "${articleUrlTitle}"`
-      }))
-      return null
     }
-
-    console.log('Successfully fetched article by slug from Supabase:', slug)
-
-    // Map Supabase data to match our Article interface
-    const mappedArticle = {
-      ...exactMatch,
-      imageUrl: validateImageUrl(exactMatch.image_url || exactMatch.image, exactMatch.title),
-      date: exactMatch.created_at,
-      trendingHome: exactMatch.trending_home || false,
-      trendingEdmonton: exactMatch.trending_edmonton || false,
-      trendingCalgary: exactMatch.trending_calgary || false,
-      featuredHome: exactMatch.featured_home || false,
-      featuredEdmonton: exactMatch.featured_edmonton || false,
-      featuredCalgary: exactMatch.featured_calgary || false
-    }
-
-    return mappedArticle
   } catch (error) {
-    console.warn('Supabase connection failed for slug:', slug, error)
-    
-    // Try to get from all articles cache first
-    if (articlesCache) {
-      const cachedArticle = articlesCache!.find(a => {
-        const articleUrlTitle = a.title
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '')
-          .substring(0, 100)
-        
-        return articleUrlTitle === slug.toLowerCase()
-      })
-      if (cachedArticle) {
-        console.log('Found article in all articles cache by slug:', slug)
-        return cachedArticle
-      }
-    }
-    
-    console.log('Falling back to file system')
-    const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
-    return fileArticles.find((article: any) => {
-      const articleUrlTitle = article.title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-        .substring(0, 100)
-      
-      return articleUrlTitle === slug.toLowerCase()
-    }) || null
+    console.error('❌ CRITICAL ERROR in getArticleBySlug:', error)
+    return null
   }
 }
 
