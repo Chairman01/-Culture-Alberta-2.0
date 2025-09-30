@@ -7,7 +7,23 @@ export async function getAllArticlesFromFile(): Promise<Article[]> {
     const articlesData = await import('./data/articles')
     console.log('Using articles.json directly - no API calls')
     console.log('Articles count:', articlesData.default.length)
-    return articlesData.default as Article[]
+    
+    // Transform articles to match Article interface
+    const articles = articlesData.default.map((article: any) => ({
+      ...article,
+      imageUrl: article.image_url || article.image,
+      date: article.created_at,
+      createdAt: article.created_at,
+      updatedAt: article.updated_at,
+      trendingHome: article.trending_home || false,
+      trendingEdmonton: article.trending_edmonton || false,
+      trendingCalgary: article.trending_calgary || false,
+      featuredHome: article.featured_home || false,
+      featuredEdmonton: article.featured_edmonton || false,
+      featuredCalgary: article.featured_calgary || false,
+    }))
+    
+    return articles as Article[]
   } catch (error) {
     console.error('Error fetching articles from file:', error)
     // Fallback to empty array
@@ -20,7 +36,22 @@ export async function getArticleByIdFromFile(id: string): Promise<Article | null
     // Use dynamic import to avoid webpack parsing issues
     const articlesData = await import('./data/articles')
     console.log('Finding article by ID in articles.json')
-    const articles = articlesData.default as Article[]
+    
+    // Transform articles to match Article interface
+    const articles = articlesData.default.map((article: any) => ({
+      ...article,
+      imageUrl: article.image_url || article.image,
+      date: article.created_at,
+      createdAt: article.created_at,
+      updatedAt: article.updated_at,
+      trendingHome: article.trending_home || false,
+      trendingEdmonton: article.trending_edmonton || false,
+      trendingCalgary: article.trending_calgary || false,
+      featuredHome: article.featured_home || false,
+      featuredEdmonton: article.featured_edmonton || false,
+      featuredCalgary: article.featured_calgary || false,
+    })) as Article[]
+    
     return articles.find(article => article.id === id) || null
   } catch (error) {
     console.error('Error fetching article from file:', error)
