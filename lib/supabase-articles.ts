@@ -1030,7 +1030,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
       throw new Error('Article not found in Supabase')
       
     } catch (supabaseError) {
-      console.log('⚠️ SUPABASE: Failed or slow, falling back to file system:', supabaseError.message)
+      console.log('⚠️ SUPABASE: Failed or slow, falling back to file system:', supabaseError instanceof Error ? supabaseError.message : String(supabaseError))
       
       // FALLBACK: Try file system
       try {
