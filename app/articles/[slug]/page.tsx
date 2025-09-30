@@ -128,6 +128,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     console.log('Content is string:', typeof loadedArticle.content === 'string')
     console.log('Content is not empty string:', loadedArticle.content !== '')
     console.log('Content is not null/undefined:', loadedArticle.content != null)
+    console.log('Content check result:', loadedArticle.content && 
+                typeof loadedArticle.content === 'string' && 
+                loadedArticle.content.trim().length > 10 && 
+                loadedArticle.content !== 'null' && 
+                loadedArticle.content !== 'undefined')
 
     // Load related articles more efficiently - use homepage cache if available
     let relatedArticles: Article[] = []
