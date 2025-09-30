@@ -78,7 +78,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const slug = resolvedParams.slug
   
   try {
-    // PERFORMANCE FIX: Use optimized article loading functions
+    console.log('🚀 Loading article:', slug)
+    
+    // PERFORMANCE FIX: Use optimized article loading functions with fast timeout
     let loadedArticle = await getArticleBySlug(slug)
     
     // Only try fallback if absolutely necessary
@@ -111,10 +113,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     }
     
     if (!loadedArticle) {
-      console.log('Article not found, showing 404')
+      console.log('❌ Article not found, showing 404')
       console.log('Available articles:', (await getAllArticles()).map(a => a.title))
       notFound()
     }
+    
+    console.log('✅ Article loaded successfully:', loadedArticle.title)
 
     // DEBUG: Log article content status
     console.log('=== ARTICLE DEBUG ===')
