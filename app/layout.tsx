@@ -36,7 +36,7 @@ export default function RootLayout({
         <meta property="twitter:description" content="Discover the best of Alberta's culture, events, restaurants, and experiences. Your guide to Calgary, Edmonton, and beyond." />
         <meta property="twitter:image" content="https://www.culturealberta.com/images/culture-alberta-og.jpg" />
         <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-V7DK0G3JFV"
+          src="https://www.googletagmanager.com/gtag/js?id=G-48EV1DX840"
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
@@ -44,7 +44,7 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-V7DK0G3JFV');
+            gtag('config', 'G-48EV1DX840');
           `}
         </Script>
         <Script
