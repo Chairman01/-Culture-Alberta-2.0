@@ -9,14 +9,16 @@ export const isVercelProduction = () => {
 export const optimizeImageLoading = () => {
   if (isVercelProduction()) {
     return {
-      // Use smaller image sizes in production
-      maxWidth: 800,
-      maxHeight: 600,
-      quality: 75, // Reduce quality to save bandwidth
+      // Use much smaller image sizes in production to reduce bandwidth
+      maxWidth: 600,
+      maxHeight: 400,
+      quality: 60, // Further reduce quality to save bandwidth
       // Enable aggressive caching
       cacheControl: 'public, max-age=31536000, immutable',
-      // Use WebP format
-      formats: ['image/webp', 'image/avif'],
+      // Use most efficient formats
+      formats: ['image/avif', 'image/webp'],
+      // Add lazy loading by default
+      loading: 'lazy',
     }
   }
   
@@ -26,6 +28,7 @@ export const optimizeImageLoading = () => {
     quality: 90,
     cacheControl: 'public, max-age=3600',
     formats: ['image/webp'],
+    loading: 'eager',
   }
 }
 
@@ -34,13 +37,15 @@ export const optimizeDataFetching = () => {
   if (isVercelProduction()) {
     return {
       // Reduce cache duration to minimize ISR reads
-      cacheDuration: 2 * 60 * 1000, // 2 minutes
+      cacheDuration: 5 * 60 * 1000, // 5 minutes (increased for better caching)
       // Use static generation where possible
       useStaticGeneration: true,
-      // Reduce data transfer
-      limitResults: 20, // Limit to 20 items per page
+      // Reduce data transfer significantly
+      limitResults: 12, // Limit to 12 items per page (reduced from 20)
       // Enable compression
       enableCompression: true,
+      // Add stale-while-revalidate for better performance
+      staleWhileRevalidate: 60 * 60 * 1000, // 1 hour
     }
   }
   
@@ -49,6 +54,7 @@ export const optimizeDataFetching = () => {
     useStaticGeneration: false,
     limitResults: 50,
     enableCompression: false,
+    staleWhileRevalidate: 0,
   }
 }
 
@@ -121,5 +127,33 @@ export const optimizeBundleSize = () => {
     minimizeCSS: false,
     optimizeImports: false,
     removeUnusedCode: false,
+  }
+}
+
+// Reduce Speed Insights data collection to stay within limits
+export const optimizeSpeedInsights = () => {
+  if (isVercelProduction()) {
+    return {
+      // Reduce data collection frequency
+      sampleRate: 0.1, // Only collect 10% of data points
+      // Limit to essential metrics only
+      collectCoreWebVitals: true,
+      collectNavigation: false, // Disable navigation tracking
+      collectResourceTiming: false, // Disable resource timing
+      collectLongTasks: false, // Disable long task tracking
+      // Batch data collection
+      batchSize: 5, // Send data in batches of 5
+      batchTimeout: 30000, // Wait 30 seconds before sending batch
+    }
+  }
+  
+  return {
+    sampleRate: 1.0, // Full data collection in development
+    collectCoreWebVitals: true,
+    collectNavigation: true,
+    collectResourceTiming: true,
+    collectLongTasks: true,
+    batchSize: 1,
+    batchTimeout: 0,
   }
 }

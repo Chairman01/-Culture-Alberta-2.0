@@ -6,6 +6,7 @@ import { PerformanceOptimizer } from '@/components/seo/performance-optimizer'
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import { optimizeSpeedInsights } from '@/lib/vercel-optimizations'
 
 export default function RootLayout({
   children,
@@ -61,7 +62,7 @@ export default function RootLayout({
           <Footer />
         </LoadingProvider>
         <Analytics />
-        <SpeedInsights />
+        <SpeedInsights {...optimizeSpeedInsights()} />
         <PerformanceOptimizer />
       </body>
     </html>
