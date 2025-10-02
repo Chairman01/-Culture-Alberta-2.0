@@ -33,8 +33,6 @@ const nextConfig = {
       // Reduced device sizes to minimize bandwidth
       deviceSizes: [640, 750, 828, 1080, 1200],
       imageSizes: [16, 32, 48, 64, 96, 128, 256],
-      // Add quality optimization
-      quality: 60,
       // Enable aggressive caching
       unoptimized: false,
     }),
