@@ -88,7 +88,9 @@ export default function FoodDrinkPage() {
           return hasFoodCategory || hasFoodCategories || hasFoodTags;
         })
       console.log(`✅ Filtered Food & Drink articles: ${foodArticles.length}`)
-        .map(article => ({
+      
+      // Map articles to extended format
+      const processedFoodArticles = foodArticles.map(article => ({
           ...article,
           description: article.content,
           category: article.category || 'Food & Drink',
@@ -97,7 +99,7 @@ export default function FoodDrinkPage() {
         }))
 
       // Sort articles based on selected sort option
-      foodArticles.sort((a, b) => {
+      processedFoodArticles.sort((a, b) => {
         if (selectedSort === "newest") {
           return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
         }
@@ -105,11 +107,11 @@ export default function FoodDrinkPage() {
       })
 
       // Set featured article (first one)
-      if (foodArticles.length > 0) {
-        setFeaturedArticle(foodArticles[0])
-        setArticles(foodArticles.slice(1)) // Rest of articles
+      if (processedFoodArticles.length > 0) {
+        setFeaturedArticle(processedFoodArticles[0])
+        setArticles(processedFoodArticles.slice(1)) // Rest of articles
       } else {
-        setArticles(foodArticles)
+        setArticles(processedFoodArticles)
       }
 
       setIsLoading(false)
