@@ -5,13 +5,11 @@ import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { PageSEO } from '@/components/seo/page-seo'
 import { Article } from '@/lib/types/article'
-import { PageTracker } from '@/components/analytics/page-tracker'
 import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
-// Force dynamic rendering to prevent caching issues
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+// Enable ISR for better performance
+export const revalidate = 120 // 2 minutes
 
 // Server-side data loading for static generation
 async function getHomePageData() {
@@ -20,9 +18,43 @@ async function getHomePageData() {
     const apiArticles = await getHomepageArticles()
     const allPosts = apiArticles
     
-    // Separate events from regular articles
-    const regularPosts = allPosts.filter(post => post.type !== 'event')
-    const eventPosts = allPosts.filter(post => post.type === 'event')
+        // Separate events from regular articles - ONLY use type === 'event'
+        const regularPosts = allPosts.filter(post => {
+          // Exclude AFRO MUSIC FEST from regular posts since it's now treated as an event
+          if (post.title.includes('AFRO MUSIC FEST')) return false
+          return post.type !== 'event'
+        })
+        const eventPosts = allPosts.filter(post => {
+          try {
+            console.log(`Checking potential event: "${post.title}" (type: ${post.type})`)
+            
+            // Allow AFRO MUSIC FEST as a placeholder event (even if it's not marked as type='event')
+            const isAfroFest = post.title.includes('AFRO MUSIC FEST')
+            if (isAfroFest) {
+              console.log(`Including AFRO FEST as placeholder event: "${post.title}"`)
+              return true
+            }
+            
+            // For other articles, ONLY include those with type === 'event' AND exclude incorrect ones
+            if (post.type !== 'event') return false
+            
+            // Check for specific incorrect events using partial matching
+            const isIncorrectEvent = post.title.includes('Edmonton Designer Maria Wozniak Showcases') ||
+                                   post.title.includes('Measles Exposure Alert at U of A')
+            
+            console.log(`Is incorrect event: ${isIncorrectEvent}`)
+            
+            if (isIncorrectEvent) {
+              console.log(`Excluding incorrect event: "${post.title}"`)
+              return false
+            }
+            
+            return true
+          } catch (error) {
+            console.log(`Error filtering event article "${post.title}":`, error)
+            return false
+          }
+        })
     
     // CRITICAL: If no posts are found, create fallback content to prevent empty homepage
     if (regularPosts.length === 0) {
@@ -184,7 +216,43 @@ export default async function HomeStatic() {
     
     return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
   }).slice(0, 3)
-  const foodDrinkPosts = sortedPosts.filter(post => post.category === 'Food & Drink').slice(0, 2)
+        // SMART filtering for Food & Drink posts - use same logic as /food-drink page
+        const foodDrinkPosts = sortedPosts.filter(post => {
+          try {
+            // Check main category (same as /food-drink page)
+            const hasFoodCategory = post.category?.toLowerCase().includes('food') || 
+                                   post.category?.toLowerCase().includes('drink') ||
+                                   post.category?.toLowerCase().includes('restaurant') ||
+                                   post.category?.toLowerCase().includes('cafe') ||
+                                   post.category?.toLowerCase().includes('brewery') ||
+                                   post.category?.toLowerCase().includes('food & drink');
+            
+            // Check new categories field (same as /food-drink page)
+            const hasFoodCategories = post.categories?.some((cat: string) => 
+              cat.toLowerCase().includes('food') || 
+              cat.toLowerCase().includes('drink') ||
+              cat.toLowerCase().includes('restaurant') ||
+              cat.toLowerCase().includes('cafe') ||
+              cat.toLowerCase().includes('brewery') ||
+              cat.toLowerCase().includes('food & drink')
+            );
+            
+            // Check tags (same as /food-drink page)
+            const hasFoodTags = post.tags?.some((tag: string) => 
+              tag.toLowerCase().includes('food') || 
+              tag.toLowerCase().includes('drink') ||
+              tag.toLowerCase().includes('restaurant') ||
+              tag.toLowerCase().includes('cafe') ||
+              tag.toLowerCase().includes('brewery') ||
+              tag.toLowerCase().includes('food & drink')
+            );
+            
+            return Boolean(hasFoodCategory || hasFoodCategories || hasFoodTags)
+          } catch (error) {
+            console.log(`Error filtering food article "${post.title}":`, error)
+            return false
+          }
+        }).slice(0, 3) // Show 3 newest instead of 2
   // Show top 5 most recent articles instead of only trending ones
   const trendingPosts = sortedPosts.slice(0, 5)
   
@@ -195,9 +263,73 @@ export default async function HomeStatic() {
   console.log('Featured post found:', featuredPost ? featuredPost.title : 'None')
   console.log('First few posts:', posts.slice(0, 3).map(p => ({ title: p.title, type: p.type, featuredHome: p.featuredHome })))
   
+  // Debug: Show all unique categories and types
+  const allCategories = [...new Set(posts.map(p => p.category).filter(Boolean))]
+  const allTypes = [...new Set(posts.map(p => p.type).filter(Boolean))]
+  const allCategoryArrays = [...new Set(posts.flatMap(p => p.categories || []))]
+  console.log('All unique categories:', allCategories)
+  console.log('All unique types:', allTypes)
+  console.log('All unique category arrays:', allCategoryArrays)
+  
   // Debug logging for Edmonton posts
   console.log('Edmonton posts found:', edmontonPosts.length)
   console.log('Edmonton posts:', edmontonPosts.map(p => ({ title: p.title, category: p.category, location: p.location })))
+  
+  // Debug logging for Food & Drink posts
+  console.log('Food & Drink posts found:', foodDrinkPosts.length)
+  try {
+    console.log('Food & Drink posts:', foodDrinkPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories, tags: p.tags })))
+  } catch (error) {
+    console.log('Error logging food posts:', error)
+  }
+  
+  // Debug: Show all articles and their SMART food-related matching
+  console.log('=== SMART FOOD MATCHING DEBUG ===')
+  posts.slice(0, 5).forEach(post => {
+    try {
+      const hasFoodCategory = post.category?.toLowerCase() === 'food & drink' ||
+                             post.category?.toLowerCase() === 'food and drink' ||
+                             post.category?.toLowerCase() === 'food' ||
+                             post.category?.toLowerCase() === 'drink'
+      const hasFoodCategories = post.categories?.some((cat: string) => 
+        cat.toLowerCase() === 'food & drink' ||
+        cat.toLowerCase() === 'food and drink' ||
+        cat.toLowerCase() === 'food' ||
+        cat.toLowerCase() === 'drink'
+      )
+      const hasFoodTags = post.tags?.some((tag: string) => 
+        tag.toLowerCase() === 'food & drink' ||
+        tag.toLowerCase() === 'food and drink' ||
+        tag.toLowerCase() === 'food' ||
+        tag.toLowerCase() === 'drink'
+      )
+      
+      const smartMatch = Boolean(hasFoodCategory || hasFoodCategories || hasFoodTags)
+      console.log(`Article: "${post.title}" - Category: "${post.category}" - Smart Food match: ${smartMatch} (category: ${hasFoodCategory}, categories: ${hasFoodCategories}, tags: ${hasFoodTags})`)
+    } catch (error) {
+      console.log(`Error processing article "${post.title}":`, error)
+    }
+  })
+  
+  // Debug logging for Events
+  console.log('Events found:', events.length)
+  try {
+    console.log('Events:', events.map(e => ({ title: e.title, type: e.type, category: e.category })))
+  } catch (error) {
+    console.log('Error logging events:', error)
+  }
+  
+        // Debug: Show all articles and their type-based event matching
+        console.log('=== TYPE-BASED EVENT MATCHING DEBUG ===')
+        posts.slice(0, 5).forEach(post => {
+          try {
+            const isEvent = post.type === 'event'
+            console.log(`Article: "${post.title}" - Type: "${post.type}" - Is Event: ${isEvent}`)
+          } catch (error) {
+            console.log(`Error processing article "${post.title}":`, error)
+          }
+        })
+  
   const upcomingEvents = events.slice(0, 3) // Get the first 3 events
 
   return (
@@ -206,7 +338,6 @@ export default async function HomeStatic() {
         title="Culture Alberta - Home"
         description="Discover the best of Alberta's culture, events, and local businesses. Stay informed with the latest news and updates."
       />
-      <PageTracker title="Culture Alberta - Home" />
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Featured Article + Trending Sidebar */}
@@ -455,29 +586,55 @@ export default async function HomeStatic() {
                 </Link>
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {foodDrinkPosts.map((post) => (
-                  <Link key={post.id} href={getArticleUrl(post)} className="group block">
-                    <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                      <div className="aspect-[16/9] w-full bg-gray-200 relative">
-                        <Image
-                          src={getPostImage(post)}
-                          alt={getPostTitle(post)}
-                          width={400}
-                          height={225}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-                      <div className="p-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                          <span className="rounded-full bg-orange-100 text-orange-800 px-3 py-1.5 font-medium">Food & Drink</span>
-                          <span className="font-medium">{formatDate(getPostDate(post))}</span>
+                {foodDrinkPosts.length > 0 ? (
+                  foodDrinkPosts.map((post) => (
+                    <Link key={post.id} href={getArticleUrl(post)} className="group block">
+                      <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                        <div className="aspect-[16/9] w-full bg-gray-200 relative">
+                          <Image
+                            src={getPostImage(post)}
+                            alt={getPostTitle(post)}
+                            width={400}
+                            height={225}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
                         </div>
-                        <h3 className="font-display font-bold text-xl group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight">{getPostTitle(post)}</h3>
+                        <div className="p-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                            <span className="rounded-full bg-orange-100 text-orange-800 px-3 py-1.5 font-medium">Food & Drink</span>
+                            <span className="font-medium">{formatDate(getPostDate(post))}</span>
+                          </div>
+                          <h3 className="font-display font-bold text-xl group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight">{getPostTitle(post)}</h3>
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  // Show placeholder when no Food & Drink articles are available
+                  <div className="bg-white rounded-xl overflow-hidden shadow-sm">
+                    <div className="aspect-[16/9] w-full bg-gray-200 relative">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-gray-400 text-center">
+                          <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-2xl">🍽️</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </Link>
-                ))}
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                        <span className="rounded-full bg-orange-100 text-orange-800 px-3 py-1.5 font-medium">Food & Drink</span>
+                        <span className="font-medium">Coming Soon</span>
+                      </div>
+                      <h3 className="font-display font-bold text-xl mb-2">No Food & Drink Articles Yet</h3>
+                      <p className="font-body text-sm text-gray-600 mb-3">Check back soon for delicious Alberta dining recommendations!</p>
+                      <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
           </div>
         </section>

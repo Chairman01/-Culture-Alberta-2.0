@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { trackNewsletterSignup } from "@/lib/analytics"
 
 interface ArticleNewsletterSignupProps {
   articleTitle?: string
@@ -85,8 +84,7 @@ export default function ArticleNewsletterSignup({
         localStorage.setItem('newsletter_subscribed', 'true')
         setIsSubscribed(true)
         
-        // Track the signup for analytics
-        trackNewsletterSignup(city, email)
+        // Newsletter signup successful
         
         // Hide the component after a delay with animation
         setTimeout(() => {

@@ -142,10 +142,16 @@ export default function AdminArticles() {
       // Reload articles
       await loadAllArticles()
       
-      // Force homepage revalidation (for static generation)
+      // Force revalidation of all major pages
       try {
-        await fetch('/api/revalidate?path=/', { method: 'POST' })
-        console.log('Homepage revalidation triggered')
+        await fetch('/api/revalidate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paths: ['/', '/edmonton', '/calgary', '/culture', '/food-drink', '/events']
+          })
+        })
+        console.log('All pages revalidation triggered')
       } catch (revalidateError) {
         console.log('Revalidation not available, cache cleared instead')
       }
@@ -153,7 +159,7 @@ export default function AdminArticles() {
       // Show success message
       toast({
         title: "Cache cleared",
-        description: "Homepage refreshed! Changes should appear within 30 seconds.",
+        description: "All pages refreshed! Changes should appear within 30 seconds.",
       })
     } catch (error) {
       console.error('Error refreshing cache:', error)

@@ -1,9 +1,7 @@
-import { PageTracker } from '@/components/analytics/page-tracker'
 
 export default function PrivacyPolicyPage() {
   return (
     <>
-      <PageTracker title="Privacy Policy" />
       
       <div className="min-h-screen bg-gray-50">
         {/* Hero Section */}

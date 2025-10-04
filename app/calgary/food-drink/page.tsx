@@ -8,7 +8,6 @@ import Image from "next/image"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 import { Footer } from "@/components/footer"
 import { PageSEO } from '@/components/seo/page-seo'
-import { PageTracker } from '@/components/analytics/page-tracker'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
 interface CalgaryArticle extends Article {
@@ -80,7 +79,6 @@ export default function CalgaryFoodDrinkPage() {
         title="Calgary Food & Drink Articles - Culture Alberta"
         description="Discover the best restaurants, cafes, and dining experiences in Calgary, Alberta. Food reviews, restaurant guides, and culinary adventures."
       />
-      <PageTracker title="Calgary Food & Drink Articles - Culture Alberta" />
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Header Section */}

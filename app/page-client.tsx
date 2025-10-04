@@ -7,7 +7,6 @@ import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { PageSEO } from '@/components/seo/page-seo'
 import { Article } from '@/lib/types/article'
-import { PageTracker } from '@/components/analytics/page-tracker'
 import { Suspense, useState, useEffect } from 'react'
 import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl } from '@/lib/utils/article-url'
@@ -270,7 +269,6 @@ export default function Home() {
         title="Culture Alberta - Home"
         description="Discover the best of Alberta's culture, events, and local businesses. Stay informed with the latest news and updates."
       />
-      <PageTracker title="Culture Alberta - Home" />
       <Suspense fallback={<HomePageSkeleton />}>
         <div className="flex min-h-screen flex-col">
       <main className="flex-1">

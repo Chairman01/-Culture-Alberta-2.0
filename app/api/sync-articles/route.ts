@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
+import { clearArticlesCache } from '@/lib/fast-articles'
 
 // API endpoint to sync articles from Supabase to local file
 export async function POST(request: NextRequest) {
@@ -57,47 +58,46 @@ export async function POST(request: NextRequest) {
     // Check if we're in production (Vercel) or development
     const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
     
-    if (isProduction) {
-      // In production, we can't write to the file system
-      // Instead, we'll trigger a revalidation of the static pages
-      console.log('🚀 Production environment detected - triggering revalidation instead of file write')
-      
-      // Trigger revalidation of the homepage and other static pages
-      try {
-        await fetch(`${process.env.VERCEL_URL || 'https://culturealberta.com'}/api/revalidate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            paths: ['/', '/edmonton', '/calgary', '/food-drink', '/events']
-          })
-        })
-        console.log('✅ Triggered revalidation for static pages')
-      } catch (revalidateError) {
-        console.log('⚠️ Revalidation failed, but sync was successful:', revalidateError)
-      }
-      
-      return NextResponse.json({ 
-        success: true, 
-        message: `Synced ${transformedArticles.length} articles and triggered page revalidation`,
-        timestamp: new Date().toISOString(),
-        environment: 'production'
-      })
-    } else {
-      // In development, write to the local file
+    // Always try to write to local file if possible
+    let fileWritten = false
+    try {
       const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
       await fs.writeFile(articlesPath, JSON.stringify(transformedArticles, null, 2))
-      
       console.log(`💾 Updated articles.json with ${transformedArticles.length} articles`)
+      fileWritten = true
       
-      return NextResponse.json({ 
-        success: true, 
-        message: `Synced ${transformedArticles.length} articles to local file`,
-        timestamp: new Date().toISOString(),
-        environment: 'development'
-      })
+      // Clear fast cache to force reload
+      clearArticlesCache()
+      console.log('🔄 Cleared fast articles cache')
+    } catch (fileError) {
+      console.log('⚠️ Could not write to local file (this is normal in production):', fileError)
     }
+    
+    // Always trigger revalidation for static pages
+    try {
+      await fetch(`${process.env.VERCEL_URL || 'https://culturealberta.com'}/api/revalidate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paths: ['/', '/edmonton', '/calgary', '/culture', '/food-drink', '/events']
+        })
+      })
+      console.log('✅ Triggered revalidation for static pages')
+    } catch (revalidateError) {
+      console.log('⚠️ Revalidation failed, but sync was successful:', revalidateError)
+    }
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: `Synced ${transformedArticles.length} articles${fileWritten ? ' to local file' : ''} and triggered page revalidation`,
+      timestamp: new Date().toISOString(),
+      environment: isProduction ? 'production' : 'development',
+      fileWritten,
+      articlesCount: transformedArticles.length,
+      downloadUrl: '/api/sync-articles/download'
+    })
     
   } catch (error) {
     console.error('❌ Error syncing articles:', error)
@@ -158,47 +158,46 @@ export async function GET() {
     // Check if we're in production (Vercel) or development
     const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
     
-    if (isProduction) {
-      // In production, we can't write to the file system
-      // Instead, we'll trigger a revalidation of the static pages
-      console.log('🚀 Production environment detected - triggering revalidation instead of file write')
-      
-      // Trigger revalidation of the homepage and other static pages
-      try {
-        await fetch(`${process.env.VERCEL_URL || 'https://culturealberta.com'}/api/revalidate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            paths: ['/', '/edmonton', '/calgary', '/food-drink', '/events']
-          })
-        })
-        console.log('✅ Triggered revalidation for static pages')
-      } catch (revalidateError) {
-        console.log('⚠️ Revalidation failed, but sync was successful:', revalidateError)
-      }
-      
-      return NextResponse.json({ 
-        success: true, 
-        message: `Synced ${transformedArticles.length} articles and triggered page revalidation`,
-        timestamp: new Date().toISOString(),
-        environment: 'production'
-      })
-    } else {
-      // In development, write to the local file
+    // Always try to write to local file if possible
+    let fileWritten = false
+    try {
       const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
       await fs.writeFile(articlesPath, JSON.stringify(transformedArticles, null, 2))
-      
       console.log(`💾 Updated articles.json with ${transformedArticles.length} articles`)
+      fileWritten = true
       
-      return NextResponse.json({ 
-        success: true, 
-        message: `Synced ${transformedArticles.length} articles to local file`,
-        timestamp: new Date().toISOString(),
-        environment: 'development'
-      })
+      // Clear fast cache to force reload
+      clearArticlesCache()
+      console.log('🔄 Cleared fast articles cache')
+    } catch (fileError) {
+      console.log('⚠️ Could not write to local file (this is normal in production):', fileError)
     }
+    
+    // Always trigger revalidation for static pages
+    try {
+      await fetch(`${process.env.VERCEL_URL || 'https://culturealberta.com'}/api/revalidate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paths: ['/', '/edmonton', '/calgary', '/culture', '/food-drink', '/events']
+        })
+      })
+      console.log('✅ Triggered revalidation for static pages')
+    } catch (revalidateError) {
+      console.log('⚠️ Revalidation failed, but sync was successful:', revalidateError)
+    }
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: `Synced ${transformedArticles.length} articles${fileWritten ? ' to local file' : ''} and triggered page revalidation`,
+      timestamp: new Date().toISOString(),
+      environment: isProduction ? 'production' : 'development',
+      fileWritten,
+      articlesCount: transformedArticles.length,
+      downloadUrl: '/api/sync-articles/download'
+    })
     
   } catch (error) {
     console.error('❌ Error syncing articles:', error)

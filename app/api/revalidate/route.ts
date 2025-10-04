@@ -9,9 +9,22 @@ export async function POST(request: NextRequest) {
     // Revalidate all specified paths
     const revalidatedPaths = []
     for (const path of paths) {
-      revalidatePath(path)
-      revalidatedPaths.push(path)
-      console.log(`✅ Revalidated path: ${path}`)
+      try {
+        revalidatePath(path)
+        revalidatedPaths.push(path)
+        console.log(`✅ Revalidated path: ${path}`)
+      } catch (pathError) {
+        console.log(`⚠️ Failed to revalidate path ${path}:`, pathError)
+        // Continue with other paths even if one fails
+      }
+    }
+    
+    // Also revalidate the articles directory to ensure new articles are included
+    try {
+      revalidatePath('/articles', 'layout')
+      console.log('✅ Revalidated articles layout')
+    } catch (layoutError) {
+      console.log('⚠️ Failed to revalidate articles layout:', layoutError)
     }
     
     return NextResponse.json({ 

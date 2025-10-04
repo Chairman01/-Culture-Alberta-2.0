@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Upload } from "lucide-react"
 import { updateArticle } from "@/lib/articles"
+import { createSlug } from "@/lib/utils/slug"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -210,6 +211,22 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         title: "Article updated",
         description: "Your article has been updated successfully.",
       })
+
+      // Trigger revalidation for article pages
+      try {
+        const articleSlug = createSlug(title)
+        
+        await fetch('/api/revalidate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paths: ['/', `/articles/${articleSlug}`, '/edmonton', '/calgary', '/culture', '/food-drink', '/events']
+          })
+        })
+        console.log('✅ Triggered revalidation for updated article')
+      } catch (revalidateError) {
+        console.log('⚠️ Revalidation failed, but article was updated:', revalidateError)
+      }
 
       router.push("/admin/articles")
     } catch (error) {

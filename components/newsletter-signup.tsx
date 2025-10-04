@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { testNewsletterConnection } from "@/lib/newsletter"
-import { trackNewsletterSignup } from "@/lib/analytics"
 import { Instagram, Youtube, Facebook, Twitter } from "lucide-react"
 
 interface NewsletterSignupProps {
@@ -84,8 +83,7 @@ export default function NewsletterSignup({
         setEmail("")
         setCity(defaultCity)
         
-        // Track the signup for analytics
-        trackNewsletterSignup(city, email)
+        // Newsletter signup successful
       } else {
         setMessage(result.error || "Failed to subscribe")
         setMessageType("error")

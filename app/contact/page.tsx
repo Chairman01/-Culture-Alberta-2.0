@@ -1,10 +1,8 @@
 import { Mail, Phone, MapPin, Clock } from 'lucide-react'
-import { PageTracker } from '@/components/analytics/page-tracker'
 
 export default function ContactPage() {
   return (
     <>
-      <PageTracker title="Contact Us" />
       
       <div className="min-h-screen bg-gray-50">
         {/* Hero Section */}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getCityArticles } from "@/lib/articles"
+import { getCityArticles, getAllArticles } from "@/lib/articles"
 import { Article } from "@/lib/types/article"
 
 import Link from "next/link"
@@ -30,11 +30,33 @@ export default function EdmontonPage() {
   useEffect(() => {
     async function loadEdmontonArticles() {
       try {
-        // Load articles directly from file system (fast)
-        const allArticles = await getCityArticles('edmonton') as EdmontonArticle[]
+        // First try to get city-specific articles
+        let allArticles = await getCityArticles('edmonton') as EdmontonArticle[]
         
+        // If no city-specific articles found, fall back to all articles and filter client-side
+        if (allArticles.length === 0) {
+          console.log('No Edmonton-specific articles found, falling back to all articles with client-side filtering')
+          const allArticlesData = await getAllArticles()
+          
+          // Filter for Edmonton-related articles or general Alberta articles
+          allArticles = allArticlesData.filter((article: any) => {
+            const hasEdmontonCategory = article.category?.toLowerCase().includes('edmonton')
+            const hasEdmontonLocation = article.location?.toLowerCase().includes('edmonton')
+            const hasEdmontonCategories = article.categories?.some((cat: string) => 
+              cat.toLowerCase().includes('edmonton')
+            )
+            const hasEdmontonTags = article.tags?.some((tag: string) => 
+              tag.toLowerCase().includes('edmonton')
+            )
+            // Include general Alberta articles if no Edmonton-specific articles
+            const isGeneralAlberta = !article.location || article.location.toLowerCase().includes('alberta')
+            
+            return hasEdmontonCategory || hasEdmontonLocation || hasEdmontonCategories || hasEdmontonTags || isGeneralAlberta
+          }) as EdmontonArticle[]
+        }
         
-        // Articles are already filtered by the database query for Edmonton
+        console.log(`Loaded ${allArticles.length} articles for Edmonton page`)
+        
         // Sort by date (newest first) to ensure latest articles appear first
         const edmontonPosts = allArticles.sort((a, b) => {
           const dateA = new Date(a.date || a.createdAt || 0).getTime()

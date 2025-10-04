@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Upload } from "lucide-react"
 import { createArticle } from "@/lib/articles"
+import { createSlug } from "@/lib/utils/slug"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -118,6 +119,22 @@ export default function NewArticlePage() {
         title: "Article created",
         description: "Your article has been created successfully.",
       })
+
+      // Trigger revalidation for article pages
+      try {
+        const articleSlug = createSlug(title)
+        
+        await fetch('/api/revalidate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paths: ['/', `/articles/${articleSlug}`, '/edmonton', '/calgary', '/culture', '/food-drink', '/events']
+          })
+        })
+        console.log('✅ Triggered revalidation for new article')
+      } catch (revalidateError) {
+        console.log('⚠️ Revalidation failed, but article was created:', revalidateError)
+      }
 
       // Redirect to the articles list
       router.push("/admin/articles")

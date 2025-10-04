@@ -8,7 +8,6 @@ import Image from "next/image"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 import { Footer } from "@/components/footer"
 import { PageSEO } from '@/components/seo/page-seo'
-import { PageTracker } from '@/components/analytics/page-tracker'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
 interface CalgaryArticle extends Article {
@@ -81,7 +80,6 @@ export default function CalgaryArtsCulturePage() {
         title="Calgary Arts & Culture Articles - Culture Alberta"
         description="Explore Calgary's vibrant arts and culture scene. Discover galleries, museums, theaters, and cultural events in Alberta's largest city."
       />
-      <PageTracker title="Calgary Arts & Culture Articles - Culture Alberta" />
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Header Section */}

@@ -230,7 +230,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
         .from('articles')
         .select(fields)
         .order('created_at', { ascending: false })
-        .limit(20) // Fetch 20 articles to ensure trending section has enough content
+        .limit(50) // Fetch 50 articles to ensure food & drink and events sections have enough content
 
       const { data, error } = await Promise.race([
         supabasePromise,
@@ -1130,8 +1130,8 @@ export async function getArticleById(id: string): Promise<Article | null> {
 
     console.log('Attempting to fetch article from Supabase...')
     
-    // Use proper timeout duration based on environment
-    const timeoutDuration = process.env.NODE_ENV === 'production' ? 2000 : 5000 // 2s in prod, 5s in dev
+    // Use proper timeout duration based on environment - increased for better reliability
+    const timeoutDuration = process.env.NODE_ENV === 'production' ? 3000 : 8000 // 3s in prod, 8s in dev
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
     )

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getCityArticles } from "@/lib/articles"
+import { getCityArticles, getAllArticles } from "@/lib/articles"
 import { Article } from "@/lib/types/article"
 import Link from "next/link"
 import Image from "next/image"
@@ -9,8 +9,6 @@ import { ArrowRight, Calendar, MapPin, Clock } from "lucide-react"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageSEO } from '@/components/seo/page-seo'
-import { PageTracker } from '@/components/analytics/page-tracker'
-import { trackLocationView } from '@/lib/analytics'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
 // Extend Article locally to include 'type' for filtering
@@ -29,7 +27,32 @@ export default function CalgaryPage() {
   useEffect(() => {
     async function loadCalgaryArticles() {
       try {
-        const allArticles = await getCityArticles('calgary')
+        // First try to get city-specific articles
+        let allArticles = await getCityArticles('calgary')
+        
+        // If no city-specific articles found, fall back to all articles and filter client-side
+        if (allArticles.length === 0) {
+          console.log('No Calgary-specific articles found, falling back to all articles with client-side filtering')
+          const allArticlesData = await getAllArticles()
+          
+          // Filter for Calgary-related articles or general Alberta articles
+          allArticles = allArticlesData.filter((article: any) => {
+            const hasCalgaryCategory = article.category?.toLowerCase().includes('calgary')
+            const hasCalgaryLocation = article.location?.toLowerCase().includes('calgary')
+            const hasCalgaryCategories = article.categories?.some((cat: string) => 
+              cat.toLowerCase().includes('calgary')
+            )
+            const hasCalgaryTags = article.tags?.some((tag: string) => 
+              tag.toLowerCase().includes('calgary')
+            )
+            // Include general Alberta articles if no Calgary-specific articles
+            const isGeneralAlberta = !article.location || article.location.toLowerCase().includes('alberta')
+            
+            return hasCalgaryCategory || hasCalgaryLocation || hasCalgaryCategories || hasCalgaryTags || isGeneralAlberta
+          })
+        }
+        
+        console.log(`Loaded ${allArticles.length} articles for Calgary page`)
         
         // Debug: Log all articles to see what we have
         console.log('All articles from database:', allArticles.map(a => ({ 
@@ -111,7 +134,6 @@ export default function CalgaryPage() {
   }, [])
 
   useEffect(() => {
-    trackLocationView('calgary')
   }, [])
 
   const formatDate = (dateString: string) => {
@@ -158,7 +180,6 @@ export default function CalgaryPage() {
         title="Calgary - Culture Alberta"
         description="Discover the latest news, events, and stories from Alberta's largest city. Explore Calgary's vibrant neighborhoods, unique attractions, and local culture."
       />
-      <PageTracker title="Calgary - Culture Alberta" />
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Header Section */}

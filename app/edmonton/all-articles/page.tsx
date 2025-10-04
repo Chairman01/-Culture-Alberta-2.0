@@ -8,7 +8,6 @@ import Image from "next/image"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 import { Footer } from "@/components/footer"
 import { PageSEO } from '@/components/seo/page-seo'
-import { PageTracker } from '@/components/analytics/page-tracker'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
 interface EdmontonArticle extends Article {
@@ -73,7 +72,6 @@ export default function EdmontonAllArticlesPage() {
         title="All Edmonton Articles - Culture Alberta"
         description="Browse all articles about Edmonton, Alberta. Discover the latest news, events, and stories from Alberta's capital city."
       />
-      <PageTracker title="All Edmonton Articles - Culture Alberta" />
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Header Section */}

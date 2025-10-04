@@ -3,8 +3,10 @@ import { Calendar, Clock, Share2, Bookmark, ArrowLeft, ArrowRight } from 'lucide
 import Image from 'next/image'
 import Link from 'next/link'
 import { getArticleById, getArticleBySlug, getAllArticles } from '@/lib/supabase-articles'
+import { getFastArticleBySlug } from '@/lib/fast-articles'
 import { getTitleFromUrl } from '@/lib/utils/article-url'
 import { getArticleUrl } from '@/lib/utils/article-url'
+import { createSlug } from '@/lib/utils/slug'
 import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { ArticleSEO } from '@/components/seo/article-seo'
@@ -77,6 +79,36 @@ const processContentWithVideos = (content: string) => {
 import { ArticleContent } from '@/components/article-content'
 // import './article-styles.css' // Removed - file was deleted
 
+// Generate static params for all published articles
+export async function generateStaticParams() {
+  try {
+    console.log('🔧 Generating static params for articles...')
+    const articles = await getAllArticles()
+    
+    // Only generate params for published articles
+    const publishedArticles = articles.filter(article => article.status === 'published')
+    
+    const params = publishedArticles.map((article) => {
+      // Use consistent slug generation
+      const slug = createSlug(article.title)
+      
+      return {
+        slug: slug,
+      }
+    })
+    
+    console.log(`✅ Generated ${params.length} static params for published articles`)
+    return params
+  } catch (error) {
+    console.error('❌ Error generating static params:', error)
+    // Return empty array to prevent build failure
+    return []
+  }
+}
+
+// Enable ISR (Incremental Static Regeneration) with aggressive caching
+export const revalidate = 300 // 5 minutes - balance between freshness and performance
+
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = await params
   const slug = resolvedParams.slug
@@ -84,13 +116,28 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   try {
     console.log('🚀 Loading article:', slug)
     
-    // PERFORMANCE FIX: Use optimized article loading functions with fast timeout
-    let loadedArticle = await getArticleBySlug(slug)
+    // PERFORMANCE FIX: Try fast cache first, then Supabase
+    let loadedArticle = await getFastArticleBySlug(slug)
+    
+    if (!loadedArticle) {
+      console.log('Fast cache miss, trying Supabase...')
+      try {
+        loadedArticle = await getArticleBySlug(slug)
+      } catch (error) {
+        console.log('Error loading article by slug, trying ID fallback:', error)
+        loadedArticle = null
+      }
+    }
     
     // Only try fallback if absolutely necessary
     if (!loadedArticle) {
       console.log('Article not found by slug, trying ID fallback...')
-      loadedArticle = await getArticleById(slug)
+      try {
+        loadedArticle = await getArticleById(slug)
+      } catch (error) {
+        console.log('Error loading article by ID, trying title match:', error)
+        loadedArticle = null
+      }
     }
     
     // Last resort - but this is expensive, so we'll optimize it
@@ -98,27 +145,55 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       console.log('Trying title match fallback...')
       const allArticles = await getAllArticles()
       
+      // Try multiple matching strategies
       loadedArticle = allArticles.find(article => {
-        // Convert article title to URL format and compare
-        const articleUrlTitle = article.title
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '')
-          .substring(0, 100)
+        // Use consistent slug generation
+        const articleSlug = createSlug(article.title)
         
-        const matches = articleUrlTitle === slug.toLowerCase()
-        if (matches) {
-          console.log('Found matching article:', article.title)
+        // Try exact match first
+        const exactMatch = articleSlug.toLowerCase() === slug.toLowerCase()
+        if (exactMatch) {
+          console.log('Found exact matching article:', article.title)
+          return true
         }
-        return matches
+        
+        // Try partial match (in case of URL encoding issues)
+        const partialMatch = articleSlug.toLowerCase().includes(slug.toLowerCase()) || 
+                           slug.toLowerCase().includes(articleSlug.toLowerCase())
+        if (partialMatch) {
+          console.log('Found partial matching article:', article.title)
+          return true
+        }
+        
+        // Try title match (fallback)
+        const titleMatch = article.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-') === slug.toLowerCase()
+        if (titleMatch) {
+          console.log('Found title matching article:', article.title)
+          return true
+        }
+        
+        return false
       }) || null
     }
     
     if (!loadedArticle) {
       console.log('❌ Article not found, showing 404')
-      console.log('Available articles:', (await getAllArticles()).map(a => a.title))
+      console.log('Looking for slug:', slug)
+      const allArticles = await getAllArticles()
+      console.log('Available articles:', allArticles.map(a => a.title))
+      console.log('Available slugs:', allArticles.map(a => createSlug(a.title)))
+      
+      // Debug: Show what we're comparing
+      console.log('=== SLUG DEBUG ===')
+      allArticles.forEach(article => {
+        const articleSlug = createSlug(article.title)
+        console.log(`Title: "${article.title}"`)
+        console.log(`Generated slug: "${articleSlug}"`)
+        console.log(`Looking for: "${slug}"`)
+        console.log(`Match: ${articleSlug.toLowerCase() === slug.toLowerCase()}`)
+        console.log('---')
+      })
+      
       notFound()
     }
     
