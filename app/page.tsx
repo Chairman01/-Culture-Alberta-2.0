@@ -524,6 +524,7 @@ export default async function HomeStatic() {
                           width={400}
                           height={225}
                           className="w-full h-full object-cover"
+                          loading="lazy"
                         />
                         <div className="absolute top-3 left-3 bg-black text-white px-3 py-1.5 text-sm rounded-lg font-medium">
                           {formatEventDate(getPostDate(event))}
