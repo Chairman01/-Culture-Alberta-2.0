@@ -20,7 +20,8 @@ export async function getFastArticles(): Promise<any[]> {
     const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
     if (fs.existsSync(articlesPath)) {
       const fileContent = fs.readFileSync(articlesPath, 'utf8')
-      articlesCache = JSON.parse(fileContent)
+      const parsedArticles = JSON.parse(fileContent)
+      articlesCache = Array.isArray(parsedArticles) ? parsedArticles : []
       cacheTimestamp = now
       console.log(`🚀 FAST CACHE: Loaded ${articlesCache.length} articles from file`)
       return articlesCache
