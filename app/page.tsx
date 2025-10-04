@@ -16,48 +16,18 @@ async function getHomePageData() {
   try {
     // Use the optimized homepage articles function for better performance
     const apiArticles = await getHomepageArticles()
+    console.log('🔍 DEBUG: getHomepageArticles returned:', apiArticles?.length || 0, 'articles')
+    if (apiArticles && apiArticles.length > 0) {
+      console.log('🔍 DEBUG: First article:', apiArticles[0].title)
+    }
     const allPosts = apiArticles
     
-        // Separate events from regular articles - ONLY use type === 'event'
-        const regularPosts = allPosts.filter(post => {
-          // Exclude AFRO MUSIC FEST from regular posts since it's now treated as an event
-          if (post.title.includes('AFRO MUSIC FEST')) return false
-          return post.type !== 'event'
-        })
-        const eventPosts = allPosts.filter(post => {
-          try {
-            console.log(`Checking potential event: "${post.title}" (type: ${post.type})`)
-            
-            // Allow AFRO MUSIC FEST as a placeholder event (even if it's not marked as type='event')
-            const isAfroFest = post.title.includes('AFRO MUSIC FEST')
-            if (isAfroFest) {
-              console.log(`Including AFRO FEST as placeholder event: "${post.title}"`)
-              return true
-            }
-            
-            // For other articles, ONLY include those with type === 'event' AND exclude incorrect ones
-            if (post.type !== 'event') return false
-            
-            // Check for specific incorrect events using partial matching
-            const isIncorrectEvent = post.title.includes('Edmonton Designer Maria Wozniak Showcases') ||
-                                   post.title.includes('Measles Exposure Alert at U of A')
-            
-            console.log(`Is incorrect event: ${isIncorrectEvent}`)
-            
-            if (isIncorrectEvent) {
-              console.log(`Excluding incorrect event: "${post.title}"`)
-              return false
-            }
-            
-            return true
-          } catch (error) {
-            console.log(`Error filtering event article "${post.title}":`, error)
-            return false
-          }
-        })
+    // Simple approach: Use all posts for all sections, filter by categories
+    const allPostsForFiltering = allPosts
+    console.log('🔍 DEBUG: allPostsForFiltering length:', allPostsForFiltering.length)
     
     // CRITICAL: If no posts are found, create fallback content to prevent empty homepage
-    if (regularPosts.length === 0) {
+    if (allPostsForFiltering.length === 0) {
       console.warn('⚠️ No articles found in database, using fast fallback content')
       // Pre-created fallback for maximum speed - no object creation overhead
       const fallbackPosts = [{
@@ -82,9 +52,18 @@ async function getHomePageData() {
       return { posts: fallbackPosts, events: [] }
     }
     
+    // Debug: Check what status values we have
+    console.log('🔍 DEBUG: Status values in articles:', allPostsForFiltering.map(p => ({ title: p.title, status: p.status })).slice(0, 3))
+    
+    // Filter by status, but be more lenient if status is undefined
+    const publishedPosts = allPostsForFiltering.filter(post => 
+      post.status === 'published' || post.status === undefined || post.status === null
+    )
+    console.log('🔍 DEBUG: Published posts after filtering:', publishedPosts.length)
+    
     return {
-      posts: regularPosts,
-      events: eventPosts
+      posts: publishedPosts,
+      events: [] // We'll filter events by category later
     }
   } catch (error) {
     console.error("Error loading posts:", error)
@@ -190,69 +169,51 @@ export default async function HomeStatic() {
     return dateB - dateA // Newest first
   })
   
-  // Use the same flexible filtering logic as getCityArticles
+  
+  // SIMPLE CATEGORY-BASED FILTERING
   const edmontonPosts = sortedPosts.filter(post => {
-    const hasCityCategory = post.category?.toLowerCase().includes('edmonton');
-    const hasCityLocation = post.location?.toLowerCase().includes('edmonton');
-    const hasCityCategories = post.categories?.some((cat: string) => 
+    // Check if article has "Edmonton" in category or categories array
+    const hasEdmontonCategory = post.category?.toLowerCase().includes('edmonton');
+    const hasEdmontonInCategories = post.categories?.some((cat: string) => 
       cat.toLowerCase().includes('edmonton')
     );
-    const hasCityTags = post.tags?.some((tag: string) => 
-      tag.toLowerCase().includes('edmonton')
-    );
     
-    return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+    return hasEdmontonCategory || hasEdmontonInCategories;
   }).slice(0, 3)
   
   const calgaryPosts = sortedPosts.filter(post => {
-    const hasCityCategory = post.category?.toLowerCase().includes('calgary');
-    const hasCityLocation = post.location?.toLowerCase().includes('calgary');
-    const hasCityCategories = post.categories?.some((cat: string) => 
+    // Check if article has "Calgary" in category or categories array
+    const hasCalgaryCategory = post.category?.toLowerCase().includes('calgary');
+    const hasCalgaryInCategories = post.categories?.some((cat: string) => 
       cat.toLowerCase().includes('calgary')
     );
-    const hasCityTags = post.tags?.some((tag: string) => 
-      tag.toLowerCase().includes('calgary')
+    
+    return hasCalgaryCategory || hasCalgaryInCategories;
+  }).slice(0, 3)
+  // SIMPLE CATEGORY-BASED FILTERING for Food & Drink
+  const foodDrinkPosts = sortedPosts.filter(post => {
+    // Check if article has "Food & Drink" in category or categories array
+    const hasFoodCategory = post.category?.toLowerCase().includes('food') || 
+                           post.category?.toLowerCase().includes('drink');
+    const hasFoodInCategories = post.categories?.some((cat: string) => 
+      cat.toLowerCase().includes('food') ||
+      cat.toLowerCase().includes('drink')
     );
     
-    return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+    return hasFoodCategory || hasFoodInCategories;
   }).slice(0, 3)
-        // SMART filtering for Food & Drink posts - use same logic as /food-drink page
-        const foodDrinkPosts = sortedPosts.filter(post => {
-          try {
-            // Check main category (same as /food-drink page)
-            const hasFoodCategory = post.category?.toLowerCase().includes('food') || 
-                                   post.category?.toLowerCase().includes('drink') ||
-                                   post.category?.toLowerCase().includes('restaurant') ||
-                                   post.category?.toLowerCase().includes('cafe') ||
-                                   post.category?.toLowerCase().includes('brewery') ||
-                                   post.category?.toLowerCase().includes('food & drink');
-            
-            // Check new categories field (same as /food-drink page)
-            const hasFoodCategories = post.categories?.some((cat: string) => 
-              cat.toLowerCase().includes('food') || 
-              cat.toLowerCase().includes('drink') ||
-              cat.toLowerCase().includes('restaurant') ||
-              cat.toLowerCase().includes('cafe') ||
-              cat.toLowerCase().includes('brewery') ||
-              cat.toLowerCase().includes('food & drink')
-            );
-            
-            // Check tags (same as /food-drink page)
-            const hasFoodTags = post.tags?.some((tag: string) => 
-              tag.toLowerCase().includes('food') || 
-              tag.toLowerCase().includes('drink') ||
-              tag.toLowerCase().includes('restaurant') ||
-              tag.toLowerCase().includes('cafe') ||
-              tag.toLowerCase().includes('brewery') ||
-              tag.toLowerCase().includes('food & drink')
-            );
-            
-            return Boolean(hasFoodCategory || hasFoodCategories || hasFoodTags)
-          } catch (error) {
-            console.log(`Error filtering food article "${post.title}":`, error)
-            return false
-          }
-        }).slice(0, 3) // Show 3 newest instead of 2
+  
+  // SIMPLE CATEGORY-BASED FILTERING for Events
+  const eventPosts = sortedPosts.filter(post => {
+    // Check if article has "Events" in category or categories array
+    const hasEventCategory = post.category?.toLowerCase().includes('event');
+    const hasEventInCategories = post.categories?.some((cat: string) => 
+      cat.toLowerCase().includes('event')
+    );
+    
+    return hasEventCategory || hasEventInCategories;
+  }).slice(0, 3)
+  
   // Show top 5 most recent articles instead of only trending ones
   const trendingPosts = sortedPosts.slice(0, 5)
   
@@ -263,6 +224,7 @@ export default async function HomeStatic() {
   console.log('Featured post found:', featuredPost ? featuredPost.title : 'None')
   console.log('First few posts:', posts.slice(0, 3).map(p => ({ title: p.title, type: p.type, featuredHome: p.featuredHome })))
   
+  
   // Debug: Show all unique categories and types
   const allCategories = [...new Set(posts.map(p => p.category).filter(Boolean))]
   const allTypes = [...new Set(posts.map(p => p.type).filter(Boolean))]
@@ -272,65 +234,20 @@ export default async function HomeStatic() {
   console.log('All unique category arrays:', allCategoryArrays)
   
   // Debug logging for Edmonton posts
+  console.log('=== SIMPLE CATEGORY-BASED FILTERING RESULTS ===')
   console.log('Edmonton posts found:', edmontonPosts.length)
-  console.log('Edmonton posts:', edmontonPosts.map(p => ({ title: p.title, category: p.category, location: p.location })))
+  console.log('Edmonton posts:', edmontonPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
   
-  // Debug logging for Food & Drink posts
+  console.log('Calgary posts found:', calgaryPosts.length)
+  console.log('Calgary posts:', calgaryPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
+  
   console.log('Food & Drink posts found:', foodDrinkPosts.length)
-  try {
-    console.log('Food & Drink posts:', foodDrinkPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories, tags: p.tags })))
-  } catch (error) {
-    console.log('Error logging food posts:', error)
-  }
+  console.log('Food & Drink posts:', foodDrinkPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
   
-  // Debug: Show all articles and their SMART food-related matching
-  console.log('=== SMART FOOD MATCHING DEBUG ===')
-  posts.slice(0, 5).forEach(post => {
-    try {
-      const hasFoodCategory = post.category?.toLowerCase() === 'food & drink' ||
-                             post.category?.toLowerCase() === 'food and drink' ||
-                             post.category?.toLowerCase() === 'food' ||
-                             post.category?.toLowerCase() === 'drink'
-      const hasFoodCategories = post.categories?.some((cat: string) => 
-        cat.toLowerCase() === 'food & drink' ||
-        cat.toLowerCase() === 'food and drink' ||
-        cat.toLowerCase() === 'food' ||
-        cat.toLowerCase() === 'drink'
-      )
-      const hasFoodTags = post.tags?.some((tag: string) => 
-        tag.toLowerCase() === 'food & drink' ||
-        tag.toLowerCase() === 'food and drink' ||
-        tag.toLowerCase() === 'food' ||
-        tag.toLowerCase() === 'drink'
-      )
-      
-      const smartMatch = Boolean(hasFoodCategory || hasFoodCategories || hasFoodTags)
-      console.log(`Article: "${post.title}" - Category: "${post.category}" - Smart Food match: ${smartMatch} (category: ${hasFoodCategory}, categories: ${hasFoodCategories}, tags: ${hasFoodTags})`)
-    } catch (error) {
-      console.log(`Error processing article "${post.title}":`, error)
-    }
-  })
+  console.log('Events found:', eventPosts.length)
+  console.log('Events:', eventPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
   
-  // Debug logging for Events
-  console.log('Events found:', events.length)
-  try {
-    console.log('Events:', events.map(e => ({ title: e.title, type: e.type, category: e.category })))
-  } catch (error) {
-    console.log('Error logging events:', error)
-  }
-  
-        // Debug: Show all articles and their type-based event matching
-        console.log('=== TYPE-BASED EVENT MATCHING DEBUG ===')
-        posts.slice(0, 5).forEach(post => {
-          try {
-            const isEvent = post.type === 'event'
-            console.log(`Article: "${post.title}" - Type: "${post.type}" - Is Event: ${isEvent}`)
-          } catch (error) {
-            console.log(`Error processing article "${post.title}":`, error)
-          }
-        })
-  
-  const upcomingEvents = events.slice(0, 3) // Get the first 3 events
+  const upcomingEvents = eventPosts.slice(0, 3) // Get the first 3 events
 
   return (
     <>

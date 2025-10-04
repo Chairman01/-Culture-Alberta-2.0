@@ -26,7 +26,33 @@ export default function FoodDrinkPage() {
 
   const loadArticles = async () => {
     try {
-      const allArticles = await getAllArticles()
+      console.log('🔄 Loading Food & Drink articles...')
+      let allArticles: ExtendedArticle[] = []
+      
+      // ROBUST FALLBACK: Try to get articles with error handling
+      try {
+        allArticles = await getAllArticles()
+        console.log(`✅ All articles loaded: ${allArticles.length}`)
+      } catch (error) {
+        console.error('❌ Failed to load articles:', error)
+        // Create fallback content to prevent empty page
+        allArticles = [{
+          id: 'fallback-food-drink',
+          title: 'Welcome to Food & Drink',
+          excerpt: 'Discover the best restaurants, cafes, and culinary experiences across Alberta.',
+          content: 'We\'re working on bringing you amazing food and drink content. Check back soon!',
+          category: 'Food & Drink',
+          categories: ['Food & Drink'],
+          location: 'Alberta',
+          imageUrl: '/images/food-drink-fallback.jpg',
+          author: 'Culture Alberta',
+          date: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          type: 'article',
+          status: 'published'
+        }]
+      }
       
       // Filter for food & drink related articles - now supports multiple categories
       const foodArticles: ExtendedArticle[] = allArticles
@@ -61,6 +87,7 @@ export default function FoodDrinkPage() {
           
           return hasFoodCategory || hasFoodCategories || hasFoodTags;
         })
+      console.log(`✅ Filtered Food & Drink articles: ${foodArticles.length}`)
         .map(article => ({
           ...article,
           description: article.content,
@@ -87,7 +114,30 @@ export default function FoodDrinkPage() {
 
       setIsLoading(false)
     } catch (error) {
-      console.error('Error loading articles:', error)
+      console.error('❌ Error loading Food & Drink articles:', error)
+      
+      // CRITICAL: Provide fallback content to prevent empty page
+      console.log('🔄 Setting fallback content to prevent empty page')
+      const fallbackArticle: ExtendedArticle = {
+        id: 'fallback-food-drink-error',
+        title: 'Welcome to Food & Drink',
+        excerpt: 'Discover the best restaurants, cafes, and culinary experiences across Alberta.',
+        content: 'We\'re working on bringing you amazing food and drink content. Check back soon!',
+        category: 'Food & Drink',
+        categories: ['Food & Drink'],
+        location: 'Alberta',
+        imageUrl: '/images/food-drink-fallback.jpg',
+        author: 'Culture Alberta',
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        type: 'article',
+        status: 'published',
+        description: 'We\'re working on bringing you amazing food and drink content. Check back soon!'
+      }
+      
+      setArticles([fallbackArticle])
+      setFeaturedArticle(fallbackArticle)
       setIsLoading(false)
     }
   }

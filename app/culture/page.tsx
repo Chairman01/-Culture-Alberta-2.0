@@ -26,7 +26,33 @@ export default function CulturePage() {
 
   const loadArticles = async () => {
     try {
-      const allArticles = await getAllArticles()
+      console.log('🔄 Loading Culture articles...')
+      let allArticles: ExtendedArticle[] = []
+      
+      // ROBUST FALLBACK: Try to get articles with error handling
+      try {
+        allArticles = await getAllArticles()
+        console.log(`✅ All articles loaded: ${allArticles.length}`)
+      } catch (error) {
+        console.error('❌ Failed to load articles:', error)
+        // Create fallback content to prevent empty page
+        allArticles = [{
+          id: 'fallback-culture',
+          title: 'Welcome to Culture',
+          excerpt: 'Discover Alberta\'s rich cultural heritage, arts, and community stories.',
+          content: 'We\'re working on bringing you amazing cultural content. Check back soon!',
+          category: 'Culture',
+          categories: ['Culture'],
+          location: 'Alberta',
+          imageUrl: '/images/culture-fallback.jpg',
+          author: 'Culture Alberta',
+          date: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          type: 'article',
+          status: 'published'
+        }]
+      }
       
       // Filter for culture related articles
       const cultureArticles: ExtendedArticle[] = allArticles
@@ -99,7 +125,30 @@ export default function CulturePage() {
 
       setIsLoading(false)
     } catch (error) {
-      console.error('Error loading articles:', error)
+      console.error('❌ Error loading Culture articles:', error)
+      
+      // CRITICAL: Provide fallback content to prevent empty page
+      console.log('🔄 Setting fallback content to prevent empty page')
+      const fallbackArticle: ExtendedArticle = {
+        id: 'fallback-culture-error',
+        title: 'Welcome to Culture',
+        excerpt: 'Discover Alberta\'s rich cultural heritage, arts, and community stories.',
+        content: 'We\'re working on bringing you amazing cultural content. Check back soon!',
+        category: 'Culture',
+        categories: ['Culture'],
+        location: 'Alberta',
+        imageUrl: '/images/culture-fallback.jpg',
+        author: 'Culture Alberta',
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        type: 'article',
+        status: 'published',
+        description: 'We\'re working on bringing you amazing cultural content. Check back soon!'
+      }
+      
+      setArticles([fallbackArticle])
+      setFeaturedArticle(fallbackArticle)
       setIsLoading(false)
     }
   }

@@ -30,29 +30,61 @@ export default function EdmontonPage() {
   useEffect(() => {
     async function loadEdmontonArticles() {
       try {
-        // First try to get city-specific articles
-        let allArticles = await getCityArticles('edmonton') as EdmontonArticle[]
+        console.log('🔄 Loading Edmonton articles...')
+        let allArticles: EdmontonArticle[] = []
+        
+        // ROBUST FALLBACK: Try multiple approaches to get articles
+        try {
+          // First try to get city-specific articles
+          allArticles = await getCityArticles('edmonton') as EdmontonArticle[]
+          console.log(`✅ City-specific articles loaded: ${allArticles.length}`)
+        } catch (cityError) {
+          console.warn('⚠️ City-specific articles failed, trying fallback...', cityError)
+        }
         
         // If no city-specific articles found, fall back to all articles and filter client-side
         if (allArticles.length === 0) {
-          console.log('No Edmonton-specific articles found, falling back to all articles with client-side filtering')
-          const allArticlesData = await getAllArticles()
-          
-          // Filter for Edmonton-related articles or general Alberta articles
-          allArticles = allArticlesData.filter((article: any) => {
-            const hasEdmontonCategory = article.category?.toLowerCase().includes('edmonton')
-            const hasEdmontonLocation = article.location?.toLowerCase().includes('edmonton')
-            const hasEdmontonCategories = article.categories?.some((cat: string) => 
-              cat.toLowerCase().includes('edmonton')
-            )
-            const hasEdmontonTags = article.tags?.some((tag: string) => 
-              tag.toLowerCase().includes('edmonton')
-            )
-            // Include general Alberta articles if no Edmonton-specific articles
-            const isGeneralAlberta = !article.location || article.location.toLowerCase().includes('alberta')
+          console.log('🔄 No Edmonton-specific articles found, falling back to all articles with client-side filtering')
+          try {
+            const allArticlesData = await getAllArticles()
+            console.log(`✅ All articles loaded: ${allArticlesData.length}`)
             
-            return hasEdmontonCategory || hasEdmontonLocation || hasEdmontonCategories || hasEdmontonTags || isGeneralAlberta
-          }) as EdmontonArticle[]
+            // Filter for Edmonton-related articles or general Alberta articles
+            allArticles = allArticlesData.filter((article: any) => {
+              const hasEdmontonCategory = article.category?.toLowerCase().includes('edmonton')
+              const hasEdmontonLocation = article.location?.toLowerCase().includes('edmonton')
+              const hasEdmontonCategories = article.categories?.some((cat: string) => 
+                cat.toLowerCase().includes('edmonton')
+              )
+              const hasEdmontonTags = article.tags?.some((tag: string) => 
+                tag.toLowerCase().includes('edmonton')
+              )
+              // Include general Alberta articles if no Edmonton-specific articles
+              const isGeneralAlberta = !article.location || article.location.toLowerCase().includes('alberta')
+              
+              return hasEdmontonCategory || hasEdmontonLocation || hasEdmontonCategories || hasEdmontonTags || isGeneralAlberta
+            }) as EdmontonArticle[]
+            console.log(`✅ Filtered Edmonton articles: ${allArticles.length}`)
+          } catch (fallbackError) {
+            console.error('❌ Fallback articles failed:', fallbackError)
+            // Create fallback content to prevent empty page
+            allArticles = [{
+              id: 'fallback-edmonton',
+              title: 'Welcome to Edmonton',
+              excerpt: 'Discover the latest news, events, and stories from Alberta\'s capital city.',
+              content: 'We\'re working on bringing you amazing Edmonton content. Check back soon!',
+              category: 'Edmonton',
+              categories: ['Edmonton'],
+              location: 'Edmonton',
+              imageUrl: '/images/edmonton-fallback.jpg',
+              author: 'Culture Alberta',
+              date: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              type: 'article',
+              status: 'published'
+            }]
+          }
         }
         
         console.log(`Loaded ${allArticles.length} articles for Edmonton page`)
@@ -145,21 +177,39 @@ export default function EdmontonPage() {
         
         setUpcomingEvents(edmontonEvents.slice(0, 3))
       } catch (error) {
-        console.error("Error loading Edmonton articles:", error)
+        console.error("❌ Error loading Edmonton articles:", error)
         
         // Provide more specific error handling
         if (error instanceof Error) {
           if (error.message === 'Loading timeout') {
-            console.log('Loading timed out, but this is normal if Supabase is slow')
+            console.log('⏰ Loading timed out, but this is normal if Supabase is slow')
           } else {
-            console.log('Other error occurred:', error.message)
+            console.log('🚨 Other error occurred:', error.message)
           }
         }
         
-        // Set empty arrays to prevent infinite loading
-        setArticles([])
-        setFeatureArticle(null)
-        setTrendingArticles([])
+        // CRITICAL: Provide fallback content to prevent empty page
+        console.log('🔄 Setting fallback content to prevent empty page')
+        const fallbackArticle: EdmontonArticle = {
+          id: 'fallback-edmonton-error',
+          title: 'Welcome to Edmonton',
+          excerpt: 'Discover the latest news, events, and stories from Alberta\'s capital city.',
+          content: 'We\'re working on bringing you amazing Edmonton content. Check back soon!',
+          category: 'Edmonton',
+          categories: ['Edmonton'],
+          location: 'Edmonton',
+          imageUrl: '/images/edmonton-fallback.jpg',
+          author: 'Culture Alberta',
+          date: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          type: 'article',
+          status: 'published'
+        }
+        
+        setArticles([fallbackArticle])
+        setFeatureArticle(fallbackArticle)
+        setTrendingArticles([fallbackArticle])
         setUpcomingEvents([])
       } finally {
         setIsLoading(false)

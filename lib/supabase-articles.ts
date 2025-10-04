@@ -220,30 +220,62 @@ export async function getHomepageArticles(): Promise<Article[]> {
         return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
       }
       
-      // REAL-TIME: Use longer timeout since we're prioritizing accuracy over speed
-      const timeoutDuration = process.env.NODE_ENV === 'production' ? 5000 : 10000 // 5s in prod, 10s in dev
+      // ROBUST: Use much longer timeout with retry logic for maximum reliability
+      const timeoutDuration = process.env.NODE_ENV === 'production' ? 15000 : 20000 // 15s in prod, 20s in dev
       
     // Optimized query for homepage - include content field
-    const fields = ensureImageFields('id, title, excerpt, content, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type')
+    const fields = ensureImageFields('id, title, excerpt, content, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type, status')
       
-      const supabasePromise = supabase
-        .from('articles')
-        .select(fields)
-        .order('created_at', { ascending: false })
-        .limit(50) // Fetch 50 articles to ensure food & drink and events sections have enough content
+      // RETRY LOGIC: Try multiple times before giving up
+      let data, error
+      let attempts = 0
+      const maxAttempts = 3
+      
+      while (attempts < maxAttempts) {
+        attempts++
+        console.log(`🔄 Attempt ${attempts}/${maxAttempts} to fetch from Supabase...`)
+        
+        try {
+          const supabasePromise = supabase
+            .from('articles')
+            .select(fields)
+            .order('created_at', { ascending: false })
+            .limit(50) // Fetch 50 articles to ensure food & drink and events sections have enough content
 
-      const { data, error } = await Promise.race([
-        supabasePromise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
-        )
-      ]) as any
+          const result = await Promise.race([
+            supabasePromise,
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
+            )
+          ]) as any
+          
+          data = result.data
+          error = result.error
+          
+          if (!error) {
+            console.log(`✅ Supabase query succeeded on attempt ${attempts}`)
+            break
+          } else {
+            console.warn(`❌ Supabase attempt ${attempts} failed:`, error.message)
+            if (attempts < maxAttempts) {
+              console.log(`⏳ Waiting 2 seconds before retry...`)
+              await new Promise(resolve => setTimeout(resolve, 2000))
+            }
+          }
+        } catch (retryError) {
+          console.warn(`❌ Supabase attempt ${attempts} threw error:`, retryError)
+          if (attempts < maxAttempts) {
+            console.log(`⏳ Waiting 2 seconds before retry...`)
+            await new Promise(resolve => setTimeout(resolve, 2000))
+          }
+        }
+      }
 
-    if (error) {
-      console.warn('Supabase homepage query failed:', error.message)
-      console.log('Falling back to file system')
-      return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
-    }
+      if (error || !data) {
+        console.warn(`🚨 All ${maxAttempts} Supabase attempts failed, falling back to file system`)
+        console.log('Falling back to file system')
+        return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+      }
 
     console.log('✅ SMART CACHE: Successfully fetched homepage articles from Supabase:', data?.length || 0, 'articles')
 
@@ -277,11 +309,11 @@ export async function getHomepageArticles(): Promise<Article[]> {
     trackResourceUsage('getHomepageArticles', startTime)
 
     return mappedArticles
-    } catch (error) {
-      console.warn('Supabase homepage connection failed:', error)
-      console.log('Falling back to file system')
-      return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
-    }
+  } catch (error) {
+    console.warn('Supabase homepage connection failed:', error)
+    console.log('Falling back to file system')
+    return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
+  }
   })
 }
 

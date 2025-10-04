@@ -28,7 +28,33 @@ export default function EventsPage() {
 
   const loadEvents = async () => {
     try {
-      const eventArticles = await getEventsArticles()
+      console.log('🔄 Loading Events articles...')
+      let eventArticles: Article[] = []
+      
+      // ROBUST FALLBACK: Try to get events with error handling
+      try {
+        eventArticles = await getEventsArticles()
+        console.log(`✅ Events articles loaded: ${eventArticles.length}`)
+      } catch (error) {
+        console.error('❌ Failed to load events articles:', error)
+        // Create fallback content to prevent empty page
+        eventArticles = [{
+          id: 'fallback-events',
+          title: 'Welcome to Events',
+          excerpt: 'Discover upcoming events, festivals, and happenings across Alberta.',
+          content: 'We\'re working on bringing you amazing event content. Check back soon!',
+          category: 'Events',
+          categories: ['Events'],
+          location: 'Alberta',
+          imageUrl: '/images/events-fallback.jpg',
+          author: 'Culture Alberta',
+          date: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          type: 'event',
+          status: 'published'
+        }]
+      }
       
       // Convert to ExtendedEvent format
       const allEvents: ExtendedEvent[] = eventArticles.map(article => ({
@@ -39,6 +65,7 @@ export default function EventsPage() {
         date: article.date || article.createdAt || new Date().toISOString(),
         imageUrl: article.imageUrl || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(article.title)}`
       }))
+      console.log(`✅ Processed Events: ${allEvents.length}`)
 
       // Sort by date (closest first)
       allEvents.sort((a, b) => {
@@ -50,7 +77,29 @@ export default function EventsPage() {
       setEvents(allEvents)
       setIsLoading(false)
     } catch (error) {
-      console.error('Error loading events:', error)
+      console.error('❌ Error loading Events articles:', error)
+      
+      // CRITICAL: Provide fallback content to prevent empty page
+      console.log('🔄 Setting fallback content to prevent empty page')
+      const fallbackEvent: ExtendedEvent = {
+        id: 'fallback-events-error',
+        title: 'Welcome to Events',
+        excerpt: 'Discover upcoming events, festivals, and happenings across Alberta.',
+        content: 'We\'re working on bringing you amazing event content. Check back soon!',
+        category: 'Events',
+        categories: ['Events'],
+        location: 'Alberta',
+        imageUrl: '/images/events-fallback.jpg',
+        author: 'Culture Alberta',
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        type: 'event',
+        status: 'published',
+        description: 'We\'re working on bringing you amazing event content. Check back soon!'
+      }
+      
+      setEvents([fallbackEvent])
       setIsLoading(false)
     }
   }
