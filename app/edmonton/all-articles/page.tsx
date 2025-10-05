@@ -6,7 +6,6 @@ import { Article } from "@/lib/types/article"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, ArrowRight } from "lucide-react"
-import { Footer } from "@/components/footer"
 import { PageSEO } from '@/components/seo/page-seo'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
@@ -183,7 +182,6 @@ export default function EdmontonAllArticlesPage() {
             </div>
           </section>
         </main>
-        <Footer />
       </div>
     </>
   )
