@@ -1043,6 +1043,45 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
         }
         return isMatch
       })
+      
+      // If no exact match, try partial matching for better compatibility
+      if (!exactMatch) {
+        console.log(`⚠️ SUPABASE: No exact match found, trying partial matching for slug: "${slug}"`)
+        const partialMatch = data.find((article: any) => {
+          const articleTitle = article.title.toLowerCase()
+          const slugWords = slug.toLowerCase().split('-')
+          
+          // Check if most words from the slug appear in the title
+          const matchingWords = slugWords.filter(word => 
+            articleTitle.includes(word) || 
+            articleTitle.includes(word.replace(/s$/, '')) // Handle plurals
+          )
+          
+          const matchPercentage = matchingWords.length / slugWords.length
+          const isPartialMatch = matchPercentage >= 0.7 // 70% word match
+          
+          if (isPartialMatch) {
+            console.log(`✅ SUPABASE: Found partial match (${Math.round(matchPercentage * 100)}%) for slug "${slug}": "${article.title}"`)
+          }
+          
+          return isPartialMatch
+        })
+        
+        if (partialMatch) {
+          console.log(`✅ SUPABASE: Using partial match for slug "${slug}"`)
+          return {
+            ...partialMatch,
+            imageUrl: validateImageUrl(partialMatch.image_url || partialMatch.image, partialMatch.title),
+            date: partialMatch.created_at,
+            trendingHome: partialMatch.trending_home || false,
+            trendingEdmonton: partialMatch.trending_edmonton || false,
+            trendingCalgary: partialMatch.trending_calgary || false,
+            featuredHome: partialMatch.featured_home || false,
+            featuredEdmonton: partialMatch.featured_edmonton || false,
+            featuredCalgary: partialMatch.featured_calgary || false,
+          }
+        }
+      }
 
       if (exactMatch) {
         console.log('✅ SUPABASE: Successfully fetched article from Supabase')
@@ -1067,7 +1106,8 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
       // FALLBACK: Try file system
       try {
         const fileArticles = await fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
-        const fileArticle = fileArticles.find((article: any) => {
+        // First try exact match
+        let fileArticle = fileArticles.find((article: any) => {
           const articleUrlTitle = article.title
             .toLowerCase()
             .replace(/[^a-z0-9\s-]/g, '')
@@ -1078,6 +1118,30 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
           
           return articleUrlTitle === slug.toLowerCase()
         })
+        
+        // If no exact match, try partial matching
+        if (!fileArticle) {
+          console.log(`⚠️ FILE SYSTEM: No exact match found, trying partial matching for slug: "${slug}"`)
+          fileArticle = fileArticles.find((article: any) => {
+            const articleTitle = article.title.toLowerCase()
+            const slugWords = slug.toLowerCase().split('-')
+            
+            // Check if most words from the slug appear in the title
+            const matchingWords = slugWords.filter(word => 
+              articleTitle.includes(word) || 
+              articleTitle.includes(word.replace(/s$/, '')) // Handle plurals
+            )
+            
+            const matchPercentage = matchingWords.length / slugWords.length
+            const isPartialMatch = matchPercentage >= 0.7 // 70% word match
+            
+            if (isPartialMatch) {
+              console.log(`✅ FILE SYSTEM: Found partial match (${Math.round(matchPercentage * 100)}%) for slug "${slug}": "${article.title}"`)
+            }
+            
+            return isPartialMatch
+          })
+        }
         
         if (fileArticle) {
           console.log(`✅ FILE SYSTEM: Found article in file system for slug "${slug}": "${fileArticle.title}"`)
