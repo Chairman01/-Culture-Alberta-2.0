@@ -533,6 +533,12 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
         
         if (filteredFileArticles.length > 0) {
           console.log(`✅ Found ${filteredFileArticles.length} ${city} articles in file system`)
+          // Sort by date (newest first)
+          filteredFileArticles.sort((a: any, b: any) => {
+            const dateA = new Date(a.date || a.createdAt || 0).getTime()
+            const dateB = new Date(b.date || b.createdAt || 0).getTime()
+            return dateB - dateA
+          })
           // Cache the filtered results
           cityArticlesCache.set(city, filteredFileArticles)
           cityCacheTimestamp.set(city, now)
@@ -564,6 +570,12 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
       
       if (filteredFileArticles.length > 0) {
         console.log(`Found ${filteredFileArticles.length} ${city} articles in file system`)
+        // Sort by date (newest first)
+        filteredFileArticles.sort((a: any, b: any) => {
+          const dateA = new Date(a.date || a.createdAt || 0).getTime()
+          const dateB = new Date(b.date || b.createdAt || 0).getTime()
+          return dateB - dateA
+        })
         // Cache the filtered results
         cityArticlesCache.set(city, filteredFileArticles)
         cityCacheTimestamp.set(city, now)
@@ -589,6 +601,12 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
       
       if (filteredFromHomepage.length > 0) {
         console.log(`Found ${filteredFromHomepage.length} ${city} articles from homepage cache`)
+        // Sort by date (newest first)
+        filteredFromHomepage.sort((a: any, b: any) => {
+          const dateA = new Date(a.date || a.createdAt || 0).getTime()
+          const dateB = new Date(b.date || b.createdAt || 0).getTime()
+          return dateB - dateA
+        })
         // Cache the filtered results
         cityArticlesCache.set(city, filteredFromHomepage)
         cityCacheTimestamp.set(city, now)
@@ -625,6 +643,12 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
       });
       
       console.log(`Supabase fallback: Found ${filteredFileArticles.length} ${city} articles out of ${fileArticles.length} total`)
+      // Sort by date (newest first)
+      filteredFileArticles.sort((a: any, b: any) => {
+        const dateA = new Date(a.date || a.createdAt || 0).getTime()
+        const dateB = new Date(b.date || b.createdAt || 0).getTime()
+        return dateB - dateA
+      })
       return filteredFileArticles
     }
 
@@ -710,6 +734,12 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     });
     
     console.log(`File system fallback: Found ${filteredFileArticles.length} ${city} articles out of ${fileArticles.length} total`)
+    // Sort by date (newest first)
+    filteredFileArticles.sort((a: any, b: any) => {
+      const dateA = new Date(a.date || a.createdAt || 0).getTime()
+      const dateB = new Date(b.date || b.createdAt || 0).getTime()
+      return dateB - dateA
+    })
     return filteredFileArticles
   }
 }
