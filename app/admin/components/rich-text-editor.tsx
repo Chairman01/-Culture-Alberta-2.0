@@ -120,7 +120,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
       console.log('🔧 RichTextEditor: Updating content from prop:', content)
       // Use a timeout to prevent infinite loops
       const timeoutId = setTimeout(() => {
-        editor.commands.setContent(content, { emitUpdate: false }) // prevents emitting update event
+        editor.commands.setContent(content, false) // false prevents emitting update event
       }, 100)
       
       return () => clearTimeout(timeoutId)

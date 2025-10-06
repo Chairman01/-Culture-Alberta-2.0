@@ -138,8 +138,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         website_url: ticketUrl,
         organizer,
         organizer_contact: contactEmail,
-        event_date: startDate ? new Date(startDate).toISOString() : undefined,
-        event_end_date: endDate ? new Date(endDate).toISOString() : undefined,
+        event_date: startDate ? new Date(startDate).toISOString() : null,
+        event_end_date: endDate ? new Date(endDate).toISOString() : null,
       }
 
       console.log("🔧 Updating event with data:", updateData)

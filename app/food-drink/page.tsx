@@ -1,5 +1,9 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { Button } from "@/components/ui/button"
 import { getAllArticles } from "@/lib/articles"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Article } from "@/lib/types/article"
@@ -10,87 +14,135 @@ interface ExtendedArticle extends Article {
   description?: string;
 }
 
-export default async function FoodDrinkPage() {
-  console.log('🔄 Loading Food & Drink articles...')
-  let allArticles: ExtendedArticle[] = []
-  
-  // ROBUST FALLBACK: Try to get articles with error handling
-  try {
-    allArticles = await getAllArticles()
-    console.log(`✅ All articles loaded: ${allArticles.length}`)
-  } catch (error) {
-    console.error('❌ Failed to load articles:', error)
-    // Create fallback content to prevent empty page
-    allArticles = [{
-      id: 'fallback-food-drink',
-      title: 'Welcome to Food & Drink',
-      excerpt: 'Discover the best restaurants, cafes, and culinary experiences across Alberta.',
-      content: 'We\'re working on bringing you amazing food and drink content. Check back soon!',
-      category: 'Food & Drink',
-      categories: ['Food & Drink'],
-      location: 'Alberta',
-      imageUrl: '/images/food-drink-fallback.jpg',
-      author: 'Culture Alberta',
-      date: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      type: 'article',
-      status: 'published'
-    }]
+export default function FoodDrinkPage() {
+  const [articles, setArticles] = useState<ExtendedArticle[]>([])
+  const [featuredArticle, setFeaturedArticle] = useState<ExtendedArticle | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedSort, setSelectedSort] = useState("newest")
+
+  useEffect(() => {
+    loadArticles()
+  }, [])
+
+  const loadArticles = async () => {
+    try {
+      console.log('🔄 Loading Food & Drink articles...')
+      let allArticles: ExtendedArticle[] = []
+      
+      // ROBUST FALLBACK: Try to get articles with error handling
+      try {
+        allArticles = await getAllArticles()
+        console.log(`✅ All articles loaded: ${allArticles.length}`)
+      } catch (error) {
+        console.error('❌ Failed to load articles:', error)
+        // Create fallback content to prevent empty page
+        allArticles = [{
+          id: 'fallback-food-drink',
+          title: 'Welcome to Food & Drink',
+          excerpt: 'Discover the best restaurants, cafes, and culinary experiences across Alberta.',
+          content: 'We\'re working on bringing you amazing food and drink content. Check back soon!',
+          category: 'Food & Drink',
+          categories: ['Food & Drink'],
+          location: 'Alberta',
+          imageUrl: '/images/food-drink-fallback.jpg',
+          author: 'Culture Alberta',
+          date: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          type: 'article',
+          status: 'published'
+        }]
+      }
+      
+      // Filter for food & drink related articles - now supports multiple categories
+      const foodArticles: ExtendedArticle[] = allArticles
+        .filter(article => {
+          // Check main category
+          const hasFoodCategory = article.category?.toLowerCase().includes('food') || 
+                                 article.category?.toLowerCase().includes('drink') ||
+                                 article.category?.toLowerCase().includes('restaurant') ||
+                                 article.category?.toLowerCase().includes('cafe') ||
+                                 article.category?.toLowerCase().includes('brewery') ||
+                                 article.category?.toLowerCase().includes('food & drink');
+          
+          // Check new categories field
+          const hasFoodCategories = article.categories?.some(cat => 
+            cat.toLowerCase().includes('food') || 
+            cat.toLowerCase().includes('drink') ||
+            cat.toLowerCase().includes('restaurant') ||
+            cat.toLowerCase().includes('cafe') ||
+            cat.toLowerCase().includes('brewery') ||
+            cat.toLowerCase().includes('food & drink')
+          );
+          
+          // Check tags
+          const hasFoodTags = article.tags?.some(tag => 
+            tag.toLowerCase().includes('food') || 
+            tag.toLowerCase().includes('drink') ||
+            tag.toLowerCase().includes('restaurant') ||
+            tag.toLowerCase().includes('cafe') ||
+            tag.toLowerCase().includes('brewery') ||
+            tag.toLowerCase().includes('food & drink')
+          );
+          
+          return hasFoodCategory || hasFoodCategories || hasFoodTags;
+        })
+      console.log(`✅ Filtered Food & Drink articles: ${foodArticles.length}`)
+      
+      // Map articles to extended format
+      const processedFoodArticles = foodArticles.map(article => ({
+          ...article,
+          description: article.content,
+          category: article.category || 'Food & Drink',
+          date: article.date || article.createdAt || new Date().toISOString(),
+          imageUrl: article.imageUrl || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(article.title)}`
+        }))
+
+      // Sort articles based on selected sort option
+      processedFoodArticles.sort((a, b) => {
+        if (selectedSort === "newest") {
+          return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+        }
+        return 0
+      })
+
+      // Set featured article (first one)
+      if (processedFoodArticles.length > 0) {
+        setFeaturedArticle(processedFoodArticles[0])
+        setArticles(processedFoodArticles.slice(1)) // Rest of articles
+      } else {
+        setArticles(processedFoodArticles)
+      }
+
+      setIsLoading(false)
+    } catch (error) {
+      console.error('❌ Error loading Food & Drink articles:', error)
+      
+      // CRITICAL: Provide fallback content to prevent empty page
+      console.log('🔄 Setting fallback content to prevent empty page')
+      const fallbackArticle: ExtendedArticle = {
+        id: 'fallback-food-drink-error',
+        title: 'Welcome to Food & Drink',
+        excerpt: 'Discover the best restaurants, cafes, and culinary experiences across Alberta.',
+        content: 'We\'re working on bringing you amazing food and drink content. Check back soon!',
+        category: 'Food & Drink',
+        categories: ['Food & Drink'],
+        location: 'Alberta',
+        imageUrl: '/images/food-drink-fallback.jpg',
+        author: 'Culture Alberta',
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        type: 'article',
+        status: 'published',
+        description: 'We\'re working on bringing you amazing food and drink content. Check back soon!'
+      }
+      
+      setArticles([fallbackArticle])
+      setFeaturedArticle(fallbackArticle)
+      setIsLoading(false)
+    }
   }
-  
-  // Filter for food & drink related articles - now supports multiple categories
-  const foodArticles: ExtendedArticle[] = allArticles
-    .filter(article => {
-      // Check main category
-      const hasFoodCategory = article.category?.toLowerCase().includes('food') || 
-                             article.category?.toLowerCase().includes('drink') ||
-                             article.category?.toLowerCase().includes('restaurant') ||
-                             article.category?.toLowerCase().includes('cafe') ||
-                             article.category?.toLowerCase().includes('brewery') ||
-                             article.category?.toLowerCase().includes('food & drink');
-      
-      // Check new categories field
-      const hasFoodCategories = article.categories?.some(cat => 
-        cat.toLowerCase().includes('food') || 
-        cat.toLowerCase().includes('drink') ||
-        cat.toLowerCase().includes('restaurant') ||
-        cat.toLowerCase().includes('cafe') ||
-        cat.toLowerCase().includes('brewery') ||
-        cat.toLowerCase().includes('food & drink')
-      );
-      
-      // Check tags
-      const hasFoodTags = article.tags?.some(tag => 
-        tag.toLowerCase().includes('food') || 
-        tag.toLowerCase().includes('drink') ||
-        tag.toLowerCase().includes('restaurant') ||
-        tag.toLowerCase().includes('cafe') ||
-        tag.toLowerCase().includes('brewery') ||
-        tag.toLowerCase().includes('food & drink')
-      );
-      
-      return hasFoodCategory || hasFoodCategories || hasFoodTags;
-    })
-  console.log(`✅ Filtered Food & Drink articles: ${foodArticles.length}`)
-  
-  // Map articles to extended format
-  const processedFoodArticles = foodArticles.map(article => ({
-      ...article,
-      description: article.content,
-      category: article.category || 'Food & Drink',
-      date: article.date || article.createdAt || new Date().toISOString(),
-      imageUrl: article.imageUrl || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(article.title)}`
-    }))
-
-  // Sort articles by newest first
-  processedFoodArticles.sort((a, b) => {
-    return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
-  })
-
-  // Set featured article (first one) and rest of articles
-  const featuredArticle = processedFoodArticles.length > 0 ? processedFoodArticles[0] : null
-  const articles = processedFoodArticles.length > 0 ? processedFoodArticles.slice(1) : processedFoodArticles
 
   const formatDate = (dateString: string) => {
     try {
@@ -105,6 +157,13 @@ export default async function FoodDrinkPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -159,7 +218,6 @@ export default async function FoodDrinkPage() {
                     fill
                     className="object-cover"
                     priority
-                    loading="lazy"
                   />
                 </div>
               </div>
@@ -176,11 +234,17 @@ export default async function FoodDrinkPage() {
             <div className="space-y-8">
               <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold text-gray-900">Latest Stories</h2>
-                <div className="bg-orange-100 px-3 py-1 rounded-full">
-                  <span className="text-orange-700 font-medium text-sm">
-                    {articles.length} articles
-                  </span>
-                </div>
+                <select 
+                  className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  value={selectedSort}
+                  onChange={(e) => {
+                    setSelectedSort(e.target.value)
+                    loadArticles()
+                  }}
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="popular">Most Popular</option>
+                </select>
               </div>
 
               <div className="grid gap-8">
@@ -194,7 +258,6 @@ export default async function FoodDrinkPage() {
                             alt={article.title}
                             fill
                             className="object-cover"
-                            loading="lazy"
                           />
                         </div>
                         <div className="p-6 space-y-4">

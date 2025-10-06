@@ -1,5 +1,9 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { Button } from "@/components/ui/button"
 import { getAllArticles } from "@/lib/articles"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Article } from "@/lib/types/article"
@@ -10,99 +14,151 @@ interface ExtendedArticle extends Article {
   description?: string;
 }
 
-export default async function CulturePage() {
-  console.log('🔄 Loading Culture articles...')
-  let allArticles: ExtendedArticle[] = []
-  
-  // ROBUST FALLBACK: Try to get articles with error handling
-  try {
-    allArticles = await getAllArticles()
-    console.log(`✅ All articles loaded: ${allArticles.length}`)
-  } catch (error) {
-    console.error('❌ Failed to load articles:', error)
-    // Create fallback content to prevent empty page
-    allArticles = [{
-      id: 'fallback-culture',
-      title: 'Welcome to Culture',
-      excerpt: 'Discover Alberta\'s rich cultural heritage, arts, and community stories.',
-      content: 'We\'re working on bringing you amazing cultural content. Check back soon!',
-      category: 'Culture',
-      categories: ['Culture'],
-      location: 'Alberta',
-      imageUrl: '/images/culture-fallback.jpg',
-      author: 'Culture Alberta',
-      date: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      type: 'article',
-      status: 'published'
-    }]
-  }
-  
-  // Filter for culture related articles
-  const cultureArticles: ExtendedArticle[] = allArticles
-    .filter(article => {
-      // Exclude specific articles that shouldn't be on the Culture page
-      if (article.title?.toLowerCase().includes('edmonton folk music festival') ||
-          article.title?.toLowerCase().includes('edmonton folk festival')) {
-        return false;
+export default function CulturePage() {
+  const [articles, setArticles] = useState<ExtendedArticle[]>([])
+  const [featuredArticle, setFeaturedArticle] = useState<ExtendedArticle | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedCategory, setSelectedCategory] = useState("all")
+
+  useEffect(() => {
+    loadArticles()
+  }, [])
+
+  const loadArticles = async () => {
+    try {
+      console.log('🔄 Loading Culture articles...')
+      let allArticles: ExtendedArticle[] = []
+      
+      // ROBUST FALLBACK: Try to get articles with error handling
+      try {
+        allArticles = await getAllArticles()
+        console.log(`✅ All articles loaded: ${allArticles.length}`)
+      } catch (error) {
+        console.error('❌ Failed to load articles:', error)
+        // Create fallback content to prevent empty page
+        allArticles = [{
+          id: 'fallback-culture',
+          title: 'Welcome to Culture',
+          excerpt: 'Discover Alberta\'s rich cultural heritage, arts, and community stories.',
+          content: 'We\'re working on bringing you amazing cultural content. Check back soon!',
+          category: 'Culture',
+          categories: ['Culture'],
+          location: 'Alberta',
+          imageUrl: '/images/culture-fallback.jpg',
+          author: 'Culture Alberta',
+          date: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          type: 'article',
+          status: 'published'
+        }]
       }
       
-      // Check if article has culture-related categories or tags
-      const hasCultureCategory = article.category?.toLowerCase().includes('culture') || 
-                                article.category?.toLowerCase().includes('art') ||
-                                article.category?.toLowerCase().includes('music') ||
-                                article.category?.toLowerCase().includes('theater') ||
-                                article.category?.toLowerCase().includes('museum') ||
-                                article.category?.toLowerCase().includes('festival') ||
-                                article.category?.toLowerCase().includes('heritage') ||
-                                article.category?.toLowerCase().includes('indigenous') ||
-                                article.category?.toLowerCase().includes('community');
-      
-      // Check if article has culture-related categories in the new categories field
-      const hasCultureCategories = article.categories?.some(cat => 
-        cat.toLowerCase().includes('culture') || 
-        cat.toLowerCase().includes('art') ||
-        cat.toLowerCase().includes('music') ||
-        cat.toLowerCase().includes('theater') ||
-        cat.toLowerCase().includes('museum') ||
-        cat.toLowerCase().includes('festival') ||
-        cat.toLowerCase().includes('heritage') ||
-        cat.toLowerCase().includes('indigenous') ||
-        cat.toLowerCase().includes('community')
-      );
-      
-      // Check if article has culture-related tags
-      const hasCultureTags = article.tags?.some(tag => 
-        tag.toLowerCase().includes('culture') || 
-        tag.toLowerCase().includes('art') ||
-        tag.toLowerCase().includes('music') ||
-        tag.toLowerCase().includes('theater') ||
-        tag.toLowerCase().includes('museum') ||
-        tag.toLowerCase().includes('festival') ||
-        tag.toLowerCase().includes('heritage') ||
-        tag.toLowerCase().includes('indigenous') ||
-        tag.toLowerCase().includes('community')
-      );
-      
-      return hasCultureCategory || hasCultureCategories || hasCultureTags;
-    })
-    .map(article => ({
-      ...article,
-      description: article.content,
-      category: article.category || 'Culture',
-      date: article.date || article.createdAt || new Date().toISOString(),
-      imageUrl: article.imageUrl || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(article.title)}`
-    }))
+      // Filter for culture related articles
+      const cultureArticles: ExtendedArticle[] = allArticles
+        .filter(article => {
+          // Exclude specific articles that shouldn't be on the Culture page
+          if (article.title?.toLowerCase().includes('edmonton folk music festival') ||
+              article.title?.toLowerCase().includes('edmonton folk festival')) {
+            return false;
+          }
+          
+          // Check if article has culture-related categories or tags
+          const hasCultureCategory = article.category?.toLowerCase().includes('culture') || 
+                                    article.category?.toLowerCase().includes('art') ||
+                                    article.category?.toLowerCase().includes('music') ||
+                                    article.category?.toLowerCase().includes('theater') ||
+                                    article.category?.toLowerCase().includes('museum') ||
+                                    article.category?.toLowerCase().includes('festival') ||
+                                    article.category?.toLowerCase().includes('heritage') ||
+                                    article.category?.toLowerCase().includes('indigenous') ||
+                                    article.category?.toLowerCase().includes('community');
+          
+          // Check if article has culture-related categories in the new categories field
+          const hasCultureCategories = article.categories?.some(cat => 
+            cat.toLowerCase().includes('culture') || 
+            cat.toLowerCase().includes('art') ||
+            cat.toLowerCase().includes('music') ||
+            cat.toLowerCase().includes('theater') ||
+            cat.toLowerCase().includes('museum') ||
+            cat.toLowerCase().includes('festival') ||
+            cat.toLowerCase().includes('heritage') ||
+            cat.toLowerCase().includes('indigenous') ||
+            cat.toLowerCase().includes('community')
+          );
+          
+          // Check if article has culture-related tags
+          const hasCultureTags = article.tags?.some(tag => 
+            tag.toLowerCase().includes('culture') || 
+            tag.toLowerCase().includes('art') ||
+            tag.toLowerCase().includes('music') ||
+            tag.toLowerCase().includes('theater') ||
+            tag.toLowerCase().includes('museum') ||
+            tag.toLowerCase().includes('festival') ||
+            tag.toLowerCase().includes('heritage') ||
+            tag.toLowerCase().includes('indigenous') ||
+            tag.toLowerCase().includes('community')
+          );
+          
+          return hasCultureCategory || hasCultureCategories || hasCultureTags;
+        })
+        .map(article => ({
+          ...article,
+          description: article.content,
+          category: article.category || 'Culture',
+          date: article.date || article.createdAt || new Date().toISOString(),
+          imageUrl: article.imageUrl || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(article.title)}`
+        }))
 
-  // Sort by date
-  cultureArticles.sort((a, b) => {
-    return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
-  })
+      // Sort by date
+      cultureArticles.sort((a, b) => {
+        return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+      })
 
-  // Set featured article (first one) and rest of articles
-  const featuredArticle = cultureArticles.length > 0 ? cultureArticles[0] : null
-  const articles = cultureArticles.length > 0 ? cultureArticles.slice(1) : cultureArticles
+      // Set featured article (first one)
+      if (cultureArticles.length > 0) {
+        setFeaturedArticle(cultureArticles[0])
+        setArticles(cultureArticles.slice(1)) // Rest of articles
+      } else {
+        setArticles(cultureArticles)
+      }
+
+      setIsLoading(false)
+    } catch (error) {
+      console.error('❌ Error loading Culture articles:', error)
+      
+      // CRITICAL: Provide fallback content to prevent empty page
+      console.log('🔄 Setting fallback content to prevent empty page')
+      const fallbackArticle: ExtendedArticle = {
+        id: 'fallback-culture-error',
+        title: 'Welcome to Culture',
+        excerpt: 'Discover Alberta\'s rich cultural heritage, arts, and community stories.',
+        content: 'We\'re working on bringing you amazing cultural content. Check back soon!',
+        category: 'Culture',
+        categories: ['Culture'],
+        location: 'Alberta',
+        imageUrl: '/images/culture-fallback.jpg',
+        author: 'Culture Alberta',
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        type: 'article',
+        status: 'published',
+        description: 'We\'re working on bringing you amazing cultural content. Check back soon!'
+      }
+      
+      setArticles([fallbackArticle])
+      setFeaturedArticle(fallbackArticle)
+      setIsLoading(false)
+    }
+  }
+
+  const filterArticlesByCategory = (category: string) => {
+    if (category === "all") return articles
+    return articles.filter(article => 
+      article.category?.toLowerCase().includes(category.toLowerCase())
+    )
+  }
 
   const formatDate = (dateString: string) => {
     try {
@@ -141,6 +197,17 @@ export default async function CulturePage() {
         icon: getCategoryIcon(cat || '')
       }))
     ]
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 border-t-gray-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Discovering Alberta's culture...</p>
+        </div>
+      </div>
+    )
   }
 
   const categories = getUniqueCategories()
@@ -211,7 +278,6 @@ export default async function CulturePage() {
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                     priority
-                    loading="lazy"
                   />
                   <div className="absolute inset-0 bg-black/10"></div>
                   <div className="absolute top-4 left-4">
@@ -265,13 +331,20 @@ export default async function CulturePage() {
               {categories.map((category) => {
                 const IconComponent = category.icon
                 return (
-                  <div
+                  <button
                     key={category.id}
-                    className="group flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm bg-white text-gray-700 border border-gray-200"
+                    onClick={() => setSelectedCategory(category.id)}
+                    className={`group flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+                      selectedCategory === category.id
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                    }`}
                   >
-                    <IconComponent className="w-4 h-4 text-gray-600" />
+                    <IconComponent className={`w-4 h-4 ${
+                      selectedCategory === category.id ? 'text-white' : 'text-gray-600'
+                    }`} />
                     {category.name}
-                  </div>
+                  </button>
                 )
               })}
             </div>
@@ -288,21 +361,21 @@ export default async function CulturePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-1">
-                    All Cultural Stories
+                    {selectedCategory === 'all' ? 'All Cultural Stories' : categories.find(c => c.id === selectedCategory)?.name}
                   </h2>
                   <p className="text-gray-600 text-sm">
-                    {articles.length} stories to explore
+                    {filterArticlesByCategory(selectedCategory).length} stories to explore
                   </p>
                 </div>
                 <div className="bg-gray-100 px-3 py-1 rounded-full">
                   <span className="text-gray-700 font-medium text-sm">
-                    {articles.length} articles
+                    {filterArticlesByCategory(selectedCategory).length} articles
                   </span>
                 </div>
               </div>
 
               <div className="space-y-6">
-                {articles.map((article, index) => {
+                {filterArticlesByCategory(selectedCategory).map((article, index) => {
                   const IconComponent = getCategoryIcon(article.category || '')
                   return (
                     <Link key={article.id} href={getArticleUrl(article)} className="group block">
@@ -314,7 +387,6 @@ export default async function CulturePage() {
                               alt={article.title}
                               fill
                               className="object-cover"
-                              loading="lazy"
                             />
                             <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                           </div>
@@ -363,7 +435,7 @@ export default async function CulturePage() {
                 })}
               </div>
 
-              {articles.length === 0 && (
+              {filterArticlesByCategory(selectedCategory).length === 0 && (
                 <div className="text-center py-16">
                   <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <Sparkles className="w-12 h-12 text-purple-600" />
@@ -445,7 +517,6 @@ export default async function CulturePage() {
                               alt={article.title}
                               fill
                               className="object-cover group-hover:scale-105 transition-transform duration-300"
-                              loading="lazy"
                             />
                           </div>
                           <div className="flex-1 min-w-0">
