@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { getHomepageArticles } from '@/lib/articles'
+import { getHomepageArticlesWithFallback } from '@/lib/fallback-articles'
 import { getAllEvents } from '@/lib/events'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
@@ -15,8 +15,8 @@ export const revalidate = 120 // 2 minutes
 // Server-side data loading for static generation
 async function getHomePageData() {
   try {
-    // Use the optimized homepage articles function for better performance
-    const apiArticles = await getHomepageArticles()
+    // Use the optimized homepage articles function with fallback for better performance
+    const apiArticles = await getHomepageArticlesWithFallback()
     console.log('🔍 DEBUG: getHomepageArticles returned:', apiArticles?.length || 0, 'articles')
     if (apiArticles && apiArticles.length > 0) {
       console.log('🔍 DEBUG: First article:', apiArticles[0].title)

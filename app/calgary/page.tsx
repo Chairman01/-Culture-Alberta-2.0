@@ -1,8 +1,3 @@
-"use client"
-
-import { useEffect, useState } from "react"
-import { getCityArticles, getAllArticles } from "@/lib/articles"
-import { Article } from "@/lib/types/article"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowRight, Calendar, MapPin, Clock } from "lucide-react"
@@ -10,6 +5,11 @@ import NewsletterSignup from "@/components/newsletter-signup"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageSEO } from '@/components/seo/page-seo'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
+import { getCityArticlesWithFallback } from '@/lib/fallback-articles'
+import { Article } from "@/lib/types/article"
+
+// Enable ISR for better performance
+export const revalidate = 120 // 2 minutes
 
 // Extend Article locally to include 'type' for filtering
 interface CalgaryArticle extends Article {
@@ -17,124 +17,89 @@ interface CalgaryArticle extends Article {
   location?: string;
 }
 
-export default function CalgaryPage() {
-  const [articles, setArticles] = useState<CalgaryArticle[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [featureArticle, setFeatureArticle] = useState<CalgaryArticle | null>(null)
-  const [trendingArticles, setTrendingArticles] = useState<CalgaryArticle[]>([])
-  const [upcomingEvents, setUpcomingEvents] = useState<CalgaryArticle[]>([])
-
-  useEffect(() => {
-    async function loadCalgaryArticles() {
-      try {
-        // First try to get city-specific articles
-        let allArticles = await getCityArticles('calgary')
+// Server-side data loading with fallback
+async function getCalgaryData() {
+  try {
+    console.log('🔄 Loading Calgary articles with fallback system...')
+    
+    // Get Calgary articles with fallback to articles.json
+    const calgaryArticles = await getCityArticlesWithFallback('calgary') as CalgaryArticle[]
+    console.log(`✅ Calgary articles loaded: ${calgaryArticles.length}`)
+    
+    // Sort by date (newest first)
+    const sortedArticles = calgaryArticles.sort((a, b) => {
+      const dateA = new Date(a.date || a.createdAt || 0).getTime()
+      const dateB = new Date(b.date || b.createdAt || 0).getTime()
+      return dateB - dateA // Newest first
+    })
+    
+    // Featured article: first article with featuredCalgary flag, or first Calgary article (excluding events) as fallback
+    const featuredArticle = sortedArticles.find(post => post.featuredCalgary === true) || 
+                           sortedArticles.find(post => post.type !== 'event' && post.type !== 'Event') || 
+                           null
+    
+    // Trending: articles marked as trending for Calgary (excluding events)
+    const trendingArticles = sortedArticles
+      .filter(a => a.trendingCalgary === true && a.type !== 'event' && a.type !== 'Event')
+      .slice(0, 4)
+    
+    // Upcoming events: Calgary events only, sorted by date
+    const now = new Date()
+    const calgaryEvents = sortedArticles.filter(
+      (a) => {
+        if (!a.date) return false
         
-        // If no city-specific articles found, fall back to all articles and filter client-side
-        if (allArticles.length === 0) {
-          console.log('No Calgary-specific articles found, falling back to all articles with client-side filtering')
-          const allArticlesData = await getAllArticles()
-          
-          // Filter for Calgary-related articles or general Alberta articles
-          allArticles = allArticlesData.filter((article: any) => {
-            const hasCalgaryCategory = article.category?.toLowerCase().includes('calgary')
-            const hasCalgaryLocation = article.location?.toLowerCase().includes('calgary')
-            const hasCalgaryCategories = article.categories?.some((cat: string) => 
-              cat.toLowerCase().includes('calgary')
-            )
-            const hasCalgaryTags = article.tags?.some((tag: string) => 
-              tag.toLowerCase().includes('calgary')
-            )
-            // Include general Alberta articles if no Calgary-specific articles
-            const isGeneralAlberta = !article.location || article.location.toLowerCase().includes('alberta')
-            
-            return hasCalgaryCategory || hasCalgaryLocation || hasCalgaryCategories || hasCalgaryTags || isGeneralAlberta
-          })
+        // Handle date formats like "August 15 - 17, 2025" or "August 15, 2025"
+        let dateToCheck = a.date
+        if (a.date.includes(' - ')) {
+          // Take the first date from a range
+          dateToCheck = a.date.split(' - ')[0]
         }
         
-        console.log(`Loaded ${allArticles.length} articles for Calgary page`)
-        
-        // Debug: Log all articles to see what we have
-        console.log('All articles from database:', allArticles.map(a => ({ 
-          id: a.id, 
-          title: a.title, 
-          type: a.type, 
-          location: a.location, 
-          category: a.category, 
-          date: a.date 
-        })))
-        
-        // Articles are already filtered by the database query for Calgary
-        const calgaryPosts = allArticles
-        setArticles(calgaryPosts)
-        
-        // Featured article: first article with featuredCalgary flag, or first Calgary article (excluding events) as fallback
-        const featuredArticle = calgaryPosts.find(post => post.featuredCalgary === true) || 
-                               calgaryPosts.find(post => post.type !== 'event' && post.type !== 'Event') || 
-                               null
-        setFeatureArticle(featuredArticle)
-        
-        // Trending: articles marked as trending for Calgary (excluding events)
-        setTrendingArticles(
-          calgaryPosts
-            .filter(a => a.trendingCalgary === true && a.type !== 'event' && a.type !== 'Event')
-            .slice(0, 4)
-        )
-        
-        // Upcoming events: Calgary events only, sorted by date
-        const now = new Date()
-        const calgaryEvents = calgaryPosts.filter(
-          (a) => {
-            if (!a.date) return false
-            
-            // Handle date formats like "August 15 - 17, 2025" or "August 15, 2025"
-            let dateToCheck = a.date
-            if (a.date.includes(' - ')) {
-              // Take the first date from a range
-              dateToCheck = a.date.split(' - ')[0]
-            }
-            
-            try {
-              const eventDate = new Date(dateToCheck)
-              return eventDate > now
-            } catch (error) {
-              console.warn('Could not parse date:', a.date, error)
-              return false
-            }
-          }
-        ).sort((a, b) => {
-          // Sort by date, handling date ranges
-          const getDate = (dateStr: string) => {
-            if (!dateStr) return new Date(0)
-            let dateToCheck = dateStr
-            if (dateStr.includes(' - ')) {
-              dateToCheck = dateStr.split(' - ')[0]
-            }
-            try {
-              return new Date(dateToCheck)
-            } catch {
-              return new Date(0)
-            }
-          }
-          return getDate(a.date || '').getTime() - getDate(b.date || '').getTime()
-        })
-        
-        // Debug logging for events
-        console.log('All Calgary posts:', calgaryPosts.map(p => ({ id: p.id, title: p.title, type: p.type, location: p.location, category: p.category, date: p.date })))
-        console.log('Calgary events found:', calgaryEvents.map(e => ({ id: e.id, title: e.title, location: e.location, date: e.date })))
-        
-        setUpcomingEvents(calgaryEvents.slice(0, 3))
-      } catch (error) {
-        console.error("Error loading Calgary articles:", error)
-      } finally {
-        setIsLoading(false)
+        try {
+          const eventDate = new Date(dateToCheck)
+          return eventDate > now
+        } catch (error) {
+          console.warn('Could not parse date:', a.date, error)
+          return false
+        }
       }
+    ).sort((a, b) => {
+      // Sort by date, handling date ranges
+      const getDate = (dateStr: string) => {
+        if (!dateStr) return new Date(0)
+        let dateToCheck = dateStr
+        if (dateStr.includes(' - ')) {
+          dateToCheck = dateStr.split(' - ')[0]
+        }
+        try {
+          return new Date(dateToCheck)
+        } catch {
+          return new Date(0)
+        }
+      }
+      return getDate(a.date || '').getTime() - getDate(b.date || '').getTime()
+    })
+    
+    return {
+      articles: sortedArticles,
+      featuredArticle,
+      trendingArticles,
+      upcomingEvents: calgaryEvents.slice(0, 3)
     }
-    loadCalgaryArticles()
-  }, [])
+  } catch (error) {
+    console.error('❌ Error loading Calgary data:', error)
+    return {
+      articles: [],
+      featuredArticle: null,
+      trendingArticles: [],
+      upcomingEvents: []
+    }
+  }
+}
 
-  useEffect(() => {
-  }, [])
+export default async function CalgaryPage() {
+  const { articles, featuredArticle, trendingArticles, upcomingEvents } = await getCalgaryData()
 
   const formatDate = (dateString: string) => {
     try {
@@ -166,14 +131,6 @@ export default function CalgaryPage() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
-      </div>
-    )
-  }
-
   return (
     <>
       <PageSEO
@@ -201,13 +158,13 @@ export default function CalgaryPage() {
             <div className="container mx-auto px-4 md:px-6">
               <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
                 {/* Feature Article (left) */}
-                {featureArticle && (
+                {featuredArticle && (
                   <div className="w-full">
-                    <Link href={getArticleUrl(featureArticle)} className="group block">
+                    <Link href={getArticleUrl(featuredArticle)} className="group block">
                       <div className="aspect-[16/9] rounded-lg overflow-hidden bg-gray-200">
                         <Image
-                          src={featureArticle.imageUrl || "/placeholder.svg"}
-                          alt={featureArticle.title}
+                          src={featuredArticle.imageUrl || "/placeholder.svg"}
+                          alt={featuredArticle.title}
                           width={800}
                           height={500}
                           className="w-full h-full object-cover"
@@ -216,12 +173,12 @@ export default function CalgaryPage() {
                       <div className="mt-3">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="bg-red-500 text-white px-2 py-1 text-xs rounded">Featured</span>
-                          <span className="text-sm text-gray-500">Posted {formatDate(featureArticle.date || '')}</span>
+                          <span className="text-sm text-gray-500">Posted {formatDate(featuredArticle.date || '')}</span>
                         </div>
                         <h2 className="text-2xl font-bold leading-tight tracking-tighter md:text-3xl lg:text-4xl group-hover:text-red-600">
-                          {featureArticle.title}
+                          {featuredArticle.title}
                         </h2>
-                        <p className="mt-2 text-gray-600">{featureArticle.excerpt}</p>
+                        <p className="mt-2 text-gray-600">{featuredArticle.excerpt}</p>
                       </div>
                     </Link>
                   </div>
