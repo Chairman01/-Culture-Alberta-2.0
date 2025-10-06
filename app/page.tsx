@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { getHomepageArticles } from '@/lib/articles'
+import { getAllEvents } from '@/lib/events'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { PageSEO } from '@/components/seo/page-seo'
 import { Article } from '@/lib/types/article'
 import { BestOfSection } from '@/components/best-of-section'
-import { getArticleUrl } from '@/lib/utils/article-url'
+import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
 // Enable ISR for better performance
 export const revalidate = 120 // 2 minutes
@@ -20,7 +21,44 @@ async function getHomePageData() {
     if (apiArticles && apiArticles.length > 0) {
       console.log('🔍 DEBUG: First article:', apiArticles[0].title)
     }
-    const allPosts = apiArticles
+    
+    // Also get events from the events table
+    let events: any[] = []
+    try {
+      events = await getAllEvents()
+      console.log('🔍 DEBUG: getAllEvents returned:', events?.length || 0, 'events')
+    } catch (error) {
+      console.error('❌ Error fetching events:', error)
+      events = [] // Fallback to empty array
+    }
+    
+    // Convert events to article format for consistent handling
+    const eventAsArticles = events.map(event => ({
+      id: event.id,
+      title: event.title,
+      excerpt: event.excerpt || event.description || '',
+      content: event.description || '',
+      category: 'Events', // Mark as Events category
+      categories: ['Events'], // Add to categories array
+      location: event.location,
+      author: event.organizer || 'Event Organizer',
+      imageUrl: event.image_url,
+      date: event.event_date,
+      createdAt: event.created_at,
+      updatedAt: event.updated_at,
+      status: event.status,
+      trendingHome: event.featured_home || false,
+      trendingEdmonton: event.featured_edmonton || false,
+      trendingCalgary: event.featured_calgary || false,
+      featuredHome: event.featured_home || false,
+      featuredEdmonton: event.featured_edmonton || false,
+      featuredCalgary: event.featured_calgary || false,
+      type: 'event'
+    }))
+    
+    // Combine articles and events
+    const allPosts = [...apiArticles, ...eventAsArticles]
+    console.log('🔍 DEBUG: Combined posts (articles + events):', allPosts.length)
     
     // Simple approach: Use all posts for all sections, filter by categories
     const allPostsForFiltering = allPosts
@@ -193,15 +231,44 @@ export default async function HomeStatic() {
   // SIMPLE CATEGORY-BASED FILTERING for Food & Drink
   const foodDrinkPosts = sortedPosts.filter(post => {
     // Check if article has "Food & Drink" in category or categories array
-    const hasFoodCategory = post.category?.toLowerCase().includes('food') || 
-                           post.category?.toLowerCase().includes('drink');
-    const hasFoodInCategories = post.categories?.some((cat: string) => 
-      cat.toLowerCase().includes('food') ||
-      cat.toLowerCase().includes('drink')
-    );
+    const category = post.category?.toLowerCase() || '';
+    const categories = post.categories || [];
+    const title = post.title?.toLowerCase() || '';
     
-    return hasFoodCategory || hasFoodInCategories;
-  }).slice(0, 3)
+    // Check for exact match or contains food/drink
+    const hasFoodCategory = category.includes('food & drink') || 
+                           category.includes('food') || 
+                           category.includes('drink');
+    
+    const hasFoodInCategories = categories.some((cat: string) => {
+      const catLower = cat.toLowerCase();
+      return catLower.includes('food & drink') ||
+             catLower.includes('food') ||
+             catLower.includes('drink');
+    });
+    
+    // Also check title for food-related keywords (fallback for missing categories)
+    const hasFoodInTitle = title.includes('restaurant') || 
+                          title.includes('sushi') || 
+                          title.includes('food') ||
+                          title.includes('romantic') ||
+                          title.includes('dining') ||
+                          title.includes('cafe') ||
+                          title.includes('bar') ||
+                          title.includes('drink');
+    
+    const isFoodDrink = hasFoodCategory || hasFoodInCategories || hasFoodInTitle;
+    
+    // Debug logging for each post
+    if (post.title?.toLowerCase().includes('restaurant') || 
+        post.title?.toLowerCase().includes('sushi') || 
+        post.title?.toLowerCase().includes('food') ||
+        post.title?.toLowerCase().includes('romantic')) {
+      console.log(`🔍 FOOD DEBUG: "${post.title}" - category: "${post.category}", categories: [${categories.join(', ')}], hasFoodInTitle: ${hasFoodInTitle}, isFoodDrink: ${isFoodDrink}, date: ${post.date || post.createdAt}`)
+    }
+    
+    return isFoodDrink;
+  }).slice(0, 3) // Take the first 3 (which should be the newest since sortedPosts is already sorted by date)
   
   // SIMPLE CATEGORY-BASED FILTERING for Events
   const eventPosts = sortedPosts.filter(post => {
@@ -243,6 +310,20 @@ export default async function HomeStatic() {
   
   console.log('Food & Drink posts found:', foodDrinkPosts.length)
   console.log('Food & Drink posts:', foodDrinkPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
+  
+  // Debug: Check all posts with food/drink related content
+  console.log('DEBUG: All posts with food/drink keywords:')
+  sortedPosts.forEach((post, index) => {
+    const title = post.title?.toLowerCase() || '';
+    const category = post.category?.toLowerCase() || '';
+    const categories = post.categories?.map(c => c.toLowerCase()) || [];
+    
+    if (title.includes('food') || title.includes('restaurant') || title.includes('sushi') || 
+        title.includes('drink') || category.includes('food') || category.includes('drink') ||
+        categories.some(c => c.includes('food') || c.includes('drink'))) {
+      console.log(`  ${index}: "${post.title}" - category: "${post.category}", categories: [${categories.join(', ')}]`)
+    }
+  })
   
   console.log('Events found:', eventPosts.length)
   console.log('Events:', eventPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
@@ -453,7 +534,7 @@ export default async function HomeStatic() {
                         </div>
                         <h3 className="font-display font-bold text-xl leading-tight mb-2">{getPostTitle(event)}</h3>
                         <p className="font-body text-sm text-gray-600 line-clamp-2 mb-3">{getPostExcerpt(event)}</p>
-                        <Link href={getArticleUrl(event)}>
+                        <Link href={getEventUrl(event)}>
                           <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
                             View Details
                 </button>

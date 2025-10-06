@@ -6,14 +6,14 @@ import { clearArticlesCache } from '@/lib/fast-articles'
 // API endpoint to sync articles from Supabase to local file
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔄 Webhook triggered: Syncing articles from Supabase...')
+    console.log('🔄 Webhook triggered: Syncing articles and events from Supabase...')
     
     // Supabase configuration
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
     const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
     
     // Fetch articles from Supabase
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*`, {
+    const articlesResponse = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -21,12 +21,28 @@ export async function POST(request: NextRequest) {
       }
     })
     
-    if (!response.ok) {
-      throw new Error(`Supabase request failed: ${response.status} ${response.statusText}`)
+    if (!articlesResponse.ok) {
+      throw new Error(`Supabase articles request failed: ${articlesResponse.status} ${articlesResponse.statusText}`)
     }
     
-    const articles = await response.json()
+    const articles = await articlesResponse.json()
     console.log(`✅ Fetched ${articles.length} articles from Supabase`)
+
+    // Fetch events from Supabase
+    const eventsResponse = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (!eventsResponse.ok) {
+      throw new Error(`Supabase events request failed: ${eventsResponse.status} ${eventsResponse.statusText}`)
+    }
+    
+    const events = await eventsResponse.json()
+    console.log(`✅ Fetched ${events.length} events from Supabase`)
     
     // Transform articles to match our interface
     const transformedArticles = articles.map((article: any) => ({
@@ -54,6 +70,43 @@ export async function POST(request: NextRequest) {
       featuredEdmonton: article.featured_edmonton || false,
       featuredCalgary: article.featured_calgary || false
     }))
+
+    // Transform events to match our interface (as articles)
+    const transformedEvents = events.map((event: any) => ({
+      id: event.id,
+      title: event.title,
+      content: event.description || '',
+      excerpt: event.excerpt || event.description?.substring(0, 150) + '...' || '',
+      category: event.category,
+      categories: [event.category],
+      location: event.location,
+      author: event.organizer || 'Event Organizer',
+      tags: event.tags || [],
+      type: 'event',
+      status: event.status || 'published',
+      imageUrl: event.image_url,
+      date: event.event_date || event.created_at,
+      createdAt: event.created_at,
+      updatedAt: event.updated_at,
+      // Trending flags
+      trendingHome: event.featured_home || false,
+      trendingEdmonton: event.featured_edmonton || false,
+      trendingCalgary: event.featured_calgary || false,
+      // Featured flags
+      featuredHome: event.featured_home || false,
+      featuredEdmonton: event.featured_edmonton || false,
+      featuredCalgary: event.featured_calgary || false,
+      // Event-specific fields
+      eventDate: event.event_date,
+      eventEndDate: event.event_end_date,
+      websiteUrl: event.website_url,
+      organizer: event.organizer,
+      organizerContact: event.organizer_contact
+    }))
+
+    // Combine articles and events
+    const allContent = [...transformedArticles, ...transformedEvents]
+    console.log(`✅ Combined ${transformedArticles.length} articles and ${transformedEvents.length} events into ${allContent.length} total items`)
     
     // Check if we're in production (Vercel) or development
     const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
@@ -62,8 +115,8 @@ export async function POST(request: NextRequest) {
     let fileWritten = false
     try {
       const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
-      await fs.writeFile(articlesPath, JSON.stringify(transformedArticles, null, 2))
-      console.log(`💾 Updated articles.json with ${transformedArticles.length} articles`)
+      await fs.writeFile(articlesPath, JSON.stringify(allContent, null, 2))
+      console.log(`💾 Updated articles.json with ${allContent.length} total items (${transformedArticles.length} articles + ${transformedEvents.length} events)`)
       fileWritten = true
       
       // Clear fast cache to force reload
@@ -91,11 +144,12 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ 
       success: true, 
-      message: `Synced ${transformedArticles.length} articles${fileWritten ? ' to local file' : ''} and triggered page revalidation`,
+      message: `Synced ${transformedArticles.length} articles and ${transformedEvents.length} events${fileWritten ? ' to local file' : ''} and triggered page revalidation`,
       timestamp: new Date().toISOString(),
       environment: isProduction ? 'production' : 'development',
       fileWritten,
-      articlesCount: transformedArticles.length,
+      articlesCount: allContent.length,
+      eventsCount: transformedEvents.length,
       downloadUrl: '/api/sync-articles/download'
     })
     
@@ -111,13 +165,14 @@ export async function POST(request: NextRequest) {
 // GET endpoint to manually trigger sync
 export async function GET() {
   try {
-    console.log('🔄 Manual sync triggered...')
+    console.log('🔄 Manual sync triggered: Syncing articles and events...')
     
     // Same logic as POST but triggered manually
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
     const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
     
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*`, {
+    // Fetch articles from Supabase
+    const articlesResponse = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -125,11 +180,28 @@ export async function GET() {
       }
     })
     
-    if (!response.ok) {
-      throw new Error(`Supabase request failed: ${response.status} ${response.statusText}`)
+    if (!articlesResponse.ok) {
+      throw new Error(`Supabase articles request failed: ${articlesResponse.status} ${articlesResponse.statusText}`)
     }
     
-    const articles = await response.json()
+    const articles = await articlesResponse.json()
+    console.log(`✅ Fetched ${articles.length} articles from Supabase`)
+
+    // Fetch events from Supabase
+    const eventsResponse = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (!eventsResponse.ok) {
+      throw new Error(`Supabase events request failed: ${eventsResponse.status} ${eventsResponse.statusText}`)
+    }
+    
+    const events = await eventsResponse.json()
+    console.log(`✅ Fetched ${events.length} events from Supabase`)
     
     const transformedArticles = articles.map((article: any) => ({
       id: article.id,
@@ -154,6 +226,43 @@ export async function GET() {
       featuredEdmonton: article.featured_edmonton || false,
       featuredCalgary: article.featured_calgary || false
     }))
+
+    // Transform events to match our interface (as articles)
+    const transformedEvents = events.map((event: any) => ({
+      id: event.id,
+      title: event.title,
+      content: event.description || '',
+      excerpt: event.excerpt || event.description?.substring(0, 150) + '...' || '',
+      category: event.category,
+      categories: [event.category],
+      location: event.location,
+      author: event.organizer || 'Event Organizer',
+      tags: event.tags || [],
+      type: 'event',
+      status: event.status || 'published',
+      imageUrl: event.image_url,
+      date: event.event_date || event.created_at,
+      createdAt: event.created_at,
+      updatedAt: event.updated_at,
+      // Trending flags
+      trendingHome: event.featured_home || false,
+      trendingEdmonton: event.featured_edmonton || false,
+      trendingCalgary: event.featured_calgary || false,
+      // Featured flags
+      featuredHome: event.featured_home || false,
+      featuredEdmonton: event.featured_edmonton || false,
+      featuredCalgary: event.featured_calgary || false,
+      // Event-specific fields
+      eventDate: event.event_date,
+      eventEndDate: event.event_end_date,
+      websiteUrl: event.website_url,
+      organizer: event.organizer,
+      organizerContact: event.organizer_contact
+    }))
+
+    // Combine articles and events
+    const allContent = [...transformedArticles, ...transformedEvents]
+    console.log(`✅ Combined ${transformedArticles.length} articles and ${transformedEvents.length} events into ${allContent.length} total items`)
     
     // Check if we're in production (Vercel) or development
     const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
@@ -162,8 +271,8 @@ export async function GET() {
     let fileWritten = false
     try {
       const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
-      await fs.writeFile(articlesPath, JSON.stringify(transformedArticles, null, 2))
-      console.log(`💾 Updated articles.json with ${transformedArticles.length} articles`)
+      await fs.writeFile(articlesPath, JSON.stringify(allContent, null, 2))
+      console.log(`💾 Updated articles.json with ${allContent.length} total items (${transformedArticles.length} articles + ${transformedEvents.length} events)`)
       fileWritten = true
       
       // Clear fast cache to force reload
@@ -191,11 +300,12 @@ export async function GET() {
     
     return NextResponse.json({ 
       success: true, 
-      message: `Synced ${transformedArticles.length} articles${fileWritten ? ' to local file' : ''} and triggered page revalidation`,
+      message: `Synced ${transformedArticles.length} articles and ${transformedEvents.length} events${fileWritten ? ' to local file' : ''} and triggered page revalidation`,
       timestamp: new Date().toISOString(),
       environment: isProduction ? 'production' : 'development',
       fileWritten,
-      articlesCount: transformedArticles.length,
+      articlesCount: allContent.length,
+      eventsCount: transformedEvents.length,
       downloadUrl: '/api/sync-articles/download'
     })
     

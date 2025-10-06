@@ -38,23 +38,28 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
   
   // If it's HTML, render it directly with proper styling
   if (isHTML) {
+    // Use React.useMemo to ensure consistent rendering between server and client
+    const processedContent = React.useMemo(() => {
+      return processContentWithVideos(content)
+        .replace(/<ul>/g, '<ul class="space-y-2 mb-6">')
+        .replace(/<ol>/g, '<ol class="space-y-2 mb-6">')
+        .replace(/<li>/g, '<li class="flex items-start text-gray-700 leading-relaxed"><span class="text-blue-600 mr-2 mt-1 flex-shrink-0">•</span><span class="flex-1">')
+        .replace(/<\/li>/g, '</span></li>')
+        .replace(/<blockquote>/g, '<blockquote class="border-l-4 border-blue-500 pl-6 py-4 my-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-r-lg">')
+        .replace(/<p>/g, '<p class="mb-6 leading-relaxed text-gray-700 text-lg">')
+        .replace(/<strong>/g, '<strong class="font-semibold text-gray-900">')
+        .replace(/<em>/g, '<em class="italic text-gray-800">')
+        .replace(/<img([^>]*)>/g, '<img$1 class="rounded-lg shadow-lg my-8 max-w-full h-auto">')
+        .replace(/<span style="font-family:([^"]+)"/g, '<span style="font-family:$1"')
+        .replace(/<span style="font-size:([^"]+)"/g, '<span style="font-size:$1"')
+        .replace(/<div class="video-container">/g, '<div class="video-container my-8 rounded-lg overflow-hidden shadow-lg">')
+    }, [content])
+
     return (
       <div 
         className={`article-content prose prose-lg max-w-none ${className}`}
         dangerouslySetInnerHTML={{ 
-          __html: processContentWithVideos(content)
-            .replace(/<ul>/g, '<ul class="space-y-2 mb-6">')
-            .replace(/<ol>/g, '<ol class="space-y-2 mb-6">')
-            .replace(/<li>/g, '<li class="flex items-start text-gray-700 leading-relaxed"><span class="text-blue-600 mr-2 mt-1 flex-shrink-0">•</span><span class="flex-1">')
-            .replace(/<\/li>/g, '</span></li>')
-            .replace(/<blockquote>/g, '<blockquote class="border-l-4 border-blue-500 pl-6 py-4 my-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-r-lg">')
-            .replace(/<p>/g, '<p class="mb-6 leading-relaxed text-gray-700 text-lg">')
-            .replace(/<strong>/g, '<strong class="font-semibold text-gray-900">')
-            .replace(/<em>/g, '<em class="italic text-gray-800">')
-            .replace(/<img([^>]*)>/g, '<img$1 class="rounded-lg shadow-lg my-8 max-w-full h-auto">')
-            .replace(/<span style="font-family:([^"]+)"/g, '<span style="font-family:$1"')
-            .replace(/<span style="font-size:([^"]+)"/g, '<span style="font-size:$1"')
-            .replace(/<div class="video-container">/g, '<div class="video-container my-8 rounded-lg overflow-hidden shadow-lg">')
+          __html: processedContent
         }}
       />
     )

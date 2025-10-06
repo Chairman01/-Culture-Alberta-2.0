@@ -9,7 +9,7 @@ import { PageSEO } from '@/components/seo/page-seo'
 import { Article } from '@/lib/types/article'
 import { Suspense, useState, useEffect } from 'react'
 import { BestOfSection } from '@/components/best-of-section'
-import { getArticleUrl } from '@/lib/utils/article-url'
+import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { HomepageLoading } from '@/components/page-loading'
 
 // Client-side data loading
@@ -20,10 +20,38 @@ function useHomePageData() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null
+    
     async function loadData() {
       try {
         setIsLoading(true)
         setError(null)
+        
+        // Add timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
+          console.warn('⚠️ Homepage loading timeout - forcing fallback content')
+          setPosts([{
+            id: 'timeout-fallback',
+            title: 'Welcome to Culture Alberta',
+            excerpt: 'Discover the best of Alberta\'s culture, events, and experiences.',
+            content: 'Welcome to Culture Alberta! We\'re working on bringing you amazing content.',
+            category: 'Culture',
+            categories: ['Culture'],
+            location: 'Alberta',
+            imageUrl: '/images/culture-alberta-og.jpg',
+            author: 'Culture Alberta',
+            date: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            featuredHome: true,
+            trendingHome: true,
+            type: 'article',
+            status: 'published',
+            tags: ['Alberta', 'Culture', 'Welcome']
+          }])
+          setEvents([])
+          setIsLoading(false)
+        }, 10000) // 10 second timeout
         
         // Use the optimized homepage articles function for better performance
         // Add cache-busting to ensure fresh data
@@ -65,6 +93,7 @@ function useHomePageData() {
           setEvents(eventPosts)
         }
       } catch (err) {
+        if (timeoutId) clearTimeout(timeoutId) // Clear timeout on error
         console.error("Error loading posts:", err)
         setError(err instanceof Error ? err.message : 'Failed to load articles')
         
@@ -94,6 +123,7 @@ function useHomePageData() {
         setPosts(fallbackPosts)
         setEvents([])
       } finally {
+        if (timeoutId) clearTimeout(timeoutId) // Clear timeout in finally block
         setIsLoading(false)
       }
     }
@@ -465,7 +495,7 @@ export default function Home() {
                         </div>
                         <h3 className="font-display font-bold text-xl leading-tight mb-2">{getPostTitle(event)}</h3>
                         <p className="font-body text-sm text-gray-600 line-clamp-2 mb-3">{getPostExcerpt(event)}</p>
-                        <Link href={getArticleUrl(event)}>
+                        <Link href={getEventUrl(event)}>
                           <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
                             View Details
                 </button>

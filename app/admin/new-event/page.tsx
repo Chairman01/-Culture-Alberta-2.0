@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
+import { SimpleTextEditor } from "@/app/admin/components/simple-text-editor"
 import { useToast } from "@/hooks/use-toast"
-import { createArticle } from "@/lib/articles"
+import { createEvent } from "@/lib/events"
 
 export default function NewEventPage() {
   const { toast } = useToast()
@@ -20,9 +21,12 @@ export default function NewEventPage() {
 
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState("")
-  const [type, setType] = useState("event") // Default to event type
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
+  const [startMonth, setStartMonth] = useState("")
+  const [startDay, setStartDay] = useState("")
+  const [startYear, setStartYear] = useState("")
+  const [endMonth, setEndMonth] = useState("")
+  const [endDay, setEndDay] = useState("")
+  const [endYear, setEndYear] = useState("")
   const [location, setLocation] = useState("")
   const [description, setDescription] = useState("")
   const [imageUrl, setImageUrl] = useState("")
@@ -62,10 +66,10 @@ export default function NewEventPage() {
       return
     }
 
-    if (!startDate) {
+    if (!startMonth || !startDay || !startYear) {
       toast({
         title: "Missing date",
-        description: "Please enter a start date for your event.",
+        description: "Please select month, day, and year for your event.",
         variant: "destructive",
       })
       return
@@ -80,27 +84,50 @@ export default function NewEventPage() {
       return
     }
 
+    if (!description) {
+      toast({
+        title: "Missing description",
+        description: "Please enter a description for your event.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    console.log('🎯 Starting event creation with data:', {
+      title, category, startMonth, startDay, startYear, location, description,
+      ticketUrl, organizer, contactEmail, contactPhone
+    })
+
     setIsSaving(true)
 
     try {
-      // Format the date range
-      const formattedDate = endDate ? `${startDate} - ${endDate}` : startDate
+      // Build date strings from dropdowns
+      const startDateString = `${startYear}-${startMonth.padStart(2, '0')}-${startDay.padStart(2, '0')}`
+      const endDateString = endMonth && endDay && endYear ? 
+        `${endYear}-${endMonth.padStart(2, '0')}-${endDay.padStart(2, '0')}` : null
 
-      // Create a new event object using the articles system
+      // Create a new event object for the events table
       const newEvent = {
         title,
-        content: description,
+        description,
         excerpt: description.substring(0, 150) + (description.length > 150 ? '...' : ''),
         category: category.charAt(0).toUpperCase() + category.slice(1),
-        type: type, // Use the selected type
         location,
-        author: organizer || 'Event Organizer',
-        imageUrl: imageUrl || '/placeholder.svg',
-        status: 'published'
+        organizer: organizer || 'Event Organizer',
+        organizer_contact: contactEmail || contactPhone || '',
+        event_date: new Date(startDateString).toISOString(), // Convert to ISO format
+        event_end_date: endDateString ? new Date(endDateString).toISOString() : undefined,
+        image_url: imageUrl || '/placeholder.svg',
+        website_url: ticketUrl || '',
+        status: 'published' as const
       }
+      
+      console.log('📝 Creating event with data:', newEvent)
 
-      // Save to the articles system
-      const savedEvent = await createArticle(newEvent)
+      // Save to the events table
+      console.log('🚀 Calling createEvent...')
+      const savedEvent = await createEvent(newEvent)
+      console.log('✅ createEvent result:', savedEvent)
       console.log("New event saved:", savedEvent)
 
       toast({
@@ -108,8 +135,8 @@ export default function NewEventPage() {
         description: "Your event has been created successfully.",
       })
 
-      // Redirect back to admin articles list to see the new event
-      router.push('/admin/articles')
+      // Redirect back to admin events list to see the new event
+      router.push('/admin/events')
     } catch (error) {
       console.error("Error creating event:", error)
       toast({
@@ -161,22 +188,7 @@ export default function NewEventPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="type">Content Type</Label>
-                  <Select value={type} onValueChange={setType}>
-                    <SelectTrigger id="type">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="event">Event</SelectItem>
-                      <SelectItem value="article">Article</SelectItem>
-                      <SelectItem value="news">News</SelectItem>
-                      <SelectItem value="guide">Guide</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
                   <Select value={category} onValueChange={setCategory}>
@@ -207,36 +219,122 @@ export default function NewEventPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="start-date">Start Date</Label>
-                  <Input
-                    id="start-date"
-                    placeholder="May 15, 2025"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
+                  <Label>Start Date</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Select value={startMonth} onValueChange={setStartMonth}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">January</SelectItem>
+                        <SelectItem value="2">February</SelectItem>
+                        <SelectItem value="3">March</SelectItem>
+                        <SelectItem value="4">April</SelectItem>
+                        <SelectItem value="5">May</SelectItem>
+                        <SelectItem value="6">June</SelectItem>
+                        <SelectItem value="7">July</SelectItem>
+                        <SelectItem value="8">August</SelectItem>
+                        <SelectItem value="9">September</SelectItem>
+                        <SelectItem value="10">October</SelectItem>
+                        <SelectItem value="11">November</SelectItem>
+                        <SelectItem value="12">December</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={startDay} onValueChange={setStartDay}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Day" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 31 }, (_, i) => (
+                          <SelectItem key={i + 1} value={String(i + 1)}>
+                            {i + 1}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={startYear} onValueChange={setStartYear}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 10 }, (_, i) => {
+                          const year = new Date().getFullYear() + i
+                          return (
+                            <SelectItem key={year} value={String(year)}>
+                              {year}
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="end-date">End Date (Optional)</Label>
-                  <Input
-                    id="end-date"
-                    placeholder="May 17, 2025"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
+                  <Label>End Date (Optional)</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Select value={endMonth} onValueChange={setEndMonth}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">January</SelectItem>
+                        <SelectItem value="2">February</SelectItem>
+                        <SelectItem value="3">March</SelectItem>
+                        <SelectItem value="4">April</SelectItem>
+                        <SelectItem value="5">May</SelectItem>
+                        <SelectItem value="6">June</SelectItem>
+                        <SelectItem value="7">July</SelectItem>
+                        <SelectItem value="8">August</SelectItem>
+                        <SelectItem value="9">September</SelectItem>
+                        <SelectItem value="10">October</SelectItem>
+                        <SelectItem value="11">November</SelectItem>
+                        <SelectItem value="12">December</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={endDay} onValueChange={setEndDay}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Day" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 31 }, (_, i) => (
+                          <SelectItem key={i + 1} value={String(i + 1)}>
+                            {i + 1}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={endYear} onValueChange={setEndYear}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 10 }, (_, i) => {
+                          const year = new Date().getFullYear() + i
+                          return (
+                            <SelectItem key={year} value={String(year)}>
+                              {year}
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Describe your event"
-                  className="resize-none h-32"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                <SimpleTextEditor
+                  content={description}
+                  onChange={setDescription}
+                  placeholder="Write your event description here..."
                 />
               </div>
 

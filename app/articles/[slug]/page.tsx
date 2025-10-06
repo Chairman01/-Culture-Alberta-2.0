@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { Calendar, Clock, Share2, Bookmark, ArrowLeft, ArrowRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -10,6 +10,7 @@ import { createSlug } from '@/lib/utils/slug'
 import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { ArticleSEO } from '@/components/seo/article-seo'
+import { getAllEvents, getEventBySlug } from '@/lib/events'
 // import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
 
 // Function to process content and convert YouTube URLs to embedded videos
@@ -194,6 +195,24 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         console.log('---')
       })
       
+      // Check if this might be an event instead of an article
+      console.log('🔍 Article not found, checking if it might be an event...')
+      try {
+        const allEvents = await getAllEvents()
+        const eventSlug = createSlug(slug)
+        
+        for (const event of allEvents) {
+          const eventSlugFromTitle = createSlug(event.title)
+          if (eventSlugFromTitle === eventSlug) {
+            console.log(`🎯 Found matching event: ${event.title}`)
+            console.log(`🎯 Redirecting to: /events/${eventSlug}`)
+            redirect(`/events/${eventSlug}`)
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to check events:', error)
+      }
+      
       notFound()
     }
     
@@ -222,6 +241,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     try {
       // Try to get homepage articles first (they're usually cached and faster)
       const homepageArticles = await getAllArticles()
+      console.log('🔍 Homepage articles loaded:', homepageArticles.length)
       
       if (homepageArticles.length > 0) {
         // Use cached homepage articles for better performance
@@ -233,14 +253,33 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           .filter(a => a.id !== loadedArticle.id && a.category !== loadedArticle.category)
           .slice(0, 3)
         
+        console.log('🔍 Same category articles:', sameCategory.length)
+        console.log('🔍 Other category articles:', otherArticles.length)
+        
         // Combine and shuffle to show diverse content
         relatedArticles = [...sameCategory, ...otherArticles]
           .sort(() => Math.random() - 0.5)
           .slice(0, 6)
+        
+        console.log('🔍 Final related articles:', relatedArticles.length)
       }
     } catch (error) {
       console.warn('Failed to load related articles, using empty array:', error)
       relatedArticles = []
+    }
+
+    // Fallback: if no related articles, load some recent articles
+    if (relatedArticles.length === 0) {
+      try {
+        console.log('🔍 No related articles found, loading fallback articles...')
+        const fallbackArticles = await getAllArticles()
+        relatedArticles = fallbackArticles
+          .filter(a => a.id !== loadedArticle.id && a.status === 'published')
+          .slice(0, 6)
+        console.log('🔍 Fallback articles loaded:', relatedArticles.length)
+      } catch (error) {
+        console.warn('Failed to load fallback articles:', error)
+      }
     }
 
     const formatDate = (dateString: string) => {
@@ -305,34 +344,48 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 className="bg-blue-600 h-1 rounded-full transition-all duration-300 ease-out" 
                 style={{ width: '0%' }} 
                 id="header-reading-progress"
+                suppressHydrationWarning={true}
               ></div>
             </div>
           </div>
         </div>
 
-        {/* Reading Progress Script */}
+        {/* Reading Progress Script - Client Side Only */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              window.addEventListener('scroll', function() {
-                const article = document.querySelector('.article-content');
-                if (!article) return;
+              (function() {
+                if (typeof window === 'undefined') return;
                 
-                const articleTop = article.offsetTop;
-                const articleHeight = article.offsetHeight;
-                const scrollTop = window.pageYOffset;
-                
-                let progress = 0;
-                if (scrollTop >= articleTop) {
-                  const scrolled = Math.min(scrollTop - articleTop, articleHeight);
-                  progress = Math.min((scrolled / articleHeight) * 100, 100);
+                // Wait for DOM to be ready
+                if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', initReadingProgress);
+                } else {
+                  initReadingProgress();
                 }
                 
-                const progressBar = document.getElementById('header-reading-progress');
-                if (progressBar) {
-                  progressBar.style.width = progress + '%';
+                function initReadingProgress() {
+                  window.addEventListener('scroll', function() {
+                    const article = document.querySelector('.article-content');
+                    if (!article) return;
+                    
+                    const articleTop = article.offsetTop;
+                    const articleHeight = article.offsetHeight;
+                    const scrollTop = window.pageYOffset;
+                    
+                    let progress = 0;
+                    if (scrollTop >= articleTop) {
+                      const scrolled = Math.min(scrollTop - articleTop, articleHeight);
+                      progress = Math.min((scrolled / articleHeight) * 100, 100);
+                    }
+                    
+                    const progressBar = document.getElementById('header-reading-progress');
+                    if (progressBar) {
+                      progressBar.style.width = progress + '%';
+                    }
+                  });
                 }
-              });
+              })();
             `
           }}
         />

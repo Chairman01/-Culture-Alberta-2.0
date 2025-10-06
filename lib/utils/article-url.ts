@@ -38,6 +38,16 @@ export function getArticleUrlByTitle(title: string): string {
 }
 
 /**
+ * Generates SEO-friendly event URL using title
+ * @param event - The event object
+ * @returns The event URL path
+ */
+export function getEventUrl(event: { id: string; title: string }): string {
+  const urlTitle = titleToUrl(event.title)
+  return `/events/${urlTitle}`
+}
+
+/**
  * Extracts title from URL path
  * @param path - The URL path (e.g., "/articles/best-restaurants-in-edmonton")
  * @returns The original title (approximate)

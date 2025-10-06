@@ -10,51 +10,63 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
+import { SimpleTextEditor } from "@/app/admin/components/simple-text-editor"
 import { useToast } from "@/hooks/use-toast"
+import { getEventById, updateEvent } from "@/lib/events"
+import { Event } from "@/lib/types/event"
 
 export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState<string>("")
-  
+  const [event, setEvent] = useState<Event | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
+
   // Handle async params
   useEffect(() => {
     params.then(({ id: paramId }) => setId(paramId))
   }, [params])
-  // In a real application, you would fetch the event data based on the ID
-  // For now, we'll use sample data
-  const events = [
-    {
-      id: "1",
-      title: "Alberta Heritage Festival",
-      description:
-        "A celebration of Alberta's diverse cultural heritage featuring music, dance, food, and crafts from over 100 cultural groups.",
-      date: "May 15-17, 2025",
-      location: "Edmonton, AB",
-      category: "Festival",
-      image: "/placeholder.svg?height=400&width=600&text=Heritage+Festival",
-    },
-    {
-      id: "2",
-      title: "Indigenous Art Exhibition",
-      description:
-        "Showcasing contemporary works by indigenous artists from across the province, exploring themes of identity, land, and reconciliation.",
-      date: "June 1-30, 2025",
-      location: "Calgary, AB",
-      category: "Art",
-      image: "/placeholder.svg?height=400&width=600&text=Indigenous+Art",
-    },
-  ]
 
-  const event = events.find((e) => e.id === id) || events[0]
-  const { toast } = useToast()
+  // Fetch event data when ID is available
+  useEffect(() => {
+    if (id) {
+      loadEvent()
+    }
+  }, [id])
 
-  const [title, setTitle] = useState(event.title)
-  const [category, setCategory] = useState(event.category.toLowerCase())
-  const [type, setType] = useState("event") // Default to event type
+  const loadEvent = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      console.log('Loading event with ID:', id)
+      
+      const eventData = await getEventById(id)
+      
+      if (!eventData) {
+        setError('Event not found')
+        return
+      }
+      
+      setEvent(eventData)
+      console.log('Loaded event:', eventData)
+    } catch (err) {
+      console.error('Error loading event:', err)
+      setError('Failed to load event')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Form state - initialize with empty values, will be populated when event loads
+  const [title, setTitle] = useState("")
+  const [category, setCategory] = useState("")
+  const [type, setType] = useState("event")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
-  const [location, setLocation] = useState(event.location)
-  const [description, setDescription] = useState(event.description)
-  const [imageUrl, setImageUrl] = useState(event.image || "")
+  const [location, setLocation] = useState("")
+  const [description, setDescription] = useState("")
+  const [excerpt, setExcerpt] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [ticketUrl, setTicketUrl] = useState("")
@@ -62,18 +74,30 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [contactEmail, setContactEmail] = useState("")
   const [contactPhone, setContactPhone] = useState("")
 
-  // Parse the date range on component mount
+  // Update form fields when event data loads
   useEffect(() => {
-    if (event.date) {
-      const dateRange = event.date.split("-")
-      if (dateRange.length === 2) {
-        setStartDate(dateRange[0].trim())
-        setEndDate(dateRange[1].trim())
-      } else {
-        setStartDate(event.date)
+    if (event) {
+      setTitle(event.title || "")
+      setCategory(event.category?.toLowerCase() || "")
+      setLocation(event.location || "")
+      setDescription(event.description || "")
+      setExcerpt(event.excerpt || "")
+      setImageUrl(event.image_url || "")
+      setTicketUrl(event.website_url || "")
+      setOrganizer(event.organizer || "")
+      setContactEmail(event.organizer_contact || "")
+      
+      // Parse event dates
+      if (event.event_date) {
+        const startDate = new Date(event.event_date)
+        setStartDate(startDate.toISOString().split('T')[0])
+      }
+      if (event.event_end_date) {
+        const endDate = new Date(event.event_end_date)
+        setEndDate(endDate.toISOString().split('T')[0])
       }
     }
-  }, [event.date])
+  }, [event])
 
   const handleImageSelect = (url: string) => {
     setImageUrl(url)
@@ -86,46 +110,65 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   }
 
   const handleSave = async () => {
+    console.log('🔧 handleSave called')
+    console.log('🔧 Event ID:', event?.id)
+    console.log('🔧 Current form data:', { title, category, location, description, excerpt })
+    
+    if (!event) {
+      console.error('❌ No event data available')
+      toast({
+        title: "Error",
+        description: "No event data available to update.",
+        variant: "destructive",
+      })
+      return
+    }
+    
     setIsSaving(true)
 
     try {
-      // Format the date range
-      const formattedDate = endDate ? `${startDate} - ${endDate}` : startDate
-
-      // Update our local data
-      const updatedEvent = {
-        ...event,
+      // Prepare the update data
+      const updateData = {
         title,
         category: category.charAt(0).toUpperCase() + category.slice(1),
-        type: type, // Include the type field
-        date: formattedDate,
         location,
         description,
-        image: imageUrl,
-        ticketUrl,
+        excerpt: excerpt || description.substring(0, 150) + (description.length > 150 ? '...' : ''), // Use manual excerpt or auto-generate
+        image_url: imageUrl,
+        website_url: ticketUrl,
         organizer,
-        contactEmail,
-        contactPhone,
+        organizer_contact: contactEmail,
+        event_date: startDate ? new Date(startDate).toISOString() : null,
+        event_end_date: endDate ? new Date(endDate).toISOString() : null,
       }
 
-      // Actually save to the database
-      const { updateArticle } = await import('@/lib/articles')
-      await updateArticle(event.id, updatedEvent)
+      console.log("🔧 Updating event with data:", updateData)
 
-      console.log("Updated event:", updatedEvent)
+      // Update the event in the database
+      console.log('🔧 Calling updateEvent...')
+      const updatedEvent = await updateEvent(event.id, updateData)
+      console.log('🔧 updateEvent result:', updatedEvent)
 
-      toast({
-        title: "Event updated",
-        description: "Your event has been updated successfully.",
-      })
+      if (updatedEvent) {
+        console.log('✅ Event updated successfully')
+        setEvent(updatedEvent)
+        toast({
+          title: "Event updated",
+          description: "Your event has been updated successfully.",
+        })
+      } else {
+        console.error('❌ updateEvent returned null/undefined')
+        throw new Error('Failed to update event - no data returned')
+      }
     } catch (error) {
-      console.error("Error saving event:", error)
+      console.error("❌ Error saving event:", error)
       toast({
         title: "Error saving event",
-        description: "There was a problem saving your event.",
+        description: `Failed to update the event: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       })
     } finally {
+      console.log('🔧 Setting isSaving to false')
       setIsSaving(false)
     }
   }
@@ -142,7 +185,10 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline">Save as Draft</Button>
-            <Button onClick={handleSave} disabled={isSaving}>
+            <Button onClick={() => {
+              console.log('🔧 Update Event button clicked!')
+              handleSave()
+            }} disabled={isSaving}>
               {isSaving ? (
                 <>Saving...</>
               ) : (
@@ -158,7 +204,29 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         <div className="max-w-3xl mx-auto space-y-8">
           <div>
             <h1 className="text-3xl font-bold mb-6">Edit Event</h1>
-            <div className="space-y-4">
+            
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                <span className="ml-2">Loading event...</span>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <div className="text-red-600 mb-4">
+                  <h3 className="text-lg font-semibold">Error Loading Event</h3>
+                  <p className="text-sm">{error}</p>
+                </div>
+                <Button onClick={loadEvent} variant="outline">
+                  Try Again
+                </Button>
+              </div>
+            ) : !event ? (
+              <div className="text-center py-12">
+                <h3 className="text-lg font-semibold mb-2">Event Not Found</h3>
+                <p className="text-muted-foreground">The event you're looking for doesn't exist.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Event Title</Label>
                 <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -219,12 +287,25 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="resize-none h-32"
+                <SimpleTextEditor
+                  content={description.replace(/<[^>]*>/g, '')} // Strip HTML for editing
+                  onChange={setDescription}
+                  placeholder="Write your event description here..."
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="excerpt">Excerpt (Short Summary)</Label>
+                <Textarea
+                  id="excerpt"
+                  value={excerpt}
+                  onChange={(e) => setExcerpt(e.target.value)}
+                  placeholder="Enter a short summary for event cards (optional - will auto-generate from description if empty)"
+                  className="resize-none h-20"
+                />
+                <p className="text-sm text-muted-foreground">
+                  This appears on event cards and listings. Leave empty to auto-generate from description.
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -303,15 +384,19 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-2">
-                <Button variant="outline" asChild>
-                  <Link href="/admin">Cancel</Link>
-                </Button>
-                <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? "Saving..." : "Save Changes"}
-                </Button>
+                <div className="pt-4 flex justify-end gap-2">
+                  <Button variant="outline" asChild>
+                    <Link href="/admin">Cancel</Link>
+                  </Button>
+                  <Button onClick={() => {
+                    console.log('🔧 Save Changes button clicked!')
+                    handleSave()
+                  }} disabled={isSaving}>
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </main>

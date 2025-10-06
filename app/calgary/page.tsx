@@ -9,7 +9,7 @@ import { ArrowRight, Calendar, MapPin, Clock } from "lucide-react"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageSEO } from '@/components/seo/page-seo'
-import { getArticleUrl } from '@/lib/utils/article-url'
+import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
 // Extend Article locally to include 'type' for filtering
 interface CalgaryArticle extends Article {
@@ -277,7 +277,7 @@ export default function CalgaryPage() {
                        {upcomingEvents.map((event) => (
                          <Link
                            key={`event-${event.id}`}
-                           href={getArticleUrl(event)}
+                           href={getEventUrl(event)}
                            className="block group"
                          >
                            <h4 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 mb-1">{event.title}</h4>

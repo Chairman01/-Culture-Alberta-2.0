@@ -1,6 +1,3 @@
-"use client"
-
-import { useEffect, useState } from "react"
 import { getCityArticles, getAllArticles } from "@/lib/articles"
 import { Article } from "@/lib/types/article"
 
@@ -10,9 +7,7 @@ import { ArrowRight, Calendar, MapPin } from "lucide-react"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageSEO } from '@/components/seo/page-seo'
-import { PageTracker } from '@/components/analytics/page-tracker'
-import { trackLocationView } from '@/lib/analytics'
-import { getArticleUrl } from '@/lib/utils/article-url'
+import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
 // Extend Article locally to include 'type' for filtering
 interface EdmontonArticle extends Article {
@@ -20,207 +15,164 @@ interface EdmontonArticle extends Article {
   location?: string;
 }
 
-export default function EdmontonPage() {
-  const [articles, setArticles] = useState<EdmontonArticle[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [featureArticle, setFeatureArticle] = useState<EdmontonArticle | null>(null)
-  const [trendingArticles, setTrendingArticles] = useState<EdmontonArticle[]>([])
-  const [upcomingEvents, setUpcomingEvents] = useState<EdmontonArticle[]>([])
-
-  useEffect(() => {
-    async function loadEdmontonArticles() {
+export default async function EdmontonPage() {
+  console.log('🔄 Loading Edmonton articles...')
+  let allArticles: EdmontonArticle[] = []
+  
+  // ROBUST FALLBACK: Try multiple approaches to get articles
+  try {
+    // First try to get city-specific articles
+    allArticles = await getCityArticles('edmonton') as EdmontonArticle[]
+    console.log(`✅ City-specific articles loaded: ${allArticles.length}`)
+  } catch (cityError) {
+    console.warn('⚠️ City-specific articles failed, trying fallback...', cityError)
+  }
+  
+  // If no city-specific articles found, fall back to all articles and filter
+  if (allArticles.length === 0) {
+    console.log('🔄 No Edmonton-specific articles found, falling back to all articles with filtering')
+    try {
+      const allArticlesData = await getAllArticles()
+      console.log(`✅ All articles loaded: ${allArticlesData.length}`)
+      
+      // Filter for Edmonton-related articles only
+      allArticles = allArticlesData.filter((article: any) => {
+        const hasEdmontonCategory = article.category?.toLowerCase().includes('edmonton')
+        const hasEdmontonLocation = article.location?.toLowerCase().includes('edmonton')
+        const hasEdmontonCategories = article.categories?.some((cat: string) => 
+          cat.toLowerCase().includes('edmonton')
+        )
+        const hasEdmontonTags = article.tags?.some((tag: string) => 
+          tag.toLowerCase().includes('edmonton')
+        )
+        const hasEdmontonInTitle = article.title?.toLowerCase().includes('edmonton')
+        
+        return hasEdmontonCategory || hasEdmontonLocation || hasEdmontonCategories || hasEdmontonTags || hasEdmontonInTitle
+      }) as EdmontonArticle[]
+      console.log(`✅ Filtered Edmonton articles: ${allArticles.length}`)
+    } catch (fallbackError) {
+      console.error('❌ Fallback articles failed:', fallbackError)
+      // Create fallback content to prevent empty page
+      allArticles = [{
+        id: 'fallback-edmonton',
+        title: 'Welcome to Edmonton',
+        excerpt: 'Discover the latest news, events, and stories from Alberta\'s capital city.',
+        content: 'We\'re working on bringing you amazing Edmonton content. Check back soon!',
+        category: 'Edmonton',
+        categories: ['Edmonton'],
+        location: 'Edmonton',
+        imageUrl: '/images/edmonton-fallback.jpg',
+        author: 'Culture Alberta',
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        type: 'article',
+        status: 'published'
+      }]
+    }
+  }
+  
+  console.log(`Loaded ${allArticles.length} articles for Edmonton page`)
+  
+  // Debug: Show all Edmonton articles with their dates
+  console.log('🔍 Edmonton articles found:', allArticles.map(article => ({
+    id: article.id,
+    title: article.title,
+    category: article.category,
+    location: article.location,
+    date: article.date || article.createdAt,
+    type: article.type
+  })))
+  
+  // Sort by date (newest first) to ensure latest articles appear first
+  const edmontonPosts = allArticles.sort((a, b) => {
+    const dateA = new Date(a.date || a.createdAt || 0).getTime()
+    const dateB = new Date(b.date || b.createdAt || 0).getTime()
+    return dateB - dateA // Newest first
+  })
+  
+  // Debug: Show sorted articles
+  console.log('🔍 Sorted Edmonton articles (newest first):', edmontonPosts.slice(0, 5).map(article => ({
+    id: article.id,
+    title: article.title,
+    date: article.date || article.createdAt,
+    category: article.category
+  })))
+  
+  // Featured article: first article with featuredEdmonton flag, or first Edmonton article (excluding events) as fallback
+  const featuredArticle = edmontonPosts.find(post => post.featuredEdmonton === true) || 
+                         edmontonPosts.find(post => post.type !== 'event' && post.type !== 'Event') || 
+                         null
+  
+  // Debug logging
+  console.log('All Edmonton posts:', edmontonPosts.map(p => ({ id: p.id, title: p.title, featuredEdmonton: p.featuredEdmonton, type: p.type })))
+  console.log('Selected featured article:', featuredArticle ? { id: featuredArticle.id, title: featuredArticle.title, featuredEdmonton: featuredArticle.featuredEdmonton, type: featuredArticle.type } : 'None')
+  
+  // Trending: articles marked as trending for Edmonton (excluding events)
+  const trendingArticles = edmontonPosts
+    .filter(a => a.trendingEdmonton === true && a.type !== 'event' && a.type !== 'Event')
+    .slice(0, 4)
+  
+  // Upcoming events: Edmonton events only, sorted by date
+  const now = new Date()
+  console.log('Current date:', now.toISOString())
+  
+  // First, get all events (regardless of date)
+  const allEdmontonEvents = edmontonPosts.filter(
+    (a) => (a.type === 'event' || a.type === 'Event')
+  )
+  console.log('All Edmonton events (before date filter):', allEdmontonEvents.map(e => ({ 
+    id: e.id, 
+    title: e.title, 
+    type: e.type, 
+    date: e.date,
+    dateString: e.date,
+    hasDate: !!e.date,
+    isFuture: e.date ? new Date(e.date) > now : false
+  })))
+  
+  // Then filter for future events
+  const edmontonEvents = allEdmontonEvents.filter(
+    (a) => {
+      if (!a.date) return false
+      
+      // Handle date formats like "August 15 - 17, 2025" or "August 15, 2025"
+      let dateToCheck = a.date
+      if (a.date.includes(' - ')) {
+        // Take the first date from a range
+        dateToCheck = a.date.split(' - ')[0]
+      }
+      
       try {
-        console.log('🔄 Loading Edmonton articles...')
-        let allArticles: EdmontonArticle[] = []
-        
-        // ROBUST FALLBACK: Try multiple approaches to get articles
-        try {
-          // First try to get city-specific articles
-          allArticles = await getCityArticles('edmonton') as EdmontonArticle[]
-          console.log(`✅ City-specific articles loaded: ${allArticles.length}`)
-        } catch (cityError) {
-          console.warn('⚠️ City-specific articles failed, trying fallback...', cityError)
-        }
-        
-        // If no city-specific articles found, fall back to all articles and filter client-side
-        if (allArticles.length === 0) {
-          console.log('🔄 No Edmonton-specific articles found, falling back to all articles with client-side filtering')
-          try {
-            const allArticlesData = await getAllArticles()
-            console.log(`✅ All articles loaded: ${allArticlesData.length}`)
-            
-            // Filter for Edmonton-related articles or general Alberta articles
-            allArticles = allArticlesData.filter((article: any) => {
-              const hasEdmontonCategory = article.category?.toLowerCase().includes('edmonton')
-              const hasEdmontonLocation = article.location?.toLowerCase().includes('edmonton')
-              const hasEdmontonCategories = article.categories?.some((cat: string) => 
-                cat.toLowerCase().includes('edmonton')
-              )
-              const hasEdmontonTags = article.tags?.some((tag: string) => 
-                tag.toLowerCase().includes('edmonton')
-              )
-              // Include general Alberta articles if no Edmonton-specific articles
-              const isGeneralAlberta = !article.location || article.location.toLowerCase().includes('alberta')
-              
-              return hasEdmontonCategory || hasEdmontonLocation || hasEdmontonCategories || hasEdmontonTags || isGeneralAlberta
-            }) as EdmontonArticle[]
-            console.log(`✅ Filtered Edmonton articles: ${allArticles.length}`)
-          } catch (fallbackError) {
-            console.error('❌ Fallback articles failed:', fallbackError)
-            // Create fallback content to prevent empty page
-            allArticles = [{
-              id: 'fallback-edmonton',
-              title: 'Welcome to Edmonton',
-              excerpt: 'Discover the latest news, events, and stories from Alberta\'s capital city.',
-              content: 'We\'re working on bringing you amazing Edmonton content. Check back soon!',
-              category: 'Edmonton',
-              categories: ['Edmonton'],
-              location: 'Edmonton',
-              imageUrl: '/images/edmonton-fallback.jpg',
-              author: 'Culture Alberta',
-              date: new Date().toISOString(),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              type: 'article',
-              status: 'published'
-            }]
-          }
-        }
-        
-        console.log(`Loaded ${allArticles.length} articles for Edmonton page`)
-        
-        // Sort by date (newest first) to ensure latest articles appear first
-        const edmontonPosts = allArticles.sort((a, b) => {
-          const dateA = new Date(a.date || a.createdAt || 0).getTime()
-          const dateB = new Date(b.date || b.createdAt || 0).getTime()
-          return dateB - dateA // Newest first
-        })
-        
-        setArticles(edmontonPosts)
-        
-        // Featured article: first article with featuredEdmonton flag, or first Edmonton article (excluding events) as fallback
-        const featuredArticle = edmontonPosts.find(post => post.featuredEdmonton === true) || 
-                               edmontonPosts.find(post => post.type !== 'event' && post.type !== 'Event') || 
-                               null
-        
-        // Debug logging
-        console.log('All Edmonton posts:', edmontonPosts.map(p => ({ id: p.id, title: p.title, featuredEdmonton: p.featuredEdmonton, type: p.type })))
-        console.log('Selected featured article:', featuredArticle ? { id: featuredArticle.id, title: featuredArticle.title, featuredEdmonton: featuredArticle.featuredEdmonton, type: featuredArticle.type } : 'None')
-        
-        setFeatureArticle(featuredArticle)
-        
-        // Trending: articles marked as trending for Edmonton (excluding events)
-        setTrendingArticles(
-          edmontonPosts
-            .filter(a => a.trendingEdmonton === true && a.type !== 'event' && a.type !== 'Event')
-            .slice(0, 4)
-        )
-        
-        // Upcoming events: Edmonton events only, sorted by date
-        const now = new Date()
-        console.log('Current date:', now.toISOString())
-        
-        // First, get all events (regardless of date)
-        const allEdmontonEvents = edmontonPosts.filter(
-          (a) => (a.type === 'event' || a.type === 'Event')
-        )
-        console.log('All Edmonton events (before date filter):', allEdmontonEvents.map(e => ({ 
-          id: e.id, 
-          title: e.title, 
-          type: e.type, 
-          date: e.date,
-          dateString: e.date,
-          hasDate: !!e.date,
-          isFuture: e.date ? new Date(e.date) > now : false
-        })))
-        
-        // Then filter for future events
-        const edmontonEvents = allEdmontonEvents.filter(
-          (a) => {
-            if (!a.date) return false
-            
-            // Handle date formats like "August 15 - 17, 2025" or "August 15, 2025"
-            let dateToCheck = a.date
-            if (a.date.includes(' - ')) {
-              // Take the first date from a range
-              dateToCheck = a.date.split(' - ')[0]
-            }
-            
-            try {
-              const eventDate = new Date(dateToCheck)
-              return eventDate > now
-            } catch (error) {
-              console.warn('Could not parse date:', a.date, error)
-              return false
-            }
-          }
-        ).sort((a, b) => {
-          // Sort by date, handling date ranges
-          const getDate = (dateStr: string) => {
-            if (!dateStr) return new Date(0)
-            let dateToCheck = dateStr
-            if (dateStr.includes(' - ')) {
-              dateToCheck = dateStr.split(' - ')[0]
-            }
-            try {
-              return new Date(dateToCheck)
-            } catch {
-              return new Date(0)
-            }
-          }
-          return getDate(a.date || '').getTime() - getDate(b.date || '').getTime()
-        })
-        
-        // Debug logging for events
-        console.log('All Edmonton posts:', edmontonPosts.map(p => ({ id: p.id, title: p.title, type: p.type, location: p.location, category: p.category, date: p.date })))
-        console.log('Edmonton events found (after date filter):', edmontonEvents.map(e => ({ id: e.id, title: e.title, location: e.location, date: e.date })))
-        
-        setUpcomingEvents(edmontonEvents.slice(0, 3))
+        const eventDate = new Date(dateToCheck)
+        return eventDate > now
       } catch (error) {
-        console.error("❌ Error loading Edmonton articles:", error)
-        
-        // Provide more specific error handling
-        if (error instanceof Error) {
-          if (error.message === 'Loading timeout') {
-            console.log('⏰ Loading timed out, but this is normal if Supabase is slow')
-          } else {
-            console.log('🚨 Other error occurred:', error.message)
-          }
-        }
-        
-        // CRITICAL: Provide fallback content to prevent empty page
-        console.log('🔄 Setting fallback content to prevent empty page')
-        const fallbackArticle: EdmontonArticle = {
-          id: 'fallback-edmonton-error',
-          title: 'Welcome to Edmonton',
-          excerpt: 'Discover the latest news, events, and stories from Alberta\'s capital city.',
-          content: 'We\'re working on bringing you amazing Edmonton content. Check back soon!',
-          category: 'Edmonton',
-          categories: ['Edmonton'],
-          location: 'Edmonton',
-          imageUrl: '/images/edmonton-fallback.jpg',
-          author: 'Culture Alberta',
-          date: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          type: 'article',
-          status: 'published'
-        }
-        
-        setArticles([fallbackArticle])
-        setFeatureArticle(fallbackArticle)
-        setTrendingArticles([fallbackArticle])
-        setUpcomingEvents([])
-      } finally {
-        setIsLoading(false)
+        console.warn('Could not parse date:', a.date, error)
+        return false
       }
     }
-    loadEdmontonArticles()
-  }, [])
-
-  useEffect(() => {
-    trackLocationView('edmonton')
-  }, [])
+  ).sort((a, b) => {
+    // Sort by date, handling date ranges
+    const getDate = (dateStr: string) => {
+      if (!dateStr) return new Date(0)
+      let dateToCheck = dateStr
+      if (dateStr.includes(' - ')) {
+        dateToCheck = dateStr.split(' - ')[0]
+      }
+      try {
+        return new Date(dateToCheck)
+      } catch {
+        return new Date(0)
+      }
+    }
+    return getDate(a.date || '').getTime() - getDate(b.date || '').getTime()
+  })
+  
+  // Debug logging for events
+  console.log('All Edmonton posts:', edmontonPosts.map(p => ({ id: p.id, title: p.title, type: p.type, location: p.location, category: p.category, date: p.date })))
+  console.log('Edmonton events found (after date filter):', edmontonEvents.map(e => ({ id: e.id, title: e.title, location: e.location, date: e.date })))
+  
+  const upcomingEvents = edmontonEvents.slice(0, 3)
 
   const formatDate = (dateString: string) => {
     try {
@@ -252,21 +204,12 @@ export default function EdmontonPage() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
-      </div>
-    )
-  }
-
   return (
     <>
       <PageSEO
         title="Edmonton - Culture Alberta"
         description="Discover the latest news, events, and stories from Alberta's capital city. Explore Edmonton's vibrant neighborhoods, cultural venues, and outdoor activities."
       />
-      <PageTracker title="Edmonton - Culture Alberta" />
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Header Section */}
@@ -288,27 +231,28 @@ export default function EdmontonPage() {
             <div className="container mx-auto px-4 md:px-6">
               <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
                 {/* Feature Article (left) */}
-                {featureArticle && (
+                {featuredArticle && (
                   <div className="w-full">
-                    <Link href={getArticleUrl(featureArticle)} className="group block">
+                    <Link href={getArticleUrl(featuredArticle)} className="group block">
                       <div className="aspect-[16/9] rounded-lg overflow-hidden bg-gray-200">
                         <Image
-                          src={featureArticle.imageUrl || "/placeholder.svg"}
-                          alt={featureArticle.title}
+                          src={featuredArticle.imageUrl || "/placeholder.svg"}
+                          alt={featuredArticle.title}
                           width={800}
                           height={500}
+                          loading="lazy"
                           className="w-full h-full object-cover"
                         />
                       </div>
                       <div className="mt-3">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="bg-red-500 text-white px-2 py-1 text-xs rounded">Featured</span>
-                          <span className="text-sm text-gray-500">Posted {formatDate(featureArticle.date || '')}</span>
+                          <span className="text-sm text-gray-500">Posted {formatDate(featuredArticle.date || '')}</span>
                         </div>
                         <h2 className="text-2xl font-bold leading-tight tracking-tighter md:text-3xl lg:text-4xl group-hover:text-blue-600">
-                          {featureArticle.title}
+                          {featuredArticle.title}
                         </h2>
-                        <p className="mt-2 text-gray-600">{featureArticle.excerpt}</p>
+                        <p className="mt-2 text-gray-600">{featuredArticle.excerpt}</p>
                       </div>
                     </Link>
                   </div>
@@ -338,7 +282,7 @@ export default function EdmontonPage() {
                         ))
                       ) : (
                         // Fallback: show recent Edmonton articles if no trending articles
-                        articles.slice(0, 3).map((article, index) => (
+                        edmontonPosts.slice(0, 3).map((article, index) => (
                           <Link
                             key={`recent-${article.id}-${index}`}
                             href={getArticleUrl(article)}
@@ -364,7 +308,7 @@ export default function EdmontonPage() {
                        {upcomingEvents.map((event) => (
                          <Link
                            key={`event-${event.id}`}
-                           href={getArticleUrl(event)}
+                           href={getEventUrl(event)}
                            className="block group"
                          >
                            <h4 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 mb-1">{event.title}</h4>
@@ -414,7 +358,7 @@ export default function EdmontonPage() {
 
                 <TabsContent value="all" className="mt-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {articles.slice(0, 3).map((article) => (
+                    {edmontonPosts.slice(0, 3).map((article) => (
                       <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[4/3] w-full bg-gray-200">
@@ -423,6 +367,7 @@ export default function EdmontonPage() {
                               alt={article.title}
                               width={400}
                               height={300}
+                              loading="lazy"
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -440,13 +385,13 @@ export default function EdmontonPage() {
                       </Link>
                     ))}
                   </div>
-                  {articles.length > 3 && (
+                  {edmontonPosts.length > 3 && (
                     <div className="mt-6 text-center">
                       <Link 
                         href="/edmonton/all-articles" 
                         className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                       >
-                        View All Edmonton Articles ({articles.length})
+                        View All Edmonton Articles ({edmontonPosts.length})
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
@@ -455,7 +400,7 @@ export default function EdmontonPage() {
 
                 <TabsContent value="food" className="mt-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {articles.filter((article) => article.category?.toLowerCase().includes('food')).slice(0, 3).map((article) => (
+                    {edmontonPosts.filter((article) => article.category?.toLowerCase().includes('food')).slice(0, 3).map((article) => (
                       <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[4/3] w-full bg-gray-200">
@@ -464,6 +409,7 @@ export default function EdmontonPage() {
                               alt={article.title}
                               width={400}
                               height={300}
+                              loading="lazy"
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -481,13 +427,13 @@ export default function EdmontonPage() {
                       </Link>
                     ))}
                   </div>
-                  {articles.filter((article) => article.category?.toLowerCase().includes('food')).length > 3 && (
+                  {edmontonPosts.filter((article) => article.category?.toLowerCase().includes('food')).length > 3 && (
                     <div className="mt-6 text-center">
                       <Link 
                         href="/edmonton/food-drink" 
                         className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                       >
-                        View All Food & Drink Articles ({articles.filter((article) => article.category?.toLowerCase().includes('food')).length})
+                        View All Food & Drink Articles ({edmontonPosts.filter((article) => article.category?.toLowerCase().includes('food')).length})
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
@@ -496,7 +442,7 @@ export default function EdmontonPage() {
 
                 <TabsContent value="arts" className="mt-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {articles.filter((article) => article.category?.toLowerCase().includes('art')).slice(0, 3).map((article) => (
+                    {edmontonPosts.filter((article) => article.category?.toLowerCase().includes('art')).slice(0, 3).map((article) => (
                       <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[4/3] w-full bg-gray-200">
@@ -505,6 +451,7 @@ export default function EdmontonPage() {
                               alt={article.title}
                               width={400}
                               height={300}
+                              loading="lazy"
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -522,13 +469,13 @@ export default function EdmontonPage() {
                       </Link>
                     ))}
                   </div>
-                  {articles.filter((article) => article.category?.toLowerCase().includes('art')).length > 3 && (
+                  {edmontonPosts.filter((article) => article.category?.toLowerCase().includes('art')).length > 3 && (
                     <div className="mt-6 text-center">
                       <Link 
                         href="/edmonton/arts-culture" 
                         className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                       >
-                        View All Arts & Culture Articles ({articles.filter((article) => article.category?.toLowerCase().includes('art')).length})
+                        View All Arts & Culture Articles ({edmontonPosts.filter((article) => article.category?.toLowerCase().includes('art')).length})
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
@@ -537,7 +484,7 @@ export default function EdmontonPage() {
 
                 <TabsContent value="outdoors" className="mt-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).slice(0, 3).map((article) => (
+                    {edmontonPosts.filter((article) => article.category?.toLowerCase().includes('outdoor')).slice(0, 3).map((article) => (
                       <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[4/3] w-full bg-gray-200">
@@ -546,6 +493,7 @@ export default function EdmontonPage() {
                               alt={article.title}
                               width={400}
                               height={300}
+                              loading="lazy"
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -563,13 +511,13 @@ export default function EdmontonPage() {
                       </Link>
                     ))}
                   </div>
-                  {articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).length > 3 && (
+                  {edmontonPosts.filter((article) => article.category?.toLowerCase().includes('outdoor')).length > 3 && (
                     <div className="mt-6 text-center">
                       <Link 
                         href="/edmonton/outdoors" 
                         className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                       >
-                        View All Outdoors Articles ({articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).length})
+                        View All Outdoors Articles ({edmontonPosts.filter((article) => article.category?.toLowerCase().includes('outdoor')).length})
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
@@ -590,7 +538,7 @@ export default function EdmontonPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {(() => {
-                  const neighborhoodArticles = articles.filter(article => 
+                  const neighborhoodArticles = edmontonPosts.filter(article => 
                     article.category?.toLowerCase().includes('neighborhood') ||
                     article.category?.toLowerCase().includes('neighbourhood') ||
                     article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
@@ -601,7 +549,7 @@ export default function EdmontonPage() {
                     article.title?.toLowerCase().includes('neighborhood')
                   )
                   
-                  console.log('All articles:', articles.map(a => ({ 
+                  console.log('All articles:', edmontonPosts.map(a => ({ 
                     id: a.id, 
                     title: a.title, 
                     category: a.category, 
@@ -626,6 +574,7 @@ export default function EdmontonPage() {
                             alt={article.title}
                             width={400}
                             height={300}
+                            loading="lazy"
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -636,7 +585,7 @@ export default function EdmontonPage() {
                   ))
                 })()}
                 {/* Show placeholder if no neighborhood articles */}
-                {articles.filter(article => 
+                {edmontonPosts.filter(article => 
                   article.category?.toLowerCase().includes('neighborhood') ||
                   article.category?.toLowerCase().includes('neighbourhood') ||
                   article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
@@ -669,7 +618,7 @@ export default function EdmontonPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {(() => {
-                  const guideArticles = articles.filter(article => 
+                  const guideArticles = edmontonPosts.filter(article => 
                     article.category?.toLowerCase().includes('guide') ||
                     article.categories?.some(cat => cat.toLowerCase().includes('guide')) ||
                     article.tags?.some(tag => tag.toLowerCase().includes('guide')) ||
@@ -699,7 +648,7 @@ export default function EdmontonPage() {
                   ))
                 })()}
                 {/* Show placeholder if no guide articles */}
-                {articles.filter(article => 
+                {edmontonPosts.filter(article => 
                   article.category?.toLowerCase().includes('guide') ||
                   article.categories?.some(cat => cat.toLowerCase().includes('guide')) ||
                   article.tags?.some(tag => tag.toLowerCase().includes('guide')) ||

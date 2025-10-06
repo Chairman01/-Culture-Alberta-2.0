@@ -403,7 +403,7 @@ export async function getEventsArticles(): Promise<Article[]> {
       
       // Filter file articles for events only
       const filteredFileArticles = fileArticles.filter((article: any) => 
-        article.type === 'event'
+        article.categories && article.categories.includes('Events')
       );
       
       if (filteredFileArticles.length > 0) {
@@ -423,7 +423,7 @@ export async function getEventsArticles(): Promise<Article[]> {
       
       // Filter file articles for events only
       const filteredFileArticles = fileArticles.filter((article: any) => 
-        article.type === 'event'
+        article.categories && article.categories.includes('Events')
       );
       
       console.log(`Supabase fallback: Found ${filteredFileArticles.length} events out of ${fileArticles.length} total`)
@@ -433,12 +433,12 @@ export async function getEventsArticles(): Promise<Article[]> {
     console.log('Attempting to fetch events articles from Supabase...')
     
     // Optimized query for events - only essential fields for display
-    const fields = ensureImageFields('id, title,  excerpt, category, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    const fields = ensureImageFields('id, title, excerpt, category, categories, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
     
     const supabasePromise = supabase
       .from('articles')
       .select(fields)
-      .eq('type', 'event')
+      .contains('categories', ['Events'])
       .order('created_at', { ascending: false })
       .limit(30) // Reduced limit for faster loading
 
@@ -456,7 +456,7 @@ export async function getEventsArticles(): Promise<Article[]> {
       
       // Filter file articles for events only
       const filteredFileArticles = fileArticles.filter((article: any) => 
-        article.type === 'event'
+        article.categories && article.categories.includes('Events')
       );
       
       return filteredFileArticles
@@ -490,7 +490,7 @@ export async function getEventsArticles(): Promise<Article[]> {
     
     // Filter file articles for events only
     const filteredFileArticles = fileArticles.filter((article: any) => 
-      article.type === 'event'
+      article.categories && article.categories.includes('Events')
     );
     
     console.log(`File system fallback: Found ${filteredFileArticles.length} events out of ${fileArticles.length} total`)

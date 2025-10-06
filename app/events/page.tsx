@@ -6,9 +6,9 @@ import { ArrowRight, Calendar, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getEventsArticles } from "@/lib/articles"
+import { getAllEvents } from "@/lib/events"
 import { Article } from "@/lib/types/article"
-import { getArticleUrl } from '@/lib/utils/article-url'
+import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
 interface ExtendedEvent extends Article {
   description?: string;
@@ -28,42 +28,47 @@ export default function EventsPage() {
 
   const loadEvents = async () => {
     try {
-      console.log('🔄 Loading Events articles...')
-      let eventArticles: Article[] = []
+      console.log('🔄 Loading Events from events table...')
+      let events: any[] = []
       
       // ROBUST FALLBACK: Try to get events with error handling
       try {
-        eventArticles = await getEventsArticles()
-        console.log(`✅ Events articles loaded: ${eventArticles.length}`)
+        events = await getAllEvents()
+        console.log(`✅ Events loaded: ${events.length}`)
       } catch (error) {
-        console.error('❌ Failed to load events articles:', error)
+        console.error('❌ Failed to load events:', error)
         // Create fallback content to prevent empty page
-        eventArticles = [{
+        events = [{
           id: 'fallback-events',
           title: 'Welcome to Events',
           excerpt: 'Discover upcoming events, festivals, and happenings across Alberta.',
-          content: 'We\'re working on bringing you amazing event content. Check back soon!',
+          description: 'We\'re working on bringing you amazing event content. Check back soon!',
           category: 'Events',
-          categories: ['Events'],
           location: 'Alberta',
-          imageUrl: '/images/events-fallback.jpg',
-          author: 'Culture Alberta',
-          date: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          type: 'event',
+          image_url: '/images/events-fallback.jpg',
+          organizer: 'Culture Alberta',
+          event_date: new Date().toISOString(),
           status: 'published'
         }]
       }
       
       // Convert to ExtendedEvent format
-      const allEvents: ExtendedEvent[] = eventArticles.map(article => ({
-        ...article,
-        description: article.content,
-        category: article.category || 'General',
-        location: article.location || 'Alberta',
-        date: article.date || article.createdAt || new Date().toISOString(),
-        imageUrl: article.imageUrl || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(article.title)}`
+      const allEvents: ExtendedEvent[] = events.map(event => ({
+        id: event.id,
+        title: event.title,
+        excerpt: event.excerpt || event.description || '',
+        content: event.description || '',
+        description: event.description || '',
+        category: event.category || 'General',
+        categories: event.category ? [event.category] : ['General'],
+        location: event.location || 'Alberta',
+        date: event.event_date || new Date().toISOString(),
+        createdAt: event.created_at || new Date().toISOString(),
+        updatedAt: event.updated_at || new Date().toISOString(),
+        imageUrl: event.image_url || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(event.title)}`,
+        author: event.organizer || 'Event Organizer',
+        type: 'event',
+        status: event.status || 'published'
       }))
       console.log(`✅ Processed Events: ${allEvents.length}`)
 
@@ -196,8 +201,48 @@ export default function EventsPage() {
               </div>
             ) : filteredEvents.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-24 w-full min-h-[300px]">
-                <h3 className="text-lg font-semibold">No events found</h3>
-                <p className="text-muted-foreground">Try adjusting your filters to find more events.</p>
+                <div className="max-w-md mx-auto space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
+                    <Calendar className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold">No events match your current filters</h3>
+                  <p className="text-muted-foreground">
+                    We found {events.length} event{events.length !== 1 ? 's' : ''} total, but none match your selected filters.
+                  </p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setSelectedLocation("all")
+                        setSelectedDate("all") 
+                        setSelectedCategory("all")
+                        setSelectedTags([])
+                      }}
+                    >
+                      Clear All Filters
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setSelectedDate("all")}
+                    >
+                      Show All Dates
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setSelectedLocation("all")}
+                    >
+                      Show All Locations
+                    </Button>
+                  </div>
+                  {events.length > 0 && (
+                    <div className="text-sm text-muted-foreground mt-4">
+                      Available locations: {Array.from(new Set(events.map(e => e.location))).join(', ')}
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex flex-col md:flex-row justify-center items-start gap-12 w-full max-w-7xl mx-auto">
@@ -311,7 +356,7 @@ export default function EventsPage() {
                             <p className="text-muted-foreground">{event.excerpt || event.description}</p>
                           </div>
                           <div className="mt-4 flex items-center justify-between">
-                            <Link href={getArticleUrl(event)}>
+                            <Link href={getEventUrl(event)}>
                               <Button variant="outline">View Details</Button>
                             </Link>
                             <Button>Register</Button>

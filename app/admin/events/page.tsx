@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getAllArticles, deleteArticle } from "@/lib/articles"
+import { getAllEvents, deleteEvent, clearEventsCache } from "@/lib/events"
 import {
   Pagination,
   PaginationContent,
@@ -45,25 +45,28 @@ export default function EventsAdminPage() {
   useEffect(() => {
     async function loadEvents() {
       try {
-        const allArticles = await getAllArticles()
+        console.log('🔄 Loading events from events table...')
+        // Clear cache to ensure fresh data
+        clearEventsCache()
+        const eventsData = await getAllEvents()
+        console.log('📅 Events loaded:', eventsData.length, 'events')
+        console.log('📅 Event details:', eventsData.map(e => ({ id: e.id, title: e.title, eventDate: e.event_date })))
         
-        // Filter for events (articles with type 'event')
-        const eventArticles = allArticles.filter(article => article.type === 'event')
-        
-        // Transform articles to match the expected event format
-        const eventsData = eventArticles.map(article => ({
-          id: article.id,
-          title: article.title,
-          category: article.category,
-          date: article.date || article.createdAt,
-          location: article.location,
-          description: article.content,
-          image: article.imageUrl,
-          status: article.status,
-          organizer: article.author
+        // Transform events to match the expected format
+        const formattedEvents = eventsData.map(event => ({
+          id: event.id,
+          title: event.title,
+          category: event.category,
+          date: event.event_date, // Use event_date instead of eventDate
+          location: event.location,
+          description: event.description,
+          image: event.image_url,
+          status: event.status,
+          organizer: event.organizer
         }))
 
-        setEvents(eventsData)
+        console.log('✅ Formatted events:', formattedEvents.length)
+        setEvents(formattedEvents)
       } catch (error) {
         console.error("Error loading events:", error)
         toast({
@@ -106,8 +109,8 @@ export default function EventsAdminPage() {
 
   const handleDeleteEvent = async (id: string) => {
     try {
-      // Delete from the articles system
-      await deleteArticle(id)
+      // Delete from the events system
+      await deleteEvent(id)
 
       // Remove from state
       setEvents(events.filter((event) => event.id !== id))

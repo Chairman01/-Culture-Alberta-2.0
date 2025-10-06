@@ -59,7 +59,7 @@ const FontSize = Extension.create({
 })
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ImageUploader } from './image-uploader'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Bold, 
   Italic, 
@@ -114,6 +114,19 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
     immediatelyRender: false, // Fix SSR hydration mismatch
   })
 
+  // Update editor content when prop changes (only if different)
+  useEffect(() => {
+    if (editor && content && content !== editor.getHTML()) {
+      console.log('🔧 RichTextEditor: Updating content from prop:', content)
+      // Use a timeout to prevent infinite loops
+      const timeoutId = setTimeout(() => {
+        editor.commands.setContent(content, false) // false prevents emitting update event
+      }, 100)
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [content]) // Remove editor from dependencies to prevent loops
+
   const handleImageSelect = (url: string) => {
     if (editor) {
       editor.chain().focus().setImage({ src: url }).run()
@@ -122,7 +135,11 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
   }
 
   if (!editor) {
-    return null
+    return (
+      <div className="border rounded-lg p-4 bg-gray-50">
+        <p className="text-gray-500">Loading editor...</p>
+      </div>
+    )
   }
 
   return (
