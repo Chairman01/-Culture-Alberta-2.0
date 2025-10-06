@@ -61,9 +61,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     console.log('🔍 Event excerpt:', event.excerpt)
     
     // Load related content for sidebar and bottom sections
-    let latestArticles = []
-    let moreEvents = []
-    let moreArticlesForBottom = []
+    let latestArticles: any[] = []
+    let moreEvents: any[] = []
+    let moreArticlesForBottom: any[] = []
     
     try {
       // Get latest articles for sidebar
