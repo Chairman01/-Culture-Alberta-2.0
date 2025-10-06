@@ -10,6 +10,7 @@ import { getAllArticles } from '@/lib/supabase-articles'
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { ArticleContent } from '@/components/article-content'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
+import { Article } from '@/lib/types/article'
 
 // Generate static params for all published events
 export async function generateStaticParams() {
@@ -61,9 +62,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     console.log('🔍 Event excerpt:', event.excerpt)
     
     // Load related content for sidebar and bottom sections
-    let latestArticles = []
-    let moreEvents = []
-    let moreArticlesForBottom = []
+    let latestArticles: Article[] = []
+    let moreEvents: any[] = []
+    let moreArticlesForBottom: Article[] = []
     
     try {
       // Get latest articles for sidebar
