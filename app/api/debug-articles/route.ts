@@ -1,41 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAllArticles } from '@/lib/supabase-articles'
-import { testSupabaseConnection } from '@/lib/supabase-articles'
 
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+// GET /api/debug-articles - Debug endpoint to check article data
 export async function GET(request: NextRequest) {
   try {
-    console.log('=== DEBUG ARTICLES API CALLED ===')
+    console.log('🔍 DEBUG: Starting article debug check...')
     
-    // Test Supabase connection first
-    console.log('Testing Supabase connection...')
-    const connectionTest = await testSupabaseConnection()
-    console.log('Connection test result:', connectionTest)
-    
-    // Try to get articles
-    console.log('Fetching articles...')
     const articles = await getAllArticles()
-    console.log('Articles fetched:', articles.length)
     
-    if (articles.length > 0) {
-      console.log('First article:', {
-        id: articles[0].id,
-        title: articles[0].title,
-        category: articles[0].category,
-        createdAt: articles[0].createdAt
-      })
+    // Calculate response size
+    const responseSize = JSON.stringify(articles).length
+    const responseSizeMB = (responseSize / (1024 * 1024)).toFixed(2)
+    
+    // Get article statistics
+    const stats = {
+      totalArticles: articles.length,
+      responseSizeBytes: responseSize,
+      responseSizeMB: responseSizeMB,
+      articlesWithLargeContent: articles.filter(a => a.content && a.content.length > 100000).length,
+      articlesWithVeryLargeContent: articles.filter(a => a.content && a.content.length > 1000000).length,
+      largestContentSize: Math.max(...articles.map(a => a.content?.length || 0)),
+      sampleArticleTitles: articles.slice(0, 5).map(a => ({
+        title: a.title,
+        contentLength: a.content?.length || 0,
+        date: a.createdAt
+      }))
     }
     
+    console.log('📊 DEBUG: Article statistics:', stats)
+    
+    // Return limited debug info to prevent oversized responses
     return NextResponse.json({
       success: true,
-      connectionTest,
-      articleCount: articles.length,
-      articles: articles.slice(0, 5).map(article => ({
-        id: article.id,
-        title: article.title,
-        category: article.category,
-        createdAt: article.createdAt,
-        status: article.status
-      })),
+      stats,
       environment: {
         NODE_ENV: process.env.NODE_ENV,
         VERCEL: process.env.VERCEL,
@@ -43,15 +44,18 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Debug articles API error:', error)
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      environment: {
-        NODE_ENV: process.env.NODE_ENV,
-        VERCEL: process.env.VERCEL,
-        isProduction: process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
-      }
-    }, { status: 500 })
+    console.error('❌ DEBUG: Error in debug endpoint:', error)
+    return NextResponse.json(
+      { 
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        environment: {
+          NODE_ENV: process.env.NODE_ENV,
+          VERCEL: process.env.VERCEL,
+          isProduction: process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
+        }
+      },
+      { status: 500 }
+    )
   }
 }

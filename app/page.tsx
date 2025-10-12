@@ -23,6 +23,10 @@ async function getHomePageData() {
     console.log('🔍 DEBUG: getHomepageArticles returned:', apiArticles?.length || 0, 'articles')
     if (apiArticles && apiArticles.length > 0) {
       console.log('🔍 DEBUG: First article:', apiArticles[0].title)
+      console.log('🔍 DEBUG: All article titles:', apiArticles.slice(0, 5).map(a => a.title))
+      console.log('🔍 DEBUG: Article dates:', apiArticles.slice(0, 5).map(a => ({ title: a.title, date: a.createdAt })))
+    } else {
+      console.warn('⚠️ DEBUG: No articles found from getHomepageArticlesWithFallback')
     }
     
     // Also get events from the events table

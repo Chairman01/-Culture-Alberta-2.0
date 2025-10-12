@@ -48,7 +48,24 @@ export async function GET(request: NextRequest) {
     } else {
       // Get all articles
       const articles = await getAllArticles()
-      return NextResponse.json(articles)
+      
+      // CRITICAL FIX: Limit response size to prevent oversized API responses
+      const MAX_ARTICLES = 50 // Limit to 50 most recent articles
+      const MAX_CONTENT_SIZE = 10000 // Limit content to 10KB per article
+      
+      const limitedArticles = articles
+        .slice(0, MAX_ARTICLES) // Take only the first 50 articles
+        .map(article => ({
+          ...article,
+          // Truncate content if too large
+          content: article.content && article.content.length > MAX_CONTENT_SIZE 
+            ? article.content.substring(0, MAX_CONTENT_SIZE) + '... [Content truncated]'
+            : article.content
+        }))
+      
+      console.log(`📊 API: Returning ${limitedArticles.length} articles (limited from ${articles.length})`)
+      
+      return NextResponse.json(limitedArticles)
     }
   } catch (error) {
     console.error('Error fetching articles:', error)
