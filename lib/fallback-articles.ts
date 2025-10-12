@@ -49,26 +49,33 @@ async function loadArticlesFromJson(): Promise<Article[]> {
 export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise<Article[]> {
   console.log('🔄 Loading articles with fallback system...')
   
-  // Try articles.json first if it exists (development mode)
-  try {
-    const jsonArticles = await loadArticlesFromJson()
-    if (jsonArticles.length > 0) {
-      console.log(`✅ Loaded ${jsonArticles.length} articles from articles.json`)
-      
-      // Log the date range to verify we have fresh data
-      const dates = jsonArticles.map(a => a.createdAt).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-      if (dates.length > 0) {
-        console.log(`📅 Latest article date: ${dates[0]}`)
-        console.log(`📅 Oldest article date: ${dates[dates.length - 1]}`)
+  // CRITICAL FIX: In production, ALWAYS use Supabase (never use stale articles.json)
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
+  
+  if (!isProduction) {
+    // Only try articles.json in development
+    try {
+      const jsonArticles = await loadArticlesFromJson()
+      if (jsonArticles.length > 0) {
+        console.log(`✅ [DEV] Loaded ${jsonArticles.length} articles from articles.json`)
+        
+        // Log the date range to verify we have fresh data
+        const dates = jsonArticles.map(a => a.createdAt).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+        if (dates.length > 0) {
+          console.log(`📅 Latest article date: ${dates[0]}`)
+          console.log(`📅 Oldest article date: ${dates[dates.length - 1]}`)
+        }
+        
+        return jsonArticles
       }
-      
-      return jsonArticles
+    } catch (jsonError) {
+      console.log('ℹ️ [DEV] articles.json not found, using Supabase:', jsonError)
     }
-  } catch (jsonError) {
-    console.log('ℹ️ articles.json not found, using Supabase (expected in production):', jsonError)
+  } else {
+    console.log('🚀 [PRODUCTION] Skipping articles.json, fetching directly from Supabase for fresh data')
   }
   
-  // Fallback: Use Supabase with timeout
+  // Use Supabase (ALWAYS in production, fallback in development)
   // Create a promise that resolves with Supabase data
   const supabasePromise = getSupabaseArticles()
   
