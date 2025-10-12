@@ -765,8 +765,8 @@ export async function getAllArticles(): Promise<Article[]> {
 
     console.log('🐌 SLOW: Attempting to fetch articles from Supabase...')
     
-    // SPEED OPTIMIZATION: Reduced timeout for faster fallback
-    const timeoutDuration = process.env.NODE_ENV === 'production' ? 2000 : 5000 // 2s in prod, 5s in dev
+    // SPEED OPTIMIZATION: Longer timeout for production reliability
+    const timeoutDuration = process.env.NODE_ENV === 'production' ? 10000 : 5000 // 10s in prod, 5s in dev
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
     )
