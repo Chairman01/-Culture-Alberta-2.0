@@ -83,9 +83,9 @@ let cityArticlesCache: Map<string, Article[]> = new Map()
 let cacheTimestamp: number = 0
 let cityCacheTimestamp: Map<string, number> = new Map()
 
-// SPEED OPTIMIZATION: Much longer cache duration for maximum performance
+// PRODUCTION FIX: Disabled all caching to ensure fresh data
 const getCacheDuration = () => {
-  // DISABLED CACHING - always fetch fresh data
+  // DISABLED CACHING - always fetch fresh data for production fix
   return 0 // No caching at all
 }
 

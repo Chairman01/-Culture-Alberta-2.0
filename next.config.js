@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-// Force cache clear: 2025-10-12 07:15
+// Force cache clear: 2025-10-12 07:30 - PRODUCTION FIX
 const nextConfig = {
   reactStrictMode: true,
   // Performance optimizations
@@ -93,7 +93,16 @@ const nextConfig = {
           headers: [
             {
               key: 'Cache-Control',
-              value: 'public, max-age=300, s-maxage=300',
+              value: 'public, max-age=0, s-maxage=0, must-revalidate',
+            },
+          ],
+        },
+        {
+          source: '/((?!_next/static|_next/image|favicon.ico).*)',
+          headers: [
+            {
+              key: 'Cache-Control',
+              value: 'public, max-age=0, s-maxage=0, must-revalidate',
             },
           ],
         },
@@ -102,7 +111,7 @@ const nextConfig = {
           headers: [
             {
               key: 'Cache-Control',
-              value: 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
+              value: 'public, max-age=0, s-maxage=0, must-revalidate',
             },
           ],
         },

@@ -4,10 +4,10 @@ import { getAllArticles as getSupabaseArticles } from './supabase-articles'
 import fs from 'fs'
 import path from 'path'
 
-// Cache for articles.json data
+// Cache for articles.json data - DISABLED for production fix
 let articlesJsonCache: Article[] | null = null
 let articlesJsonCacheTimestamp: number = 0
-const ARTICLES_JSON_CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+const ARTICLES_JSON_CACHE_DURATION = 0 // DISABLED - always fetch fresh data
 
 /**
  * Load articles from articles.json file as fallback
@@ -49,13 +49,21 @@ async function loadArticlesFromJson(): Promise<Article[]> {
 export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise<Article[]> {
   console.log('🔄 Loading articles with fallback system...')
   
-  // FORCE BOTH DEVELOPMENT AND PRODUCTION TO USE SAME LOGIC
-  // Use articles.json FIRST (which has the correct data) for both environments
-  console.log('🚀 Loading from articles.json first (both dev and production)')
+  // PRODUCTION FIX: Always use articles.json as primary source since it has the latest data
+  // This ensures both development and production show the same fresh content
+  console.log('🚀 PRODUCTION FIX: Using articles.json as primary source (latest data)')
   try {
     const jsonArticles = await loadArticlesFromJson()
     if (jsonArticles.length > 0) {
-      console.log(`✅ Loaded ${jsonArticles.length} articles from articles.json (unified logic)`)
+      console.log(`✅ Loaded ${jsonArticles.length} articles from articles.json (PRODUCTION FIX)`)
+      
+      // Log the date range to verify we have fresh data
+      const dates = jsonArticles.map(a => a.createdAt).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+      if (dates.length > 0) {
+        console.log(`📅 Latest article date: ${dates[0]}`)
+        console.log(`📅 Oldest article date: ${dates[dates.length - 1]}`)
+      }
+      
       return jsonArticles
     }
   } catch (jsonError) {
