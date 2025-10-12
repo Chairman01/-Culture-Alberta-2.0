@@ -49,8 +49,22 @@ async function loadArticlesFromJson(): Promise<Article[]> {
 export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise<Article[]> {
   console.log('🔄 Loading articles with fallback system...')
   
-  // IN DEVELOPMENT: Use articles.json FIRST for fastest, most reliable data
-  // This ensures newest articles always show without cache issues
+  // PRODUCTION: Always use Supabase for real-time data
+  // DEVELOPMENT: Use articles.json for speed (optional fallback)
+  if (process.env.NODE_ENV === 'production') {
+    console.log('🚀 Production mode: Fetching fresh data from Supabase')
+    try {
+      const supabaseArticles = await getSupabaseArticles()
+      if (supabaseArticles.length > 0) {
+        console.log(`✅ Loaded ${supabaseArticles.length} articles from Supabase (production)`)
+        return supabaseArticles
+      }
+    } catch (supabaseError) {
+      console.warn('⚠️ Supabase failed in production, falling back to articles.json:', supabaseError)
+    }
+  }
+  
+  // IN DEVELOPMENT: Use articles.json FIRST for fastest iteration
   if (process.env.NODE_ENV === 'development') {
     console.log('🚀 Development mode: Loading from articles.json first')
     try {
@@ -64,7 +78,7 @@ export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise
     }
   }
   
-  // IN PRODUCTION or if JSON fails: Use Supabase with timeout
+  // Fallback: Use Supabase with timeout
   // Create a promise that resolves with Supabase data
   const supabasePromise = getSupabaseArticles()
   

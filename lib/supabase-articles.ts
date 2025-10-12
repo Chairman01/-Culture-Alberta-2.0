@@ -85,9 +85,9 @@ let cityCacheTimestamp: Map<string, number> = new Map()
 
 // SPEED OPTIMIZATION: Much longer cache duration for maximum performance
 const getCacheDuration = () => {
-  // Use file system as primary source - cache for 5 minutes in production for fresher content
+  // Aggressive cache clearing for real-time content updates
   if (process.env.NODE_ENV === 'production') {
-    return 5 * 60 * 1000 // 5 minutes cache in production
+    return 60 * 1000 // 1 minute cache in production for near real-time updates
   }
   return 10 * 1000 // 10 seconds in development for faster updates
 }
