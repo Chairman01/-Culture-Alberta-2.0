@@ -89,9 +89,14 @@ const getCacheDuration = () => {
   return 0 // No caching at all
 }
 
-// SPEED OPTIMIZATION: Always try file system first
+// CRITICAL FIX: DISABLE FILE SYSTEM FALLBACK IN PRODUCTION
 const shouldUseFileSystemFirst = () => {
-  // Always prioritize file system for read operations
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
+  if (isProduction) {
+    console.log('🚀 [PRODUCTION] Skipping file system, using Supabase only')
+    return false // Never use file system in production
+  }
+  // Only use file system in development
   return typeof window === 'undefined' // Server-side only
 }
 
@@ -716,12 +721,13 @@ export async function getAllArticles(): Promise<Article[]> {
   try {
     console.log('=== getAllArticles called ===')
     
-    // SPEED OPTIMIZATION: Check cache first with longer duration
+    // CRITICAL FIX: DISABLE ALL CACHING - Always fetch fresh data
+    console.log('🚀 FORCING FRESH DATA FETCH - Cache disabled for production fix')
     const now = Date.now()
-    if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
-      console.log('✅ Returning cached articles:', articlesCache.length, 'articles')
-      return articlesCache
-    }
+    // if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
+    //   console.log('✅ Returning cached articles:', articlesCache.length, 'articles')
+    //   return articlesCache
+    // }
     
     // SPEED OPTIMIZATION: Always try file system first (not just build time)
     if (shouldUseFileSystemFirst() && fileArticlesModule) {
@@ -820,10 +826,11 @@ export async function getAllArticles(): Promise<Article[]> {
       featuredEdmonton: a.featuredEdmonton
     })))
 
-    // Update cache
-    articlesCache = mappedArticles
-    cacheTimestamp = now
-    console.log('Updated articles cache')
+    // CRITICAL FIX: DISABLE CACHE UPDATES IN PRODUCTION
+    console.log('🚀 [PRODUCTION] Skipping cache update - always fetch fresh data')
+    // articlesCache = mappedArticles
+    // cacheTimestamp = now
+    // console.log('Updated articles cache')
 
     return mappedArticles
   } catch (error) {
