@@ -49,33 +49,17 @@ async function loadArticlesFromJson(): Promise<Article[]> {
 export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise<Article[]> {
   console.log('🔄 Loading articles with fallback system...')
   
-  // PRODUCTION: Always use Supabase for real-time data
-  // DEVELOPMENT: Use articles.json for speed (optional fallback)
-  if (process.env.NODE_ENV === 'production') {
-    console.log('🚀 Production mode: Fetching fresh data from Supabase')
-    try {
-      const supabaseArticles = await getSupabaseArticles()
-      if (supabaseArticles.length > 0) {
-        console.log(`✅ Loaded ${supabaseArticles.length} articles from Supabase (production)`)
-        return supabaseArticles
-      }
-    } catch (supabaseError) {
-      console.warn('⚠️ Supabase failed in production, falling back to articles.json:', supabaseError)
+  // FORCE BOTH DEVELOPMENT AND PRODUCTION TO USE SAME LOGIC
+  // Use articles.json FIRST (which has the correct data) for both environments
+  console.log('🚀 Loading from articles.json first (both dev and production)')
+  try {
+    const jsonArticles = await loadArticlesFromJson()
+    if (jsonArticles.length > 0) {
+      console.log(`✅ Loaded ${jsonArticles.length} articles from articles.json (unified logic)`)
+      return jsonArticles
     }
-  }
-  
-  // IN DEVELOPMENT: Use articles.json FIRST for fastest iteration
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🚀 Development mode: Loading from articles.json first')
-    try {
-      const jsonArticles = await loadArticlesFromJson()
-      if (jsonArticles.length > 0) {
-        console.log(`✅ Loaded ${jsonArticles.length} articles from articles.json (dev mode priority)`)
-        return jsonArticles
-      }
-    } catch (jsonError) {
-      console.warn('⚠️ articles.json failed, falling back to Supabase:', jsonError)
-    }
+  } catch (jsonError) {
+    console.warn('⚠️ articles.json failed, falling back to Supabase:', jsonError)
   }
   
   // Fallback: Use Supabase with timeout
