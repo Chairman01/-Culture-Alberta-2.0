@@ -7,6 +7,11 @@ import {
   deleteArticle 
 } from '@/lib/supabase-articles'
 import { CreateArticleInput, UpdateArticleInput } from '@/lib/types/article'
+import { revalidatePath } from 'next/cache'
+
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 // GET /api/articles - Get all articles or get article by ID/slug
 export async function GET(request: NextRequest) {
@@ -67,6 +72,23 @@ export async function POST(request: NextRequest) {
     }
 
     const newArticle = await createArticle(body)
+    
+    // CRITICAL FIX: Revalidate all pages after creating a new article
+    try {
+      console.log('🔄 Revalidating pages after article creation...')
+      revalidatePath('/', 'layout') // Revalidate entire app
+      revalidatePath('/') // Homepage
+      revalidatePath('/edmonton')
+      revalidatePath('/calgary')
+      revalidatePath('/food-drink')
+      revalidatePath('/events')
+      revalidatePath('/articles')
+      console.log('✅ Pages revalidated successfully')
+    } catch (revalidateError) {
+      console.error('⚠️ Revalidation failed:', revalidateError)
+      // Don't fail the request if revalidation fails
+    }
+    
     return NextResponse.json(newArticle)
   } catch (error) {
     console.error('Error creating article:', error)
@@ -109,6 +131,22 @@ export async function PUT(request: NextRequest) {
     try {
       const updatedArticle = await updateArticle(id, updateData)
       console.log('Article updated successfully:', updatedArticle)
+      
+      // CRITICAL FIX: Revalidate all pages after updating an article
+      try {
+        console.log('🔄 Revalidating pages after article update...')
+        revalidatePath('/', 'layout') // Revalidate entire app
+        revalidatePath('/') // Homepage
+        revalidatePath('/edmonton')
+        revalidatePath('/calgary')
+        revalidatePath('/food-drink')
+        revalidatePath('/events')
+        revalidatePath('/articles')
+        console.log('✅ Pages revalidated successfully')
+      } catch (revalidateError) {
+        console.error('⚠️ Revalidation failed:', revalidateError)
+      }
+      
       return NextResponse.json(updatedArticle)
     } catch (updateError) {
       console.error('Error in updateArticleInFile:', updateError)
@@ -140,6 +178,22 @@ export async function DELETE(request: NextRequest) {
     }
 
     await deleteArticle(id)
+    
+    // CRITICAL FIX: Revalidate all pages after deleting an article
+    try {
+      console.log('🔄 Revalidating pages after article deletion...')
+      revalidatePath('/', 'layout') // Revalidate entire app
+      revalidatePath('/') // Homepage
+      revalidatePath('/edmonton')
+      revalidatePath('/calgary')
+      revalidatePath('/food-drink')
+      revalidatePath('/events')
+      revalidatePath('/articles')
+      console.log('✅ Pages revalidated successfully')
+    } catch (revalidateError) {
+      console.error('⚠️ Revalidation failed:', revalidateError)
+    }
+    
     return NextResponse.json({ message: 'Article deleted successfully' })
   } catch (error) {
     console.error('Error deleting article:', error)

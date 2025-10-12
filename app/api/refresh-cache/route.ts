@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { clearArticlesCache } from '@/lib/supabase-articles'
 
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 // Simple API endpoint to refresh cache and show newest articles
 export async function POST() {
   try {

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { clearArticlesCache } from '@/lib/fast-articles'
+import { revalidatePath } from 'next/cache'
+
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 // API endpoint to sync articles from Supabase to local file
 export async function POST(request: NextRequest) {
@@ -126,18 +131,18 @@ export async function POST(request: NextRequest) {
       console.log('⚠️ Could not write to local file (this is normal in production):', fileError)
     }
     
-    // Always trigger revalidation for static pages
+    // CRITICAL FIX: Direct revalidation after sync
     try {
-      await fetch(`${process.env.VERCEL_URL || 'https://culturealberta.com'}/api/revalidate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          paths: ['/', '/edmonton', '/calgary', '/culture', '/food-drink', '/events']
-        })
-      })
-      console.log('✅ Triggered revalidation for static pages')
+      console.log('🔄 Revalidating all pages after POST sync...')
+      revalidatePath('/', 'layout') // Revalidate entire app
+      revalidatePath('/') // Homepage
+      revalidatePath('/edmonton')
+      revalidatePath('/calgary')
+      revalidatePath('/food-drink')
+      revalidatePath('/culture')
+      revalidatePath('/events')
+      revalidatePath('/articles')
+      console.log('✅ Pages revalidated successfully')
     } catch (revalidateError) {
       console.log('⚠️ Revalidation failed, but sync was successful:', revalidateError)
     }
@@ -282,18 +287,18 @@ export async function GET() {
       console.log('⚠️ Could not write to local file (this is normal in production):', fileError)
     }
     
-    // Always trigger revalidation for static pages
+    // CRITICAL FIX: Direct revalidation after GET sync
     try {
-      await fetch(`${process.env.VERCEL_URL || 'https://culturealberta.com'}/api/revalidate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          paths: ['/', '/edmonton', '/calgary', '/culture', '/food-drink', '/events']
-        })
-      })
-      console.log('✅ Triggered revalidation for static pages')
+      console.log('🔄 Revalidating all pages after GET sync...')
+      revalidatePath('/', 'layout') // Revalidate entire app
+      revalidatePath('/') // Homepage
+      revalidatePath('/edmonton')
+      revalidatePath('/calgary')
+      revalidatePath('/food-drink')
+      revalidatePath('/culture')
+      revalidatePath('/events')
+      revalidatePath('/articles')
+      console.log('✅ Pages revalidated successfully')
     } catch (revalidateError) {
       console.log('⚠️ Revalidation failed, but sync was successful:', revalidateError)
     }
