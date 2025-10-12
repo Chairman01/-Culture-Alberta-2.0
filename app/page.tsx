@@ -9,8 +9,9 @@ import { Article } from '@/lib/types/article'
 import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
-// Enable ISR for better performance
-export const revalidate = 120 // 2 minutes
+// Disable all caching to ensure fresh data on every request
+export const revalidate = 0 // No caching - always fetch fresh data
+export const dynamic = 'force-dynamic' // Force dynamic rendering
 
 // Server-side data loading for static generation
 async function getHomePageData() {

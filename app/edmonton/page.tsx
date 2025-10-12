@@ -12,7 +12,8 @@ import { getAllEvents } from '@/lib/events'
 import { Article } from '@/lib/types/article'
 
 // Enable ISR for better performance
-export const revalidate = 120 // 2 minutes
+export const revalidate = 0 // No caching - always fetch fresh data
+export const dynamic = 'force-dynamic' // Force dynamic rendering
 
 // Extend Article locally to include 'type' for filtering
 interface EdmontonArticle extends Article {
