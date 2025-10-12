@@ -3,7 +3,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, MapPin, User, Phone, Mail, ExternalLink, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PageSEO } from '@/components/seo/page-seo'
 import { getAllEvents, getEventBySlug } from '@/lib/events'
 import { createSlug } from '@/lib/utils/slug'
 import { getAllArticles } from '@/lib/supabase-articles'
@@ -11,6 +10,7 @@ import { getArticleUrl } from '@/lib/utils/article-url'
 import { ArticleContent } from '@/components/article-content'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { Article } from '@/lib/types/article'
+import { Metadata } from 'next'
 
 // Generate static params for all published events
 export async function generateStaticParams() {
@@ -41,6 +41,90 @@ export async function generateStaticParams() {
 
 // Enable ISR (Incremental Static Regeneration)
 export const revalidate = 300 // 5 minutes
+
+// Generate metadata for social media sharing
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const resolvedParams = await params
+  const slug = resolvedParams.slug
+  
+  try {
+    // Load event data for metadata
+    const loadedEvent = await getEventBySlug(slug)
+    
+    if (!loadedEvent) {
+      return {
+        title: 'Event Not Found | Culture Alberta',
+        description: 'The requested event could not be found.',
+      }
+    }
+    
+    const fullTitle = loadedEvent.title.includes('Culture Alberta') ? loadedEvent.title : `${loadedEvent.title} | Culture Alberta`
+    const description = loadedEvent.excerpt || loadedEvent.description || `Join us for ${loadedEvent.title} in ${loadedEvent.location || 'Alberta'}`
+    const fullUrl = `https://www.culturealberta.com/events/${slug}`
+    
+    // Handle image URL properly - use event image if available, otherwise use default
+    let eventImage = loadedEvent.image_url || '/images/culture-alberta-og.jpg'
+    
+    // Ensure image URL is absolute
+    const absoluteImageUrl = eventImage.startsWith('http') 
+      ? eventImage 
+      : eventImage.startsWith('data:image')
+      ? eventImage
+      : `https://www.culturealberta.com${eventImage}`
+    
+    // Debug logging for metadata
+    console.log('Event Metadata Debug:', {
+      title: fullTitle,
+      description: description,
+      image: absoluteImageUrl,
+      url: fullUrl,
+      originalImage: loadedEvent.image_url
+    })
+    
+    return {
+      title: fullTitle,
+      description: description,
+      keywords: [...(loadedEvent.tags || []), loadedEvent.category, 'Alberta', 'Events', 'Culture'].filter(Boolean).join(', '),
+      authors: [{ name: loadedEvent.organizer || 'Culture Alberta' }],
+      openGraph: {
+        type: 'event',
+        title: fullTitle,
+        description: description,
+        url: fullUrl,
+        images: [
+          {
+            url: absoluteImageUrl,
+            width: 1200,
+            height: 630,
+            alt: loadedEvent.title,
+          }
+        ],
+        siteName: 'Culture Alberta',
+        locale: 'en_CA',
+        startTime: loadedEvent.event_date,
+        endTime: loadedEvent.event_end_date || loadedEvent.event_date,
+        location: loadedEvent.location,
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: fullTitle,
+        description: description,
+        images: [absoluteImageUrl],
+        site: '@culturealberta',
+        creator: '@culturealberta',
+      },
+      alternates: {
+        canonical: fullUrl,
+      },
+    }
+  } catch (error) {
+    console.error('Error generating event metadata:', error)
+    return {
+      title: 'Event | Culture Alberta',
+      description: 'Discover amazing events in Alberta.',
+    }
+  }
+}
 
 export default async function EventDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = await params
@@ -117,10 +201,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
     return (
       <>
-        <PageSEO
-          title={`${event.title} - Events`}
-          description={event.excerpt || event.description || `Join us for ${event.title} in ${event.location}`}
-        />
+        {/* Metadata is now handled by generateMetadata function */}
         <div className="min-h-screen bg-gray-50">
           <div className="container mx-auto px-4 py-8">
             {/* Back Button */}

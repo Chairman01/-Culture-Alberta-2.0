@@ -18,6 +18,8 @@ export const revalidate = 120 // 2 minutes
 interface EdmontonArticle extends Article {
   type?: string;
   location?: string;
+  eventDate?: string;
+  event_date?: string;
 }
 
 // Server-side data loading with fallback
@@ -25,9 +27,10 @@ async function getEdmontonData() {
   try {
     console.log('🔄 Loading Edmonton articles with fallback system...')
     
-    // Get Edmonton articles with fallback to articles.json
-    const edmontonArticles = await getCityArticlesWithFallback('edmonton') as EdmontonArticle[]
-    console.log(`✅ Edmonton articles loaded: ${edmontonArticles.length}`)
+    // Get Edmonton articles with fallback to articles.json (exclude events)
+    const allEdmontonContent = await getCityArticlesWithFallback('edmonton') as EdmontonArticle[]
+    const edmontonArticles = allEdmontonContent.filter(item => item.type !== 'event' && item.type !== 'Event')
+    console.log(`✅ Edmonton articles loaded: ${edmontonArticles.length} (filtered out ${allEdmontonContent.length - edmontonArticles.length} events)`)
     
     // Sort by date (newest first)
     const sortedArticles = edmontonArticles.sort((a, b) => {
@@ -36,39 +39,42 @@ async function getEdmontonData() {
       return dateB - dateA // Newest first
     })
     
-    // Get events
-    let events: any[] = []
-    try {
-      events = await getAllEvents()
-      console.log(`✅ Events loaded: ${events.length}`)
-    } catch (error) {
-      console.warn('⚠️ Could not load events:', error)
-    }
-    
-    // Filter for Edmonton events
-    const edmontonEvents = events.filter((event: any) => {
-      const hasEdmontonLocation = event.location?.toLowerCase().includes('edmonton')
-      const hasEdmontonCategory = event.category?.toLowerCase().includes('edmonton')
-      return hasEdmontonLocation || hasEdmontonCategory
-    })
-    
-    // Get future events only
+    // Get Edmonton events from the articles data (includes events from articles.json)
     const now = new Date()
-    const upcomingEvents = edmontonEvents.filter((event: any) => {
-      if (!event.event_date) return false
-      
-      let dateToCheck = event.event_date
-      if (event.event_date.includes(' - ')) {
-        dateToCheck = event.event_date.split(' - ')[0]
+    const upcomingEvents = sortedArticles.filter(
+      (a) => {
+        // First check if it's an event type
+        if (a.type !== 'event' && a.type !== 'Event') return false
+        
+        // Check if it's Edmonton-related
+        const isEdmontonEvent = a.location?.toLowerCase().includes('edmonton') ||
+                               a.category?.toLowerCase().includes('edmonton') ||
+                               a.categories?.some((cat: string) => cat.toLowerCase().includes('edmonton')) ||
+                               a.title.toLowerCase().includes('edmonton')
+        
+        if (!isEdmontonEvent) return false
+        
+        // Check if it has a date and is in the future
+        const dateToCheck = a.date || a.eventDate || a.createdAt
+        if (!dateToCheck) return false
+        
+        // Handle date formats like "August 15 - 17, 2025" or "August 15, 2025"
+        let dateStr = dateToCheck.toString()
+        if (dateStr.includes(' - ')) {
+          // Take the first date from a range
+          dateStr = dateStr.split(' - ')[0]
+        }
+        
+        try {
+          const eventDate = new Date(dateStr)
+          return eventDate > now
+        } catch (error) {
+          console.warn('Could not parse date:', dateToCheck, error)
+          return false
+        }
       }
-      
-      try {
-        const eventDate = new Date(dateToCheck)
-        return eventDate > now
-      } catch (error) {
-        return false
-      }
-    }).sort((a: any, b: any) => {
+    ).sort((a, b) => {
+      // Sort by date, handling date ranges
       const getDate = (dateStr: string) => {
         if (!dateStr) return new Date(0)
         let dateToCheck = dateStr
@@ -81,7 +87,14 @@ async function getEdmontonData() {
           return new Date(0)
         }
       }
-      return getDate(a.event_date || '').getTime() - getDate(b.event_date || '').getTime()
+      const dateA = getDate(a.date || a.eventDate || a.createdAt || '')
+      const dateB = getDate(b.date || b.eventDate || b.createdAt || '')
+      return dateA.getTime() - dateB.getTime()
+    })
+    
+    console.log(`🔍 Edmonton events found: ${upcomingEvents.length}`)
+    upcomingEvents.forEach((event, index) => {
+      console.log(`  ${index + 1}. ${event.title} (${event.location || event.category}) - ${event.date || event.eventDate}`)
     })
     
     return {
@@ -126,11 +139,11 @@ export default async function EdmontonPage() {
   const formatEventDate = (dateString: string) => {
     try {
       const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', { 
-        month: 'long', 
-        day: 'numeric', 
-        year: 'numeric' 
-      })
+      // Use UTC to avoid timezone conversion issues
+      const month = date.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
+      const day = date.getUTCDate()
+      const year = date.getUTCFullYear()
+      return `${month} ${day}, ${year}`
     } catch {
       return 'Date TBA'
     }
@@ -235,26 +248,23 @@ export default async function EdmontonPage() {
                   </div>
 
                   {/* Upcoming Events */}
-                  <div className="bg-white rounded-xl shadow-sm p-6">
-                    <h2 className="font-display text-2xl font-bold mb-4">Upcoming Events</h2>
-                    <div className="space-y-3">
-                      {events.map((event) => (
-                        <Link
-                          key={`event-${event.id}`}
-                          href={getEventUrl(event)}
-                          className="block group"
-                        >
-                          <h4 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 mb-1">{event.title}</h4>
-                          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                            <Calendar className="h-4 w-4" />
-                            <span>{formatEventDate(event.event_date || '')}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <MapPin className="h-4 w-4" />
-                            <span>{event.location || "Edmonton"}</span>
-                          </div>
-                        </Link>
-                      ))}
+                  <div className="bg-white rounded-xl shadow-sm p-4">
+                    <h2 className="font-display text-xl font-bold mb-3">Upcoming Events</h2>
+                    <div className="flex items-center justify-between bg-blue-50 rounded-lg p-4">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-8 w-8 text-blue-600" />
+                        <div>
+                          <h3 className="font-display font-semibold text-sm text-gray-900">Discover Edmonton's Best Events</h3>
+                          <p className="text-gray-600 text-xs">From festivals to concerts</p>
+                        </div>
+                      </div>
+                      <Link 
+                        href="/events" 
+                        className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md text-sm transition-colors duration-200"
+                      >
+                        <span>Explore</span>
+                        <ArrowRight className="h-3 w-3" />
+                      </Link>
                     </div>
                   </div>
 

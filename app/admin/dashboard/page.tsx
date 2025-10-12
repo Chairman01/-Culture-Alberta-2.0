@@ -10,7 +10,8 @@ import {
   Star,
   Calendar,
   MapPin,
-  Mail
+  Mail,
+  RefreshCw
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -18,6 +19,31 @@ export default function AdminDashboard() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [refreshMessage, setRefreshMessage] = useState('')
+
+  const handleRefreshCache = async () => {
+    setIsRefreshing(true)
+    setRefreshMessage('')
+    try {
+      const response = await fetch('/api/refresh-cache', {
+        method: 'POST'
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        setRefreshMessage('✅ Cache refreshed! Newest articles will now show.')
+      } else {
+        setRefreshMessage('❌ Failed to refresh cache')
+      }
+    } catch (error) {
+      setRefreshMessage('❌ Error refreshing cache')
+    } finally {
+      setIsRefreshing(false)
+      // Clear message after 5 seconds
+      setTimeout(() => setRefreshMessage(''), 5000)
+    }
+  }
 
   useEffect(() => {
     // Check authentication using localStorage (same as admin layout)
@@ -50,13 +76,32 @@ export default function AdminDashboard() {
             <h1 className="text-2xl font-bold">Admin Dashboard</h1>
             <p className="text-muted-foreground">Welcome back, Admin</p>
           </div>
-          <Button asChild>
-            <Link href="/">
-              <Home className="mr-2 h-4 w-4" />
-              View Site
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleRefreshCache} 
+              disabled={isRefreshing}
+              variant="outline"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh Cache
+            </Button>
+            <Button asChild>
+              <Link href="/">
+                <Home className="mr-2 h-4 w-4" />
+                View Site
+              </Link>
+            </Button>
+          </div>
         </div>
+        
+        {/* Refresh Message */}
+        {refreshMessage && (
+          <div className={`mb-4 p-4 rounded-lg ${
+            refreshMessage.includes('✅') ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
+          }`}>
+            {refreshMessage}
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

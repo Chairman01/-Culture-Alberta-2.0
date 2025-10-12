@@ -1,7 +1,4 @@
-"use client"
-
-import { useEffect, useState } from "react"
-import { getCityArticles } from "@/lib/articles"
+import { getCityArticlesWithFallback } from "@/lib/fallback-articles"
 import { Article } from "@/lib/types/article"
 import Link from "next/link"
 import Image from "next/image"
@@ -14,25 +11,12 @@ interface EdmontonArticle extends Article {
   location?: string;
 }
 
-export default function EdmontonAllArticlesPage() {
-  const [articles, setArticles] = useState<EdmontonArticle[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [currentPage, setCurrentPage] = useState(1)
-  const articlesPerPage = 12
-
-  useEffect(() => {
-    async function loadEdmontonArticles() {
-      try {
-        const allArticles = await getCityArticles('edmonton')
-        setArticles(allArticles)
-      } catch (error) {
-        console.error("Error loading Edmonton articles:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadEdmontonArticles()
-  }, [])
+export default async function EdmontonAllArticlesPage() {
+  // Get Edmonton articles with fallback to articles.json (exclude events)
+  const allEdmontonContent = await getCityArticlesWithFallback('edmonton') as EdmontonArticle[]
+  const articles = allEdmontonContent.filter(item => item.type !== 'event' && item.type !== 'Event')
+  
+  console.log(`✅ Edmonton all articles loaded: ${articles.length} (filtered out ${allEdmontonContent.length - articles.length} events)`)
 
   const formatDate = (dateString: string) => {
     try {
@@ -49,20 +33,6 @@ export default function EdmontonAllArticlesPage() {
     } catch {
       return 'Recently'
     }
-  }
-
-  // Pagination logic
-  const totalPages = Math.ceil(articles.length / articlesPerPage)
-  const startIndex = (currentPage - 1) * articlesPerPage
-  const endIndex = startIndex + articlesPerPage
-  const currentArticles = articles.slice(startIndex, endIndex)
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-      </div>
-    )
   }
 
   return (
@@ -99,77 +69,36 @@ export default function EdmontonAllArticlesPage() {
           {/* Articles Grid */}
           <section className="w-full py-8">
             <div className="container mx-auto px-4 md:px-6">
-              {currentArticles.length > 0 ? (
-                <>
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {currentArticles.map((article) => (
-                      <Link key={article.id} href={getArticleUrl(article)} className="group block">
-                        <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                          <div className="aspect-[4/3] w-full bg-gray-200 relative">
-                            <Image
-                              src={article.imageUrl || "/placeholder.svg"}
-                              alt={article.title}
-                              width={400}
-                              height={300}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          </div>
-                          <div className="p-4">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                              <span className="rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 text-xs font-semibold">
-                                {article.category}
-                              </span>
-                              <span>{formatDate(article.date || '')}</span>
-                            </div>
-                            <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors duration-300 line-clamp-2 leading-tight mb-2">
-                              {article.title}
-                            </h3>
-                            <p className="text-sm text-muted-foreground line-clamp-3">{article.excerpt}</p>
-                          </div>
+              {articles.length > 0 ? (
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {articles.map((article) => (
+                    <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                      <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                        <div className="aspect-[4/3] w-full bg-gray-200 relative">
+                          <Image
+                            src={article.imageUrl || "/placeholder.svg"}
+                            alt={article.title}
+                            width={400}
+                            height={300}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
                         </div>
-                      </Link>
-                    ))}
-                  </div>
-
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-center gap-4 mt-8">
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                        Previous
-                      </button>
-                      
-                      <div className="flex items-center gap-2">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                          <button
-                            key={page}
-                            onClick={() => setCurrentPage(page)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                              currentPage === page
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        ))}
+                        <div className="p-4">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                            <span className="rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 text-xs font-semibold">
+                              {article.category}
+                            </span>
+                            <span>{formatDate(article.date || '')}</span>
+                          </div>
+                          <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors duration-300 line-clamp-2 leading-tight mb-2">
+                            {article.title}
+                          </h3>
+                          <p className="text-sm text-muted-foreground line-clamp-3">{article.excerpt}</p>
+                        </div>
                       </div>
-                      
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Next
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                </>
+                    </Link>
+                  ))}
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">

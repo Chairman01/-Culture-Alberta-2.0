@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
     const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
     
-    // Fetch articles from Supabase
-    const articlesResponse = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*`, {
+    // Fetch articles from Supabase (ordered by created_at descending for newest first)
+    const articlesResponse = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*&order=created_at.desc`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Fetched ${articles.length} articles from Supabase`)
 
     // Fetch events from Supabase
-    const eventsResponse = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*`, {
+    const eventsResponse = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=created_at.desc`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -171,8 +171,8 @@ export async function GET() {
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
     const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
     
-    // Fetch articles from Supabase
-    const articlesResponse = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*`, {
+    // Fetch articles from Supabase (ordered by created_at descending for newest first)
+    const articlesResponse = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*&order=created_at.desc`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -188,7 +188,7 @@ export async function GET() {
     console.log(`✅ Fetched ${articles.length} articles from Supabase`)
 
     // Fetch events from Supabase
-    const eventsResponse = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*`, {
+    const eventsResponse = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=created_at.desc`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,

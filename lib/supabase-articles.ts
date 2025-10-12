@@ -89,7 +89,7 @@ const getCacheDuration = () => {
   if (process.env.NODE_ENV === 'production') {
     return 60 * 60 * 1000 // 1 hour cache in production
   }
-  return 30 * 1000 // 30 seconds in development for faster updates
+  return 10 * 1000 // 10 seconds in development for faster updates
 }
 
 // SPEED OPTIMIZATION: Always try file system first
@@ -201,10 +201,10 @@ export async function getHomepageArticles(): Promise<Article[]> {
     try {
       console.log('=== getHomepageArticles called ===')
       
-      // SMART CACHE: Check if we have recent cache (less than 30 seconds old)
+      // SMART CACHE: Check if we have recent cache (less than 10 seconds old)
       const now = Date.now()
       const cacheAge = now - cacheTimestamp
-      const maxCacheAge = 30 * 1000 // 30 seconds
+      const maxCacheAge = getCacheDuration() // Use the same cache duration as everywhere else
       
       if (articlesCache && cacheAge < maxCacheAge) {
         console.log('⚡ SPEED: Using recent cache (age:', Math.round(cacheAge/1000), 'seconds)')

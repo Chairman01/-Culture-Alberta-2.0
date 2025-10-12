@@ -15,6 +15,7 @@ export const revalidate = 120 // 2 minutes
 interface CalgaryArticle extends Article {
   type?: string;
   location?: string;
+  eventDate?: string;
 }
 
 // Server-side data loading with fallback
@@ -22,9 +23,10 @@ async function getCalgaryData() {
   try {
     console.log('🔄 Loading Calgary articles with fallback system...')
     
-    // Get Calgary articles with fallback to articles.json
-    const calgaryArticles = await getCityArticlesWithFallback('calgary') as CalgaryArticle[]
-    console.log(`✅ Calgary articles loaded: ${calgaryArticles.length}`)
+    // Get Calgary articles with fallback to articles.json (exclude events)
+    const allCalgaryContent = await getCityArticlesWithFallback('calgary') as CalgaryArticle[]
+    const calgaryArticles = allCalgaryContent.filter(item => item.type !== 'event' && item.type !== 'Event')
+    console.log(`✅ Calgary articles loaded: ${calgaryArticles.length} (filtered out ${allCalgaryContent.length - calgaryArticles.length} events)`)
     
     // Sort by date (newest first)
     const sortedArticles = calgaryArticles.sort((a, b) => {
@@ -47,20 +49,33 @@ async function getCalgaryData() {
     const now = new Date()
     const calgaryEvents = sortedArticles.filter(
       (a) => {
-        if (!a.date) return false
+        // First check if it's an event type
+        if (a.type !== 'event' && a.type !== 'Event') return false
+        
+        // Check if it's Calgary-related
+        const isCalgaryEvent = a.location?.toLowerCase().includes('calgary') ||
+                              a.category?.toLowerCase().includes('calgary') ||
+                              a.categories?.some((cat: string) => cat.toLowerCase().includes('calgary')) ||
+                              a.title.toLowerCase().includes('calgary')
+        
+        if (!isCalgaryEvent) return false
+        
+        // Check if it has a date and is in the future
+        const dateToCheck = a.date || a.eventDate || a.createdAt
+        if (!dateToCheck) return false
         
         // Handle date formats like "August 15 - 17, 2025" or "August 15, 2025"
-        let dateToCheck = a.date
-        if (a.date.includes(' - ')) {
+        let dateStr = dateToCheck.toString()
+        if (dateStr.includes(' - ')) {
           // Take the first date from a range
-          dateToCheck = a.date.split(' - ')[0]
+          dateStr = dateStr.split(' - ')[0]
         }
         
         try {
-          const eventDate = new Date(dateToCheck)
+          const eventDate = new Date(dateStr)
           return eventDate > now
         } catch (error) {
-          console.warn('Could not parse date:', a.date, error)
+          console.warn('Could not parse date:', dateToCheck, error)
           return false
         }
       }
@@ -78,7 +93,14 @@ async function getCalgaryData() {
           return new Date(0)
         }
       }
-      return getDate(a.date || '').getTime() - getDate(b.date || '').getTime()
+      const dateA = getDate(a.date || a.eventDate || a.createdAt || '')
+      const dateB = getDate(b.date || b.eventDate || b.createdAt || '')
+      return dateA.getTime() - dateB.getTime()
+    })
+    
+    console.log(`🔍 Calgary events found: ${calgaryEvents.length}`)
+    calgaryEvents.forEach((event, index) => {
+      console.log(`  ${index + 1}. ${event.title} (${event.location || event.category}) - ${event.date || event.eventDate}`)
     })
     
     return {
@@ -121,11 +143,11 @@ export default async function CalgaryPage() {
   const formatEventDate = (dateString: string) => {
     try {
       const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', { 
-        month: 'long', 
-        day: 'numeric', 
-        year: 'numeric' 
-      })
+      // Use UTC to avoid timezone conversion issues
+      const month = date.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
+      const day = date.getUTCDate()
+      const year = date.getUTCFullYear()
+      return `${month} ${day}, ${year}`
     } catch {
       return 'Date TBA'
     }
@@ -228,26 +250,23 @@ export default async function CalgaryPage() {
                   </div>
 
                                      {/* Upcoming Events */}
-                   <div className="bg-white rounded-xl shadow-sm p-6">
-                     <h2 className="font-display text-2xl font-bold mb-4">Upcoming Events</h2>
-                     <div className="space-y-3">
-                       {upcomingEvents.map((event) => (
-                         <Link
-                           key={`event-${event.id}`}
-                           href={getEventUrl(event)}
-                           className="block group"
-                         >
-                           <h4 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 mb-1">{event.title}</h4>
-                           <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                             <Calendar className="h-4 w-4" />
-                             <span>{formatEventDate(event.date || '')}</span>
-                           </div>
-                           <div className="flex items-center gap-2 text-sm text-gray-500">
-                             <MapPin className="h-4 w-4" />
-                             <span>{event.location || "Calgary"}</span>
-                           </div>
-                         </Link>
-                       ))}
+                   <div className="bg-white rounded-xl shadow-sm p-4">
+                     <h2 className="font-display text-xl font-bold mb-3">Upcoming Events</h2>
+                     <div className="flex items-center justify-between bg-red-50 rounded-lg p-4">
+                       <div className="flex items-center gap-3">
+                         <Calendar className="h-8 w-8 text-red-600" />
+                         <div>
+                           <h3 className="font-display font-semibold text-sm text-gray-900">Discover Calgary's Best Events</h3>
+                           <p className="text-gray-600 text-xs">From festivals to concerts</p>
+                         </div>
+                       </div>
+                       <Link 
+                         href="/events" 
+                         className="inline-flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-md text-sm transition-colors duration-200"
+                       >
+                         <span>Explore</span>
+                         <ArrowRight className="h-3 w-3" />
+                       </Link>
                      </div>
                    </div>
 

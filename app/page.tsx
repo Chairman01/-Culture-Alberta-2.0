@@ -57,8 +57,19 @@ async function getHomePageData() {
     }))
     
     // Combine articles and events
-    const allPosts = [...apiArticles, ...eventAsArticles]
-    console.log('🔍 DEBUG: Combined posts (articles + events):', allPosts.length)
+    const combinedPosts = [...apiArticles, ...eventAsArticles]
+    
+    // DEDUPLICATE: Remove any duplicate IDs (can happen if same content is in both sources)
+    const seenIds = new Set<string>()
+    const allPosts = combinedPosts.filter(post => {
+      if (seenIds.has(post.id)) {
+        console.warn(`⚠️ Duplicate ID found and removed: ${post.id} - ${post.title}`)
+        return false
+      }
+      seenIds.add(post.id)
+      return true
+    })
+    console.log('🔍 DEBUG: Combined posts (articles + events):', allPosts.length, '(removed', combinedPosts.length - allPosts.length, 'duplicates)')
     
     // Simple approach: Use all posts for all sections, filter by categories
     const allPostsForFiltering = allPosts
@@ -201,10 +212,27 @@ export default async function HomeStatic() {
                       null
   
   // Sort articles by date (newest first) before filtering
+  // For articles, prioritize createdAt; for events, use event_date or createdAt
   const sortedPosts = posts.sort((a, b) => {
-    const dateA = new Date(a.date || a.createdAt || 0).getTime()
-    const dateB = new Date(b.date || b.createdAt || 0).getTime()
-    return dateB - dateA // Newest first
+    let dateA: Date, dateB: Date;
+    
+    if (a.type === 'event') {
+      // For events, use event_date if available, otherwise createdAt
+      dateA = new Date(a.date || a.createdAt || 0)
+    } else {
+      // For articles, prioritize createdAt over date
+      dateA = new Date(a.createdAt || a.date || 0)
+    }
+    
+    if (b.type === 'event') {
+      // For events, use event_date if available, otherwise createdAt
+      dateB = new Date(b.date || b.createdAt || 0)
+    } else {
+      // For articles, prioritize createdAt over date
+      dateB = new Date(b.createdAt || b.date || 0)
+    }
+    
+    return dateB.getTime() - dateA.getTime() // Newest first
   })
   
   
@@ -272,11 +300,32 @@ export default async function HomeStatic() {
   
   // SIMPLE CATEGORY-BASED FILTERING for Events
   const eventPosts = sortedPosts.filter(post => {
-    // Check if article has "Events" in category or categories array
-    const hasEventCategory = post.category?.toLowerCase().includes('event');
+    // Only include items that are actually events (type: 'event') or have specific event categories
+    // Exclude news articles that happen to have "Events" in their categories
+    if (post.type === 'event') {
+      return true; // Always include actual events
+    }
+    
+    // For articles, only include if they have specific event-related categories
+    // but exclude health alerts, news, etc. that might have "Events" category
+    const hasEventCategory = post.category?.toLowerCase() === 'events' || 
+                            post.category?.toLowerCase().includes('art') ||
+                            post.category?.toLowerCase().includes('festival');
     const hasEventInCategories = post.categories?.some((cat: string) => 
-      cat.toLowerCase().includes('event')
+      cat.toLowerCase() === 'events' ||
+      cat.toLowerCase().includes('art') ||
+      cat.toLowerCase().includes('festival')
     );
+    
+    // Additional check: exclude news articles about health alerts, strikes, etc.
+    const isNewsArticle = post.title?.toLowerCase().includes('alert') ||
+                         post.title?.toLowerCase().includes('strike') ||
+                         post.title?.toLowerCase().includes('exposure') ||
+                         post.title?.toLowerCase().includes('rally');
+    
+    if (isNewsArticle) {
+      return false; // Don't show news articles as events
+    }
     
     return hasEventCategory || hasEventInCategories;
   }).slice(0, 3)

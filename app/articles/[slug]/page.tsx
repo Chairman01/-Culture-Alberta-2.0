@@ -9,8 +9,8 @@ import { getArticleUrl } from '@/lib/utils/article-url'
 import { createSlug } from '@/lib/utils/slug'
 import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
-import { ArticleSEO } from '@/components/seo/article-seo'
 import { getAllEvents, getEventBySlug } from '@/lib/events'
+import { Metadata } from 'next'
 // import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
 
 // Function to process content and convert YouTube URLs to embedded videos
@@ -109,6 +109,106 @@ export async function generateStaticParams() {
 
 // Enable ISR (Incremental Static Regeneration) with aggressive caching
 export const revalidate = 300 // 5 minutes - balance between freshness and performance
+
+// Generate metadata for social media sharing
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const resolvedParams = await params
+  const slug = resolvedParams.slug
+  
+  try {
+    // Load article data for metadata
+    let loadedArticle = await getFastArticleBySlug(slug)
+    
+    if (!loadedArticle) {
+      loadedArticle = await getArticleBySlug(slug)
+    }
+    
+    if (!loadedArticle) {
+      loadedArticle = await getArticleById(slug)
+    }
+    
+    if (!loadedArticle) {
+      return {
+        title: 'Article Not Found | Culture Alberta',
+        description: 'The requested article could not be found.',
+      }
+    }
+    
+    const fullTitle = loadedArticle.title.includes('Culture Alberta') ? loadedArticle.title : `${loadedArticle.title} | Culture Alberta`
+    const description = loadedArticle.excerpt || loadedArticle.description || `Read about ${loadedArticle.title} on Culture Alberta`
+    const fullUrl = `https://www.culturealberta.com/articles/${slug}`
+    
+    // Handle image URL properly - use article image if available, otherwise use default
+    let articleImage = loadedArticle.imageUrl || '/images/culture-alberta-og.jpg'
+    
+    // Ensure image URL is absolute
+    const absoluteImageUrl = articleImage.startsWith('http') 
+      ? articleImage 
+      : articleImage.startsWith('data:image')
+      ? articleImage
+      : `https://www.culturealberta.com${articleImage}`
+    
+    // Debug logging for metadata
+    console.log('Article Metadata Debug:', {
+      title: fullTitle,
+      description: description,
+      image: absoluteImageUrl,
+      url: fullUrl,
+      originalImage: loadedArticle.imageUrl
+    })
+    
+    return {
+      title: fullTitle,
+      description: description,
+      keywords: [...(loadedArticle.tags || []), loadedArticle.category, 'Alberta', 'Culture'].filter(Boolean).join(', '),
+      authors: [{ name: loadedArticle.author || 'Culture Alberta' }],
+      openGraph: {
+        type: 'article',
+        title: fullTitle,
+        description: description,
+        url: fullUrl,
+        images: [
+          {
+            url: absoluteImageUrl,
+            width: 1200,
+            height: 630,
+            alt: loadedArticle.title,
+          }
+        ],
+        siteName: 'Culture Alberta',
+        locale: 'en_CA',
+        publishedTime: loadedArticle.date,
+        modifiedTime: loadedArticle.updatedAt || loadedArticle.date,
+        authors: [loadedArticle.author || 'Culture Alberta'],
+        section: loadedArticle.category,
+        tags: loadedArticle.tags || [],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: fullTitle,
+        description: description,
+        images: [absoluteImageUrl],
+        site: '@culturealberta',
+        creator: '@culturealberta',
+      },
+      alternates: {
+        canonical: fullUrl,
+      },
+      other: {
+        'article:author': loadedArticle.author || 'Culture Alberta',
+        'article:section': loadedArticle.category,
+        'article:published_time': loadedArticle.date,
+        'article:modified_time': loadedArticle.updatedAt || loadedArticle.date,
+      }
+    }
+  } catch (error) {
+    console.error('Error generating metadata:', error)
+    return {
+      title: 'Article | Culture Alberta',
+      description: 'Read the latest articles on Culture Alberta.',
+    }
+  }
+}
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = await params
@@ -297,20 +397,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
     return (
       <>
-        <ArticleSEO
-          title={loadedArticle.title}
-          description={loadedArticle.excerpt || loadedArticle.description || `Read about ${loadedArticle.title} on Culture Alberta`}
-          url={`/articles/${slug}`}
-          image={loadedArticle.imageUrl}
-          publishedTime={loadedArticle.date}
-          modifiedTime={loadedArticle.updatedAt}
-          author={loadedArticle.author || 'Culture Alberta'}
-          section={loadedArticle.category}
-          tags={loadedArticle.tags || []}
-          category={loadedArticle.category}
-          slug={slug}
-        />
-        {/* ArticleReadingFeatures removed - was causing duplicate newsletter */}
+        {/* Metadata is now handled by generateMetadata function */}
         <div className="min-h-screen bg-gray-50">
         {/* Sticky Header */}
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">

@@ -1,3 +1,4 @@
+import 'server-only'
 import { Article } from './types/article'
 import { getAllArticles as getSupabaseArticles } from './supabase-articles'
 import fs from 'fs'
@@ -19,10 +20,10 @@ async function loadArticlesFromJson(): Promise<Article[]> {
   }
 
   try {
-    const articlesJsonPath = path.join(process.cwd(), 'articles.json')
+    const articlesJsonPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
     
     if (!fs.existsSync(articlesJsonPath)) {
-      console.warn('⚠️ articles.json file not found')
+      console.warn('⚠️ articles.json file not found at', articlesJsonPath)
       return []
     }
 
@@ -48,6 +49,22 @@ async function loadArticlesFromJson(): Promise<Article[]> {
 export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise<Article[]> {
   console.log('🔄 Loading articles with fallback system...')
   
+  // IN DEVELOPMENT: Use articles.json FIRST for fastest, most reliable data
+  // This ensures newest articles always show without cache issues
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🚀 Development mode: Loading from articles.json first')
+    try {
+      const jsonArticles = await loadArticlesFromJson()
+      if (jsonArticles.length > 0) {
+        console.log(`✅ Loaded ${jsonArticles.length} articles from articles.json (dev mode priority)`)
+        return jsonArticles
+      }
+    } catch (jsonError) {
+      console.warn('⚠️ articles.json failed, falling back to Supabase:', jsonError)
+    }
+  }
+  
+  // IN PRODUCTION or if JSON fails: Use Supabase with timeout
   // Create a promise that resolves with Supabase data
   const supabasePromise = getSupabaseArticles()
   
@@ -105,10 +122,8 @@ export async function getCityArticlesWithFallback(city: string): Promise<Article
     const hasCityTags = article.tags?.some((tag: string) => 
       tag.toLowerCase().includes(city.toLowerCase())
     )
-    // Include general Alberta articles if no city-specific articles
-    const isGeneralAlberta = !article.location || article.location.toLowerCase().includes('alberta')
-    
-    return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags || isGeneralAlberta
+    // Only include articles that are specifically related to the city
+    return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags
   })
 }
 
