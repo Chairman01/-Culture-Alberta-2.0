@@ -6,6 +6,10 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 import { PageSEO } from '@/components/seo/page-seo'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
+// Force dynamic rendering to prevent oversized static generation
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 interface CalgaryArticle extends Article {
   type?: string;
   location?: string;
