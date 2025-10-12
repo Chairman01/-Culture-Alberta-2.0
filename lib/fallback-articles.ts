@@ -90,22 +90,25 @@ export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise
     // Race between Supabase and timeout
     const articles = await Promise.race([supabasePromise, timeoutPromise])
     console.log(`✅ Loaded ${articles.length} articles from Supabase`)
-    return articles
-  } catch (error) {
-    console.warn('⚠️ Supabase failed or timed out:', error)
     
-    // CRITICAL FIX: In production, NEVER fall back to articles.json - it contains stale data
-    if (isProduction) {
-      console.error('❌ [PRODUCTION] Supabase failed - NOT using stale articles.json fallback')
-      console.error('❌ [PRODUCTION] This means articles won\'t show until Supabase is working')
-      return [] // Return empty array instead of stale data
+    // SMART FALLBACK: Update articles.json with fresh data when Supabase works
+    try {
+      const articlesJsonPath = path.join(process.cwd(), 'articles.json')
+      fs.writeFileSync(articlesJsonPath, JSON.stringify(articles, null, 2))
+      console.log(`🔄 Updated articles.json fallback file with ${articles.length} fresh articles`)
+    } catch (updateError) {
+      console.warn('⚠️ Could not update articles.json fallback file:', updateError)
+      // Don't fail the request if fallback update fails
     }
     
-    // Only use articles.json fallback in development
+    return articles
+  } catch (error) {
+    console.warn('⚠️ Supabase failed or timed out, using articles.json fallback:', error)
+    
     try {
       const fallbackArticles = await loadArticlesFromJson()
       if (fallbackArticles.length > 0) {
-        console.log(`✅ [DEV] Fallback successful: ${fallbackArticles.length} articles from JSON`)
+        console.log(`✅ Fallback successful: ${fallbackArticles.length} articles from JSON`)
         return fallbackArticles
       } else {
         console.warn('⚠️ No fallback articles available')
