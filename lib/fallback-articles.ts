@@ -92,12 +92,20 @@ export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise
     console.log(`✅ Loaded ${articles.length} articles from Supabase`)
     return articles
   } catch (error) {
-    console.warn('⚠️ Supabase failed or timed out, using articles.json fallback:', error)
+    console.warn('⚠️ Supabase failed or timed out:', error)
     
+    // CRITICAL FIX: In production, NEVER fall back to articles.json - it contains stale data
+    if (isProduction) {
+      console.error('❌ [PRODUCTION] Supabase failed - NOT using stale articles.json fallback')
+      console.error('❌ [PRODUCTION] This means articles won\'t show until Supabase is working')
+      return [] // Return empty array instead of stale data
+    }
+    
+    // Only use articles.json fallback in development
     try {
       const fallbackArticles = await loadArticlesFromJson()
       if (fallbackArticles.length > 0) {
-        console.log(`✅ Fallback successful: ${fallbackArticles.length} articles from JSON`)
+        console.log(`✅ [DEV] Fallback successful: ${fallbackArticles.length} articles from JSON`)
         return fallbackArticles
       } else {
         console.warn('⚠️ No fallback articles available')
@@ -114,7 +122,7 @@ export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise
  * Load articles for homepage with optimized fallback
  */
 export async function getHomepageArticlesWithFallback(): Promise<Article[]> {
-  return getArticlesWithFallback(3000) // 3 second timeout for homepage
+  return getArticlesWithFallback(10000) // 10 second timeout for homepage - give Supabase more time
 }
 
 /**
