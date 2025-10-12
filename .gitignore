@@ -25,3 +25,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Large data files (generated at build time from Supabase)
+articles.json
+lib/data/articles.json

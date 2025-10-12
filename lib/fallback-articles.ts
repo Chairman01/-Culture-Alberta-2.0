@@ -49,13 +49,11 @@ async function loadArticlesFromJson(): Promise<Article[]> {
 export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise<Article[]> {
   console.log('🔄 Loading articles with fallback system...')
   
-  // PRODUCTION FIX: Always use articles.json as primary source since it has the latest data
-  // This ensures both development and production show the same fresh content
-  console.log('🚀 PRODUCTION FIX: Using articles.json as primary source (latest data)')
+  // Try articles.json first if it exists (development mode)
   try {
     const jsonArticles = await loadArticlesFromJson()
     if (jsonArticles.length > 0) {
-      console.log(`✅ Loaded ${jsonArticles.length} articles from articles.json (PRODUCTION FIX)`)
+      console.log(`✅ Loaded ${jsonArticles.length} articles from articles.json`)
       
       // Log the date range to verify we have fresh data
       const dates = jsonArticles.map(a => a.createdAt).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
@@ -67,7 +65,7 @@ export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise
       return jsonArticles
     }
   } catch (jsonError) {
-    console.warn('⚠️ articles.json failed, falling back to Supabase:', jsonError)
+    console.log('ℹ️ articles.json not found, using Supabase (expected in production):', jsonError)
   }
   
   // Fallback: Use Supabase with timeout
