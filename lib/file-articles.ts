@@ -3,6 +3,14 @@ import { Article, CreateArticleInput, UpdateArticleInput } from './types/article
 // Direct file system access for build time
 export async function getAllArticlesFromFile(): Promise<Article[]> {
   try {
+    // CRITICAL FIX: Only load articles.ts in development to prevent oversized build
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
+    
+    if (isProduction) {
+      console.log('🚀 [PRODUCTION BUILD] Skipping articles.ts file (prevents oversized ISR pages)')
+      return []
+    }
+    
     // Use dynamic import to avoid webpack parsing issues
     const articlesData = await import('./data/articles')
     console.log('Using articles.json directly - no API calls')
@@ -33,6 +41,14 @@ export async function getAllArticlesFromFile(): Promise<Article[]> {
 
 export async function getArticleByIdFromFile(id: string): Promise<Article | null> {
   try {
+    // CRITICAL FIX: Only load articles.ts in development to prevent oversized build
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
+    
+    if (isProduction) {
+      console.log('🚀 [PRODUCTION BUILD] Skipping articles.ts file (prevents oversized ISR pages)')
+      return null
+    }
+    
     // Use dynamic import to avoid webpack parsing issues
     const articlesData = await import('./data/articles')
     console.log('Finding article by ID in articles.json')
