@@ -807,18 +807,30 @@ export async function getAllArticles(): Promise<Article[]> {
     } : 'No articles')
 
     // Map Supabase data to match our Article interface
-    const mappedArticles = (data || []).map((article: any) => ({
-      ...article,
-      imageUrl: validateImageUrl(article.image_url || article.image, article.title), // Map 'image_url' or 'image' column to 'imageUrl'
-      date: article.created_at, // Map 'created_at' to 'date' for compatibility
-      // Map trending flags from database columns to interface properties
-      trendingHome: article.trending_home || false,
-      trendingEdmonton: article.trending_edmonton || false,
-      trendingCalgary: article.trending_calgary || false,
-      featuredHome: article.featured_home || false,
-      featuredEdmonton: article.featured_edmonton || false,
-      featuredCalgary: article.featured_calgary || false
-    }))
+    const mappedArticles = (data || []).map((article: any) => {
+      // CRITICAL FIX: Prevent oversized articles that cause FALLBACK_BODY_TOO_LARGE errors
+      const MAX_CONTENT_SIZE = 500000 // 500KB limit
+      let content = article.content || ''
+      
+      if (content.length > MAX_CONTENT_SIZE) {
+        console.warn(`⚠️ Article "${article.title}" content too large (${content.length} chars), truncating to prevent build failure`)
+        content = content.substring(0, MAX_CONTENT_SIZE) + '... [Content truncated to prevent oversized page]'
+      }
+      
+      return {
+        ...article,
+        content: content, // Use truncated content
+        imageUrl: validateImageUrl(article.image_url || article.image, article.title), // Map 'image_url' or 'image' column to 'imageUrl'
+        date: article.created_at, // Map 'created_at' to 'date' for compatibility
+        // Map trending flags from database columns to interface properties
+        trendingHome: article.trending_home || false,
+        trendingEdmonton: article.trending_edmonton || false,
+        trendingCalgary: article.trending_calgary || false,
+        featuredHome: article.featured_home || false,
+        featuredEdmonton: article.featured_edmonton || false,
+        featuredCalgary: article.featured_calgary || false
+      }
+    })
 
     console.log('Mapped articles with featured flags:', mappedArticles.map((a: any) => ({
       id: a.id,

@@ -107,8 +107,10 @@ export async function generateStaticParams() {
   }
 }
 
-// Enable ISR (Incremental Static Regeneration) with aggressive caching
-export const revalidate = 300 // 5 minutes - balance between freshness and performance
+// CRITICAL FIX: Disable ISR to prevent FALLBACK_BODY_TOO_LARGE errors
+// ISR was causing oversized pages (22MB+) that exceed Vercel's 19MB limit
+export const revalidate = 0 // Force dynamic rendering to prevent build failures
+export const dynamic = 'force-dynamic' // Ensure dynamic rendering
 
 // Generate metadata for social media sharing
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
