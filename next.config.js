@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// Force cache clear: 2025-10-12 07:15
 const nextConfig = {
   reactStrictMode: true,
   // Performance optimizations
