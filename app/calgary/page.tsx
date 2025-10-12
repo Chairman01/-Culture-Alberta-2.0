@@ -8,9 +8,10 @@ import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getCityArticlesWithFallback } from '@/lib/fallback-articles'
 import { Article } from "@/lib/types/article"
 
-// Enable ISR for better performance
+// Force dynamic rendering - fetch fresh data on EVERY request
 export const revalidate = 0 // No caching - always fetch fresh data
 export const dynamic = 'force-dynamic' // Force dynamic rendering
+export const fetchCache = 'force-no-store' // Don't cache fetch requests
 
 // Extend Article locally to include 'type' for filtering
 interface CalgaryArticle extends Article {

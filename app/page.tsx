@@ -9,11 +9,13 @@ import { Article } from '@/lib/types/article'
 import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
-// Disable all caching to ensure fresh data on every request
+// CRITICAL: Force dynamic rendering - fetch fresh data on EVERY request
 export const revalidate = 0 // No caching - always fetch fresh data
 export const dynamic = 'force-dynamic' // Force dynamic rendering
+export const fetchCache = 'force-no-store' // Don't cache fetch requests
+export const dynamicParams = true // Generate pages on-demand
 
-// Server-side data loading for static generation
+// Server-side data loading for dynamic rendering (NOT static generation)
 async function getHomePageData() {
   try {
     // Use the optimized homepage articles function with fallback for better performance
