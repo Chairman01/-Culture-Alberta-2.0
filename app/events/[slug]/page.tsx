@@ -87,7 +87,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       keywords: [...(loadedEvent.tags || []), loadedEvent.category, 'Alberta', 'Events', 'Culture'].filter(Boolean).join(', '),
       authors: [{ name: loadedEvent.organizer || 'Culture Alberta' }],
       openGraph: {
-        type: 'event',
+        type: 'website',
         title: fullTitle,
         description: description,
         url: fullUrl,
@@ -101,9 +101,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         ],
         siteName: 'Culture Alberta',
         locale: 'en_CA',
-        startTime: loadedEvent.event_date,
-        endTime: loadedEvent.event_end_date || loadedEvent.event_date,
-        location: loadedEvent.location,
       },
       twitter: {
         card: 'summary_large_image',
