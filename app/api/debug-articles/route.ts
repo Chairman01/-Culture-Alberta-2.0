@@ -1,39 +1,41 @@
-import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server'
+import { getAllArticles } from '@/lib/supabase-articles'
+import { testSupabaseConnection } from '@/lib/supabase-articles'
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 DEBUG: Checking Supabase connection...')
-    console.log('Environment:', {
-      NODE_ENV: process.env.NODE_ENV,
-      VERCEL: process.env.VERCEL,
-      SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || 'using hardcoded',
-      SUPABASE_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'using hardcoded'
-    })
-
-    // Test direct Supabase query
-    const { data, error } = await supabase
-      .from('articles')
-      .select('id, title, status, created_at, category')
-      .order('created_at', { ascending: false })
-      .limit(10)
-
-    if (error) {
-      return NextResponse.json({
-        success: false,
-        error: error.message,
-        details: error
-      }, { status: 500 })
+    console.log('=== DEBUG ARTICLES API CALLED ===')
+    
+    // Test Supabase connection first
+    console.log('Testing Supabase connection...')
+    const connectionTest = await testSupabaseConnection()
+    console.log('Connection test result:', connectionTest)
+    
+    // Try to get articles
+    console.log('Fetching articles...')
+    const articles = await getAllArticles()
+    console.log('Articles fetched:', articles.length)
+    
+    if (articles.length > 0) {
+      console.log('First article:', {
+        id: articles[0].id,
+        title: articles[0].title,
+        category: articles[0].category,
+        createdAt: articles[0].createdAt
+      })
     }
-
+    
     return NextResponse.json({
       success: true,
-      totalArticles: data?.length || 0,
-      articles: data,
+      connectionTest,
+      articleCount: articles.length,
+      articles: articles.slice(0, 5).map(article => ({
+        id: article.id,
+        title: article.title,
+        category: article.category,
+        createdAt: article.createdAt,
+        status: article.status
+      })),
       environment: {
         NODE_ENV: process.env.NODE_ENV,
         VERCEL: process.env.VERCEL,
@@ -41,11 +43,15 @@ export async function GET() {
       }
     })
   } catch (error) {
+    console.error('Debug articles API error:', error)
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      environment: {
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL: process.env.VERCEL,
+        isProduction: process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
+      }
     }, { status: 500 })
   }
 }
-
