@@ -55,7 +55,7 @@ export default function EventsAdminPage() {
         console.log('📅 Event details:', eventsData.map((e: any) => ({ id: e.id, title: e.title, eventDate: e.event_date })))
         
         // Transform events to match the expected format
-        const formattedEvents = eventsData.map(event => ({
+        const formattedEvents = eventsData.map((event: any) => ({
           id: event.id,
           title: event.title,
           category: event.category,
