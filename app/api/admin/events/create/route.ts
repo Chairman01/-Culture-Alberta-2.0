@@ -101,6 +101,7 @@ export async function POST(request: Request) {
         title: eventData.title,
         description: eventData.description,
         excerpt: eventData.excerpt || (eventData.description ? eventData.description.substring(0, 150) + (eventData.description.length > 150 ? '...' : '') : ''),
+        content: eventData.description || '', // Events use description as content
         category: eventData.category,
         location: eventData.location,
         type: 'event',
