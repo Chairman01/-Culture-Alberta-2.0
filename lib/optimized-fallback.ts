@@ -58,7 +58,7 @@ function optimizeArticle(article: Article): OptimizedArticle {
     status: article.status || 'published',
     created_at: article.createdAt,
     createdAt: article.createdAt,
-    date: article.date,
+    date: article.date || article.createdAt || new Date().toISOString(),
     type: article.type || 'article',
     author: article.author || 'Culture Alberta',
     imageUrl: article.imageUrl,
