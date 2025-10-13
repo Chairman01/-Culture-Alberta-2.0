@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { getHomepageArticles } from '@/lib/articles'
+// Removed direct import - using API instead
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { PageSEO } from '@/components/seo/page-seo'
@@ -53,9 +53,12 @@ function useHomePageData() {
           setIsLoading(false)
         }, 10000) // 10 second timeout
         
-        // Use the optimized homepage articles function for better performance
-        // Add cache-busting to ensure fresh data
-        const apiArticles = await getHomepageArticles()
+        // Use API route instead of direct function call
+        const response = await fetch('/api/articles?limit=10')
+        if (!response.ok) {
+          throw new Error('Failed to fetch articles')
+        }
+        const apiArticles = await response.json()
         const allPosts = apiArticles
         
         // Separate events from regular articles

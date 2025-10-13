@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Save, Upload } from "lucide-react"
-import { updateArticle } from "@/lib/articles"
+// Removed direct import - using API instead
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -128,15 +128,40 @@ export default function EditPostPage({ params }: EditPostPageProps) {
     setIsSaving(true)
 
     try {
-      // Update the article in Supabase
-      const updatedPost = await updateArticle(postId, {
-        title,
-        category: category.charAt(0).toUpperCase() + category.slice(1),
-        content,
-        excerpt,
-        imageUrl,
-        tags: tags.split(',').map(tag => tag.trim())
+      // Update the article using the admin API
+      const response = await fetch(`/api/admin/articles/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          category: category.charAt(0).toUpperCase() + category.slice(1),
+          categories: [category.charAt(0).toUpperCase() + category.slice(1)],
+          location: "Alberta",
+          excerpt,
+          content,
+          imageUrl,
+          author: "Admin",
+          tags: tags.split(',').map(tag => tag.trim()),
+          type: "article",
+          status: "published",
+          // Add trending flags (default to false)
+          trendingHome: false,
+          trendingEdmonton: false,
+          trendingCalgary: false,
+          // Add featured article flags (default to false)
+          featuredHome: false,
+          featuredEdmonton: false,
+          featuredCalgary: false
+        })
       })
+
+      if (!response.ok) {
+        throw new Error('Failed to update article')
+      }
+
+      const updatedPost = await response.json()
 
       toast({
         title: "Post updated",

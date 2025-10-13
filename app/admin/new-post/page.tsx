@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Upload } from "lucide-react"
-import { createArticle } from "@/lib/articles"
+// Removed direct import - using API instead
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -58,16 +58,40 @@ export default function NewPostPage() {
     setIsSaving(true)
 
     try {
-      // Create the article in Supabase
-      const newPost = await createArticle({
-        title,
-        category: category.charAt(0).toUpperCase() + category.slice(1),
-        content,
-        excerpt,
-        imageUrl,
-        author: "Admin", // You can update this later with actual user info
-        tags: tags.split(',').map(tag => tag.trim())
+      // Create the article using the admin API
+      const response = await fetch('/api/admin/articles/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          category: category.charAt(0).toUpperCase() + category.slice(1),
+          categories: [category.charAt(0).toUpperCase() + category.slice(1)],
+          location: "Alberta",
+          excerpt,
+          content,
+          imageUrl,
+          author: "Admin",
+          tags: tags.split(',').map(tag => tag.trim()),
+          type: "article",
+          status: "published",
+          // Add trending flags (default to false)
+          trendingHome: false,
+          trendingEdmonton: false,
+          trendingCalgary: false,
+          // Add featured article flags (default to false)
+          featuredHome: false,
+          featuredEdmonton: false,
+          featuredCalgary: false
+        })
       })
+
+      if (!response.ok) {
+        throw new Error('Failed to create article')
+      }
+
+      const newPost = await response.json()
 
       toast({
         title: "Post created",
