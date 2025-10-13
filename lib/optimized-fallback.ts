@@ -124,6 +124,7 @@ export async function loadOptimizedFallback(): Promise<Article[]> {
       ...opt,
       content: opt.content || '', // Use content if available, otherwise empty
       slug: opt.id, // Use ID as slug
+      updatedAt: opt.createdAt, // Use createdAt as updatedAt fallback
     }))
     
     // DEBUG: Check how many articles have content
