@@ -49,7 +49,7 @@ export default function BestOfPage() {
       const allArticles = await response.json()
       
       // Filter for best-of articles or create sample data
-      const bestOfArticles = allArticles.filter(article => 
+      const bestOfArticles = allArticles.filter((article: any) => 
         article.category?.toLowerCase().includes('best') || 
         article.type?.toLowerCase().includes('best')
       )
