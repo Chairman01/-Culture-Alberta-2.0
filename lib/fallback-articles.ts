@@ -130,20 +130,6 @@ export async function getCityArticlesWithFallback(city: string): Promise<Article
     console.error(`❌ Failed to load ${city} articles from fallback:`, error)
     return []
   }
-  
-  // Filter for city-specific articles
-  return allArticles.filter(article => {
-    const hasCityCategory = article.category?.toLowerCase().includes(city.toLowerCase())
-    const hasCityLocation = article.location?.toLowerCase().includes(city.toLowerCase())
-    const hasCityCategories = article.categories?.some((cat: string) => 
-      cat.toLowerCase().includes(city.toLowerCase())
-    )
-    const hasCityTags = article.tags?.some((tag: string) => 
-      tag.toLowerCase().includes(city.toLowerCase())
-    )
-    // Only include articles that are specifically related to the city
-    return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags
-  })
 }
 
 /**
