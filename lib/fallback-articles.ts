@@ -1,4 +1,3 @@
-import 'server-only'
 import { Article } from './types/article'
 import { getAllArticles as getSupabaseArticles } from './supabase-articles'
 import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fallback'
