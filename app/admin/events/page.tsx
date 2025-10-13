@@ -52,7 +52,7 @@ export default function EventsAdminPage() {
         }
         const eventsData = await response.json()
         console.log('📅 Events loaded:', eventsData.length, 'events')
-        console.log('📅 Event details:', eventsData.map(e => ({ id: e.id, title: e.title, eventDate: e.event_date })))
+        console.log('📅 Event details:', eventsData.map((e: any) => ({ id: e.id, title: e.title, eventDate: e.event_date })))
         
         // Transform events to match the expected format
         const formattedEvents = eventsData.map(event => ({
