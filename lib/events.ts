@@ -90,7 +90,7 @@ export async function getAllEvents(): Promise<Event[]> {
       // Filter for events only
       const events = fallbackArticles.filter(article => article.type === 'event')
       console.log(`✅ Found ${events.length} events in fallback data`)
-      return events as Event[]
+      return events as unknown as Event[]
     } catch (fallbackError) {
       console.error('❌ Optimized fallback failed:', fallbackError)
       return []
