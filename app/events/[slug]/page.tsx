@@ -79,7 +79,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description: description,
       image: absoluteImageUrl,
       url: fullUrl,
-      originalImage: loadedEvent.imageUrl || loadedEvent.image_url
+      originalImage: loadedEvent.image_url
     })
     
     return {
