@@ -120,7 +120,7 @@ export default function AdminArticles() {
       console.log('Admin: Articles loaded:', data)
       
       // Ensure all required fields are strings
-      const normalized = data.map((a) => ({
+      const normalized = data.map((a: any) => ({
         ...a,
         category: a.category || '',
         location: a.location || '',
