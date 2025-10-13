@@ -76,7 +76,7 @@ export async function PUT(
           ...allArticles[articleIndex],
           ...data,
           imageUrl: articleData.imageUrl, // Ensure imageUrl is preserved
-          date: originalArticle.created_at || originalArticle.date || new Date().toISOString(), // Preserve the date
+          date: originalArticle.createdAt || originalArticle.date || new Date().toISOString(), // Preserve the date
         }
         await updateOptimizedFallback(allArticles)
         console.log('✅ Optimized fallback updated successfully')
