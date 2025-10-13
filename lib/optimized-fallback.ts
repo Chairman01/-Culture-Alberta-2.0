@@ -61,7 +61,7 @@ function optimizeArticle(article: Article): OptimizedArticle {
     date: article.date || article.createdAt || new Date().toISOString(),
     type: article.type || 'article',
     author: article.author || 'Culture Alberta',
-    imageUrl: article.imageUrl,
+    imageUrl: article.imageUrl || '/placeholder-image.jpg',
     trendingHome: article.trendingHome || false,
     trendingEdmonton: article.trendingEdmonton || false,
     trendingCalgary: article.trendingCalgary || false,
