@@ -29,7 +29,7 @@ export default function CalgaryArtsCulturePage() {
         }
         const allArticles = await response.json()
         // Filter for arts & culture articles
-        const artsCultureArticles = allArticles.filter(article => 
+        const artsCultureArticles = allArticles.filter((article: any) => 
           article.category?.toLowerCase().includes('art') ||
           article.category?.toLowerCase().includes('culture') ||
           article.category?.toLowerCase().includes('music') ||
