@@ -147,8 +147,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         website_url: ticketUrl,
         organizer,
         organizer_contact: contactEmail,
-        event_date: startDate || undefined,
-        event_end_date: endDate || undefined,
+        event_date: startDate || "",
+        event_end_date: endDate || "",
       }
 
       console.log("🔧 Updating event with data:", updateData)
