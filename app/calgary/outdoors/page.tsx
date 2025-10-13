@@ -29,7 +29,7 @@ export default function CalgaryOutdoorsPage() {
         }
         const allArticles = await response.json()
         // Filter for outdoors articles
-        const outdoorsArticles = allArticles.filter(article => 
+        const outdoorsArticles = allArticles.filter((article: any) => 
           article.category?.toLowerCase().includes('outdoor') ||
           article.category?.toLowerCase().includes('hiking') ||
           article.category?.toLowerCase().includes('park') ||
