@@ -56,7 +56,7 @@ function optimizeArticle(article: Article): OptimizedArticle {
     category: article.category || 'General',
     categories: article.categories || [],
     status: article.status || 'published',
-    created_at: article.created_at,
+    created_at: article.createdAt,
     createdAt: article.createdAt,
     date: article.date,
     type: article.type || 'article',
