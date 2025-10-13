@@ -221,7 +221,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
               <div className="space-y-8">
                 {/* Event Image */}
                 <EventImage 
-                  image_url={event.imageUrl || event.image_url}
+                  image_url={event.image_url}
                   title={event.title}
                 />
 
