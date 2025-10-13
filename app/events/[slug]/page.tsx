@@ -64,7 +64,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const fullUrl = `https://www.culturealberta.com/events/${slug}`
     
     // Handle image URL properly - use event image if available, otherwise use default
-    let eventImage = loadedEvent.imageUrl || loadedEvent.image_url || '/images/culture-alberta-og.jpg'
+    let eventImage = loadedEvent.image_url || '/images/culture-alberta-og.jpg'
     
     // Ensure image URL is absolute
     const absoluteImageUrl = eventImage.startsWith('http') 
