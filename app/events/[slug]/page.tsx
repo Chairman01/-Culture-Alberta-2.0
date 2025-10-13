@@ -354,7 +354,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                         >
                           <div className="flex gap-3">
                             <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
-                              {(article.imageUrl || article.image_url) ? (
+                              {article.imageUrl ? (
                                 (article.imageUrl && (article.imageUrl.startsWith('data:image') || (article.imageUrl.length > 1000 && !article.imageUrl.includes('http')))) ? (
                                   <img
                                     src={article.imageUrl.startsWith('data:image') ? article.imageUrl : `data:image/jpeg;base64,${article.imageUrl}`}
@@ -365,7 +365,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                                   />
                                 ) : (
                                   <Image
-                                    src={article.imageUrl || article.image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop"}
+                                    src={article.imageUrl || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop"}
                                     alt={article.title}
                                     width={64}
                                     height={64}
