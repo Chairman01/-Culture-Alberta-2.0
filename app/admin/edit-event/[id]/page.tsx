@@ -85,7 +85,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       setLocation(event.location || "")
       setDescription(event.description || "")
       setExcerpt(event.excerpt || "")
-      setImageUrl(event.imageUrl || event.image_url || "") // Fixed: check both imageUrl and image_url
+      setImageUrl(event.image_url || "") // Fixed: use only image_url property
       setTicketUrl(event.website_url || "")
       setOrganizer(event.organizer || "")
       setContactEmail(event.organizer_contact || "")
