@@ -130,7 +130,7 @@ export default function EventsAdminPage() {
       const response = await fetch('/api/admin/events')
       if (response.ok) {
         const eventsData = await response.json()
-        const formattedEvents = eventsData.map(event => ({
+        const formattedEvents = eventsData.map((event: any) => ({
           id: event.id,
           title: event.title,
           category: event.category,
