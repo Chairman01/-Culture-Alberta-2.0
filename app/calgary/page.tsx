@@ -43,9 +43,11 @@ async function getCalgaryData() {
                            null
     
     // Trending: articles marked as trending for Calgary (excluding events)
-    const trendingArticles = sortedArticles
-      .filter(a => a.trendingCalgary === true && a.type !== 'event' && a.type !== 'Event')
-      .slice(0, 4)
+    // If no trendingCalgary flag, use recent articles
+    const trendingWithFlag = sortedArticles.filter(a => a.trendingCalgary === true && a.type !== 'event' && a.type !== 'Event')
+    const trendingArticles = trendingWithFlag.length > 0 
+      ? trendingWithFlag.slice(0, 4)
+      : sortedArticles.filter(a => a.type !== 'event' && a.type !== 'Event').slice(0, 4)
     
     // Upcoming events: Calgary events only, sorted by date
     const now = new Date()
@@ -104,6 +106,8 @@ async function getCalgaryData() {
     calgaryEvents.forEach((event, index) => {
       console.log(`  ${index + 1}. ${event.title} (${event.location || event.category}) - ${event.date || event.eventDate}`)
     })
+    
+    console.log(`📊 Calgary page data: ${sortedArticles.length} articles, ${trendingArticles.length} trending, ${featuredArticle ? '1' : '0'} featured`)
     
     return {
       articles: sortedArticles,

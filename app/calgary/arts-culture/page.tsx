@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getCityArticles } from "@/lib/articles"
 import { Article } from "@/lib/types/article"
 import Link from "next/link"
 import Image from "next/image"
@@ -24,7 +23,11 @@ export default function CalgaryArtsCulturePage() {
   useEffect(() => {
     async function loadCalgaryArticles() {
       try {
-        const allArticles = await getCityArticles('calgary')
+        const response = await fetch('/api/articles/calgary')
+        if (!response.ok) {
+          throw new Error(`API responded with status: ${response.status}`)
+        }
+        const allArticles = await response.json()
         // Filter for arts & culture articles
         const artsCultureArticles = allArticles.filter(article => 
           article.category?.toLowerCase().includes('art') ||

@@ -119,10 +119,16 @@ export async function POST(request: NextRequest) {
     // Always try to write to local file if possible
     let fileWritten = false
     try {
+      // CRITICAL FIX: Update optimized-fallback.json (PRIMARY FILE)
+      const optimizedFallbackPath = path.join(process.cwd(), 'optimized-fallback.json')
+      await fs.writeFile(optimizedFallbackPath, JSON.stringify(allContent, null, 2))
+      console.log(`💾 ✅ Updated optimized-fallback.json with ${allContent.length} total items (${transformedArticles.length} articles + ${transformedEvents.length} events)`)
+      fileWritten = true
+      
+      // ALSO update lib/data/articles.json for backward compatibility
       const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
       await fs.writeFile(articlesPath, JSON.stringify(allContent, null, 2))
-      console.log(`💾 Updated articles.json with ${allContent.length} total items (${transformedArticles.length} articles + ${transformedEvents.length} events)`)
-      fileWritten = true
+      console.log(`💾 Also updated lib/data/articles.json for backward compatibility`)
       
       // Clear fast cache to force reload
       clearArticlesCache()
@@ -275,10 +281,16 @@ export async function GET() {
     // Always try to write to local file if possible
     let fileWritten = false
     try {
+      // CRITICAL FIX: Update optimized-fallback.json (PRIMARY FILE)
+      const optimizedFallbackPath = path.join(process.cwd(), 'optimized-fallback.json')
+      await fs.writeFile(optimizedFallbackPath, JSON.stringify(allContent, null, 2))
+      console.log(`💾 ✅ Updated optimized-fallback.json with ${allContent.length} total items (${transformedArticles.length} articles + ${transformedEvents.length} events)`)
+      fileWritten = true
+      
+      // ALSO update lib/data/articles.json for backward compatibility
       const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
       await fs.writeFile(articlesPath, JSON.stringify(allContent, null, 2))
-      console.log(`💾 Updated articles.json with ${allContent.length} total items (${transformedArticles.length} articles + ${transformedEvents.length} events)`)
-      fileWritten = true
+      console.log(`💾 Also updated lib/data/articles.json for backward compatibility`)
       
       // Clear fast cache to force reload
       clearArticlesCache()

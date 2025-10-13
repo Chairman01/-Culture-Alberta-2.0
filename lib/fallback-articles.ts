@@ -1,6 +1,7 @@
 import 'server-only'
 import { Article } from './types/article'
 import { getAllArticles as getSupabaseArticles } from './supabase-articles'
+import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fallback'
 import fs from 'fs'
 import path from 'path'
 
@@ -10,36 +11,12 @@ let articlesJsonCacheTimestamp: number = 0
 const ARTICLES_JSON_CACHE_DURATION = 0 // DISABLED - always fetch fresh data
 
 /**
- * Load articles from articles.json file as fallback
+ * REMOVED: No longer using lib/data/articles.json
+ * Now using only the optimized fallback system for consistency
  */
 async function loadArticlesFromJson(): Promise<Article[]> {
-  // Check cache first
-  const now = Date.now()
-  if (articlesJsonCache && (now - articlesJsonCacheTimestamp) < ARTICLES_JSON_CACHE_DURATION) {
-    return articlesJsonCache
-  }
-
-  try {
-    const articlesJsonPath = path.join(process.cwd(), 'lib', 'data', 'articles.json')
-    
-    if (!fs.existsSync(articlesJsonPath)) {
-      console.warn('⚠️ articles.json file not found at', articlesJsonPath)
-      return []
-    }
-
-    const fileContent = fs.readFileSync(articlesJsonPath, 'utf-8')
-    const articles = JSON.parse(fileContent)
-    
-    // Cache the result
-    articlesJsonCache = articles
-    articlesJsonCacheTimestamp = now
-    
-    console.log(`✅ Loaded ${articles.length} articles from articles.json fallback`)
-    return articles
-  } catch (error) {
-    console.error('❌ Error loading articles from JSON:', error)
-    return []
-  }
+  console.log('⚠️ DEPRECATED: loadArticlesFromJson() is no longer used - using optimized fallback instead')
+  return loadOptimizedFallback()
 }
 
 /**
@@ -91,31 +68,29 @@ export async function getArticlesWithFallback(timeoutMs: number = 5000): Promise
     const articles = await Promise.race([supabasePromise, timeoutPromise])
     console.log(`✅ Loaded ${articles.length} articles from Supabase`)
     
-    // SMART FALLBACK: Update articles.json with fresh data when Supabase works
+    // SUSTAINABLE FALLBACK: Update optimized fallback with fresh data when Supabase works
     try {
-      const articlesJsonPath = path.join(process.cwd(), 'articles.json')
-      fs.writeFileSync(articlesJsonPath, JSON.stringify(articles, null, 2))
-      console.log(`🔄 Updated articles.json fallback file with ${articles.length} fresh articles`)
+      await updateOptimizedFallback(articles)
     } catch (updateError) {
-      console.warn('⚠️ Could not update articles.json fallback file:', updateError)
+      console.warn('⚠️ Could not update optimized fallback file:', updateError)
       // Don't fail the request if fallback update fails
     }
     
     return articles
   } catch (error) {
-    console.warn('⚠️ Supabase failed or timed out, using articles.json fallback:', error)
+    console.warn('⚠️ Supabase failed or timed out, using optimized fallback:', error)
     
     try {
-      const fallbackArticles = await loadArticlesFromJson()
+      const fallbackArticles = await loadOptimizedFallback()
       if (fallbackArticles.length > 0) {
-        console.log(`✅ Fallback successful: ${fallbackArticles.length} articles from JSON`)
+        console.log(`✅ Optimized fallback successful: ${fallbackArticles.length} articles`)
         return fallbackArticles
       } else {
-        console.warn('⚠️ No fallback articles available')
+        console.warn('⚠️ No optimized fallback articles available')
         return []
       }
     } catch (fallbackError) {
-      console.error('❌ Fallback also failed:', fallbackError)
+      console.error('❌ Optimized fallback also failed:', fallbackError)
       return []
     }
   }
@@ -132,7 +107,30 @@ export async function getHomepageArticlesWithFallback(): Promise<Article[]> {
  * Load articles for city pages with fallback
  */
 export async function getCityArticlesWithFallback(city: string): Promise<Article[]> {
-  const allArticles = await getArticlesWithFallback(5000) // 5 second timeout for city pages
+  // TESTING: Skip Supabase entirely, use optimized fallback only
+  console.log(`🧪 TESTING: Loading ${city} articles from optimized fallback only...`)
+  
+  try {
+    const fallbackArticles = await loadOptimizedFallback()
+    console.log(`⚡ FALLBACK ONLY: Loaded ${fallbackArticles.length} articles from optimized fallback`)
+    
+    // Filter for city-specific articles
+    return fallbackArticles.filter(article => {
+      const hasCityCategory = article.category?.toLowerCase().includes(city.toLowerCase())
+      const hasCityLocation = article.location?.toLowerCase().includes(city.toLowerCase())
+      const hasCityCategories = article.categories?.some((cat: string) => 
+        cat.toLowerCase().includes(city.toLowerCase())
+      )
+      const hasCityTags = article.tags?.some((tag: string) => 
+        tag.toLowerCase().includes(city.toLowerCase())
+      )
+      // Only include articles that are specifically related to the city
+      return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags
+    })
+  } catch (error) {
+    console.error(`❌ Failed to load ${city} articles from fallback:`, error)
+    return []
+  }
   
   // Filter for city-specific articles
   return allArticles.filter(article => {
@@ -153,9 +151,15 @@ export async function getCityArticlesWithFallback(city: string): Promise<Article
  * Load articles for food & drink page with fallback
  */
 export async function getFoodDrinkArticlesWithFallback(): Promise<Article[]> {
-  const allArticles = await getArticlesWithFallback(5000)
+  // TESTING: Skip Supabase entirely, use optimized fallback only
+  console.log('🧪 TESTING: Loading Food & Drink articles from optimized fallback only...')
   
-  return allArticles.filter(article => {
+  try {
+    const fallbackArticles = await loadOptimizedFallback()
+    console.log(`⚡ FALLBACK ONLY: Loaded ${fallbackArticles.length} articles from optimized fallback`)
+    
+    // Filter for food & drink articles
+    return fallbackArticles.filter(article => {
     const hasFoodCategory = article.category?.toLowerCase().includes('food') || 
                            article.category?.toLowerCase().includes('drink') ||
                            article.category?.toLowerCase().includes('restaurant') ||
@@ -182,16 +186,26 @@ export async function getFoodDrinkArticlesWithFallback(): Promise<Article[]> {
     )
     
     return hasFoodCategory || hasFoodCategories || hasFoodTags
-  })
+    })
+  } catch (error) {
+    console.error('❌ Failed to load Food & Drink articles from fallback:', error)
+    return []
+  }
 }
 
 /**
  * Load articles for culture page with fallback
  */
 export async function getCultureArticlesWithFallback(): Promise<Article[]> {
-  const allArticles = await getArticlesWithFallback(5000)
+  // TESTING: Skip Supabase entirely, use optimized fallback only
+  console.log('🧪 TESTING: Loading Culture articles from optimized fallback only...')
   
-  return allArticles.filter(article => {
+  try {
+    const fallbackArticles = await loadOptimizedFallback()
+    console.log(`⚡ FALLBACK ONLY: Loaded ${fallbackArticles.length} articles from optimized fallback`)
+    
+    // Filter for culture articles
+    return fallbackArticles.filter(article => {
     // Exclude specific articles that shouldn't be on the Culture page
     if (article.title?.toLowerCase().includes('edmonton folk music festival') ||
         article.title?.toLowerCase().includes('edmonton folk festival')) {
@@ -233,7 +247,11 @@ export async function getCultureArticlesWithFallback(): Promise<Article[]> {
     )
     
     return hasCultureCategory || hasCultureCategories || hasCultureTags
-  })
+    })
+  } catch (error) {
+    console.error('❌ Failed to load Culture articles from fallback:', error)
+    return []
+  }
 }
 
 /**

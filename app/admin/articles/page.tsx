@@ -26,10 +26,8 @@ import {
   Article,
   MAIN_CATEGORIES
 } from "@/lib/data"
-import { getAdminArticles, deleteArticle } from "@/lib/articles"
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { useRouter } from "next/navigation"
-import { invalidateAllCaches } from "@/lib/cache-invalidation"
 import { useToast } from "@/hooks/use-toast"
 
 interface ExtendedArticle extends Article {
@@ -114,7 +112,11 @@ export default function AdminArticles() {
         VERCEL: process.env.VERCEL,
         window: typeof window !== 'undefined'
       })
-      const data = await getAdminArticles(forceRefresh)
+      const response = await fetch('/api/admin/articles')
+      if (!response.ok) {
+        throw new Error(`API responded with status: ${response.status}`)
+      }
+      const data = await response.json()
       console.log('Admin: Articles loaded:', data)
       
       // Ensure all required fields are strings
@@ -136,10 +138,7 @@ export default function AdminArticles() {
 
   const handleRefreshCache = async () => {
     try {
-      // Clear all caches
-      invalidateAllCaches()
-      
-      // Reload articles
+      // Reload articles (cache invalidation handled server-side)
       await loadAllArticles()
       
       // Force revalidation of all major pages
@@ -197,8 +196,20 @@ export default function AdminArticles() {
           window: typeof window !== 'undefined'
         })
         
-        // Call the delete function
-        const deleteResult = await deleteArticle(article.id)
+        // Call the delete function via API
+        const deleteResponse = await fetch('/api/admin/articles', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ id: article.id }),
+        })
+        
+        if (!deleteResponse.ok) {
+          throw new Error('Failed to delete article')
+        }
+        
+        const deleteResult = await deleteResponse.json()
         console.log('✅ Article deleted successfully, result:', deleteResult)
         
         // Immediately remove from local state for better UX
@@ -210,9 +221,8 @@ export default function AdminArticles() {
           description: `"${article.title}" has been deleted successfully!`,
         })
         
-        // Clear cache and reload articles to ensure consistency
-        console.log('🔄 Clearing cache and reloading articles...')
-        await invalidateAllCaches()
+        // Reload articles to ensure consistency
+        console.log('🔄 Reloading articles...')
         await loadAllArticles(true) // Force refresh to get latest data
         
       } catch (error) {

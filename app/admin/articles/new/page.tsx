@@ -4,7 +4,6 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Upload } from "lucide-react"
-import { createArticle } from "@/lib/articles"
 import { createSlug } from "@/lib/utils/slug"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -92,28 +91,40 @@ export default function NewArticlePage() {
     setIsSaving(true)
 
     try {
-      // Create the article using the articles API
-      const newArticle = await createArticle({
-        title,
-        category: category || categories[0] || "General",
-        categories: categories.length > 0 ? categories : [category || "General"],
-        location: location || "Alberta",
-        excerpt,
-        content,
-        imageUrl: imageUrl,
-        author: author || "Admin",
-        tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-        type: "article",
-        status: "published",
-        // Add trending flags
-        trendingHome,
-        trendingEdmonton,
-        trendingCalgary,
-        // Add featured article flags
-        featuredHome,
-        featuredEdmonton,
-        featuredCalgary
+      // Create the article using the admin API
+      const response = await fetch('/api/admin/articles/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          category: category || categories[0] || "General",
+          categories: categories.length > 0 ? categories : [category || "General"],
+          location: location || "Alberta",
+          excerpt,
+          content,
+          imageUrl: imageUrl,
+          author: author || "Admin",
+          tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
+          type: "article",
+          status: "published",
+          // Add trending flags
+          trendingHome,
+          trendingEdmonton,
+          trendingCalgary,
+          // Add featured article flags
+          featuredHome,
+          featuredEdmonton,
+          featuredCalgary
+        })
       })
+
+      if (!response.ok) {
+        throw new Error('Failed to create article')
+      }
+
+      const newArticle = await response.json()
 
       toast({
         title: "Article created",

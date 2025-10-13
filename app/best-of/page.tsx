@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Star, MapPin, Clock, Users, Award, Heart, Sparkles } from "lucide-react"
-import { getAllArticles } from "@/lib/articles"
 import { Article } from "@/lib/types/article"
 import { getArticleUrl } from '@/lib/utils/article-url'
 
@@ -42,9 +41,12 @@ export default function BestOfPage() {
 
   const loadArticles = async () => {
     try {
-      // Use the existing articles from the file system
-      const { getAllArticles } = await import('@/lib/articles')
-      const allArticles = await getAllArticles()
+      // Use API endpoint to get articles (client-safe)
+      const response = await fetch('/api/articles')
+      if (!response.ok) {
+        throw new Error(`API responded with status: ${response.status}`)
+      }
+      const allArticles = await response.json()
       
       // Filter for best-of articles or create sample data
       const bestOfArticles = allArticles.filter(article => 

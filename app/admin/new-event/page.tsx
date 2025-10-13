@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
 import { SimpleTextEditor } from "@/app/admin/components/simple-text-editor"
 import { useToast } from "@/hooks/use-toast"
-import { createEvent } from "@/lib/events"
 
 export default function NewEventPage() {
   const { toast } = useToast()
@@ -117,18 +116,30 @@ export default function NewEventPage() {
         organizer_contact: contactEmail || contactPhone || '',
         event_date: new Date(startDateString).toISOString(), // Convert to ISO format
         event_end_date: endDateString ? new Date(endDateString).toISOString() : undefined,
-        image_url: imageUrl || '/placeholder.svg',
+        imageUrl: imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop', // Fixed: use imageUrl instead of image_url
         website_url: ticketUrl || '',
         status: 'published' as const
       }
       
       console.log('📝 Creating event with data:', newEvent)
 
-      // Save to the events table
-      console.log('🚀 Calling createEvent...')
-      const savedEvent = await createEvent(newEvent)
-      console.log('✅ createEvent result:', savedEvent)
-      console.log("New event saved:", savedEvent)
+      // Save to the events table via API
+      console.log('🚀 Calling create API...')
+      const createResponse = await fetch('/api/admin/events/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newEvent),
+      })
+      
+      if (!createResponse.ok) {
+        throw new Error('Failed to create event')
+      }
+      
+      const createResult = await createResponse.json()
+      console.log('✅ Create API result:', createResult)
+      console.log("New event saved:", createResult.event)
 
       toast({
         title: "Event created",

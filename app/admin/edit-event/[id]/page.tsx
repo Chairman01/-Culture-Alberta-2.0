@@ -12,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
 import { SimpleTextEditor } from "@/app/admin/components/simple-text-editor"
 import { useToast } from "@/hooks/use-toast"
-import { getEventById, updateEvent } from "@/lib/events"
 import { Event } from "@/lib/types/event"
 
 export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
@@ -40,7 +39,11 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       setError(null)
       console.log('Loading event with ID:', id)
       
-      const eventData = await getEventById(id)
+      const response = await fetch(`/api/admin/events/${id}`)
+      if (!response.ok) {
+        throw new Error(`API responded with status: ${response.status}`)
+      }
+      const eventData = await response.json()
       
       if (!eventData) {
         setError('Event not found')
@@ -82,19 +85,25 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       setLocation(event.location || "")
       setDescription(event.description || "")
       setExcerpt(event.excerpt || "")
-      setImageUrl(event.image_url || "")
+      setImageUrl(event.imageUrl || event.image_url || "") // Fixed: check both imageUrl and image_url
       setTicketUrl(event.website_url || "")
       setOrganizer(event.organizer || "")
       setContactEmail(event.organizer_contact || "")
       
-      // Parse event dates
-      if (event.event_date) {
+      // Parse event dates - handle empty strings and invalid dates
+      if (event.event_date && event.event_date.trim() !== '') {
         const startDate = new Date(event.event_date)
-        setStartDate(startDate.toISOString().split('T')[0])
+        if (!isNaN(startDate.getTime())) {
+          // Convert to YYYY-MM-DD format for date input
+          setStartDate(startDate.toISOString().split('T')[0])
+        }
       }
-      if (event.event_end_date) {
+      if (event.event_end_date && event.event_end_date.trim() !== '') {
         const endDate = new Date(event.event_end_date)
-        setEndDate(endDate.toISOString().split('T')[0])
+        if (!isNaN(endDate.getTime())) {
+          // Convert to YYYY-MM-DD format for date input
+          setEndDate(endDate.toISOString().split('T')[0])
+        }
       }
     }
   }, [event])
@@ -134,38 +143,62 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         location,
         description,
         excerpt: excerpt || description.substring(0, 150) + (description.length > 150 ? '...' : ''), // Use manual excerpt or auto-generate
-        image_url: imageUrl,
+        imageUrl: imageUrl, // Fixed: use imageUrl instead of image_url
         website_url: ticketUrl,
         organizer,
         organizer_contact: contactEmail,
-        event_date: startDate ? new Date(startDate).toISOString() : undefined,
-        event_end_date: endDate ? new Date(endDate).toISOString() : undefined,
+        event_date: startDate || undefined,
+        event_end_date: endDate || undefined,
       }
 
       console.log("🔧 Updating event with data:", updateData)
 
-      // Update the event in the database
-      console.log('🔧 Calling updateEvent...')
-      const updatedEvent = await updateEvent(event.id, updateData)
-      console.log('🔧 updateEvent result:', updatedEvent)
+      // Update the event in the database via API
+      console.log('🔧 Calling update API...')
+      const updateResponse = await fetch(`/api/admin/events/${event.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      })
+      
+      if (!updateResponse.ok) {
+        throw new Error('Failed to update event')
+      }
+      
+      const updateResult = await updateResponse.json()
+      console.log('🔧 Update API result:', updateResult)
 
-      if (updatedEvent) {
+      if (updateResult.success) {
         console.log('✅ Event updated successfully')
-        setEvent(updatedEvent)
+        console.log('✅ Update result:', updateResult)
+        setEvent({ ...event, ...updateData })
+        
+        // Show success message with longer duration
         toast({
-          title: "Event updated",
-          description: "Your event has been updated successfully.",
+          title: "✅ Event Updated Successfully!",
+          description: "Your event changes have been saved.",
+          duration: 5000, // Show for 5 seconds
         })
+        
+        console.log('✅ Success toast should be showing now')
       } else {
-        console.error('❌ updateEvent returned null/undefined')
-        throw new Error('Failed to update event - no data returned')
+        console.error('❌ Update API returned failure')
+        console.error('❌ Update result:', updateResult)
+        throw new Error('Failed to update event - API returned failure')
       }
     } catch (error) {
       console.error("❌ Error saving event:", error)
+      console.error("❌ Error details:", {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      })
       toast({
-        title: "Error saving event",
+        title: "❌ Error saving event",
         description: `Failed to update the event: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
+        duration: 10000, // Show error for 10 seconds
       })
     } finally {
       console.log('🔧 Setting isSaving to false')
@@ -276,12 +309,26 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="start-date">Start Date</Label>
-                  <Input id="start-date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                  <Input 
+                    id="start-date" 
+                    type="date"
+                    value={startDate || ''} 
+                    onChange={(e) => {
+                      setStartDate(e.target.value)
+                    }} 
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="end-date">End Date (Optional)</Label>
-                  <Input id="end-date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                  <Input 
+                    id="end-date" 
+                    type="date"
+                    value={endDate || ''} 
+                    onChange={(e) => {
+                      setEndDate(e.target.value)
+                    }} 
+                  />
                 </div>
               </div>
 

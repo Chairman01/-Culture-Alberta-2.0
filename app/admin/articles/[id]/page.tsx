@@ -5,7 +5,7 @@ import { use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Upload } from "lucide-react"
-import { updateArticle } from "@/lib/articles"
+// Removed server-only import - using API instead
 import { createSlug } from "@/lib/utils/slug"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -88,6 +88,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       
       const articleData = await response.json()
       console.log('Loaded article data:', articleData)
+      console.log('Article title:', articleData.title)
+      console.log('Article content length:', articleData.content?.length || 0)
+      console.log('Article excerpt:', articleData.excerpt)
+      console.log('Article imageUrl:', articleData.imageUrl)
       
       if (!articleData) {
         toast({
@@ -116,6 +120,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setFeaturedHome(articleData.featuredHome || false)
       setFeaturedEdmonton(articleData.featuredEdmonton || false)
       setFeaturedCalgary(articleData.featuredCalgary || false)
+      
+      console.log('Form fields set - Title:', title, 'Content length:', content?.length || 0)
     } catch (error) {
       console.error("Error loading article:", error)
       toast({
@@ -185,7 +191,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
     })
 
     try {
-      await updateArticle(resolvedParams.id, {
+      // Update article using the admin API
+      const updateData = {
         title,
         category: category || categories[0] || "General",
         categories: categories.length > 0 ? categories : [category || "General"],
@@ -205,7 +212,23 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         featuredHome,
         featuredEdmonton,
         featuredCalgary
+      }
+      
+      console.log('Sending update data:', updateData)
+      
+      const response = await fetch(`/api/admin/articles/${resolvedParams.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Update failed:', errorData)
+        throw new Error(`Failed to update article: ${errorData.error || response.statusText}`)
+      }
 
       toast({
         title: "Article updated",

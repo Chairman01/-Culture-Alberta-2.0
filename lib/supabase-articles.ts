@@ -89,15 +89,12 @@ const getCacheDuration = () => {
   return 0 // No caching at all
 }
 
-// CRITICAL FIX: DISABLE FILE SYSTEM FALLBACK IN PRODUCTION
+// CRITICAL FIX: DISABLE FILE SYSTEM FALLBACK - Use Supabase + optimized fallback instead
 const shouldUseFileSystemFirst = () => {
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
-  if (isProduction) {
-    console.log('🚀 [PRODUCTION] Skipping file system, using Supabase only')
-    return false // Never use file system in production
-  }
-  // Only use file system in development
-  return typeof window === 'undefined' // Server-side only
+  // ALWAYS return false - the old file system is replaced by optimized-fallback.json
+  // The file at lib/data/articles.ts is now just an empty placeholder
+  console.log('🚀 Using Supabase with optimized fallback system')
+  return false
 }
 
 // Test function to check if articles table exists
@@ -196,10 +193,10 @@ export async function testSupabaseConnection(): Promise<boolean> {
 export async function getHomepageArticles(): Promise<Article[]> {
   const startTime = Date.now()
   
-  // Use request deduplication to prevent multiple identical requests
-  const cacheKey = generateCacheKey('getHomepageArticles')
-  
-  return deduplicateRequest(cacheKey, async () => {
+  // DISABLED: Request deduplication was causing intermittent failures
+  // Multiple requests should be allowed for homepage articles to ensure reliability
+  // const cacheKey = generateCacheKey('getHomepageArticles')
+  // return deduplicateRequest(cacheKey, async () => {
     try {
       console.log('=== getHomepageArticles called ===')
       
@@ -222,16 +219,17 @@ export async function getHomepageArticles(): Promise<Article[]> {
         return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
       }
       
-      // ROBUST: Use much longer timeout with retry logic for maximum reliability
-      const timeoutDuration = process.env.NODE_ENV === 'production' ? 15000 : 20000 // 15s in prod, 20s in dev
+    // SPEED: Shorter timeout to fail fast and use fallback
+    const timeoutDuration = 3000 // 3 seconds - fail fast and use optimized fallback
       
-    // Optimized query for homepage - include content field
-    const fields = ensureImageFields('id, title, excerpt, content, category, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type, status')
+    // SPEED OPTIMIZATION: Only fetch essential fields for homepage (NOT full content!)
+    // Full content will be loaded on-demand when user clicks an article
+    const fields = ensureImageFields('id, title, excerpt, category, categories, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type, status, author, location, tags')
       
-      // RETRY LOGIC: Try multiple times before giving up
+      // RETRY LOGIC: Single attempt with shorter timeout for speed
       let data, error
       let attempts = 0
-      const maxAttempts = 3
+      const maxAttempts = 1 // Only 1 attempt for speed
       
       while (attempts < maxAttempts) {
         attempts++
@@ -242,7 +240,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
             .from('articles')
             .select(fields)
             .order('created_at', { ascending: false })
-            .limit(50) // Fetch 50 articles to ensure food & drink and events sections have enough content
+            .limit(30) // Fetch more articles
 
           const result = await Promise.race([
             supabasePromise,
@@ -316,7 +314,6 @@ export async function getHomepageArticles(): Promise<Article[]> {
     console.log('Falling back to file system')
     return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
   }
-  })
 }
 
 // Function to invalidate homepage cache when articles are modified
@@ -763,15 +760,16 @@ export async function getAllArticles(): Promise<Article[]> {
       return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     }
 
-    console.log('🐌 SLOW: Attempting to fetch articles from Supabase...')
+    console.log('⚡ FAST: Attempting to fetch articles from Supabase (NO CONTENT)...')
     
-    // SPEED OPTIMIZATION: Longer timeout for production reliability
-    const timeoutDuration = process.env.NODE_ENV === 'production' ? 10000 : 5000 // 10s in prod, 5s in dev
+    // SPEED OPTIMIZATION: Reasonable timeout to allow Supabase connection
+    const timeoutDuration = 10000 // 10 seconds - give Supabase more time to connect
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
     )
     
-    const fields = ensureImageFields('id, title,  excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    // SPEED: Don't fetch 'content' field - only metadata for listing pages
+    const fields = ensureImageFields('id, title, excerpt, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
     
     const supabasePromise = supabase
       .from('articles')
@@ -1014,7 +1012,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     console.log('Attempting to fetch article by slug from Supabase...')
     
     // SMART FALLBACK: Try Supabase first, fallback to file system if slow
-    const timeoutDuration = process.env.NODE_ENV === 'production' ? 2000 : 5000 // 2s in prod, 5s in dev
+    const timeoutDuration = 2000 // 2 seconds - fast timeout for better UX
     
     console.log('🚀 SMART FALLBACK: Trying Supabase first, file system fallback if slow')
     
@@ -1243,7 +1241,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
     console.log('Attempting to fetch article from Supabase...')
     
     // Use proper timeout duration based on environment - increased for better reliability
-    const timeoutDuration = process.env.NODE_ENV === 'production' ? 3000 : 8000 // 3s in prod, 8s in dev
+    const timeoutDuration = 2000 // 2 seconds - fast timeout for better UX
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
     )

@@ -99,13 +99,24 @@ async function getEdmontonData() {
       console.log(`  ${index + 1}. ${event.title} (${event.location || event.category}) - ${event.date || event.eventDate}`)
     })
     
+    // Get trending articles - if no trendingEdmonton flag, use recent articles
+    const trendingArticles = sortedArticles.filter(a => a.trendingEdmonton === true && a.type !== 'event' && a.type !== 'Event')
+    const finalTrendingArticles = trendingArticles.length > 0 
+      ? trendingArticles.slice(0, 4)
+      : sortedArticles.filter(a => a.type !== 'event' && a.type !== 'Event').slice(0, 4)
+    
+    // Get featured article - if no featuredEdmonton flag, use the first article
+    const featuredArticle = sortedArticles.find(post => post.featuredEdmonton === true) || 
+                           sortedArticles.find(post => post.type !== 'event' && post.type !== 'Event') || 
+                           null
+    
+    console.log(`📊 Edmonton page data: ${sortedArticles.length} articles, ${finalTrendingArticles.length} trending, ${featuredArticle ? '1' : '0'} featured`)
+    
     return {
       articles: sortedArticles,
       events: upcomingEvents.slice(0, 3),
-      trendingArticles: sortedArticles.filter(a => a.trendingEdmonton === true && a.type !== 'event' && a.type !== 'Event').slice(0, 4),
-      featuredArticle: sortedArticles.find(post => post.featuredEdmonton === true) || 
-                     sortedArticles.find(post => post.type !== 'event' && post.type !== 'Event') || 
-                     null
+      trendingArticles: finalTrendingArticles,
+      featuredArticle: featuredArticle
     }
   } catch (error) {
     console.error('❌ Error loading Edmonton data:', error)

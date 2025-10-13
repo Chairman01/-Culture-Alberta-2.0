@@ -2,13 +2,18 @@ import { notFound, redirect } from 'next/navigation'
 import { Calendar, Clock, Share2, Bookmark, ArrowLeft, ArrowRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { getArticleById, getArticleBySlug, getAllArticles } from '@/lib/supabase-articles'
-import { getFastArticleBySlug } from '@/lib/fast-articles'
+import { getArticleById, getArticleBySlug } from '@/lib/supabase-articles'
+import { getAllArticles } from '@/lib/articles'
+import { getFastArticleBySlug, getFastArticles } from '@/lib/fast-articles'
 import { getTitleFromUrl } from '@/lib/utils/article-url'
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { createSlug } from '@/lib/utils/slug'
 import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
+
+// Force dynamic rendering to use fast fallback system
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import { getAllEvents, getEventBySlug } from '@/lib/events'
 import { Metadata } from 'next'
 // import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
@@ -77,7 +82,7 @@ const processContentWithVideos = (content: string) => {
 }
 
 // import NewsletterSignup from '@/components/newsletter-signup' // Removed - using ArticleNewsletterSignup instead
-import { ArticleContent } from '@/components/article-content'
+// Removed ArticleContent import to fix hydration issues
 // import './article-styles.css' // Removed - file was deleted
 
 // Generate static params for all published articles
@@ -106,11 +111,6 @@ export async function generateStaticParams() {
     return []
   }
 }
-
-// CRITICAL FIX: Disable ISR to prevent FALLBACK_BODY_TOO_LARGE errors
-// ISR was causing oversized pages (22MB+) that exceed Vercel's 19MB limit
-export const revalidate = 0 // Force dynamic rendering to prevent build failures
-export const dynamic = 'force-dynamic' // Ensure dynamic rendering
 
 // Generate metadata for social media sharing
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -218,38 +218,21 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   
   try {
     console.log('🚀 Loading article:', slug)
+    console.log('📄 Individual article page reached - using fast fallback system')
     
-    // PERFORMANCE FIX: Try fast cache first, then Supabase
+    // PERFORMANCE FIX: Use ONLY fast cache for instant loading
     let loadedArticle = await getFastArticleBySlug(slug)
+    console.log('Fast cache result:', loadedArticle ? 'Found' : 'Not found')
     
-    if (!loadedArticle) {
-      console.log('Fast cache miss, trying Supabase...')
-      try {
-        loadedArticle = await getArticleBySlug(slug)
-      } catch (error) {
-        console.log('Error loading article by slug, trying ID fallback:', error)
-        loadedArticle = null
-      }
-    }
+    // Skip expensive Supabase fallbacks for instant loading
     
-    // Only try fallback if absolutely necessary
+    // Last resort - use fast articles instead of expensive getAllArticles()
     if (!loadedArticle) {
-      console.log('Article not found by slug, trying ID fallback...')
-      try {
-        loadedArticle = await getArticleById(slug)
-      } catch (error) {
-        console.log('Error loading article by ID, trying title match:', error)
-        loadedArticle = null
-      }
-    }
-    
-    // Last resort - but this is expensive, so we'll optimize it
-    if (!loadedArticle) {
-      console.log('Trying title match fallback...')
-      const allArticles = await getAllArticles()
+      console.log('Trying fast articles fallback...')
+      const fastArticles = await getFastArticles()
       
       // Try multiple matching strategies
-      loadedArticle = allArticles.find(article => {
+      loadedArticle = fastArticles.find(article => {
         // Use consistent slug generation
         const articleSlug = createSlug(article.title)
         
@@ -282,20 +265,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     if (!loadedArticle) {
       console.log('❌ Article not found, showing 404')
       console.log('Looking for slug:', slug)
-      const allArticles = await getAllArticles()
-      console.log('Available articles:', allArticles.map(a => a.title))
-      console.log('Available slugs:', allArticles.map(a => createSlug(a.title)))
-      
-      // Debug: Show what we're comparing
-      console.log('=== SLUG DEBUG ===')
-      allArticles.forEach(article => {
-        const articleSlug = createSlug(article.title)
-        console.log(`Title: "${article.title}"`)
-        console.log(`Generated slug: "${articleSlug}"`)
-        console.log(`Looking for: "${slug}"`)
-        console.log(`Match: ${articleSlug.toLowerCase() === slug.toLowerCase()}`)
-        console.log('---')
-      })
+      const fastArticles = await getFastArticles()
+      console.log('Available articles:', fastArticles.map(a => a.title))
+      console.log('Available slugs:', fastArticles.map(a => createSlug(a.title)))
       
       // Check if this might be an event instead of an article
       console.log('🔍 Article not found, checking if it might be an event...')
@@ -320,23 +292,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     
     console.log('✅ Article loaded successfully:', loadedArticle.title)
 
-    // DEBUG: Log article content status
-    console.log('=== ARTICLE DEBUG ===')
-    console.log('Title:', loadedArticle.title)
-    console.log('Content length:', loadedArticle.content?.length || 0)
-    console.log('Content preview:', loadedArticle.content?.substring(0, 100) || 'NO CONTENT')
-    console.log('Excerpt length:', loadedArticle.excerpt?.length || 0)
-    console.log('Has content:', !!loadedArticle.content)
-    console.log('Content trimmed length:', loadedArticle.content?.trim()?.length || 0)
-    console.log('Content type:', typeof loadedArticle.content)
-    console.log('Content is string:', typeof loadedArticle.content === 'string')
-    console.log('Content is not empty string:', loadedArticle.content !== '')
-    console.log('Content is not null/undefined:', loadedArticle.content != null)
-    console.log('Content check result:', loadedArticle.content && 
-                typeof loadedArticle.content === 'string' && 
-                loadedArticle.content.trim().length > 10 && 
-                loadedArticle.content !== 'null' && 
-                loadedArticle.content !== 'undefined')
+    // Article loaded successfully
 
     // Load related articles more efficiently - use homepage cache if available
     let relatedArticles: Article[] = []
@@ -387,11 +343,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     const formatDate = (dateString: string) => {
       try {
         const date = new Date(dateString)
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        })
+        const year = date.getFullYear()
+        const month = date.getMonth()
+        const day = date.getDate()
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December']
+        return `${monthNames[month]} ${day}, ${year}`
       } catch {
         return dateString
       }
@@ -555,34 +512,25 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                   {/* Article Content */}
                   <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
                     <div className="article-content">
-                      {/* DEBUG: Log content status */}
-                      {(() => {
-                        console.log('DEBUG - Content check:', {
-                          hasContent: !!loadedArticle.content,
-                          contentLength: loadedArticle.content?.length || 0,
-                          contentTrimmed: loadedArticle.content?.trim()?.length || 0,
-                          hasExcerpt: !!loadedArticle.excerpt,
-                          excerptLength: loadedArticle.excerpt?.length || 0
-                        });
-                        return null;
-                      })()}
                       {loadedArticle.content && 
                        typeof loadedArticle.content === 'string' && 
                        loadedArticle.content.trim().length > 10 && 
                        loadedArticle.content !== 'null' && 
                        loadedArticle.content !== 'undefined' ? (
-                        <ArticleContent content={loadedArticle.content} />
+                        <div 
+                          className="prose prose-lg max-w-none article-content-wrapper"
+                          dangerouslySetInnerHTML={{ __html: loadedArticle.content }}
+                          suppressHydrationWarning={true}
+                        />
                       ) : loadedArticle.excerpt ? (
                         <div className="space-y-6">
                           <div className="prose prose-lg max-w-none">
-                            <p className="text-lg text-gray-700 leading-relaxed mb-6">
-                              {loadedArticle.excerpt}
-                            </p>
-                            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                              <p className="text-blue-800 font-medium mb-2">📝 Full Article Coming Soon</p>
-                              <p className="text-blue-700 text-sm">
-                                We're working on the complete article content. Check back soon for the full story!
-                              </p>
+                            <div className="text-lg text-gray-700 leading-relaxed">
+                              {loadedArticle.excerpt.split('\n').map((paragraph: string, index: number) => (
+                                <p key={index} className="mb-4">
+                                  {paragraph}
+                                </p>
+                              ))}
                             </div>
                           </div>
                         </div>

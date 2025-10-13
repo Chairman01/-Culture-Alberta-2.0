@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { getHomepageArticlesWithFallback } from '@/lib/fallback-articles'
+import { getHomepageArticles } from '@/lib/articles'
 import { getAllEvents } from '@/lib/events'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
@@ -18,8 +18,8 @@ export const dynamicParams = true // Generate pages on-demand
 // Server-side data loading for dynamic rendering (NOT static generation)
 async function getHomePageData() {
   try {
-    // Use the optimized homepage articles function with fallback for better performance
-    const apiArticles = await getHomepageArticlesWithFallback()
+          // Use the sustainable homepage articles function with optimized fallback
+          const apiArticles = await getHomepageArticles()
     console.log('🔍 DEBUG: getHomepageArticles returned:', apiArticles?.length || 0, 'articles')
     if (apiArticles && apiArticles.length > 0) {
       console.log('🔍 DEBUG: First article:', apiArticles[0].title)
@@ -49,7 +49,7 @@ async function getHomePageData() {
       categories: ['Events'], // Add to categories array
       location: event.location,
       author: event.organizer || 'Event Organizer',
-      imageUrl: event.image_url,
+      imageUrl: event.imageUrl || event.image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop",
       date: event.event_date,
       createdAt: event.created_at,
       updatedAt: event.updated_at,
@@ -65,6 +65,7 @@ async function getHomePageData() {
     
     // Combine articles and events
     const combinedPosts = [...apiArticles, ...eventAsArticles]
+    console.log('🔍 DEBUG: Combined posts before deduplication:', combinedPosts.length)
     
     // DEDUPLICATE: Remove any duplicate IDs (can happen if same content is in both sources)
     const seenIds = new Set<string>()
@@ -81,10 +82,16 @@ async function getHomePageData() {
     // Simple approach: Use all posts for all sections, filter by categories
     const allPostsForFiltering = allPosts
     console.log('🔍 DEBUG: allPostsForFiltering length:', allPostsForFiltering.length)
+    console.log('🔍 DEBUG: First few post titles:', allPostsForFiltering.slice(0, 3).map(p => p.title))
     
     // CRITICAL: If no posts are found, create fallback content to prevent empty homepage
     if (allPostsForFiltering.length === 0) {
       console.warn('⚠️ No articles found in database, using fast fallback content')
+      console.log('🔍 DEBUG: allPostsForFiltering is empty, checking why...')
+      console.log('🔍 DEBUG: apiArticles length:', apiArticles?.length || 0)
+      console.log('🔍 DEBUG: events length:', events?.length || 0)
+      console.log('🔍 DEBUG: combinedPosts length:', combinedPosts?.length || 0)
+      
       // Pre-created fallback for maximum speed - no object creation overhead
       const fallbackPosts = [{
         id: 'fallback-1',
@@ -212,9 +219,9 @@ export default async function HomeStatic() {
     return post.author || 'Culture Alberta'
   }
 
-  // Try to find a featured article, but fall back to any article if none are marked as featured
-  const featuredPost = posts.find(post => post.featuredHome === true) || 
-                      posts.find(post => post.type !== 'event') || 
+  // Try to find a featured ARTICLE (not event), but fall back to any article if none are marked as featured
+  const featuredPost = posts.find(post => post.featuredHome === true && post.type !== 'event') || 
+                      posts.find(post => post.type === 'article') || 
                       posts[0] || 
                       null
   

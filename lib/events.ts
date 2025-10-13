@@ -79,50 +79,22 @@ export async function getAllEvents(): Promise<Event[]> {
   try {
     console.log('=== getAllEvents called ===')
     
-    const now = Date.now()
-    const cacheTime = eventsCacheTimestamp.get('all') || 0
+    // TESTING: Skip Supabase entirely, use optimized fallback only
+    console.log('🧪 TESTING: Loading events from optimized fallback only...')
     
-    // Check cache first
-    if (eventsCache.has('all') && (now - cacheTime) < getCacheDuration()) {
-      console.log('Returning cached events:', eventsCache.get('all')?.length || 0, 'events')
-      return eventsCache.get('all') || []
-    }
-    
-    if (!supabase) {
-      console.error('Supabase client is not initialized')
-      return []
-    }
-
-    console.log('Fetching events from Supabase...')
-    
-    let data, error
     try {
-      const result = await supabase
-        .from('events')
-        .select('*')
-        .eq('status', 'published')
-        .order('event_date', { ascending: true })
+      const { loadOptimizedFallback } = await import('./optimized-fallback')
+      const fallbackArticles = await loadOptimizedFallback()
+      console.log(`⚡ FALLBACK ONLY: Loaded ${fallbackArticles.length} articles from optimized fallback`)
       
-      data = result.data
-      error = result.error
-
-      if (error) {
-        console.error('Error fetching events:', error)
-        return []
-      }
-    } catch (supabaseError) {
-      console.error('Supabase connection error:', supabaseError)
+      // Filter for events only
+      const events = fallbackArticles.filter(article => article.type === 'event')
+      console.log(`✅ Found ${events.length} events in fallback data`)
+      return events as Event[]
+    } catch (fallbackError) {
+      console.error('❌ Optimized fallback failed:', fallbackError)
       return []
     }
-
-    console.log('Successfully fetched events from Supabase:', data?.length || 0, 'events')
-    console.log('Raw events data:', data)
-
-    // Update cache
-    eventsCache.set('all', data || [])
-    eventsCacheTimestamp.set('all', now)
-
-    return data || []
   } catch (error) {
     console.error('Error in getAllEvents:', error)
     return []

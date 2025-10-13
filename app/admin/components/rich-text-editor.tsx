@@ -72,7 +72,9 @@ import {
   Eye,
   Edit3,
   Type,
-  RotateCcw
+  RotateCcw,
+  AlignCenter,
+  Space
 } from 'lucide-react'
 
 interface RichTextEditorProps {
@@ -108,7 +110,7 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[300px] p-4',
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[300px] p-4 article-content-wrapper',
       },
     },
     immediatelyRender: false, // Fix SSR hydration mismatch
@@ -334,6 +336,19 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
           className={editor.isActive('blockquote') ? 'bg-muted' : ''}
         >
           <Quote className="h-4 w-4" />
+        </Button>
+
+        {/* Paragraph Spacing Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            // Insert a paragraph with proper spacing
+            editor.chain().focus().insertContent('<p><br></p>').run()
+          }}
+          title="Add paragraph spacing"
+        >
+          <Space className="h-4 w-4" />
         </Button>
 
         <div className="w-px h-6 bg-border mx-1" />

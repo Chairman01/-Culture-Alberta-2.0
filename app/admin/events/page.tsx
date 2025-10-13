@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getAllEvents, deleteEvent, clearEventsCache } from "@/lib/events"
 import {
   Pagination,
   PaginationContent,
@@ -46,9 +45,12 @@ export default function EventsAdminPage() {
     async function loadEvents() {
       try {
         console.log('🔄 Loading events from events table...')
-        // Clear cache to ensure fresh data
-        clearEventsCache()
-        const eventsData = await getAllEvents()
+        // Load events from API
+        const response = await fetch('/api/admin/events')
+        if (!response.ok) {
+          throw new Error(`API responded with status: ${response.status}`)
+        }
+        const eventsData = await response.json()
         console.log('📅 Events loaded:', eventsData.length, 'events')
         console.log('📅 Event details:', eventsData.map(e => ({ id: e.id, title: e.title, eventDate: e.event_date })))
         
@@ -100,20 +102,47 @@ export default function EventsAdminPage() {
   // Get unique locations for filter dropdown
   const locations = Array.from(
     new Set(
-      events.map((event) => {
-        const city = event.location.split(",")[0].trim()
-        return city
-      }),
+      events
+        .filter((event) => event.location) // Filter out events without location
+        .map((event) => {
+          const city = event.location.split(",")[0].trim()
+          return city
+        }),
     ),
   )
 
   const handleDeleteEvent = async (id: string) => {
     try {
-      // Delete from the events system
-      await deleteEvent(id)
+      // Delete from the events system via API
+      const deleteResponse = await fetch('/api/admin/events', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id }),
+      })
+      
+      if (!deleteResponse.ok) {
+        throw new Error('Failed to delete event')
+      }
 
-      // Remove from state
-      setEvents(events.filter((event) => event.id !== id))
+      // Reload events from server to get updated data
+      const response = await fetch('/api/admin/events')
+      if (response.ok) {
+        const eventsData = await response.json()
+        const formattedEvents = eventsData.map(event => ({
+          id: event.id,
+          title: event.title,
+          category: event.category,
+          date: event.event_date,
+          location: event.location,
+          description: event.description,
+          image: event.image_url,
+          status: event.status,
+          organizer: event.organizer
+        }))
+        setEvents(formattedEvents)
+      }
 
       toast({
         title: "Event deleted",

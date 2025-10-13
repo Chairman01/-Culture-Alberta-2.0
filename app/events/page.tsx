@@ -6,7 +6,6 @@ import { ArrowRight, Calendar, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getAllEvents } from "@/lib/events"
 import { Article } from "@/lib/types/article"
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
@@ -28,15 +27,20 @@ export default function EventsPage() {
 
   const loadEvents = async () => {
     try {
-      console.log('🔄 Loading Events from events table...')
+      console.log('🔄 Loading Events from API...')
       let events: any[] = []
       
-      // ROBUST FALLBACK: Try to get events with error handling
+      // Use API endpoint to get events (client-safe)
       try {
-        events = await getAllEvents()
-        console.log(`✅ Events loaded: ${events.length}`)
+        const response = await fetch('/api/events')
+        if (response.ok) {
+          events = await response.json()
+          console.log(`✅ Events loaded from API: ${events.length}`)
+        } else {
+          throw new Error(`API responded with status: ${response.status}`)
+        }
       } catch (error) {
-        console.error('❌ Failed to load events:', error)
+        console.error('❌ Failed to load events from API:', error)
         // Create fallback content to prevent empty page
         events = [{
           id: 'fallback-events',
@@ -65,7 +69,7 @@ export default function EventsPage() {
         date: event.event_date || new Date().toISOString(),
         createdAt: event.created_at || new Date().toISOString(),
         updatedAt: event.updated_at || new Date().toISOString(),
-        imageUrl: event.image_url || `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(event.title)}`,
+        imageUrl: event.imageUrl || event.image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop",
         author: event.organizer || 'Event Organizer',
         type: 'event',
         status: event.status || 'published'
@@ -330,12 +334,12 @@ export default function EventsPage() {
                       >
                         <div className="md:w-1/3">
                           <img
-                            src={event.imageUrl || "/placeholder.svg"}
+                            src={event.imageUrl || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop"}
                             alt={event.title}
                             className="h-full w-full object-cover"
                             onError={(e) => {
                               const img = e.target as HTMLImageElement
-                              img.src = `/placeholder.svg?width=400&height=300&text=${encodeURIComponent(event.title)}`
+                              img.src = `https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop&text=${encodeURIComponent(event.title)}`
                             }}
                           />
                         </div>

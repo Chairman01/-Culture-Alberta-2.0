@@ -11,6 +11,7 @@ import { ArticleContent } from '@/components/article-content'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { Article } from '@/lib/types/article'
 import { Metadata } from 'next'
+import { EventImage } from '@/components/event-image'
 
 // Generate static params for all published events
 export async function generateStaticParams() {
@@ -63,7 +64,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const fullUrl = `https://www.culturealberta.com/events/${slug}`
     
     // Handle image URL properly - use event image if available, otherwise use default
-    let eventImage = loadedEvent.image_url || '/images/culture-alberta-og.jpg'
+    let eventImage = loadedEvent.imageUrl || loadedEvent.image_url || '/images/culture-alberta-og.jpg'
     
     // Ensure image URL is absolute
     const absoluteImageUrl = eventImage.startsWith('http') 
@@ -78,7 +79,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description: description,
       image: absoluteImageUrl,
       url: fullUrl,
-      originalImage: loadedEvent.image_url
+      originalImage: loadedEvent.imageUrl || loadedEvent.image_url
     })
     
     return {
@@ -169,9 +170,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     }
     
     // Format event date
-    const formatEventDate = (dateString: string) => {
+    const formatEventDate = (dateString: string | undefined | null) => {
+      if (!dateString) return 'Date TBA'
       try {
         const date = new Date(dateString)
+        if (isNaN(date.getTime())) return 'Date TBA'
         return date.toLocaleDateString('en-US', { 
           weekday: 'long',
           year: 'numeric',
@@ -183,9 +186,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       }
     }
 
-    const formatEventTime = (dateString: string) => {
+    const formatEventTime = (dateString: string | undefined | null) => {
+      if (!dateString) return 'Time TBA'
       try {
         const date = new Date(dateString)
+        if (isNaN(date.getTime())) return 'Time TBA'
         return date.toLocaleTimeString('en-US', { 
           hour: 'numeric',
           minute: '2-digit',
@@ -215,14 +220,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
               {/* Main Content */}
               <div className="space-y-8">
                 {/* Event Image */}
-                <div className="aspect-[16/9] w-full relative rounded-lg overflow-hidden mb-6">
-                  <Image
-                    src={event.image_url || "/placeholder.svg"}
-                    alt={event.title}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
+                <EventImage 
+                  imageUrl={event.imageUrl}
+                  image_url={event.image_url}
+                  title={event.title}
+                />
 
                 {/* Event Details */}
                 <div className="space-y-6">
@@ -353,8 +355,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                         >
                           <div className="flex gap-3">
                             <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
-                              {article.imageUrl ? (
-                                article.imageUrl.startsWith('data:image') || (article.imageUrl.length > 1000 && !article.imageUrl.includes('http')) ? (
+                              {(article.imageUrl || article.image_url) ? (
+                                (article.imageUrl && (article.imageUrl.startsWith('data:image') || (article.imageUrl.length > 1000 && !article.imageUrl.includes('http')))) ? (
                                   <img
                                     src={article.imageUrl.startsWith('data:image') ? article.imageUrl : `data:image/jpeg;base64,${article.imageUrl}`}
                                     alt={article.title}
@@ -364,7 +366,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                                   />
                                 ) : (
                                   <Image
-                                    src={article.imageUrl}
+                                    src={article.imageUrl || article.image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop"}
                                     alt={article.title}
                                     width={64}
                                     height={64}
@@ -408,9 +410,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                         >
                           <div className="flex gap-3">
                             <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
-                              {otherEvent.image_url ? (
+                              {(otherEvent.imageUrl || otherEvent.image_url) ? (
                                 <Image
-                                  src={otherEvent.image_url}
+                                  src={otherEvent.imageUrl || otherEvent.image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop"}
                                   alt={otherEvent.title}
                                   width={64}
                                   height={64}
@@ -455,8 +457,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                     >
                       <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
                         <div className="aspect-[16/10] w-full bg-gray-200 relative overflow-hidden">
-                          {article.imageUrl ? (
-                            article.imageUrl.startsWith('data:image') || (article.imageUrl.length > 1000 && !article.imageUrl.includes('http')) ? (
+                          {(article.imageUrl || article.image_url) ? (
+                            (article.imageUrl && (article.imageUrl.startsWith('data:image') || (article.imageUrl.length > 1000 && !article.imageUrl.includes('http')))) ? (
                               <img
                                 src={article.imageUrl.startsWith('data:image') ? article.imageUrl : `data:image/jpeg;base64,${article.imageUrl}`}
                                 alt={article.title}
@@ -466,7 +468,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                               />
                             ) : (
                               <Image
-                                src={article.imageUrl}
+                                src={article.imageUrl || article.image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop"}
                                 alt={article.title}
                                 fill
                                 className="object-cover group-hover:scale-110 transition-transform duration-500"

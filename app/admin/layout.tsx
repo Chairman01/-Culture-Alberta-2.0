@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { BarChart2, FileText, Calendar, Award, Mail, RefreshCw } from "lucide-react"
+import { Toaster } from "@/components/ui/toaster"
 
 export default function AdminLayout({
   children,
@@ -148,6 +149,9 @@ export default function AdminLayout({
           {children}
         </main>
       </div>
+      
+      {/* Toast notifications */}
+      <Toaster />
     </div>
   )
 }
