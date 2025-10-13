@@ -62,8 +62,8 @@ function useHomePageData() {
         const allPosts = apiArticles
         
         // Separate events from regular articles
-        const regularPosts = allPosts.filter(post => post.type !== 'event')
-        const eventPosts = allPosts.filter(post => post.type === 'event')
+        const regularPosts = allPosts.filter((post: any) => post.type !== 'event')
+        const eventPosts = allPosts.filter((post: any) => post.type === 'event')
         
         // CRITICAL: If no posts are found, create fallback content to prevent empty homepage
         if (regularPosts.length === 0) {
@@ -260,9 +260,9 @@ export default function Home() {
     return post.author || 'Culture Alberta'
   }
 
-  const featuredPost = posts.find(post => post.featuredHome === true) || posts[0] || null
+  const featuredPost = posts.find((post: any) => post.featuredHome === true) || posts[0] || null
   // Use the same flexible filtering logic as getCityArticles
-  const edmontonPosts = posts.filter(post => {
+  const edmontonPosts = posts.filter((post: any) => {
     const hasCityCategory = post.category?.toLowerCase().includes('edmonton');
     const hasCityLocation = post.location?.toLowerCase().includes('edmonton');
     const hasCityCategories = post.categories?.some((cat: string) => 
@@ -275,7 +275,7 @@ export default function Home() {
     return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
   }).slice(0, 3)
   
-  const calgaryPosts = posts.filter(post => {
+  const calgaryPosts = posts.filter((post: any) => {
     const hasCityCategory = post.category?.toLowerCase().includes('calgary');
     const hasCityLocation = post.location?.toLowerCase().includes('calgary');
     const hasCityCategories = post.categories?.some((cat: string) => 
@@ -287,8 +287,8 @@ export default function Home() {
     
     return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
   }).slice(0, 3)
-  const foodDrinkPosts = posts.filter(post => post.category === 'Food & Drink').slice(0, 2)
-  const trendingPosts = posts.filter(post => post.trendingHome === true).slice(0, 5)
+  const foodDrinkPosts = posts.filter((post: any) => post.category === 'Food & Drink').slice(0, 2)
+  const trendingPosts = posts.filter((post: any) => post.trendingHome === true).slice(0, 5)
   const upcomingEvents = events.slice(0, 3) // Get the first 3 events
   
   // Debug logging for Edmonton posts
