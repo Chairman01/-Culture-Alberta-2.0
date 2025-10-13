@@ -11,7 +11,7 @@ import {
   updateArticle as updateArticleInSupabase,
   deleteArticle as deleteArticleFromSupabase
 } from './supabase-articles'
-import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fallback'
+import { updateOptimizedFallback, loadOptimizedFallback, getCityArticlesWithFallback } from './optimized-fallback'
 
 // SUSTAINABLE FALLBACK SYSTEM - Works with unlimited articles
 // These functions try Supabase first, then fall back to optimized backup
@@ -64,7 +64,15 @@ export async function getHomepageArticles(): Promise<Article[]> {
 export async function getCityArticles(city: string): Promise<Article[]> {
   try {
     console.log(`🔄 Fetching ${city} articles from Supabase...`)
-    const articles = await getCityArticlesFromSupabase(city)
+    
+    // Type guard to ensure we only pass valid city names to Supabase function
+    const validCity = city.toLowerCase() as 'edmonton' | 'calgary'
+    if (validCity !== 'edmonton' && validCity !== 'calgary') {
+      console.warn(`⚠️ Invalid city name: ${city}. Falling back to optimized fallback.`)
+      return getCityArticlesWithFallback(city)
+    }
+    
+    const articles = await getCityArticlesFromSupabase(validCity)
     
     // Update optimized fallback with fresh data ONLY if we got articles
     if (articles.length > 0) {
