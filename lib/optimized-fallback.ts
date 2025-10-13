@@ -69,12 +69,12 @@ function optimizeArticle(article: Article): OptimizedArticle {
     featuredEdmonton: article.featuredEdmonton || false,
     featuredCalgary: article.featuredCalgary || false,
     // Event-specific fields
-    event_date: article.event_date,
-    event_end_date: article.event_end_date,
-    location: article.location,
-    organizer: article.organizer,
-    organizer_contact: article.organizer_contact,
-    website_url: article.website_url,
+    event_date: (article as any).event_date || undefined,
+    event_end_date: (article as any).event_end_date || undefined,
+    location: article.location || undefined,
+    organizer: (article as any).organizer || undefined,
+    organizer_contact: (article as any).organizer_contact || undefined,
+    website_url: (article as any).website_url || undefined,
   }
 }
 
