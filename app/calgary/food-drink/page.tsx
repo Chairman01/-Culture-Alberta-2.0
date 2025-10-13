@@ -29,7 +29,7 @@ export default function CalgaryFoodDrinkPage() {
         }
         const allArticles = await response.json()
         // Filter for food & drink articles
-        const foodDrinkArticles = allArticles.filter(article => 
+        const foodDrinkArticles = allArticles.filter((article: any) => 
           article.category?.toLowerCase().includes('food') ||
           article.category?.toLowerCase().includes('drink') ||
           article.category?.toLowerCase().includes('restaurant') ||
