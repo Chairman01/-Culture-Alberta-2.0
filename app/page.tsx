@@ -29,7 +29,7 @@ async function getHomePageData() {
       console.warn('⚠️ DEBUG: No articles found from getHomepageArticlesWithFallback')
     }
     
-    // Also get events from the events table
+    // Get events separately for the "Upcoming Events" section
     let events: any[] = []
     try {
       events = await getAllEvents()
@@ -39,7 +39,7 @@ async function getHomePageData() {
       events = [] // Fallback to empty array
     }
     
-    // Convert events to article format for consistent handling
+    // Convert events to article format for homepage display only
     const eventAsArticles = events.map(event => ({
       id: event.id,
       title: event.title,
@@ -49,7 +49,7 @@ async function getHomePageData() {
       categories: ['Events'], // Add to categories array
       location: event.location,
       author: event.organizer || 'Event Organizer',
-      imageUrl: event.imageUrl || event.image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop",
+      imageUrl: event.imageUrl || event.image_url || "",
       date: event.event_date,
       createdAt: event.created_at,
       updatedAt: event.updated_at,
@@ -63,7 +63,8 @@ async function getHomePageData() {
       type: 'event'
     }))
     
-    // Combine articles and events
+    // Use articles only for general content (events are filtered out in getHomepageArticles)
+    // Events are handled separately for the "Upcoming Events" section
     const combinedPosts = [...apiArticles, ...eventAsArticles]
     console.log('🔍 DEBUG: Combined posts before deduplication:', combinedPosts.length)
     
@@ -77,7 +78,7 @@ async function getHomePageData() {
       seenIds.add(post.id)
       return true
     })
-    console.log('🔍 DEBUG: Combined posts (articles + events):', allPosts.length, '(removed', combinedPosts.length - allPosts.length, 'duplicates)')
+    console.log('🔍 DEBUG: Combined posts (articles + events for homepage):', allPosts.length, '(removed', combinedPosts.length - allPosts.length, 'duplicates)')
     
     // Simple approach: Use all posts for all sections, filter by categories
     const allPostsForFiltering = allPosts
@@ -226,7 +227,7 @@ export default async function HomeStatic() {
                       null
   
   // Sort articles by date (newest first) before filtering
-  // For articles, prioritize createdAt; for events, use event_date or createdAt
+  // For articles, prioritize date; for events, use date or createdAt
   const sortedPosts = posts.sort((a, b) => {
     let dateA: Date, dateB: Date;
     
@@ -234,16 +235,16 @@ export default async function HomeStatic() {
       // For events, use event_date if available, otherwise createdAt
       dateA = new Date(a.date || a.createdAt || 0)
     } else {
-      // For articles, prioritize createdAt over date
-      dateA = new Date(a.createdAt || a.date || 0)
+      // For articles, prioritize date over createdAt (since articles use date field)
+      dateA = new Date(a.date || a.createdAt || 0)
     }
     
     if (b.type === 'event') {
       // For events, use event_date if available, otherwise createdAt
       dateB = new Date(b.date || b.createdAt || 0)
     } else {
-      // For articles, prioritize createdAt over date
-      dateB = new Date(b.createdAt || b.date || 0)
+      // For articles, prioritize date over createdAt (since articles use date field)
+      dateB = new Date(b.date || b.createdAt || 0)
     }
     
     return dateB.getTime() - dateA.getTime() // Newest first
@@ -252,6 +253,9 @@ export default async function HomeStatic() {
   
   // SIMPLE CATEGORY-BASED FILTERING
   const edmontonPosts = sortedPosts.filter(post => {
+    // First filter out events - events should not appear in city sections
+    if (post.type === 'event') return false;
+    
     // Check if article has "Edmonton" in category or categories array
     const hasEdmontonCategory = post.category?.toLowerCase().includes('edmonton');
     const hasEdmontonInCategories = post.categories?.some((cat: string) => 
@@ -262,6 +266,9 @@ export default async function HomeStatic() {
   }).slice(0, 3)
   
   const calgaryPosts = sortedPosts.filter(post => {
+    // First filter out events - events should not appear in city sections
+    if (post.type === 'event') return false;
+    
     // Check if article has "Calgary" in category or categories array
     const hasCalgaryCategory = post.category?.toLowerCase().includes('calgary');
     const hasCalgaryInCategories = post.categories?.some((cat: string) => 
@@ -272,6 +279,9 @@ export default async function HomeStatic() {
   }).slice(0, 3)
   // SIMPLE CATEGORY-BASED FILTERING for Food & Drink
   const foodDrinkPosts = sortedPosts.filter(post => {
+    // First filter out events - events should not appear in Food & Drink section
+    if (post.type === 'event') return false;
+    
     // Check if article has "Food & Drink" in category or categories array
     const category = post.category?.toLowerCase() || '';
     const categories = post.categories || [];
@@ -290,6 +300,7 @@ export default async function HomeStatic() {
     });
     
     // Also check title for food-related keywords (fallback for missing categories)
+    // Be more specific to avoid false positives like "showcases" containing "eat"
     const hasFoodInTitle = title.includes('restaurant') || 
                           title.includes('sushi') || 
                           title.includes('food') ||
@@ -297,20 +308,23 @@ export default async function HomeStatic() {
                           title.includes('dining') ||
                           title.includes('cafe') ||
                           title.includes('bar') ||
-                          title.includes('drink');
+                          title.includes('drink') ||
+                          title.includes('coffee') ||
+                          title.includes('bite') ||
+                          title.includes('cuisine') ||
+                          title.includes('chef') ||
+                          title.includes('menu') ||
+                          title.includes('meal') ||
+                          title.includes('taste') ||
+                          title.includes('flavor') ||
+                          title.includes('cook') ||
+                          title.includes('recipe');
     
     const isFoodDrink = hasFoodCategory || hasFoodInCategories || hasFoodInTitle;
     
-    // Debug logging for each post
-    if (post.title?.toLowerCase().includes('restaurant') || 
-        post.title?.toLowerCase().includes('sushi') || 
-        post.title?.toLowerCase().includes('food') ||
-        post.title?.toLowerCase().includes('romantic')) {
-      console.log(`🔍 FOOD DEBUG: "${post.title}" - category: "${post.category}", categories: [${categories.join(', ')}], hasFoodInTitle: ${hasFoodInTitle}, isFoodDrink: ${isFoodDrink}, date: ${post.date || post.createdAt}`)
-    }
-    
     return isFoodDrink;
   }).slice(0, 3) // Take the first 3 (which should be the newest since sortedPosts is already sorted by date)
+  
   
   // SIMPLE CATEGORY-BASED FILTERING for Events
   const eventPosts = sortedPosts.filter(post => {
@@ -345,7 +359,7 @@ export default async function HomeStatic() {
   }).slice(0, 3)
   
   // Show top 5 most recent articles instead of only trending ones
-  const trendingPosts = sortedPosts.slice(0, 5)
+  const trendingPosts = sortedPosts.filter(post => post.type !== 'event').slice(0, 5)
   
   // Debug logging for homepage articles
   console.log('Total posts loaded:', posts.length)
@@ -371,8 +385,6 @@ export default async function HomeStatic() {
   console.log('Calgary posts found:', calgaryPosts.length)
   console.log('Calgary posts:', calgaryPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
   
-  console.log('Food & Drink posts found:', foodDrinkPosts.length)
-  console.log('Food & Drink posts:', foodDrinkPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
   
   // Debug: Check all posts with food/drink related content
   console.log('DEBUG: All posts with food/drink keywords:')
@@ -466,7 +478,7 @@ export default async function HomeStatic() {
                         ))
                       ) : (
                         // Fallback: show recent articles if no trending articles
-                        posts.slice(0, 3).map((post, index) => (
+                        posts.filter(post => post.type !== 'event').slice(0, 3).map((post, index) => (
                           <Link key={post.id} href={getArticleUrl(post)} className="block group">
                             <div className="flex items-start space-x-4">
                               <span className="text-lg font-bold text-gray-300 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">{index + 1}</span>

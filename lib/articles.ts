@@ -24,12 +24,16 @@ export async function getAllArticles(): Promise<Article[]> {
     const fallbackArticles = await loadOptimizedFallback()
     console.log(`⚡ FALLBACK PRIMARY: Loaded ${fallbackArticles.length} articles from optimized fallback`)
     
+    // Filter out events - only return articles
+    const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
+    console.log(`📰 FILTERED: Returning ${articlesOnly.length} articles (filtered out ${fallbackArticles.length - articlesOnly.length} events)`)
+    
     // Clear fast cache to ensure fresh data
     const { clearArticlesCache } = await import('./fast-articles')
     clearArticlesCache()
     console.log('🧹 Cleared fast cache to force fresh data load')
     
-    return fallbackArticles
+    return articlesOnly
   } catch (fallbackError) {
     console.error('❌ Optimized fallback failed:', fallbackError)
     return []
@@ -44,6 +48,10 @@ export async function getHomepageArticles(): Promise<Article[]> {
     const fallbackArticles = await loadOptimizedFallback()
     console.log(`⚡ FALLBACK PRIMARY: Loaded ${fallbackArticles.length} articles from optimized fallback`)
     
+    // Filter out events - only return articles
+    const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
+    console.log(`📰 HOMEPAGE FILTERED: Returning ${articlesOnly.length} articles (filtered out ${fallbackArticles.length - articlesOnly.length} events)`)
+    
     // Clear fast cache to ensure fresh data
     try {
       const { clearArticlesCache } = await import('./fast-articles')
@@ -53,8 +61,8 @@ export async function getHomepageArticles(): Promise<Article[]> {
       console.warn('⚠️ Failed to clear fast cache:', cacheError)
     }
     
-    // Return only recent articles for homepage
-    return fallbackArticles.slice(0, 10)
+    // Return all articles for homepage (needed for proper filtering)
+    return articlesOnly
   } catch (fallbackError) {
     console.error('❌ Optimized fallback failed:', fallbackError)
     return []
@@ -69,9 +77,12 @@ export async function getCityArticles(city: string): Promise<Article[]> {
     const validCity = city.toLowerCase() as 'edmonton' | 'calgary'
     if (validCity !== 'edmonton' && validCity !== 'calgary') {
       console.warn(`⚠️ Invalid city name: ${city}. Falling back to optimized fallback.`)
-      // Load all articles from fallback and filter by city
+      // Load all articles from fallback and filter by city (excluding events)
       const allFallbackArticles = await loadOptimizedFallback()
       return allFallbackArticles.filter(article => {
+        // First filter out events
+        if (article.type === 'event') return false
+        
         const hasCityCategory = article.category?.toLowerCase().includes(city.toLowerCase())
         const hasCityLocation = article.location?.toLowerCase().includes(city.toLowerCase())
         const hasCityCategories = article.categories?.some((cat: string) => 
@@ -99,11 +110,14 @@ export async function getCityArticles(city: string): Promise<Article[]> {
   } catch (error) {
     console.warn('⚠️ Supabase failed, using optimized fallback:', error)
     const fallbackArticles = await loadOptimizedFallback()
-    // Filter by city from fallback
-    return fallbackArticles.filter(article => 
-      article.category === city || 
-      (article.categories && article.categories.includes(city))
-    )
+    // Filter by city from fallback (excluding events)
+    return fallbackArticles.filter(article => {
+      // First filter out events
+      if (article.type === 'event') return false
+      
+      return article.category === city || 
+        (article.categories && article.categories.includes(city))
+    })
   }
 }
 

@@ -69,7 +69,7 @@ export default function EventsPage() {
         date: event.event_date || new Date().toISOString(),
         createdAt: event.created_at || new Date().toISOString(),
         updatedAt: event.updated_at || new Date().toISOString(),
-        imageUrl: event.imageUrl || event.image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop",
+        imageUrl: event.imageUrl || event.image_url || "",
         author: event.organizer || 'Event Organizer',
         type: 'event',
         status: event.status || 'published'
@@ -334,12 +334,12 @@ export default function EventsPage() {
                       >
                         <div className="md:w-1/3">
                           <img
-                            src={event.imageUrl || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop"}
+                            src={event.imageUrl || ""}
                             alt={event.title}
                             className="h-full w-full object-cover"
                             onError={(e) => {
                               const img = e.target as HTMLImageElement
-                              img.src = `https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop&text=${encodeURIComponent(event.title)}`
+                              img.src = ""
                             }}
                           />
                         </div>

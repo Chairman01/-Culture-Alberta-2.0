@@ -64,7 +64,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const fullUrl = `https://www.culturealberta.com/events/${slug}`
     
     // Handle image URL properly - use event image if available, otherwise use default
-    let eventImage = loadedEvent.image_url || '/images/culture-alberta-og.jpg'
+    let eventImage = loadedEvent.imageUrl || loadedEvent.image_url || '/images/culture-alberta-og.jpg'
     
     // Ensure image URL is absolute
     const absoluteImageUrl = eventImage.startsWith('http') 
@@ -79,7 +79,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description: description,
       image: absoluteImageUrl,
       url: fullUrl,
-      originalImage: loadedEvent.image_url
+      originalImage: loadedEvent.imageUrl || loadedEvent.image_url
     })
     
     return {
@@ -205,7 +205,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       <>
         {/* Metadata is now handled by generateMetadata function */}
         <div className="min-h-screen bg-gray-50">
-          <div className="container mx-auto px-4 py-8">
+          <div className="container mx-auto px-8 py-8">
             {/* Back Button */}
             <div className="mb-6">
               <Button variant="ghost" asChild>
@@ -221,7 +221,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
               <div className="space-y-8">
                 {/* Event Image */}
                 <EventImage 
-                  image_url={event.image_url}
+                  image_url={event.imageUrl || event.image_url}
                   title={event.title}
                 />
 
@@ -365,7 +365,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                                   />
                                 ) : (
                                   <Image
-                                    src={article.imageUrl || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop"}
+                                    src={article.imageUrl || ""}
                                     alt={article.title}
                                     width={64}
                                     height={64}
@@ -411,7 +411,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                             <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
                               {otherEvent.imageUrl ? (
                                 <Image
-                                  src={otherEvent.imageUrl || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop"}
+                                  src={otherEvent.imageUrl || ""}
                                   alt={otherEvent.title}
                                   width={64}
                                   height={64}
@@ -467,7 +467,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                               />
                             ) : (
                               <Image
-                                src={article.imageUrl || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop"}
+                                src={article.imageUrl || ""}
                                 alt={article.title}
                                 fill
                                 className="object-cover group-hover:scale-110 transition-transform duration-500"

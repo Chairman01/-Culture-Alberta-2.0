@@ -116,7 +116,7 @@ export default function NewEventPage() {
         organizer_contact: contactEmail || contactPhone || '',
         event_date: new Date(startDateString).toISOString(), // Convert to ISO format
         event_end_date: endDateString ? new Date(endDateString).toISOString() : undefined,
-        imageUrl: imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop', // Fixed: use imageUrl instead of image_url
+        imageUrl: imageUrl || '', // Fixed: use imageUrl instead of image_url
         website_url: ticketUrl || '',
         status: 'published' as const
       }

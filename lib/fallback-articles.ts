@@ -143,35 +143,48 @@ export async function getFoodDrinkArticlesWithFallback(): Promise<Article[]> {
     const fallbackArticles = await loadOptimizedFallback()
     console.log(`⚡ FALLBACK ONLY: Loaded ${fallbackArticles.length} articles from optimized fallback`)
     
-    // Filter for food & drink articles
-    return fallbackArticles.filter(article => {
-    const hasFoodCategory = article.category?.toLowerCase().includes('food') || 
-                           article.category?.toLowerCase().includes('drink') ||
-                           article.category?.toLowerCase().includes('restaurant') ||
-                           article.category?.toLowerCase().includes('cafe') ||
-                           article.category?.toLowerCase().includes('brewery') ||
-                           article.category?.toLowerCase().includes('food & drink')
-    
-    const hasFoodCategories = article.categories?.some(cat => 
-      cat.toLowerCase().includes('food') || 
-      cat.toLowerCase().includes('drink') ||
-      cat.toLowerCase().includes('restaurant') ||
-      cat.toLowerCase().includes('cafe') ||
-      cat.toLowerCase().includes('brewery') ||
-      cat.toLowerCase().includes('food & drink')
-    )
-    
-    const hasFoodTags = article.tags?.some(tag => 
-      tag.toLowerCase().includes('food') || 
-      tag.toLowerCase().includes('drink') ||
-      tag.toLowerCase().includes('restaurant') ||
-      tag.toLowerCase().includes('cafe') ||
-      tag.toLowerCase().includes('brewery') ||
-      tag.toLowerCase().includes('food & drink')
-    )
-    
-    return hasFoodCategory || hasFoodCategories || hasFoodTags
+    // Filter for food & drink articles (excluding events)
+    const foodDrinkArticles = fallbackArticles.filter(article => {
+      // First filter out events
+      if (article.type === 'event') return false
+      
+      const hasFoodCategory = article.category?.toLowerCase().includes('food') || 
+                             article.category?.toLowerCase().includes('drink') ||
+                             article.category?.toLowerCase().includes('restaurant') ||
+                             article.category?.toLowerCase().includes('cafe') ||
+                             article.category?.toLowerCase().includes('brewery') ||
+                             article.category?.toLowerCase().includes('food & drink')
+      
+      const hasFoodCategories = article.categories?.some(cat => 
+        cat.toLowerCase().includes('food') || 
+        cat.toLowerCase().includes('drink') ||
+        cat.toLowerCase().includes('restaurant') ||
+        cat.toLowerCase().includes('cafe') ||
+        cat.toLowerCase().includes('brewery') ||
+        cat.toLowerCase().includes('food & drink')
+      )
+      
+      const hasFoodTags = article.tags?.some(tag => 
+        tag.toLowerCase().includes('food') || 
+        tag.toLowerCase().includes('drink') ||
+        tag.toLowerCase().includes('restaurant') ||
+        tag.toLowerCase().includes('cafe') ||
+        tag.toLowerCase().includes('brewery') ||
+        tag.toLowerCase().includes('food & drink')
+      )
+      
+      return hasFoodCategory || hasFoodCategories || hasFoodTags
     })
+    
+    // Sort by newest first and return ALL articles for the dedicated page
+    foodDrinkArticles.sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.date || 0).getTime()
+      const dateB = new Date(b.createdAt || b.date || 0).getTime()
+      return dateB - dateA // Newest first
+    })
+
+    console.log(`✅ FOOD & DRINK PAGE: Returning all ${foodDrinkArticles.length} articles`)
+    return foodDrinkArticles // Return all articles for the dedicated page
   } catch (error) {
     console.error('❌ Failed to load Food & Drink articles from fallback:', error)
     return []
@@ -189,8 +202,11 @@ export async function getCultureArticlesWithFallback(): Promise<Article[]> {
     const fallbackArticles = await loadOptimizedFallback()
     console.log(`⚡ FALLBACK ONLY: Loaded ${fallbackArticles.length} articles from optimized fallback`)
     
-    // Filter for culture articles
+    // Filter for culture articles (excluding events)
     return fallbackArticles.filter(article => {
+    // First filter out events
+    if (article.type === 'event') return false
+    
     // Exclude specific articles that shouldn't be on the Culture page
     if (article.title?.toLowerCase().includes('edmonton folk music festival') ||
         article.title?.toLowerCase().includes('edmonton folk festival')) {
