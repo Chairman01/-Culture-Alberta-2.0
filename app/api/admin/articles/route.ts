@@ -63,15 +63,15 @@ export async function GET() {
         const articles = fallbackArticles.map(article => ({
           ...article,
           imageUrl: article.imageUrl,
-          date: article.date || article.createdAt || article.created_at,
+          date: article.date || article.createdAt,
           trendingHome: article.trendingHome || false,
           trendingEdmonton: article.trendingEdmonton || false,
           trendingCalgary: article.trendingCalgary || false,
           featuredHome: article.featuredHome || false,
           featuredEdmonton: article.featuredEdmonton || false,
           featuredCalgary: article.featuredCalgary || false,
-          createdAt: article.createdAt || article.created_at,
-          updatedAt: article.updatedAt || article.createdAt || article.created_at,
+          createdAt: article.createdAt,
+          updatedAt: article.updatedAt || article.createdAt,
         }))
         
         return NextResponse.json(articles)
@@ -92,16 +92,16 @@ export async function GET() {
       
       const articles = fallbackArticles.map(article => ({
         ...article,
-        imageUrl: article.imageUrl || article.image,
-        date: article.date || article.createdAt || article.created_at,
+        imageUrl: article.imageUrl,
+        date: article.date || article.createdAt,
         trendingHome: article.trendingHome || false,
         trendingEdmonton: article.trendingEdmonton || false,
         trendingCalgary: article.trendingCalgary || false,
         featuredHome: article.featuredHome || false,
         featuredEdmonton: article.featuredEdmonton || false,
         featuredCalgary: article.featuredCalgary || false,
-        createdAt: article.createdAt || article.created_at,
-        updatedAt: article.updatedAt || article.createdAt || article.created_at,
+        createdAt: article.createdAt,
+        updatedAt: article.updatedAt || article.createdAt,
       }))
       
       return NextResponse.json(articles)
