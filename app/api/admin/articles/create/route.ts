@@ -24,10 +24,14 @@ export async function POST(request: NextRequest) {
     // Get Supabase client
     const supabase = getSupabaseClient()
 
+    // Generate a unique ID for the article
+    const articleId = `article-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    
     // Insert the article into Supabase
     const { data, error } = await supabase
       .from('articles')
       .insert([{
+        id: articleId,
         title: articleData.title,
         content: articleData.content,
         excerpt: articleData.excerpt,
@@ -45,6 +49,8 @@ export async function POST(request: NextRequest) {
         featured_home: articleData.featuredHome || false,
         featured_edmonton: articleData.featuredEdmonton || false,
         featured_calgary: articleData.featuredCalgary || false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }])
       .select()
       .single()
