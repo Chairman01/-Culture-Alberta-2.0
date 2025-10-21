@@ -62,7 +62,7 @@ export async function GET() {
         // Map fallback data to match admin interface expectations
         const articles = fallbackArticles.map(article => ({
           ...article,
-          imageUrl: article.imageUrl || article.image,
+          imageUrl: article.imageUrl,
           date: article.date || article.createdAt || article.created_at,
           trendingHome: article.trendingHome || false,
           trendingEdmonton: article.trendingEdmonton || false,
