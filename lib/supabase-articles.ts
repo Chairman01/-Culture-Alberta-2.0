@@ -1406,6 +1406,39 @@ export async function createArticle(article: CreateArticleInput): Promise<Articl
     // Invalidate homepage cache so it shows the new article immediately
     invalidateHomepageCache()
     
+    // Update optimized fallback with the new article
+    try {
+      console.log('🔄 Updating optimized fallback with new article...')
+      const { updateOptimizedFallback } = await import('./optimized-fallback')
+      const { loadOptimizedFallback } = await import('./optimized-fallback')
+      
+      // Load current fallback articles
+      const currentArticles = await loadOptimizedFallback()
+      
+      // Add the new article to the beginning
+      const newArticle = {
+        ...data,
+        imageUrl: data.image_url,
+        date: data.created_at,
+        trendingHome: data.trending_home || false,
+        trendingEdmonton: data.trending_edmonton || false,
+        trendingCalgary: data.trending_calgary || false,
+        featuredHome: data.featured_home || false,
+        featuredEdmonton: data.featured_edmonton || false,
+        featuredCalgary: data.featured_calgary || false,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      }
+      
+      // Add new article to beginning and update fallback
+      const updatedArticles = [newArticle, ...currentArticles]
+      await updateOptimizedFallback(updatedArticles)
+      console.log('✅ Optimized fallback updated with new article')
+    } catch (fallbackError) {
+      console.warn('⚠️ Failed to update optimized fallback:', fallbackError)
+      // Don't fail the creation if fallback update fails
+    }
+    
     // Automatically sync to local file after successful creation
     try {
       console.log('🔄 Auto-syncing to local file after creation...')

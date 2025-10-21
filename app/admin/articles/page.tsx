@@ -114,6 +114,8 @@ export default function AdminArticles() {
       })
       const response = await fetch('/api/admin/articles')
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Admin: API error response:', errorText)
         throw new Error(`API responded with status: ${response.status}`)
       }
       const data = await response.json()
@@ -129,8 +131,21 @@ export default function AdminArticles() {
       }))
       console.log('Admin: Normalized articles:', normalized)
       setArticles(normalized)
+      
+      // Show success message if we loaded articles
+      if (normalized.length > 0) {
+        toast({
+          title: "Articles loaded",
+          description: `Successfully loaded ${normalized.length} articles`,
+        })
+      }
     } catch (error) {
       console.error('Error loading articles:', error)
+      toast({
+        title: "Error loading articles",
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
