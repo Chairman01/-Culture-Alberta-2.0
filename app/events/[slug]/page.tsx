@@ -16,9 +16,11 @@ import { EventImage } from '@/components/event-image'
 // Date formatting functions
 function formatEventDate(dateString: string): string {
   if (!dateString) return 'Date TBD'
-  
+
   try {
-    const date = new Date(dateString)
+    // Parse the date string and ensure it's treated as local time, not UTC
+    const [year, month, day] = dateString.split('-').map(Number)
+    const date = new Date(year, month - 1, day) // month is 0-indexed
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -32,9 +34,11 @@ function formatEventDate(dateString: string): string {
 
 function formatEventTime(dateString: string): string {
   if (!dateString) return 'Time TBD'
-  
+
   try {
-    const date = new Date(dateString)
+    // Parse the date string and ensure it's treated as local time, not UTC
+    const [year, month, day] = dateString.split('-').map(Number)
+    const date = new Date(year, month - 1, day) // month is 0-indexed
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
