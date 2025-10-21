@@ -13,6 +13,38 @@ import { Article } from '@/lib/types/article'
 import { Metadata } from 'next'
 import { EventImage } from '@/components/event-image'
 
+// Date formatting functions
+function formatEventDate(dateString: string): string {
+  if (!dateString) return 'Date TBD'
+  
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  } catch (error) {
+    return 'Date TBD'
+  }
+}
+
+function formatEventTime(dateString: string): string {
+  if (!dateString) return 'Time TBD'
+  
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  } catch (error) {
+    return 'Time TBD'
+  }
+}
+
 // Generate static params for all published events
 export async function generateStaticParams() {
   try {
