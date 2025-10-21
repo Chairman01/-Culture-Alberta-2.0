@@ -150,13 +150,14 @@ export default async function EdmontonPage() {
   }
 
   const formatEventDate = (dateString: string) => {
+    if (!dateString) return 'Date TBA'
+    
     try {
-      const date = new Date(dateString)
-      // Use UTC to avoid timezone conversion issues
-      const month = date.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
-      const day = date.getUTCDate()
-      const year = date.getUTCFullYear()
-      return `${month} ${day}, ${year}`
+      // Parse the date string and ensure it's treated as local time, not UTC
+      const [year, month, day] = dateString.split('-').map(Number)
+      const date = new Date(year, month - 1, day) // month is 0-indexed
+      const monthName = date.toLocaleDateString('en-US', { month: 'long' })
+      return `${monthName} ${day}, ${year}`
     } catch {
       return 'Date TBA'
     }

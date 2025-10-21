@@ -180,8 +180,12 @@ export default async function HomeStatic() {
   }
 
   const formatEventDate = (dateString: string) => {
+    if (!dateString) return 'Date TBA'
+    
     try {
-      const date = new Date(dateString)
+      // Parse the date string and ensure it's treated as local time, not UTC
+      const [year, month, day] = dateString.split('-').map(Number)
+      const date = new Date(year, month - 1, day) // month is 0-indexed
       return date.toLocaleDateString('en-US', { 
         month: 'long',
         day: 'numeric', 
