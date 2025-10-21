@@ -205,37 +205,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       console.warn('Failed to load related content:', error)
     }
     
-    // Format event date
-    const formatEventDate = (dateString: string | undefined | null) => {
-      if (!dateString) return 'Date TBA'
-      try {
-        const date = new Date(dateString)
-        if (isNaN(date.getTime())) return 'Date TBA'
-        return date.toLocaleDateString('en-US', { 
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        })
-      } catch {
-        return 'Date TBA'
-      }
-    }
-
-    const formatEventTime = (dateString: string | undefined | null) => {
-      if (!dateString) return 'Time TBA'
-      try {
-        const date = new Date(dateString)
-        if (isNaN(date.getTime())) return 'Time TBA'
-        return date.toLocaleTimeString('en-US', { 
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        })
-      } catch {
-        return 'Time TBA'
-      }
-    }
+    // Use the corrected date formatting functions defined at the top of the file
 
     return (
       <>
