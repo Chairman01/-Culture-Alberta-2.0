@@ -36,8 +36,9 @@ interface OptimizedArticle {
 }
 
 const OPTIMIZED_FALLBACK_PATH = path.join(process.cwd(), 'optimized-fallback.json')
-const MAX_EXCERPT_LENGTH = 200 // Keep excerpts short
-const MAX_TITLE_LENGTH = 100 // Keep titles reasonable
+const MAX_EXCERPT_LENGTH = 150 // Keep excerpts short for performance
+const MAX_TITLE_LENGTH = 80 // Keep titles reasonable
+const MAX_CONTENT_LENGTH = 500 // Limit content length for performance
 
 /**
  * Convert full article to optimized version for fallback
@@ -52,7 +53,9 @@ function optimizeArticle(article: Article): OptimizedArticle {
       ? article.excerpt.substring(0, MAX_EXCERPT_LENGTH) + '...'
       : (article.excerpt || ''),
     description: article.description || '',
-    content: article.content || '', // Preserve full content
+    content: article.content && article.content.length > MAX_CONTENT_LENGTH
+      ? article.content.substring(0, MAX_CONTENT_LENGTH) + '...'
+      : (article.content || ''), // Limit content for performance
     category: article.category || 'General',
     categories: article.categories || [],
     status: article.status || 'published',
