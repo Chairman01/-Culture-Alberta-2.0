@@ -16,7 +16,7 @@ interface SEOConfig {
 }
 
 interface CanonicalConfig {
-  url: string
+  url?: string
   forceHttps?: boolean
   removeTrailingSlash?: boolean
   removeQueryParams?: boolean
