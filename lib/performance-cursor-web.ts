@@ -245,8 +245,8 @@ export function useLazyComponent<T extends React.ComponentType<any>>(
       })
   }, [importFunc])
 
-  if (loading) return fallback || <div>Loading...</div>
-  if (error) return <div>Error loading component: {error.message}</div>
+  if (loading) return fallback || null
+  if (error) return null
   if (!Component) return null
 
   return Component
