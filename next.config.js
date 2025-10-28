@@ -40,6 +40,18 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // Fix domain redirect loop - force www as primary
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'culturealberta.com',
+          },
+        ],
+        destination: 'https://www.culturealberta.com/:path*',
+        permanent: true,
+      },
       // Redirect old article URLs to new format
       {
         source: '/articles/:id/:slug',
