@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-// Force cache clear: 2025-01-27 12:00 - REDIRECT LOOP FIX DEPLOYMENT
+// Force cache clear: 2025-01-27 12:15 - REDIRECT LOOP FIXED - DEPLOY NOW
 const nextConfig = {
   reactStrictMode: true,
   // Performance optimizations
@@ -87,18 +87,8 @@ const nextConfig = {
         destination: '/events/:path*',
         permanent: true,
       },
-      // Redirect www to non-www
-      {
-        source: '/:path*',
-        has: [
-          {
-            type: 'host',
-            value: 'www.culturealberta.com',
-          },
-        ],
-        destination: 'https://culturealberta.com/:path*',
-        permanent: true,
-      },
+      // REMOVED: This was causing redirect loop with the rule above
+      // www.culturealberta.com should be the primary domain
     ]
   },
   async rewrites() {
