@@ -70,7 +70,8 @@ async function fetchAllArticles() {
   // Generate optimized fallback
   console.log('🔄 Generating optimized fallback...\n');
   
-  const MAX_FALLBACK_CONTENT_SIZE = 500;
+  // REMOVED: Content size limit that was truncating articles
+  // Articles should show full content, not be artificially limited
   const optimizedArticles = data.map(article => ({
     id: article.id,
     title: article.title,
@@ -82,13 +83,9 @@ async function fetchAllArticles() {
     created_at: article.created_at,
     updated_at: article.updated_at,
     imageUrl: article.image_url || article.image,
-    // Truncate content for fallback to keep file size small
-    content: article.content && article.content.length > MAX_FALLBACK_CONTENT_SIZE
-      ? article.content.substring(0, MAX_FALLBACK_CONTENT_SIZE) + '... [truncated]'
-      : article.content,
-    excerpt: article.excerpt && article.excerpt.length > MAX_FALLBACK_CONTENT_SIZE
-      ? article.excerpt.substring(0, MAX_FALLBACK_CONTENT_SIZE) + '... [truncated]'
-      : article.excerpt,
+  // Use full content without truncation
+  content: article.content || '',
+  excerpt: article.excerpt || '',
     // Include other essential fields
     trendingHome: article.trending_home,
     trendingEdmonton: article.trending_edmonton,
