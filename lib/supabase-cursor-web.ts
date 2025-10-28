@@ -77,7 +77,7 @@ export async function querySupabase<T = any>(
     
     if (error) {
       console.error(`❌ Supabase query error for ${table}:`, error)
-      return createApiResponse(false, undefined, error.message, `Failed to query ${table}`)
+      return createApiResponse(false, undefined as T, error.message, `Failed to query ${table}`)
     }
     
     console.log(`✅ Successfully queried ${table}:`, data ? 'Found data' : 'No data')
@@ -87,7 +87,7 @@ export async function querySupabase<T = any>(
     console.error(`❌ Unexpected error querying ${table}:`, error)
     return createApiResponse(
       false, 
-      undefined, 
+      undefined as T, 
       error instanceof Error ? error.message : 'Unknown error',
       `Failed to query ${table}`
     )
