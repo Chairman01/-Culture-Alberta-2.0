@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getQuickArticles } from '@/lib/supabase-optimized'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
+import { Article } from '@/lib/types/article'
 
 export async function POST() {
   try {
@@ -8,7 +9,7 @@ export async function POST() {
     
     // Try to get fresh data from Supabase
     try {
-      const freshArticles = await getQuickArticles()
+      const freshArticles = await getQuickArticles() as Article[]
       
       if (freshArticles.length > 0) {
         console.log(`✅ Got ${freshArticles.length} fresh articles from Supabase`)
