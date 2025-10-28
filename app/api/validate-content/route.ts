@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const result = {
       validation,
       duplicateCheck,
-      recommendations: []
+      recommendations: [] as string[]
     }
     
     // Generate recommendations
