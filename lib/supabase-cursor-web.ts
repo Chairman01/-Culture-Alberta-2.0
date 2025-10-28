@@ -363,5 +363,4 @@ export const ArticlesAPI = {
   }
 }
 
-// Export types for better Cursor web assistance
-export type { SupabaseQueryOptions, SupabaseMutationOptions }
+// Types are already exported above as individual interfaces
