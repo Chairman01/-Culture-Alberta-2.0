@@ -465,8 +465,15 @@ export default function AdminArticles() {
                     <td className="p-4">{article.location}</td>
                     <td className="p-4">
                       {(() => {
-                        const validation = validateArticleContent(article)
-                        const score = getContentQualityScore(article)
+                        // Ensure required fields exist for validation
+                        const articleForValidation = {
+                          title: article.title || '',
+                          content: article.content || '',
+                          excerpt: article.excerpt || '',
+                          category: article.category || ''
+                        }
+                        const validation = validateArticleContent(articleForValidation)
+                        const score = getContentQualityScore(articleForValidation)
                         const label = getContentQualityLabel(score)
                         const hasIssues = validation.issues.length > 0
                         const hasWarnings = validation.warnings.length > 0
