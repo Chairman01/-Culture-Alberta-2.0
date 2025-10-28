@@ -1,61 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getAllArticles } from '@/lib/supabase-articles'
+import { NextResponse } from 'next/server'
+import { loadOptimizedFallback } from '@/lib/optimized-fallback'
 
-// Force dynamic rendering - no caching
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
-// GET /api/debug-articles - Debug endpoint to check article data
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    console.log('🔍 DEBUG: Starting article debug check...')
+    console.log('🔍 Debug: Loading articles...')
     
-    const articles = await getAllArticles()
+    const articles = await loadOptimizedFallback()
     
-    // Calculate response size
-    const responseSize = JSON.stringify(articles).length
-    const responseSizeMB = (responseSize / (1024 * 1024)).toFixed(2)
+    console.log(`🔍 Debug: Found ${articles.length} articles`)
     
-    // Get article statistics
-    const stats = {
-      totalArticles: articles.length,
-      responseSizeBytes: responseSize,
-      responseSizeMB: responseSizeMB,
-      articlesWithLargeContent: articles.filter(a => a.content && a.content.length > 100000).length,
-      articlesWithVeryLargeContent: articles.filter(a => a.content && a.content.length > 1000000).length,
-      largestContentSize: Math.max(...articles.map(a => a.content?.length || 0)),
-      sampleArticleTitles: articles.slice(0, 5).map(a => ({
-        title: a.title,
-        contentLength: a.content?.length || 0,
-        date: a.createdAt
+    // Show first few articles for debugging
+    const recentArticles = articles
+      .sort((a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime())
+      .slice(0, 5)
+      .map(article => ({
+        id: article.id,
+        title: article.title,
+        type: article.type,
+        createdAt: article.createdAt || article.date,
+        status: article.status
       }))
-    }
     
-    console.log('📊 DEBUG: Article statistics:', stats)
-    
-    // Return limited debug info to prevent oversized responses
     return NextResponse.json({
-      success: true,
-      stats,
-      environment: {
-        NODE_ENV: process.env.NODE_ENV,
-        VERCEL: process.env.VERCEL,
-        isProduction: process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
-      }
+      total: articles.length,
+      recent: recentArticles,
+      message: 'Debug info loaded'
     })
+    
   } catch (error) {
-    console.error('❌ DEBUG: Error in debug endpoint:', error)
-    return NextResponse.json(
-      { 
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        environment: {
-          NODE_ENV: process.env.NODE_ENV,
-          VERCEL: process.env.VERCEL,
-          isProduction: process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
-        }
-      },
-      { status: 500 }
-    )
+    console.error('❌ Debug failed:', error)
+    return NextResponse.json({
+      error: 'Debug failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }

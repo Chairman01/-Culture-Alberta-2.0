@@ -43,7 +43,15 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       if (!response.ok) {
         throw new Error(`API responded with status: ${response.status}`)
       }
-      const eventData = await response.json()
+      const responseData = await response.json()
+      
+      if (!responseData) {
+        setError('Event not found')
+        return
+      }
+      
+      // Handle API response format - check if data is wrapped in success response
+      const eventData = responseData.data || responseData
       
       if (!eventData) {
         setError('Event not found')
@@ -85,7 +93,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       setLocation(event.location || "")
       setDescription(event.description || "")
       setExcerpt(event.excerpt || "")
-      setImageUrl(event.image_url || "") // Fixed: use only image_url property
+      setImageUrl((event as any).imageUrl || event.image_url || "") // Handle both camelCase and snake_case
       setTicketUrl(event.website_url || "")
       setOrganizer(event.organizer || "")
       setContactEmail(event.organizer_contact || "")
@@ -152,6 +160,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       }
 
       console.log("🔧 Updating event with data:", updateData)
+      console.log("🔧 Event ID:", event.id)
+      console.log("🔧 Event object:", event)
 
       // Update the event in the database via API
       console.log('🔧 Calling update API...')
@@ -164,7 +174,9 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       })
       
       if (!updateResponse.ok) {
-        throw new Error('Failed to update event')
+        const errorText = await updateResponse.text()
+        console.error('❌ Update API error response:', errorText)
+        throw new Error(`Failed to update event: ${updateResponse.status} - ${errorText}`)
       }
       
       const updateResult = await updateResponse.json()

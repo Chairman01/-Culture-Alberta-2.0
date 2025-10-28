@@ -519,7 +519,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                        loadedArticle.content !== 'undefined' ? (
                         <div 
                           className="prose prose-lg max-w-none article-content-wrapper"
-                          dangerouslySetInnerHTML={{ __html: loadedArticle.content }}
+                          dangerouslySetInnerHTML={{ __html: processContentWithVideos(loadedArticle.content) }}
                           suppressHydrationWarning={true}
                         />
                       ) : loadedArticle.excerpt ? (

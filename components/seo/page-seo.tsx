@@ -58,8 +58,8 @@ export function PageSEO({
       <meta name="twitter:image" content={image} />
       <meta name="twitter:site" content="@culturealberta" />
       
-      {/* Canonical - Only add if URL is provided to avoid duplicate canonical tags */}
-      {url && <link rel="canonical" href={fullUrl} />}
+      {/* Canonical - Always add canonical tag for proper indexing */}
+      <link rel="canonical" href={fullUrl} />
     </Head>
   )
 }

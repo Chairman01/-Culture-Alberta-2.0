@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { updateOptimizedFallback } from '@/lib/optimized-fallback'
+import { quickSyncArticle } from '@/lib/auto-sync'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -63,34 +64,72 @@ export async function PUT(
 
     console.log('✅ Article updated successfully in Supabase:', data.id)
 
-    // Also update the optimized fallback
+    // Auto-sync the updated article
     try {
-      const { loadOptimizedFallback } = await import('@/lib/optimized-fallback')
-      const allArticles = await loadOptimizedFallback()
-      
-      // Find and update the article in the fallback
-      const articleIndex = allArticles.findIndex(article => article.id === articleId)
-      if (articleIndex !== -1) {
-        const originalArticle = allArticles[articleIndex]
-        allArticles[articleIndex] = {
-          ...allArticles[articleIndex],
-          ...data,
-          imageUrl: articleData.imageUrl, // Ensure imageUrl is preserved
-          date: originalArticle.createdAt || originalArticle.date || new Date().toISOString(), // Preserve the date
-        }
-        await updateOptimizedFallback(allArticles)
-        console.log('✅ Optimized fallback updated successfully')
+      console.log('🔄 Auto-syncing updated article...')
+      const syncResult = await quickSyncArticle(articleId)
+      if (syncResult.success) {
+        console.log('✅ Article auto-synced successfully')
       } else {
-        console.warn('⚠️ Article not found in optimized fallback, adding it')
-        allArticles.push({
-          ...data,
-          imageUrl: articleData.imageUrl,
-        })
-        await updateOptimizedFallback(allArticles)
+        console.warn('⚠️ Auto-sync failed, falling back to manual update:', syncResult.error)
+        
+        // Fallback: Manual update of optimized fallback
+        const { loadOptimizedFallback } = await import('@/lib/optimized-fallback')
+        const allArticles = await loadOptimizedFallback()
+        
+        // Find and update the article in the fallback
+        const articleIndex = allArticles.findIndex(article => article.id === articleId)
+        if (articleIndex !== -1) {
+          const originalArticle = allArticles[articleIndex]
+          allArticles[articleIndex] = {
+            ...allArticles[articleIndex],
+            ...data,
+            imageUrl: articleData.imageUrl, // Ensure imageUrl is preserved
+            date: originalArticle.createdAt || originalArticle.date || new Date().toISOString(), // Preserve the date
+          }
+          await updateOptimizedFallback(allArticles)
+          console.log('✅ Optimized fallback updated successfully (fallback)')
+        } else {
+          console.warn('⚠️ Article not found in optimized fallback, adding it')
+          allArticles.push({
+            ...data,
+            imageUrl: articleData.imageUrl,
+          })
+          await updateOptimizedFallback(allArticles)
+        }
       }
-    } catch (fallbackError) {
-      console.error('❌ Failed to update optimized fallback:', fallbackError)
-      // Don't fail the entire request if fallback update fails
+    } catch (syncError) {
+      console.error('❌ Auto-sync failed, using manual fallback:', syncError)
+      
+      // Fallback: Manual update of optimized fallback
+      try {
+        const { loadOptimizedFallback } = await import('@/lib/optimized-fallback')
+        const allArticles = await loadOptimizedFallback()
+        
+        // Find and update the article in the fallback
+        const articleIndex = allArticles.findIndex(article => article.id === articleId)
+        if (articleIndex !== -1) {
+          const originalArticle = allArticles[articleIndex]
+          allArticles[articleIndex] = {
+            ...allArticles[articleIndex],
+            ...data,
+            imageUrl: articleData.imageUrl, // Ensure imageUrl is preserved
+            date: originalArticle.createdAt || originalArticle.date || new Date().toISOString(), // Preserve the date
+          }
+          await updateOptimizedFallback(allArticles)
+          console.log('✅ Optimized fallback updated successfully (fallback)')
+        } else {
+          console.warn('⚠️ Article not found in optimized fallback, adding it')
+          allArticles.push({
+            ...data,
+            imageUrl: articleData.imageUrl,
+          })
+          await updateOptimizedFallback(allArticles)
+        }
+      } catch (fallbackError) {
+        console.error('❌ Failed to update optimized fallback:', fallbackError)
+        // Don't fail the entire request if fallback update fails
+      }
     }
 
     return NextResponse.json({ 
@@ -136,11 +175,30 @@ export async function DELETE(
       throw error
     }
 
-    console.log('✅ Article deleted successfully:', articleId)
+    console.log('✅ Article deleted successfully from Supabase:', articleId)
+
+    // Also remove from the optimized fallback
+    try {
+      const { loadOptimizedFallback } = await import('@/lib/optimized-fallback')
+      const allArticles = await loadOptimizedFallback()
+      
+      // Find and remove the article from the fallback
+      const articleIndex = allArticles.findIndex(article => article.id === articleId)
+      if (articleIndex !== -1) {
+        allArticles.splice(articleIndex, 1)
+        await updateOptimizedFallback(allArticles)
+        console.log('✅ Article removed from optimized fallback successfully')
+      } else {
+        console.warn('⚠️ Article not found in optimized fallback')
+      }
+    } catch (fallbackError) {
+      console.error('❌ Failed to update optimized fallback:', fallbackError)
+      // Don't fail the entire request if fallback update fails
+    }
 
     return NextResponse.json({ 
       success: true,
-      message: 'Article deleted successfully. Remember to click "Sync Now" in /admin/sync-articles to update your website!'
+      message: 'Article deleted successfully from both Supabase and local cache!'
     })
 
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { loadOptimizedFallback } from '@/lib/optimized-fallback'
+import { quickSyncArticle } from '@/lib/auto-sync'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
@@ -15,100 +16,32 @@ function getSupabaseClient() {
 
 export async function GET() {
   try {
-    console.log('🔧 Admin Articles API: Loading articles from Supabase...')
+    console.log('🔧 Admin Articles API: Loading articles from optimized fallback (fast)...')
     
-    const supabase = getSupabaseClient()
+    // Use optimized fallback first for instant loading
+    const fallbackArticles = await loadOptimizedFallback()
+    console.log(`✅ Admin Articles API: Loaded ${fallbackArticles.length} articles from optimized fallback`)
     
-    // Try to fetch articles from Supabase with timeout handling
-    try {
-      const { data, error } = await supabase
-        .from('articles')
-        .select('*')
-        .order('created_at', { ascending: false })
-      
-      if (error) {
-        console.error('❌ Admin Articles API: Supabase error:', error)
-        throw error
-      }
-      
-      console.log(`✅ Admin Articles API: Loaded ${data?.length || 0} articles from Supabase`)
-      
-      // Map Supabase data to match our Article interface
-      const articles = (data || []).map(article => ({
-        ...article,
-        imageUrl: article.image_url,
-        date: article.created_at,
-        trendingHome: article.trending_home || false,
-        trendingEdmonton: article.trending_edmonton || false,
-        trendingCalgary: article.trending_calgary || false,
-        featuredHome: article.featured_home || false,
-        featuredEdmonton: article.featured_edmonton || false,
-        featuredCalgary: article.featured_calgary || false,
-        createdAt: article.created_at,
-        updatedAt: article.updated_at,
-      }))
-      
-      return NextResponse.json(articles)
-      
-    } catch (supabaseError: any) {
-      // Check if it's a timeout error
-      if (supabaseError?.code === '57014' || supabaseError?.message?.includes('timeout')) {
-        console.warn('⚠️ Admin Articles API: Supabase timeout, falling back to optimized fallback...')
-        
-        // Load from optimized fallback
-        const fallbackArticles = await loadOptimizedFallback()
-        console.log(`✅ Admin Articles API: Loaded ${fallbackArticles.length} articles from optimized fallback`)
-        
-        // Map fallback data to match admin interface expectations
-        const articles = fallbackArticles.map(article => ({
-          ...article,
-          imageUrl: article.imageUrl,
-          date: article.date || article.createdAt,
-          trendingHome: article.trendingHome || false,
-          trendingEdmonton: article.trendingEdmonton || false,
-          trendingCalgary: article.trendingCalgary || false,
-          featuredHome: article.featuredHome || false,
-          featuredEdmonton: article.featuredEdmonton || false,
-          featuredCalgary: article.featuredCalgary || false,
-          createdAt: article.createdAt,
-          updatedAt: article.updatedAt || article.createdAt,
-        }))
-        
-        return NextResponse.json(articles)
-      } else {
-        // Re-throw non-timeout errors
-        throw supabaseError
-      }
-    }
+    // Map fallback data to match admin interface expectations
+    const articles = fallbackArticles.map(article => ({
+      ...article,
+      imageUrl: article.imageUrl,
+      date: article.date || article.createdAt,
+      trendingHome: article.trendingHome || false,
+      trendingEdmonton: article.trendingEdmonton || false,
+      trendingCalgary: article.trendingCalgary || false,
+      featuredHome: article.featuredHome || false,
+      featuredEdmonton: article.featuredEdmonton || false,
+      featuredCalgary: article.featuredCalgary || false,
+      createdAt: article.createdAt,
+      updatedAt: article.updatedAt || article.createdAt,
+    }))
+    
+    return NextResponse.json(articles)
     
   } catch (error) {
     console.error('❌ Admin Articles API: Failed to load articles:', error)
-    
-    // Final fallback - try to load from optimized fallback even if there was an unexpected error
-    try {
-      console.log('🔄 Admin Articles API: Attempting final fallback to optimized data...')
-      const fallbackArticles = await loadOptimizedFallback()
-      console.log(`✅ Admin Articles API: Final fallback loaded ${fallbackArticles.length} articles`)
-      
-      const articles = fallbackArticles.map(article => ({
-        ...article,
-        imageUrl: article.imageUrl,
-        date: article.date || article.createdAt,
-        trendingHome: article.trendingHome || false,
-        trendingEdmonton: article.trendingEdmonton || false,
-        trendingCalgary: article.trendingCalgary || false,
-        featuredHome: article.featuredHome || false,
-        featuredEdmonton: article.featuredEdmonton || false,
-        featuredCalgary: article.featuredCalgary || false,
-        createdAt: article.createdAt,
-        updatedAt: article.updatedAt || article.createdAt,
-      }))
-      
-      return NextResponse.json(articles)
-    } catch (fallbackError) {
-      console.error('❌ Admin Articles API: Even fallback failed:', fallbackError)
-      return NextResponse.json([], { status: 500 })
-    }
+    return NextResponse.json([], { status: 500 })
   }
 }
 

@@ -1,5 +1,15 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { generateEnhancedMetadata } from '@/lib/seo-cursor-web'
+import { Metadata } from 'next'
+
+// Enhanced 404 page with proper SEO
+export const metadata: Metadata = generateEnhancedMetadata({
+  title: 'Page Not Found - 404',
+  description: 'The page you are looking for could not be found. Explore our articles, events, and cultural content in Alberta.',
+  path: '/404',
+  keywords: ['404', 'page not found', 'Alberta culture', 'articles', 'events']
+})
 
 export default function NotFound() {
   return (
@@ -20,11 +30,11 @@ export default function NotFound() {
             />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
           Page not found
-        </h2>
+        </h1>
         <p className="text-gray-600 mb-6">
-          Sorry, we couldn't find the page you're looking for.
+          Sorry, we couldn't find the page you're looking for. This might be due to a moved or deleted page.
         </p>
         <div className="space-y-3">
           <Button asChild className="w-full">
@@ -37,6 +47,25 @@ export default function NotFound() {
               Browse articles
             </Link>
           </Button>
+          <Button variant="outline" asChild className="w-full">
+            <Link href="/events">
+              View events
+            </Link>
+          </Button>
+        </div>
+        
+        {/* Helpful suggestions */}
+        <div className="mt-6 text-sm text-gray-500">
+          <p>Looking for something specific?</p>
+          <div className="flex flex-wrap gap-2 justify-center mt-2">
+            <Link href="/calgary" className="text-blue-600 hover:underline">Calgary</Link>
+            <span>•</span>
+            <Link href="/edmonton" className="text-blue-600 hover:underline">Edmonton</Link>
+            <span>•</span>
+            <Link href="/food-drink" className="text-blue-600 hover:underline">Food & Drink</Link>
+            <span>•</span>
+            <Link href="/culture" className="text-blue-600 hover:underline">Culture</Link>
+          </div>
         </div>
       </div>
     </div>

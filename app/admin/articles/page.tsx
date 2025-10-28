@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Plus, Edit, Trash2, Search, RefreshCw } from "lucide-react"
+import { Plus, Edit, Trash2, Search, RefreshCw, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -26,6 +26,7 @@ import {
   Article,
   MAIN_CATEGORIES
 } from "@/lib/data"
+import { validateArticleContent, getContentQualityScore, getContentQualityLabel } from "@/lib/content-validation"
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
@@ -54,6 +55,8 @@ export default function AdminArticles() {
   const [location, setLocation] = useState("all")
   const [sortBy, setSortBy] = useState("newest") // newest, oldest, title
   const [isLoading, setIsLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
+  const [lastSync, setLastSync] = useState<Date | null>(null)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -61,30 +64,21 @@ export default function AdminArticles() {
     loadAllArticles()
   }, [])
 
-  // Refresh articles when the page becomes visible (e.g., returning from creation)
+  // Only refresh when explicitly needed, not on every focus/visibility change
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        console.log('🔄 Page became visible, refreshing articles...')
-        loadAllArticles(true) // Force refresh
+      if (!document.hidden && lastSync && (Date.now() - lastSync.getTime()) > 30000) {
+        console.log('🔄 Page became visible after 30s, refreshing articles...')
+        loadAllArticles(true) // Force refresh only if it's been 30+ seconds
       }
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    
-    // Also refresh on focus (when user returns to tab)
-    const handleFocus = () => {
-      console.log('🔄 Page focused, refreshing articles...')
-      loadAllArticles(true) // Force refresh
-    }
-
-    window.addEventListener('focus', handleFocus)
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleFocus)
     }
-  }, [])
+  }, [lastSync])
 
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'No date'
@@ -107,11 +101,7 @@ export default function AdminArticles() {
     setIsLoading(true)
     try {
       console.log('Admin: Loading articles...', forceRefresh ? '(force refresh)' : '')
-      console.log('Admin: Environment check:', {
-        NODE_ENV: process.env.NODE_ENV,
-        VERCEL: process.env.VERCEL,
-        window: typeof window !== 'undefined'
-      })
+      
       const response = await fetch('/api/admin/articles')
       if (!response.ok) {
         const errorText = await response.text()
@@ -132,10 +122,10 @@ export default function AdminArticles() {
       console.log('Admin: Normalized articles:', normalized)
       setArticles(normalized)
       
-      // Show success message if we loaded articles
-      if (normalized.length > 0) {
+      // Only show success message for force refresh
+      if (forceRefresh && normalized.length > 0) {
         toast({
-          title: "Articles loaded",
+          title: "Articles refreshed",
           description: `Successfully loaded ${normalized.length} articles`,
         })
       }
@@ -182,6 +172,44 @@ export default function AdminArticles() {
         description: "Please try again.",
         variant: "destructive",
       })
+    }
+  }
+
+  // Auto-sync function
+  const handleAutoSync = async () => {
+    try {
+      setSyncing(true)
+      console.log('🔄 Admin: Starting auto-sync...')
+      
+      const response = await fetch('/api/admin/auto-sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setLastSync(new Date())
+        toast({
+          title: "Sync Complete",
+          description: `Successfully synced ${result.count} articles`,
+        })
+        // Reload articles to show updated content
+        await loadAllArticles(true)
+      } else {
+        throw new Error(result.error || 'Sync failed')
+      }
+    } catch (error) {
+      console.error('❌ Auto-sync failed:', error)
+      toast({
+        title: "Sync Failed",
+        description: error instanceof Error ? error.message : 'Failed to sync articles',
+        variant: "destructive",
+      })
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -300,6 +328,12 @@ export default function AdminArticles() {
         <div>
           <h1 className="text-3xl font-bold">Articles</h1>
           <p className="text-gray-500 mt-1">Total: {filteredArticles.length} articles</p>
+          {lastSync && (
+            <p className="text-sm text-green-600 flex items-center gap-1 mt-1">
+              <CheckCircle className="w-4 h-4" />
+              Last synced: {lastSync.toLocaleTimeString()}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <Button 
@@ -310,6 +344,19 @@ export default function AdminArticles() {
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleAutoSync}
+            disabled={syncing}
+            className="flex items-center gap-2"
+          >
+            {syncing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            {syncing ? 'Syncing...' : 'Auto Sync'}
           </Button>
           <Button 
             variant="outline" 
@@ -379,6 +426,7 @@ export default function AdminArticles() {
                 <th className="text-left p-4">Title</th>
                 <th className="text-left p-4">Category</th>
                 <th className="text-left p-4">Location</th>
+                <th className="text-left p-4">Content Quality</th>
                 <th className="text-left p-4">Date</th>
                 <th className="text-left p-4">Type</th>
                 <th className="text-right p-4">Actions</th>
@@ -415,6 +463,44 @@ export default function AdminArticles() {
                       </span>
                     </td>
                     <td className="p-4">{article.location}</td>
+                    <td className="p-4">
+                      {(() => {
+                        const validation = validateArticleContent(article)
+                        const score = getContentQualityScore(article)
+                        const label = getContentQualityLabel(score)
+                        const hasIssues = validation.issues.length > 0
+                        const hasWarnings = validation.warnings.length > 0
+                        
+                        let bgColor = 'bg-green-100 text-green-800'
+                        if (hasIssues) {
+                          bgColor = 'bg-red-100 text-red-800'
+                        } else if (hasWarnings) {
+                          bgColor = 'bg-yellow-100 text-yellow-800'
+                        } else if (score < 60) {
+                          bgColor = 'bg-orange-100 text-orange-800'
+                        }
+                        
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor}`}>
+                              {label} ({score}%)
+                            </span>
+                            {hasIssues && (
+                              <span className="text-xs text-red-600 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                {validation.issues.length} issue{validation.issues.length !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                            {!hasIssues && hasWarnings && (
+                              <span className="text-xs text-yellow-600 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                {validation.warnings.length} warning{validation.warnings.length !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </td>
                     <td className="p-4">{formatDate(article.date)}</td>
                     <td className="p-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">

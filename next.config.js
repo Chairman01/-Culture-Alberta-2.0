@@ -52,10 +52,44 @@ const nextConfig = {
         destination: '/calgary',
         permanent: true,
       },
+      {
+        source: '/edmonton',
+        destination: '/edmonton',
+        permanent: true,
+      },
       // Redirect old admin paths
       {
         source: '/admin/posts',
         destination: '/admin/articles',
+        permanent: true,
+      },
+      // Redirect old event URLs
+      {
+        source: '/event/:slug',
+        destination: '/events/:slug',
+        permanent: true,
+      },
+      // Redirect trailing slashes to non-trailing
+      {
+        source: '/articles/:path*/',
+        destination: '/articles/:path*',
+        permanent: true,
+      },
+      {
+        source: '/events/:path*/',
+        destination: '/events/:path*',
+        permanent: true,
+      },
+      // Redirect www to non-www
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'www.culturealberta.com',
+          },
+        ],
+        destination: 'https://culturealberta.com/:path*',
         permanent: true,
       },
     ]

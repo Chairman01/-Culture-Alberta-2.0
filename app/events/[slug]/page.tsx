@@ -18,9 +18,26 @@ function formatEventDate(dateString: string): string {
   if (!dateString) return 'Date TBD'
 
   try {
-    // Parse the date string and ensure it's treated as local time, not UTC
-    const [year, month, day] = dateString.split('-').map(Number)
-    const date = new Date(year, month - 1, day) // month is 0-indexed
+    // Handle both ISO format and simple date format
+    let date: Date
+    if (dateString.includes('T')) {
+      // ISO format: "2025-11-01T00:00:00.000Z" - parse as local date to avoid timezone issues
+      const isoDate = new Date(dateString)
+      // Extract just the date part and create a local date
+      const year = isoDate.getUTCFullYear()
+      const month = isoDate.getUTCMonth()
+      const day = isoDate.getUTCDate()
+      date = new Date(year, month, day) // Create local date
+    } else {
+      // Simple format: "2025-11-01"
+      const [year, month, day] = dateString.split('-').map(Number)
+      date = new Date(year, month - 1, day) // month is 0-indexed
+    }
+    
+    if (isNaN(date.getTime())) {
+      return 'Date TBD'
+    }
+    
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -36,9 +53,26 @@ function formatEventTime(dateString: string): string {
   if (!dateString) return 'Time TBD'
 
   try {
-    // Parse the date string and ensure it's treated as local time, not UTC
-    const [year, month, day] = dateString.split('-').map(Number)
-    const date = new Date(year, month - 1, day) // month is 0-indexed
+    // Handle both ISO format and simple date format
+    let date: Date
+    if (dateString.includes('T')) {
+      // ISO format: "2025-11-01T00:00:00.000Z" - parse as local date to avoid timezone issues
+      const isoDate = new Date(dateString)
+      // Extract just the date part and create a local date
+      const year = isoDate.getUTCFullYear()
+      const month = isoDate.getUTCMonth()
+      const day = isoDate.getUTCDate()
+      date = new Date(year, month, day) // Create local date
+    } else {
+      // Simple format: "2025-11-01"
+      const [year, month, day] = dateString.split('-').map(Number)
+      date = new Date(year, month - 1, day) // month is 0-indexed
+    }
+    
+    if (isNaN(date.getTime())) {
+      return 'Time TBD'
+    }
+    
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
@@ -187,20 +221,25 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     try {
       // Get latest articles for sidebar
       const allArticles = await getAllArticles()
+      console.log('📰 DEBUG: allArticles loaded:', allArticles.length)
+      console.log('📰 DEBUG: allArticles sample:', allArticles.slice(0, 2))
+      
       latestArticles = allArticles
-        .filter(article => article.status === 'published')
         .slice(0, 3)
+      console.log('📰 DEBUG: latestArticles after filter:', latestArticles.length)
       
       // Get more articles for bottom section
       moreArticlesForBottom = allArticles
-        .filter(article => article.status === 'published')
         .slice(0, 6)
+      console.log('📰 DEBUG: moreArticlesForBottom after filter:', moreArticlesForBottom.length)
       
       // Get more events
       const allEvents = await getAllEvents()
+      console.log('🎭 DEBUG: allEvents loaded:', allEvents.length)
       moreEvents = allEvents
         .filter(e => e.id !== event.id && e.status === 'published')
         .slice(0, 3)
+      console.log('🎭 DEBUG: moreEvents after filter:', moreEvents.length)
     } catch (error) {
       console.warn('Failed to load related content:', error)
     }
@@ -227,6 +266,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
               <div className="space-y-8">
                 {/* Event Image */}
                 <EventImage 
+                  imageUrl={event.imageUrl}
                   image_url={event.image_url}
                   title={event.title}
                 />
@@ -415,9 +455,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                         >
                           <div className="flex gap-3">
                             <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
-                              {otherEvent.image_url ? (
+                              {otherEvent.imageUrl ? (
                                 <Image
-                                  src={otherEvent.image_url || ""}
+                                  src={otherEvent.imageUrl || ""}
                                   alt={otherEvent.title}
                                   width={64}
                                   height={64}
