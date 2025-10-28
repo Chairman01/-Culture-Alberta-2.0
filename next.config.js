@@ -52,11 +52,6 @@ const nextConfig = {
         destination: '/calgary',
         permanent: true,
       },
-      {
-        source: '/edmonton',
-        destination: '/edmonton',
-        permanent: true,
-      },
       // Redirect old admin paths
       {
         source: '/admin/posts',
