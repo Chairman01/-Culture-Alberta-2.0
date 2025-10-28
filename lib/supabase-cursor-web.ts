@@ -32,7 +32,7 @@ export async function querySupabase<T = any>(
   try {
     console.log(`🔍 Querying ${table} with options:`, options)
     
-    let query = supabase.from(table)
+    let query: any = supabase.from(table)
     
     // Apply select
     if (options.select) {
