@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-// Force cache clear: 2025-01-27 12:15 - REDIRECT LOOP FIXED - DEPLOY NOW
+// Force cache clear: 2025-01-27 12:30 - REMOVED CONTENT TRUNCATION LIMITS - DEPLOY NOW
 const nextConfig = {
   reactStrictMode: true,
   // Performance optimizations

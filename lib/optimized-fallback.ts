@@ -38,7 +38,7 @@ interface OptimizedArticle {
 const OPTIMIZED_FALLBACK_PATH = path.join(process.cwd(), 'optimized-fallback.json')
 const MAX_EXCERPT_LENGTH = 150 // Keep excerpts short for performance
 const MAX_TITLE_LENGTH = 80 // Keep titles reasonable
-const MAX_CONTENT_LENGTH = 500 // Limit content length for performance
+const MAX_CONTENT_LENGTH = 1000000 // Increased limit to allow full articles (1MB)
 
 /**
  * Convert full article to optimized version for fallback

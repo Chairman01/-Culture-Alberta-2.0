@@ -33,13 +33,8 @@ const processContentWithVideos = (content: string): string => {
 }
 
 export function ArticleContent({ content, className = "" }: ArticleContentProps) {
-  // CRITICAL FIX: Prevent oversized pages by limiting content size
-  const MAX_CONTENT_SIZE = 500000 // 500KB limit to prevent FALLBACK_BODY_TOO_LARGE errors
-  
-  if (content && content.length > MAX_CONTENT_SIZE) {
-    console.warn(`⚠️ Article content too large (${content.length} chars), truncating to prevent build failure`)
-    content = content.substring(0, MAX_CONTENT_SIZE) + '... [Content truncated to prevent oversized page]'
-  }
+  // REMOVED: Content size limit that was truncating articles
+  // Articles should show full content, not be artificially limited
   
   // Check if content is HTML (contains HTML tags)
   const isHTML = /<[^>]+>/.test(content)
