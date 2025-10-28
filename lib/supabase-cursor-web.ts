@@ -111,7 +111,7 @@ export async function insertSupabase<T = any>(
     
     if (error) {
       console.error(`❌ Supabase insert error for ${table}:`, error)
-      const errorResponse = createApiResponse(false, undefined, error.message, `Failed to insert into ${table}`)
+      const errorResponse = createApiResponse(false, undefined as T, error.message, `Failed to insert into ${table}`)
       options.onError?.(new Error(error.message))
       return errorResponse
     }
@@ -125,7 +125,7 @@ export async function insertSupabase<T = any>(
     console.error(`❌ Unexpected error inserting into ${table}:`, error)
     const errorResponse = createApiResponse(
       false, 
-      undefined, 
+      undefined as T, 
       error instanceof Error ? error.message : 'Unknown error',
       `Failed to insert into ${table}`
     )
@@ -161,7 +161,7 @@ export async function updateSupabase<T = any>(
     
     if (error) {
       console.error(`❌ Supabase update error for ${table}:`, error)
-      const errorResponse = createApiResponse(false, undefined, error.message, `Failed to update ${table}`)
+      const errorResponse = createApiResponse(false, undefined as T, error.message, `Failed to update ${table}`)
       options.onError?.(new Error(error.message))
       return errorResponse
     }
@@ -175,7 +175,7 @@ export async function updateSupabase<T = any>(
     console.error(`❌ Unexpected error updating ${table}:`, error)
     const errorResponse = createApiResponse(
       false, 
-      undefined, 
+      undefined as T, 
       error instanceof Error ? error.message : 'Unknown error',
       `Failed to update ${table}`
     )
@@ -222,7 +222,7 @@ export async function deleteSupabase<T = any>(
     
     if (error) {
       console.error(`❌ Supabase delete error for ${table}:`, error)
-      const errorResponse = createApiResponse(false, undefined, error.message, `Failed to delete from ${table}`)
+      const errorResponse = createApiResponse(false, undefined as T, error.message, `Failed to delete from ${table}`)
       options.onError?.(new Error(error.message))
       return errorResponse
     }
@@ -236,7 +236,7 @@ export async function deleteSupabase<T = any>(
     console.error(`❌ Unexpected error deleting from ${table}:`, error)
     const errorResponse = createApiResponse(
       false, 
-      undefined, 
+      undefined as T, 
       error instanceof Error ? error.message : 'Unknown error',
       `Failed to delete from ${table}`
     )
