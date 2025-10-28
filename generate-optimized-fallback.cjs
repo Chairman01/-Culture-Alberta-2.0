@@ -3,7 +3,7 @@ const fs = require('fs');
 console.log('📦 Generating optimized fallback from lib/data/articles.json...\n');
 
 const articles = require('./lib/data/articles.json');
-const MAX_SIZE = 500;
+const MAX_SIZE = 1000000; // Increased to 1MB to allow full articles
 
 const optimized = articles.map(a => ({
   id: a.id,
@@ -17,13 +17,9 @@ const optimized = articles.map(a => ({
   updated_at: a.updated_at,
   // Strip out embedded image data
   imageUrl: typeof a.imageUrl === 'string' && a.imageUrl.startsWith('data:') ? null : a.imageUrl,
-  // Truncate content
-  content: a.content && a.content.length > MAX_SIZE 
-    ? a.content.substring(0, MAX_SIZE) + '... [truncated]' 
-    : a.content,
-  excerpt: a.excerpt && a.excerpt.length > MAX_SIZE 
-    ? a.excerpt.substring(0, MAX_SIZE) + '... [truncated]' 
-    : a.excerpt,
+  // Use full content without truncation
+  content: a.content || '',
+  excerpt: a.excerpt || '',
   trendingHome: a.trendingHome,
   trendingEdmonton: a.trendingEdmonton,
   trendingCalgary: a.trendingCalgary,

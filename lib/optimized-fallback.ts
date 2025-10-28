@@ -53,9 +53,7 @@ function optimizeArticle(article: Article): OptimizedArticle {
       ? article.excerpt.substring(0, MAX_EXCERPT_LENGTH) + '...'
       : (article.excerpt || ''),
     description: article.description || '',
-    content: article.content && article.content.length > MAX_CONTENT_LENGTH
-      ? article.content.substring(0, MAX_CONTENT_LENGTH) + '...'
-      : (article.content || ''), // Limit content for performance
+    content: article.content || '', // Use full content without truncation
     category: article.category || 'General',
     categories: article.categories || [],
     status: article.status || 'published',

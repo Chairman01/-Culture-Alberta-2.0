@@ -30,25 +30,9 @@ export function PerformanceOptimizer() {
 
     // Optimize fonts for better LCP
     const optimizeFonts = () => {
-      // Only preload fonts that actually exist
-      // Check if the font file exists before preloading
-      const fontUrl = '/fonts/inter-var.woff2'
-      fetch(fontUrl, { method: 'HEAD' })
-        .then(response => {
-          if (response.ok) {
-            const fontPreload = document.createElement('link')
-            fontPreload.rel = 'preload'
-            fontPreload.href = fontUrl
-            fontPreload.as = 'font'
-            fontPreload.type = 'font/woff2'
-            fontPreload.crossOrigin = 'anonymous'
-            document.head.appendChild(fontPreload)
-          }
-        })
-        .catch(() => {
-          // Font doesn't exist, skip preloading
-          console.log('Font file not found, skipping preload')
-        })
+      // Skip font preloading since the font file doesn't exist
+      // This prevents 404 errors in the console
+      console.log('Skipping font preload - using system fonts')
     }
 
     // Optimize third-party scripts
