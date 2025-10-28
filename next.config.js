@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-// Force cache clear: 2025-10-12 08:35 - EMERGENCY COMPLETE REBUILD
+// Force cache clear: 2025-01-27 12:00 - REDIRECT LOOP FIX DEPLOYMENT
 const nextConfig = {
   reactStrictMode: true,
   // Performance optimizations
