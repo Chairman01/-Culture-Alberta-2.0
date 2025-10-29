@@ -217,7 +217,8 @@ export default async function HomeStatic() {
   }
 
   const getPostDate = (post: Article) => {
-    return post.date || post.createdAt || new Date().toISOString()
+    // For events, use event_date field, otherwise use date or createdAt
+    return (post as any).event_date || post.date || post.createdAt || new Date().toISOString()
   }
 
   const getPostAuthor = (post: Article) => {
