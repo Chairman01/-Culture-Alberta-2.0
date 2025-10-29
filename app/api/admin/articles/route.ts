@@ -16,9 +16,45 @@ function getSupabaseClient() {
 
 export async function GET() {
   try {
-    console.log('🔧 Admin Articles API: Loading articles from optimized fallback (fast)...')
+    console.log('🔧 Admin Articles API: Loading articles with live data...')
     
-    // Use optimized fallback first for instant loading
+    // Try to get live data from Supabase first (recent articles only)
+    try {
+      const supabase = getSupabaseClient()
+      
+      // Fetch recent articles with essential fields only
+      const { data: liveArticles, error } = await supabase
+        .from('articles')
+        .select('id,title,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary,image_url,event_date,event_end_date,organizer')
+        .order('created_at', { ascending: false })
+        .limit(100)
+      
+      if (!error && liveArticles && liveArticles.length > 0) {
+        console.log(`✅ Admin Articles API: Loaded ${liveArticles.length} live articles from Supabase`)
+        
+        // Map live data to match admin interface expectations
+        const articles = liveArticles.map(article => ({
+          ...article,
+          imageUrl: article.image_url,
+          date: article.created_at,
+          trendingHome: article.trending_home || false,
+          trendingEdmonton: article.trending_edmonton || false,
+          trendingCalgary: article.trending_calgary || false,
+          featuredHome: article.featured_home || false,
+          featuredEdmonton: article.featured_edmonton || false,
+          featuredCalgary: article.featured_calgary || false,
+          createdAt: article.created_at,
+          updatedAt: article.updated_at || article.created_at,
+        }))
+        
+        return NextResponse.json(articles)
+      }
+    } catch (supabaseError) {
+      console.warn('⚠️ Admin Articles API: Supabase failed, falling back to optimized fallback:', supabaseError)
+    }
+    
+    // Fallback to optimized fallback if Supabase fails
+    console.log('🔧 Admin Articles API: Falling back to optimized fallback...')
     const fallbackArticles = await loadOptimizedFallback()
     console.log(`✅ Admin Articles API: Loaded ${fallbackArticles.length} articles from optimized fallback`)
     

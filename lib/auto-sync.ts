@@ -44,11 +44,12 @@ export async function autoSyncArticles(): Promise<{ success: boolean; count: num
   try {
     console.log('🔄 Auto-sync: Starting automatic article sync...')
     
-    // Fetch all articles with full content
+    // OPTIMIZED: Fetch only recent articles with essential fields to prevent timeout
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('*')
+      .select('id,title,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary,image_url,event_date,event_end_date,organizer')
       .order('created_at', { ascending: false })
+      .limit(50) // Limit to recent articles only
     
     if (error) {
       console.error('❌ Auto-sync: Supabase error:', error)
