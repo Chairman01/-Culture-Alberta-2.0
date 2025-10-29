@@ -42,21 +42,34 @@ interface SmartEventCardProps {
 
 // Utility functions that Cursor web can optimize
 const formatEventDate = (dateString: string): string => {
-  const date = new Date(dateString)
+  if (!dateString) return 'Date TBA'
   
-  if (isToday(date)) {
-    return `Today at ${format(date, 'h:mm a')}`
+  try {
+    const date = new Date(dateString)
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date string:', dateString)
+      return 'Date TBA'
+    }
+    
+    if (isToday(date)) {
+      return `Today at ${format(date, 'h:mm a')}`
+    }
+    
+    if (isTomorrow(date)) {
+      return `Tomorrow at ${format(date, 'h:mm a')}`
+    }
+    
+    if (isThisWeek(date)) {
+      return format(date, 'EEEE \'at\' h:mm a')
+    }
+    
+    return format(date, 'MMM d, yyyy \'at\' h:mm a')
+  } catch (error) {
+    console.error('Error formatting date:', error, 'Date string:', dateString)
+    return 'Date TBA'
   }
-  
-  if (isTomorrow(date)) {
-    return `Tomorrow at ${format(date, 'h:mm a')}`
-  }
-  
-  if (isThisWeek(date)) {
-    return format(date, 'EEEE \'at\' h:mm a')
-  }
-  
-  return format(date, 'MMM d, yyyy \'at\' h:mm a')
 }
 
 const getEventStatus = (event: EventData): { status: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } => {

@@ -34,10 +34,18 @@ async function syncArticles() {
         
         console.log(`📊 Articles with content: ${articlesWithContent.length}/${articles.length}`);
 
+        // Map image_url to imageUrl for compatibility
+        const mappedArticles = articles.map(article => ({
+            ...article,
+            imageUrl: article.image_url || article.image || null,
+            // Remove the old image field to avoid confusion
+            image: undefined
+        }));
+
         // Save to optimized-fallback.json
         const optimizedFallbackPath = path.join(process.cwd(), 'optimized-fallback.json');
-        fs.writeFileSync(optimizedFallbackPath, JSON.stringify(articles, null, 2), 'utf-8');
-        console.log(`✅ Updated optimized-fallback.json with ${articles.length} articles`);
+        fs.writeFileSync(optimizedFallbackPath, JSON.stringify(mappedArticles, null, 2), 'utf-8');
+        console.log(`✅ Updated optimized-fallback.json with ${mappedArticles.length} articles`);
         
         // Also update lib/data/articles.json for backup
         const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json');

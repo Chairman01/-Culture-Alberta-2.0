@@ -223,15 +223,35 @@ export default function Home() {
     if (!dateString) return 'Date TBA'
     
     try {
-      // Parse the date string and ensure it's treated as local time, not UTC
-      const [year, month, day] = dateString.split('-').map(Number)
-      const date = new Date(year, month - 1, day) // month is 0-indexed
+      // Handle both ISO format and simple date format
+      let date: Date
+      if (dateString.includes('T')) {
+        // ISO format: "2025-11-01T00:00:00.000Z" - parse as local date to avoid timezone issues
+        const isoDate = new Date(dateString)
+        // Extract just the date part and create a local date
+        const year = isoDate.getUTCFullYear()
+        const month = isoDate.getUTCMonth()
+        const day = isoDate.getUTCDate()
+        date = new Date(year, month, day) // Create local date
+      } else {
+        // Simple format: "2025-11-01"
+        const [year, month, day] = dateString.split('-').map(Number)
+        date = new Date(year, month - 1, day) // month is 0-indexed
+      }
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date string:', dateString)
+        return 'Date TBA'
+      }
+      
       return date.toLocaleDateString('en-US', { 
         month: 'long',
         day: 'numeric', 
         year: 'numeric' 
       })
-    } catch {
+    } catch (error) {
+      console.error('Error formatting date:', error, 'Date string:', dateString)
       return 'Date TBA'
     }
   }
