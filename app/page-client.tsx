@@ -220,6 +220,7 @@ export default function Home() {
   }
 
   const formatEventDate = (dateString: string) => {
+    console.log('formatEventDate called with:', dateString)
     if (!dateString) return 'Date TBA'
     
     try {
@@ -245,11 +246,13 @@ export default function Home() {
         return 'Date TBA'
       }
       
-      return date.toLocaleDateString('en-US', { 
+      const formatted = date.toLocaleDateString('en-US', { 
         month: 'long',
         day: 'numeric', 
         year: 'numeric' 
       })
+      console.log('Formatted date:', formatted)
+      return formatted
     } catch (error) {
       console.error('Error formatting date:', error, 'Date string:', dateString)
       return 'Date TBA'
@@ -278,7 +281,19 @@ export default function Home() {
 
   const getPostDate = (post: Article) => {
     // For events, use event_date field, otherwise use date or createdAt
-    return (post as any).event_date || post.date || post.createdAt || new Date().toISOString()
+    const eventDate = (post as any).event_date
+    const regularDate = post.date
+    const createdAt = post.createdAt
+    const fallback = new Date().toISOString()
+    
+    console.log('getPostDate for post:', post.title, {
+      event_date: eventDate,
+      date: regularDate,
+      createdAt: createdAt,
+      type: (post as any).type
+    })
+    
+    return eventDate || regularDate || createdAt || fallback
   }
 
   const getPostAuthor = (post: Article) => {
