@@ -33,23 +33,18 @@ export async function POST(request: NextRequest) {
     const articles = await articlesResponse.json()
     console.log(`✅ OPTIMIZED: Fetched ${articles.length} recent articles from Supabase`)
 
-    // Fetch events with correct column structure
-    const eventsResponse = await fetch(`${SUPABASE_URL}/rest/v1/events?select=id,title,description,excerpt,category,location,organizer,event_date,event_end_date,image_url,created_at,updated_at,featured_home,featured_edmonton,featured_calgary,status,tags,venue,price,website_url&order=created_at.desc&limit=100`, {
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    // Fetch events with correct column structure (disabled to avoid timeout)
+    // const eventsResponse = await fetch(`${SUPABASE_URL}/rest/v1/events?select=id,title,description,excerpt,category,location,organizer,event_date,event_end_date,image_url,created_at,updated_at,featured_home,featured_edmonton,featured_calgary,status,tags,venue,price,website_url&order=created_at.desc&limit=100`, {
+    //   headers: {
+    //     'apikey': SUPABASE_ANON_KEY,
+    //     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    //     'Content-Type': 'application/json'
+    //   }
+    // })
     
     let events: any[] = []
-    if (eventsResponse.ok) {
-      events = await eventsResponse.json()
-      console.log(`✅ OPTIMIZED: Fetched ${events.length} events from Supabase`)
-    } else {
-      const errorText = await eventsResponse.text()
-      console.log(`ℹ️ OPTIMIZED: Could not fetch events: ${eventsResponse.status} - ${errorText}`)
-    }
+    // Disabled events fetch to avoid timeout - they're already in optimized-fallback.json
+    console.log(`ℹ️ OPTIMIZED: Skipping events fetch to avoid timeout`)
     
     // Transform articles to match our interface
     const transformedArticles = articles.map((article: any) => ({
