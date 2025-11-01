@@ -24,7 +24,9 @@ export async function POST(request: NextRequest) {
     })
     
     if (!articlesResponse.ok) {
-      throw new Error(`Supabase articles request failed: ${articlesResponse.status} ${articlesResponse.statusText}`)
+      const errorText = await articlesResponse.text()
+      console.error(`❌ OPTIMIZED: Articles request failed: ${articlesResponse.status} - ${errorText}`)
+      throw new Error(`Supabase articles request failed: ${articlesResponse.status} ${articlesResponse.statusText} - ${errorText}`)
     }
     
     const articles = await articlesResponse.json()
@@ -44,7 +46,8 @@ export async function POST(request: NextRequest) {
       events = await eventsResponse.json()
       console.log(`✅ OPTIMIZED: Fetched ${events.length} events from Supabase`)
     } else {
-      console.log(`ℹ️ OPTIMIZED: Could not fetch events: ${eventsResponse.status}`)
+      const errorText = await eventsResponse.text()
+      console.log(`ℹ️ OPTIMIZED: Could not fetch events: ${eventsResponse.status} - ${errorText}`)
     }
     
     // Transform articles to match our interface
@@ -113,9 +116,15 @@ export async function POST(request: NextRequest) {
     const allContent = [...transformedArticles, ...transformedEvents]
     
     // Write to optimized-fallback.json using direct file write
-    const optimizedFallbackPath = join(process.cwd(), 'optimized-fallback.json')
-    writeFileSync(optimizedFallbackPath, JSON.stringify(allContent, null, 2), 'utf-8')
-    console.log(`✅ OPTIMIZED: Updated optimized-fallback.json with ${transformedArticles.length} articles and ${transformedEvents.length} events`)
+    // NOTE: This only works in development/build time, not in production serverless
+    try {
+      const optimizedFallbackPath = join(process.cwd(), 'optimized-fallback.json')
+      writeFileSync(optimizedFallbackPath, JSON.stringify(allContent, null, 2), 'utf-8')
+      console.log(`✅ OPTIMIZED: Updated optimized-fallback.json with ${transformedArticles.length} articles and ${transformedEvents.length} events`)
+    } catch (writeError) {
+      console.log('ℹ️ OPTIMIZED: Could not write to file system (likely production serverless), using cache revalidation only')
+      // In production, we rely on revalidation to refresh the cache
+    }
     
     // Revalidate pages
     revalidatePath('/', 'layout')
