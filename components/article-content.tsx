@@ -8,10 +8,31 @@ interface ArticleContentProps {
 
 // Function to process content and convert YouTube URLs to embedded videos
 const processContentWithVideos = (content: string): string => {
-  // Convert YouTube URLs to embedded videos - improved regex to catch more formats
+  // First, handle YouTube URLs inside anchor tags
+  const anchorYouTubeRegex = /<a[^>]*href=["'](?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)[^"']*["'][^>]*>.*?<\/a>/gi
+  
+  let processedContent = content.replace(anchorYouTubeRegex, (match, videoId) => {
+    // Clean up video ID (remove any query parameters)
+    const cleanVideoId = videoId.split('?')[0].split('&')[0]
+    
+    return `<div class="video-container my-8 rounded-lg overflow-hidden shadow-lg bg-gray-100">
+      <div class="relative w-full" style="padding-bottom: 56.25%;">
+        <iframe 
+          class="absolute top-0 left-0 w-full h-full"
+          src="https://www.youtube.com/embed/${cleanVideoId}" 
+          title="YouTube video player" 
+          frameborder="0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+          allowfullscreen
+        ></iframe>
+      </div>
+    </div>`
+  })
+  
+  // Then, handle plain YouTube URLs (without anchor tags)
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)(?:\?[^&\s]*)?/g
   
-  let processedContent = content.replace(youtubeRegex, (match, videoId) => {
+  processedContent = processedContent.replace(youtubeRegex, (match, videoId) => {
     // Clean up video ID (remove any query parameters)
     const cleanVideoId = videoId.split('?')[0].split('&')[0]
     
