@@ -80,8 +80,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const loadArticle = async () => {
     try {
       console.log('Loading article with ID:', resolvedParams.id)
-      // Use API route instead of direct function call for client-side compatibility
-      const response = await fetch(`/api/articles?id=${resolvedParams.id}`)
+      // Use admin API to fetch full article (includes content)
+      const response = await fetch(`/api/admin/articles/${resolvedParams.id}`)
       if (!response.ok) {
         throw new Error(`Failed to fetch article: ${response.status}`)
       }

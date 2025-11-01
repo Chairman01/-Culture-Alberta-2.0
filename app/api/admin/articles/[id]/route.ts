@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { quickSyncArticle } from '@/lib/auto-sync'
+import { revalidatePath } from 'next/cache'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -15,6 +16,50 @@ function getSupabaseClient() {
   }
   
   return createClient(supabaseUrl, supabaseKey)
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const resolved = await params
+    const articleId = resolved.id
+    console.log('🔎 Admin GET article by ID:', articleId)
+
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .eq('id', articleId)
+      .single()
+
+    if (error) {
+      console.error('❌ Error fetching article from Supabase:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: 'Article not found' }, { status: 404 })
+    }
+
+    const mapped = {
+      ...data,
+      imageUrl: data.image_url || data.image || '',
+      date: data.created_at,
+      trendingHome: data.trending_home || false,
+      trendingEdmonton: data.trending_edmonton || false,
+      trendingCalgary: data.trending_calgary || false,
+      featuredHome: data.featured_home || false,
+      featuredEdmonton: data.featured_edmonton || false,
+      featuredCalgary: data.featured_calgary || false,
+    }
+
+    return NextResponse.json(mapped)
+  } catch (e) {
+    console.error('❌ Admin GET article failed:', e)
+    return NextResponse.json({ error: 'Failed to load article' }, { status: 500 })
+  }
 }
 
 export async function PUT(
@@ -83,17 +128,52 @@ export async function PUT(
           const originalArticle = allArticles[articleIndex]
           allArticles[articleIndex] = {
             ...allArticles[articleIndex],
-            ...data,
-            imageUrl: articleData.imageUrl, // Ensure imageUrl is preserved
-            date: originalArticle.createdAt || originalArticle.date || new Date().toISOString(), // Preserve the date
+            title: articleData.title,
+            content: articleData.content,
+            excerpt: articleData.excerpt,
+            category: articleData.category,
+            categories: articleData.categories,
+            location: articleData.location,
+            author: articleData.author,
+            tags: articleData.tags,
+            type: articleData.type || 'article',
+            imageUrl: articleData.imageUrl,
+            trendingHome: articleData.trendingHome || false,
+            trendingEdmonton: articleData.trendingEdmonton || false,
+            trendingCalgary: articleData.trendingCalgary || false,
+            featuredHome: articleData.featuredHome || false,
+            featuredEdmonton: articleData.featuredEdmonton || false,
+            featuredCalgary: articleData.featuredCalgary || false,
+            date: originalArticle.createdAt || originalArticle.date || new Date().toISOString(),
           }
           await updateOptimizedFallback(allArticles)
           console.log('✅ Optimized fallback updated successfully (fallback)')
         } else {
           console.warn('⚠️ Article not found in optimized fallback, adding it')
           allArticles.push({
-            ...data,
+            id: articleId,
+            title: articleData.title,
+            content: articleData.content,
+            excerpt: articleData.excerpt,
+            description: articleData.excerpt,
+            category: articleData.category,
+            categories: articleData.categories,
+            location: articleData.location,
+            author: articleData.author,
+            tags: articleData.tags,
+            type: articleData.type || 'article',
+            status: 'published',
             imageUrl: articleData.imageUrl,
+            trendingHome: articleData.trendingHome || false,
+            trendingEdmonton: articleData.trendingEdmonton || false,
+            trendingCalgary: articleData.trendingCalgary || false,
+            featuredHome: articleData.featuredHome || false,
+            featuredEdmonton: articleData.featuredEdmonton || false,
+            featuredCalgary: articleData.featuredCalgary || false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            date: new Date().toISOString(),
+            slug: articleId,
           })
           await updateOptimizedFallback(allArticles)
         }
@@ -112,17 +192,52 @@ export async function PUT(
           const originalArticle = allArticles[articleIndex]
           allArticles[articleIndex] = {
             ...allArticles[articleIndex],
-            ...data,
-            imageUrl: articleData.imageUrl, // Ensure imageUrl is preserved
-            date: originalArticle.createdAt || originalArticle.date || new Date().toISOString(), // Preserve the date
+            title: articleData.title,
+            content: articleData.content,
+            excerpt: articleData.excerpt,
+            category: articleData.category,
+            categories: articleData.categories,
+            location: articleData.location,
+            author: articleData.author,
+            tags: articleData.tags,
+            type: articleData.type || 'article',
+            imageUrl: articleData.imageUrl,
+            trendingHome: articleData.trendingHome || false,
+            trendingEdmonton: articleData.trendingEdmonton || false,
+            trendingCalgary: articleData.trendingCalgary || false,
+            featuredHome: articleData.featuredHome || false,
+            featuredEdmonton: articleData.featuredEdmonton || false,
+            featuredCalgary: articleData.featuredCalgary || false,
+            date: originalArticle.createdAt || originalArticle.date || new Date().toISOString(),
           }
           await updateOptimizedFallback(allArticles)
           console.log('✅ Optimized fallback updated successfully (fallback)')
         } else {
           console.warn('⚠️ Article not found in optimized fallback, adding it')
           allArticles.push({
-            ...data,
+            id: articleId,
+            title: articleData.title,
+            content: articleData.content,
+            excerpt: articleData.excerpt,
+            description: articleData.excerpt,
+            category: articleData.category,
+            categories: articleData.categories,
+            location: articleData.location,
+            author: articleData.author,
+            tags: articleData.tags,
+            type: articleData.type || 'article',
+            status: 'published',
             imageUrl: articleData.imageUrl,
+            trendingHome: articleData.trendingHome || false,
+            trendingEdmonton: articleData.trendingEdmonton || false,
+            trendingCalgary: articleData.trendingCalgary || false,
+            featuredHome: articleData.featuredHome || false,
+            featuredEdmonton: articleData.featuredEdmonton || false,
+            featuredCalgary: articleData.featuredCalgary || false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            date: new Date().toISOString(),
+            slug: articleId,
           })
           await updateOptimizedFallback(allArticles)
         }
@@ -130,6 +245,24 @@ export async function PUT(
         console.error('❌ Failed to update optimized fallback:', fallbackError)
         // Don't fail the entire request if fallback update fails
       }
+    }
+    
+    // Clear fast cache so the updated article appears immediately
+    try {
+      const { clearArticlesCache } = await import('@/lib/fast-articles')
+      clearArticlesCache()
+      console.log('✅ Fast cache cleared')
+    } catch (cacheError) {
+      console.warn('⚠️ Failed to clear fast cache:', cacheError)
+    }
+
+    // Revalidate pages to ensure updated article appears immediately
+    try {
+      revalidatePath('/', 'layout')
+      revalidatePath('/articles')
+      console.log('✅ Pages revalidated')
+    } catch (revalidateError) {
+      console.error('❌ Revalidation failed:', revalidateError)
     }
 
     return NextResponse.json({ 

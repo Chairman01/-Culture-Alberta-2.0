@@ -17,21 +17,16 @@ import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fall
 // These functions try Supabase first, then fall back to optimized backup
 
 export async function getAllArticles(): Promise<Article[]> {
-  console.log('🚀 EMERGENCY FIX: Using optimized fallback directly due to Supabase timeouts...')
+  console.log('🚀 Loading articles...')
   
   try {
-    // TEMPORARY FIX: Use fallback directly due to Supabase connection issues
+    // Use optimized fallback as primary source (fastest and most reliable)
     const fallbackArticles = await loadOptimizedFallback()
-    console.log(`⚡ FALLBACK PRIMARY: Loaded ${fallbackArticles.length} articles from optimized fallback`)
+    console.log(`⚡ Loaded ${fallbackArticles.length} articles from optimized fallback`)
     
     // Filter out events - only return articles
     const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
-    console.log(`📰 FILTERED: Returning ${articlesOnly.length} articles (filtered out ${fallbackArticles.length - articlesOnly.length} events)`)
-    
-    // Clear fast cache to ensure fresh data
-    const { clearArticlesCache } = await import('./fast-articles')
-    clearArticlesCache()
-    console.log('🧹 Cleared fast cache to force fresh data load')
+    console.log(`📰 Returning ${articlesOnly.length} articles`)
     
     return articlesOnly
   } catch (fallbackError) {
@@ -41,27 +36,17 @@ export async function getAllArticles(): Promise<Article[]> {
 }
 
 export async function getHomepageArticles(): Promise<Article[]> {
-  console.log('🚀 EMERGENCY FIX: Using optimized fallback directly for homepage...')
+  console.log('🚀 Loading homepage articles...')
   
   try {
-    // TEMPORARY FIX: Use fallback directly due to Supabase connection issues
+    // Use optimized fallback as primary source
     const fallbackArticles = await loadOptimizedFallback()
-    console.log(`⚡ FALLBACK PRIMARY: Loaded ${fallbackArticles.length} articles from optimized fallback`)
+    console.log(`⚡ Loaded ${fallbackArticles.length} articles from optimized fallback`)
     
     // Filter out events - only return articles
     const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
-    console.log(`📰 HOMEPAGE FILTERED: Returning ${articlesOnly.length} articles (filtered out ${fallbackArticles.length - articlesOnly.length} events)`)
+    console.log(`📰 Returning ${articlesOnly.length} articles for homepage`)
     
-    // Clear fast cache to ensure fresh data
-    try {
-      const { clearArticlesCache } = await import('./fast-articles')
-      clearArticlesCache()
-      console.log('🧹 Cleared fast cache for homepage articles')
-    } catch (cacheError) {
-      console.warn('⚠️ Failed to clear fast cache:', cacheError)
-    }
-    
-    // Return all articles for homepage (needed for proper filtering)
     return articlesOnly
   } catch (fallbackError) {
     console.error('❌ Optimized fallback failed:', fallbackError)

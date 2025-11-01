@@ -64,21 +64,28 @@ export default function AdminArticles() {
     loadAllArticles()
   }, [])
 
-  // Only refresh when explicitly needed, not on every focus/visibility change
+  // Refresh when page becomes visible (e.g., after creating a new article)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden && lastSync && (Date.now() - lastSync.getTime()) > 30000) {
-        console.log('🔄 Page became visible after 30s, refreshing articles...')
-        loadAllArticles(true) // Force refresh only if it's been 30+ seconds
+      if (!document.hidden) {
+        console.log('🔄 Page became visible, refreshing articles to check for new content...')
+        loadAllArticles(true) // Force refresh to get any new articles
       }
     }
 
+    const handleFocus = () => {
+      console.log('🔄 Window focused, refreshing articles to check for new content...')
+      loadAllArticles(true) // Force refresh when window regains focus
+    }
+
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
     }
-  }, [lastSync])
+  }, [])
 
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'No date'
@@ -102,7 +109,8 @@ export default function AdminArticles() {
     try {
       console.log('Admin: Loading articles...', forceRefresh ? '(force refresh)' : '')
       
-      const response = await fetch('/api/admin/articles')
+      const url = forceRefresh ? '/api/admin/articles?refresh=true' : '/api/admin/articles'
+      const response = await fetch(url)
       if (!response.ok) {
         const errorText = await response.text()
         console.error('Admin: API error response:', errorText)
@@ -181,7 +189,8 @@ export default function AdminArticles() {
       setSyncing(true)
       console.log('🔄 Admin: Starting auto-sync...')
       
-      const response = await fetch('/api/admin/auto-sync', {
+      // Try the optimized sync endpoint first
+      const response = await fetch('/api/sync-articles-optimized', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -194,7 +203,7 @@ export default function AdminArticles() {
         setLastSync(new Date())
         toast({
           title: "Sync Complete",
-          description: `Successfully synced ${result.count} articles`,
+          description: `Successfully synced articles`,
         })
         // Reload articles to show updated content
         await loadAllArticles(true)
@@ -239,13 +248,12 @@ export default function AdminArticles() {
           window: typeof window !== 'undefined'
         })
         
-        // Call the delete function via API
-        const deleteResponse = await fetch('/api/admin/articles', {
+        // Call the delete function via API (Supabase + fallback)
+        const deleteResponse = await fetch(`/api/admin/articles/${article.id}`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ id: article.id }),
         })
         
         if (!deleteResponse.ok) {
@@ -263,6 +271,19 @@ export default function AdminArticles() {
           title: "Article deleted",
           description: `"${article.title}" has been deleted successfully!`,
         })
+        
+        // Trigger page revalidation so lists/homepage update quickly
+        try {
+          await fetch('/api/revalidate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paths: ['/', '/articles', '/edmonton', '/calgary', '/events']
+            })
+          })
+        } catch (e) {
+          console.log('Revalidation not available during development')
+        }
         
         // Reload articles to ensure consistency
         console.log('🔄 Reloading articles...')
@@ -344,6 +365,18 @@ export default function AdminArticles() {
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              console.log('🔄 Force refreshing from Supabase...')
+              loadAllArticles(true)
+            }}
+            disabled={isLoading}
+            className="flex items-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Force Refresh
           </Button>
           <Button 
             variant="outline" 

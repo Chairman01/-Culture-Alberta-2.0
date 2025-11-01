@@ -221,7 +221,10 @@ export default async function HomeStatic() {
   }
 
   const getPostExcerpt = (post: Article) => {
-    if (post.excerpt) return post.excerpt
+    if (post.excerpt) {
+      // Truncate long excerpts to 200 characters for better display
+      return post.excerpt.length > 200 ? post.excerpt.substring(0, 200) + '...' : post.excerpt
+    }
     if (post.content && post.content.trim()) {
       return post.content.substring(0, 150) + '...'
     }
@@ -257,11 +260,8 @@ export default async function HomeStatic() {
     return post.author || 'Culture Alberta'
   }
 
-  // Try to find a featured ARTICLE (not event), but fall back to any article if none are marked as featured
-  const featuredPost = posts.find(post => post.featuredHome === true && post.type !== 'event') || 
-                      posts.find(post => post.type === 'article') || 
-                      posts[0] || 
-                      null
+  // Only show a featured ARTICLE when explicitly flagged; otherwise show the placeholder
+  const featuredPost = posts.find(post => post.featuredHome === true && post.type !== 'event') || null
   
   // Sort articles by date (newest first) before filtering
   // For articles, prioritize date; for events, use date or createdAt

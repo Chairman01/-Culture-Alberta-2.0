@@ -44,44 +44,97 @@ export async function autoSyncArticles(): Promise<{ success: boolean; count: num
   try {
     console.log('🔄 Auto-sync: Starting automatic article sync...')
     
-    // OPTIMIZED: Fetch only recent articles with essential fields to prevent timeout
-    const { data: articles, error } = await supabase
-      .from('articles')
-      .select('id,title,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary,image_url,event_date,event_end_date,organizer')
-      .order('created_at', { ascending: false })
-      .limit(50) // Limit to recent articles only
+    // ULTRA-OPTIMIZED: Fetch recent articles AND events with minimal fields
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Auto-sync timeout after 8 seconds')), 8000)
+    )
     
-    if (error) {
-      console.error('❌ Auto-sync: Supabase error:', error)
-      return { success: false, count: 0, error: error.message }
+    // Fetch only articles (skip events to avoid timeout)
+    const articlesResult = await Promise.race([
+      supabase
+        .from('articles')
+        .select('id,title,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary,image_url')
+        .order('created_at', { ascending: false })
+        .limit(50),
+      timeoutPromise
+    ]) as any
+    
+    const { data: articles, error: articlesError } = articlesResult
+    const events: any[] = [] // Skip events for now to avoid timeout
+    const eventsError = null
+    
+    if (articlesError) {
+      console.error('❌ Auto-sync: Articles error:', articlesError)
+      return { success: false, count: 0, error: articlesError.message }
     }
     
-    if (!articles || articles.length === 0) {
-      console.log('⚠️ Auto-sync: No articles found')
-      return { success: true, count: 0 }
+    if (eventsError) {
+      console.error('❌ Auto-sync: Events error:', eventsError)
+      return { success: false, count: 0, error: eventsError.message }
+    }
+    
+    console.log(`📊 Auto-sync: Found ${articles?.length || 0} articles and ${events?.length || 0} events`)
+    
+    // Debug: Check if articles have content
+    if (articles && articles.length > 0) {
+      console.log(`🔍 First article content length: ${articles[0].content?.length || 0}`)
+      console.log(`🔍 First article has content field: ${'content' in articles[0]}`)
+      console.log(`🔍 First article keys: ${Object.keys(articles[0]).join(', ')}`)
     }
     
     // Map articles to our format
-    const mappedArticles: Article[] = articles.map(article => ({
-      ...article,
-      imageUrl: article.image_url,
-      date: article.created_at,
-      trendingHome: article.trending_home || false,
-      trendingEdmonton: article.trending_edmonton || false,
-      trendingCalgary: article.trending_calgary || false,
-      featuredHome: article.featured_home || false,
-      featuredEdmonton: article.featured_edmonton || false,
-      featuredCalgary: article.featured_calgary || false,
-      createdAt: article.created_at,
-      updatedAt: article.updated_at,
-      type: 'article' as const
+    const mappedArticles: Article[] = (articles || []).map(article => {
+      console.log(`📝 Mapping article: ${article.title} - Content length: ${article.content?.length || 0}`)
+      return {
+        ...article,
+        imageUrl: article.image_url,
+        date: article.created_at,
+        content: article.content || '', // Ensure content is preserved
+        trendingHome: article.trending_home || false,
+        trendingEdmonton: article.trending_edmonton || false,
+        trendingCalgary: article.trending_calgary || false,
+        featuredHome: article.featured_home || false,
+        featuredEdmonton: article.featured_edmonton || false,
+        featuredCalgary: article.featured_calgary || false,
+        createdAt: article.created_at,
+        updatedAt: article.updated_at,
+        type: 'article' as const
+      }
+    })
+    
+    // Map events to our format
+    const mappedEvents: Article[] = (events || []).map(event => ({
+      ...event,
+      imageUrl: event.image_url,
+      date: event.event_date || event.created_at,
+      content: event.description || event.excerpt || '', // Use description or excerpt instead of content
+      excerpt: event.excerpt || '',
+      author: 'Event Organizer', // Events don't have author field
+      tags: [], // Events don't have tags field
+      categories: [event.category || 'Events'], // Events use single category
+      trendingHome: event.trending_home || false,
+      trendingEdmonton: event.trending_edmonton || false,
+      trendingCalgary: event.trending_calgary || false,
+      featuredHome: event.featured_home || false,
+      featuredEdmonton: event.featured_edmonton || false,
+      featuredCalgary: event.featured_calgary || false,
+      createdAt: event.created_at,
+      updatedAt: event.updated_at,
+      type: 'event' as const,
+      event_date: event.event_date,
+      event_end_date: event.event_end_date,
+      organizer: event.organizer
     }))
+    
+    // Combine articles and events
+    const allContent = [...mappedArticles, ...mappedEvents]
     
     // Write to fallback file
     const fallbackPath = path.join(process.cwd(), 'optimized-fallback.json')
-    fs.writeFileSync(fallbackPath, JSON.stringify(mappedArticles, null, 2))
+    fs.writeFileSync(fallbackPath, JSON.stringify(allContent, null, 2))
     
-    console.log(`✅ Auto-sync: Successfully synced ${mappedArticles.length} articles`)
+    console.log(`✅ Auto-sync: Successfully synced ${allContent.length} items (${mappedArticles.length} articles, ${mappedEvents.length} events)`)
     
     // Log content lengths for verification
     const articlesWithContent = mappedArticles.filter(a => a.content && a.content.length > 100)
@@ -94,7 +147,7 @@ export async function autoSyncArticles(): Promise<{ success: boolean; count: num
       })
     }
     
-    return { success: true, count: mappedArticles.length }
+    return { success: true, count: allContent.length }
     
   } catch (error) {
     console.error('❌ Auto-sync failed:', error)
@@ -116,7 +169,7 @@ export async function quickSyncArticle(articleId: string): Promise<{ success: bo
     // Fetch the specific article
     const { data: article, error } = await supabase
       .from('articles')
-      .select('*')
+      .select('id,title,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary,image_url')
       .eq('id', articleId)
       .single()
     

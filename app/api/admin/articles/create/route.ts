@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { quickSyncArticle } from '@/lib/auto-sync'
+import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
+import { revalidatePath } from 'next/cache'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -62,10 +65,65 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Article created successfully:', data.id)
 
+    // Try to sync the new article to fallback file
+    try {
+      console.log('🔄 Auto-syncing new article to fallback...')
+      
+      // Fallback: Manual update of optimized fallback (more reliable)
+      const allArticles = await loadOptimizedFallback()
+      const mappedArticle = {
+        id: data.id,
+        title: data.title,
+        excerpt: data.excerpt || '',
+        description: data.excerpt || '',
+        content: data.content || '',
+        category: data.category || 'General',
+        categories: data.categories || [],
+        author: data.author || 'Admin',
+        imageUrl: data.image_url,
+        date: data.created_at,
+        trendingHome: data.trending_home || false,
+        trendingEdmonton: data.trending_edmonton || false,
+        trendingCalgary: data.trending_calgary || false,
+        featuredHome: data.featured_home || false,
+        featuredEdmonton: data.featured_edmonton || false,
+        featuredCalgary: data.featured_calgary || false,
+        createdAt: data.created_at,
+        created_at: data.created_at,
+        updatedAt: data.updated_at,
+        type: data.type || 'article',
+        status: data.status || 'published',
+        location: data.location || 'Alberta',
+        tags: data.tags || [],
+        slug: data.id,
+      }
+      allArticles.unshift(mappedArticle)
+      await updateOptimizedFallback(allArticles)
+      console.log('✅ Article added to fallback')
+      
+      // Clear fast cache so the new article appears immediately
+      const { clearArticlesCache } = await import('@/lib/fast-articles')
+      clearArticlesCache()
+      console.log('✅ Fast cache cleared')
+    } catch (syncError) {
+      console.error('❌ Sync failed:', syncError)
+      // Don't fail the entire request if sync fails
+    }
+
+    // Revalidate pages to ensure new article appears immediately
+    try {
+      revalidatePath('/', 'layout')
+      revalidatePath('/articles')
+      console.log('✅ Pages revalidated')
+    } catch (revalidateError) {
+      console.error('❌ Revalidation failed:', revalidateError)
+      // Don't fail the entire request if revalidation fails
+    }
+
     return NextResponse.json({ 
       success: true, 
       article: data,
-      message: 'Article created successfully. Remember to click "Sync Now" in /admin/sync-articles to make it appear on your website!'
+      message: 'Article created successfully!'
     })
 
   } catch (error) {

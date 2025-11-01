@@ -141,10 +141,19 @@ export default function NewEventPage() {
       console.log('✅ Create API result:', createResult)
       console.log("New event saved:", createResult.event)
 
-      toast({
-        title: "Event created",
-        description: "Your event has been created successfully.",
-      })
+      // Check if there's a warning about local-only save
+      if (createResult.warning) {
+        toast({
+          title: "Event saved locally only",
+          description: createResult.message + " - Supabase connection failed. Please click Auto Sync later.",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Event created",
+          description: "Your event has been created successfully.",
+        })
+      }
 
       // Redirect back to admin events list to see the new event
       router.push('/admin/events')

@@ -292,6 +292,46 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     
     console.log('✅ Article loaded successfully:', loadedArticle.title)
 
+    // If content is missing or too short, lazily fetch full content from Supabase
+    try {
+      const hasUsableContent = !!(
+        loadedArticle.content &&
+        typeof loadedArticle.content === 'string' &&
+        loadedArticle.content.trim().length > 100
+      )
+      if (!hasUsableContent) {
+        console.log('🔎 Article content missing/short, attempting Supabase fetch for full content...')
+        let supabaseArticle = await getArticleBySlug(slug)
+        if (!supabaseArticle) {
+          supabaseArticle = await getArticleById(loadedArticle.id)
+        }
+        if (supabaseArticle && typeof supabaseArticle.content === 'string' && supabaseArticle.content.trim().length > 0) {
+          loadedArticle = { ...loadedArticle, content: supabaseArticle.content }
+          console.log(`✅ Fetched full content from Supabase (length: ${supabaseArticle.content.length})`)
+        } else {
+          console.log('⚠️ Supabase did not return content; trying admin API as final fallback')
+          try {
+            const resp = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/admin/articles/${loadedArticle.id}`, { cache: 'no-store' })
+            if (resp.ok) {
+              const apiArticle = await resp.json()
+              if (apiArticle && typeof apiArticle.content === 'string' && apiArticle.content.trim().length > 0) {
+                loadedArticle = { ...loadedArticle, content: apiArticle.content }
+                console.log(`✅ Filled content from admin API (length: ${apiArticle.content.length})`)
+              } else {
+                console.log('⚠️ Admin API did not return content; showing excerpt placeholder')
+              }
+            } else {
+              console.log('⚠️ Admin API request failed:', resp.status)
+            }
+          } catch (apiErr) {
+            console.log('⚠️ Admin API content fetch failed:', apiErr)
+          }
+        }
+      }
+    } catch (contentFetchError) {
+      console.warn('⚠️ Failed to fetch full content from Supabase:', contentFetchError)
+    }
+
     // Article loaded successfully
 
     // Load related articles more efficiently - use homepage cache if available

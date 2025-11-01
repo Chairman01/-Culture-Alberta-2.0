@@ -1,5 +1,17 @@
 import { NextResponse } from 'next/server'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
+import { createClient } from '@supabase/supabase-js'
+
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
+  
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase environment variables are not configured')
+  }
+  
+  return createClient(supabaseUrl, supabaseKey)
+}
 
 export async function GET() {
   try {
@@ -24,7 +36,25 @@ export async function DELETE(request: Request) {
     const { id } = await request.json()
     console.log(`🔧 Admin API: Delete event request for ID: ${id}`)
     
-    // Load current fallback data
+    // First, try to delete from Supabase
+    try {
+      const supabase = getSupabaseClient()
+      const { error: supabaseError } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', id)
+      
+      if (supabaseError) {
+        console.warn(`⚠️ Admin API: Failed to delete from Supabase:`, supabaseError)
+        // Continue to local deletion as fallback
+      } else {
+        console.log(`✅ Admin API: Event ${id} deleted from Supabase`)
+      }
+    } catch (supabaseError) {
+      console.warn(`⚠️ Admin API: Supabase delete failed, continuing with local deletion:`, supabaseError)
+    }
+    
+    // Always also delete from local fallback file
     const fallbackData = await loadOptimizedFallback()
     const initialLength = fallbackData.length
     
