@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!-- Black rounded rectangle background -->
+  <rect x="12" y="12" width="168" height="168" rx="36" fill="black"/>
+  
+  <!-- CA text with modern styling -->
+  <text x="96" y="132" font-family="'Segoe UI', Arial, sans-serif" font-size="96" font-weight="800" text-anchor="middle" fill="white" letter-spacing="7.2">CA</text>
+  
+  <!-- Subtle accent line -->
+  <line x1="48" y1="156" x2="144" y2="156" stroke="white" stroke-width="4.8" opacity="0.3"/>
+</svg>
