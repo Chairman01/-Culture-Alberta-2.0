@@ -49,10 +49,11 @@ interface SupabaseUpdateData {
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const eventId = params.id
+    const resolvedParams = await params
+    const eventId = resolvedParams.id
     
     console.log(`🔧 Admin API: Getting event by ID: ${eventId}`)
     
@@ -78,10 +79,11 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const eventId = params.id
+    const resolvedParams = await params
+    const eventId = resolvedParams.id
     const updateData: EventUpdateData = await request.json()
     
     console.log(`🔧 Admin API: Updating event ID: ${eventId}`)
