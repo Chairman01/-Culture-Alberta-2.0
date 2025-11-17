@@ -78,7 +78,7 @@ export async function autoSyncArticles(): Promise<{ success: boolean; count: num
     }
     
     // Map articles to our format
-    const mappedArticles: Article[] = (articles || []).map(article => {
+    const mappedArticles: Article[] = (articles || []).map((article: any) => {
       console.log(`📝 Mapping article: ${article.title} - Content length: ${article.content?.length || 0}`)
       return {
         ...article,
@@ -98,7 +98,7 @@ export async function autoSyncArticles(): Promise<{ success: boolean; count: num
     })
     
     // Map events to our format
-    const mappedEvents: Article[] = (events || []).map(event => ({
+    const mappedEvents: Article[] = (events || []).map((event: any) => ({
       ...event,
       imageUrl: event.image_url,
       date: event.event_date || event.created_at,
