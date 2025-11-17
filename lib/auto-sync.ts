@@ -62,16 +62,10 @@ export async function autoSyncArticles(): Promise<{ success: boolean; count: num
     
     const { data: articles, error: articlesError } = articlesResult
     const events: any[] = [] // Skip events for now to avoid timeout
-    const eventsError = null
     
     if (articlesError) {
       console.error('❌ Auto-sync: Articles error:', articlesError)
       return { success: false, count: 0, error: articlesError.message }
-    }
-    
-    if (eventsError) {
-      console.error('❌ Auto-sync: Events error:', eventsError)
-      return { success: false, count: 0, error: eventsError.message }
     }
     
     console.log(`📊 Auto-sync: Found ${articles?.length || 0} articles and ${events?.length || 0} events`)
