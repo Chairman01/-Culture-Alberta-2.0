@@ -6,52 +6,7 @@ interface ArticleContentProps {
   className?: string
 }
 
-// Function to process content and convert YouTube URLs to embedded videos
-const processContentWithVideos = (content: string): string => {
-  // First, handle YouTube URLs inside anchor tags
-  const anchorYouTubeRegex = /<a[^>]*href=["'](?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)[^"']*["'][^>]*>.*?<\/a>/gi
-  
-  let processedContent = content.replace(anchorYouTubeRegex, (match, videoId) => {
-    // Clean up video ID (remove any query parameters)
-    const cleanVideoId = videoId.split('?')[0].split('&')[0]
-    
-    return `<div class="video-container my-8 rounded-lg overflow-hidden shadow-lg bg-gray-100">
-      <div class="relative w-full" style="padding-bottom: 56.25%;">
-        <iframe 
-          class="absolute top-0 left-0 w-full h-full"
-          src="https://www.youtube.com/embed/${cleanVideoId}" 
-          title="YouTube video player" 
-          frameborder="0" 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-          allowfullscreen
-        ></iframe>
-      </div>
-    </div>`
-  })
-  
-  // Then, handle plain YouTube URLs (without anchor tags)
-  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)(?:\?[^&\s]*)?/g
-  
-  processedContent = processedContent.replace(youtubeRegex, (match, videoId) => {
-    // Clean up video ID (remove any query parameters)
-    const cleanVideoId = videoId.split('?')[0].split('&')[0]
-    
-    return `<div class="video-container my-8 rounded-lg overflow-hidden shadow-lg bg-gray-100">
-      <div class="relative w-full" style="padding-bottom: 56.25%;">
-        <iframe 
-          class="absolute top-0 left-0 w-full h-full"
-          src="https://www.youtube.com/embed/${cleanVideoId}" 
-          title="YouTube video player" 
-          frameborder="0" 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-          allowfullscreen
-        ></iframe>
-      </div>
-    </div>`
-  })
-
-  return processedContent
-}
+// YouTube embedding feature removed - URLs will display as plain links
 
 export function ArticleContent({ content, className = "" }: ArticleContentProps) {
   // REMOVED: Content size limit that was truncating articles
@@ -64,7 +19,7 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
   if (isHTML) {
     // Use React.useMemo to ensure consistent rendering between server and client
     const processedContent = React.useMemo(() => {
-      return processContentWithVideos(content)
+      return content
         .replace(/<ul>/g, '<ul class="space-y-2 mb-6">')
         .replace(/<ol>/g, '<ol class="space-y-2 mb-6">')
         .replace(/<li>/g, '<li class="flex items-start text-gray-700 leading-relaxed"><span class="text-blue-600 mr-2 mt-1 flex-shrink-0">•</span><span class="flex-1">')
@@ -76,7 +31,6 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
         .replace(/<img([^>]*)>/g, '<img$1 class="rounded-lg shadow-lg my-8 max-w-full h-auto">')
         .replace(/<span style="font-family:([^"]+)"/g, '<span style="font-family:$1"')
         .replace(/<span style="font-size:([^"]+)"/g, '<span style="font-size:$1"')
-        .replace(/<div class="video-container">/g, '<div class="video-container my-8 rounded-lg overflow-hidden shadow-lg">')
     }, [content])
 
     return (
@@ -302,25 +256,13 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
     return <span dangerouslySetInnerHTML={{ __html: text }} />
   }
 
-  // First process videos, then images
-  const contentWithVideos = processContentWithVideos(content)
-  const contentParts = parseContentWithImages(contentWithVideos)
+  // Process images (YouTube embedding removed)
+  const contentParts = parseContentWithImages(content)
 
   return (
     <div className={`article-content ${className}`}>
       {contentParts.map((part, index) => {
         if (part.type === 'text' && part.content) {
-          // Check if this text contains video HTML
-          if (part.content.includes('<div class="video-container">')) {
-            return (
-              <div 
-                key={index} 
-                className="my-8"
-                dangerouslySetInnerHTML={{ __html: part.content }}
-              />
-            )
-          }
-          
           // Process text content with proper formatting
           return processTextContent(part.content)
         } else if (part.type === 'image' && part.src) {

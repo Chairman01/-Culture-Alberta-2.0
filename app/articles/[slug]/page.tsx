@@ -18,89 +18,7 @@ import { getAllEvents, getEventBySlug } from '@/lib/events'
 import { Metadata } from 'next'
 // import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
 
-// Function to process content and convert YouTube URLs to embedded videos
-const processContentWithVideos = (content: string) => {
-  // First, handle YouTube URLs inside anchor tags
-  const anchorYouTubeRegex = /<a[^>]*href=["'](?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)[^"']*["'][^>]*>.*?<\/a>/gi
-  
-  let processedContent = content.replace(anchorYouTubeRegex, (match, videoId) => {
-    // Clean up video ID (remove any query parameters)
-    const cleanVideoId = videoId.split('?')[0].split('&')[0]
-    
-    return `<div class="video-container my-8 rounded-lg overflow-hidden shadow-lg bg-gray-100">
-      <div class="relative w-full" style="padding-bottom: 56.25%;">
-        <iframe 
-          class="absolute top-0 left-0 w-full h-full"
-          src="https://www.youtube.com/embed/${cleanVideoId}" 
-          title="YouTube video player" 
-          frameborder="0" 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-          allowfullscreen
-        ></iframe>
-      </div>
-    </div>`
-  })
-  
-  // Then, handle plain YouTube URLs (without anchor tags)
-  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)(?:\?[^&\s]*)?/g
-  
-  processedContent = processedContent.replace(youtubeRegex, (match, videoId) => {
-    // Clean up video ID (remove any query parameters)
-    const cleanVideoId = videoId.split('?')[0].split('&')[0]
-    
-    return `<div class="video-container my-8 rounded-lg overflow-hidden shadow-lg bg-gray-100">
-      <div class="relative w-full" style="padding-bottom: 56.25%;">
-        <iframe 
-          class="absolute top-0 left-0 w-full h-full"
-          src="https://www.youtube.com/embed/${cleanVideoId}" 
-          title="YouTube video player" 
-          frameborder="0" 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-          allowfullscreen
-        ></iframe>
-      </div>
-    </div>`
-  })
-
-  // Convert plain text line breaks to proper HTML paragraphs
-  processedContent = processedContent
-    .split('\n\n')
-    .map(paragraph => paragraph.trim())
-    .filter(paragraph => paragraph.length > 0)
-    .map(paragraph => {
-      // Handle numbered lists (main headings)
-      if (/^\d+\./.test(paragraph)) {
-        return `<h2 class="text-2xl font-bold text-gray-900 mb-4">${paragraph}</h2>`
-      }
-      // Handle "What it is:", "Why locals love it:", etc. (highlight boxes)
-      else if (/^(What it is|Why locals love it|Pro tip|Vibe|Try this|Heads-up|Must-try|Key Takeaway|Important|Note):/.test(paragraph)) {
-        const [label, ...rest] = paragraph.split(':')
-        return `<div class="highlight-box">
-          <strong class="text-gray-900 text-lg">${label}:</strong> 
-          <span class="text-gray-700">${rest.join(':').trim()}</span>
-        </div>`
-      }
-      // Handle "Honorable Mentions:" and "Bottom line:" (section headers)
-      else if (/^(Honorable Mentions|Bottom line|Conclusion|Summary|Final Thoughts):/.test(paragraph)) {
-        return `<h3 class="text-xl font-semibold text-gray-900 mt-8 mb-4">${paragraph}</h3>`
-      }
-      // Handle quotes (text wrapped in quotes)
-      else if (/^["'].*["']$/.test(paragraph)) {
-        return `<blockquote>${paragraph.replace(/^["']|["']$/g, '')}</blockquote>`
-      }
-      // Handle subheadings (text ending with :)
-      else if (/^[A-Z][^:]*:$/.test(paragraph) && paragraph.length < 100) {
-        return `<h4 class="text-lg font-semibold text-gray-800 mt-6 mb-3">${paragraph}</h4>`
-      }
-      // Regular paragraphs
-      else {
-        return `<p>${paragraph}</p>`
-      }
-    })
-    .join('')
-
-  return processedContent
-}
+// YouTube embedding feature removed - URLs will display as plain links
 
 // import NewsletterSignup from '@/components/newsletter-signup' // Removed - using ArticleNewsletterSignup instead
 // Removed ArticleContent import to fix hydration issues
@@ -580,7 +498,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                        loadedArticle.content !== 'undefined' ? (
                         <div 
                           className="prose prose-lg max-w-none article-content-wrapper"
-                          dangerouslySetInnerHTML={{ __html: processContentWithVideos(loadedArticle.content) }}
+                          dangerouslySetInnerHTML={{ __html: loadedArticle.content }}
                           suppressHydrationWarning={true}
                         />
                       ) : loadedArticle.excerpt ? (
