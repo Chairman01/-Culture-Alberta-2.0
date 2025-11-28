@@ -51,6 +51,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body suppressHydrationWarning={true}>
+        {/* Google AdSense - Must be in head for verification, using beforeInteractive strategy */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6902227267422426"
+          crossOrigin="anonymous"
+          strategy="beforeInteractive"
+        />
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-48EV1DX840"
           strategy="afterInteractive"
@@ -63,12 +70,6 @@ export default function RootLayout({
             gtag('config', 'G-48EV1DX840');
           `}
         </Script>
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6902227267422426"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
         <LoadingProvider>
           <MainNavigation />
           <main>{children}</main>
