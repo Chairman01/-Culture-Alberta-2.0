@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowRight, MapPin } from "lucide-react"
 import { Article } from "@/lib/data"
 
@@ -19,11 +20,19 @@ interface ExtendedArticle extends Article {
 
 export default function BestOfCategoryPage({ params }: { params: Promise<{ category: string }> }) {
   const [category, setCategory] = useState<string>("")
+  const router = useRouter()
   
   // Handle async params
   useEffect(() => {
-    params.then(({ category: paramCategory }) => setCategory(paramCategory))
-  }, [params])
+    params.then(({ category: paramCategory }) => {
+      // Return 404 for shopping category
+      if (paramCategory.toLowerCase() === 'shopping') {
+        router.push('/404')
+        return
+      }
+      setCategory(paramCategory)
+    })
+  }, [params, router])
   const [items, setItems] = useState<ExtendedArticle[]>([])
   const [isLoading, setIsLoading] = useState(true)
 

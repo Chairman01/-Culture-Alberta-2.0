@@ -87,6 +87,12 @@ const nextConfig = {
         destination: '/events/:path*',
         permanent: true,
       },
+      // Block access to shopping category
+      {
+        source: '/best-of/shopping',
+        destination: '/404',
+        permanent: true,
+      },
       // REMOVED: This was causing redirect loop with the rule above
       // www.culturealberta.com should be the primary domain
     ]

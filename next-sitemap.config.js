@@ -32,8 +32,8 @@ export default {
         }
       }
       
-      // Add best-of category pages
-      const bestOfCategories = ['food', 'events', 'culture', 'attractions', 'shopping']
+      // Add best-of category pages (excluding shopping)
+      const bestOfCategories = ['food', 'events', 'culture', 'attractions']
       for (const category of bestOfCategories) {
         result.push({
           loc: `/best-of/${category}`,
