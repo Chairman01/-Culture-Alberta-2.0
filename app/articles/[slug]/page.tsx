@@ -76,18 +76,46 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     }
     
     const fullTitle = loadedArticle.title.includes('Culture Alberta') ? loadedArticle.title : `${loadedArticle.title} | Culture Alberta`
-    const description = loadedArticle.excerpt || loadedArticle.description || `Read about ${loadedArticle.title} on Culture Alberta`
+    
+    // Create a proper description for social sharing (Reddit prefers 150-200 chars)
+    let description = loadedArticle.excerpt || loadedArticle.description || `Read about ${loadedArticle.title} on Culture Alberta`
+    
+    // Truncate description if too long (keep it under 200 chars for better social previews)
+    if (description.length > 200) {
+      description = description.substring(0, 197).trim() + '...'
+    }
+    
     const fullUrl = `https://www.culturealberta.com/articles/${slug}`
     
     // Handle image URL properly - use article image if available, otherwise use default
     let articleImage = loadedArticle.imageUrl || '/images/culture-alberta-og.jpg'
     
-    // Ensure image URL is absolute
-    const absoluteImageUrl = articleImage.startsWith('http') 
-      ? articleImage 
-      : articleImage.startsWith('data:image')
-      ? articleImage
-      : `https://www.culturealberta.com${articleImage}`
+    // CRITICAL: Reddit and social media platforms cannot use base64 images
+    // Always use a publicly accessible URL for Open Graph images
+    const defaultOgImage = 'https://www.culturealberta.com/images/culture-alberta-og.jpg'
+    
+    // Ensure image URL is absolute and publicly accessible
+    let absoluteImageUrl = defaultOgImage
+    
+    if (articleImage) {
+      // Skip base64 images - they won't work for social sharing
+      if (articleImage.startsWith('data:image')) {
+        console.warn('Article image is base64, using default OG image for social sharing')
+        absoluteImageUrl = defaultOgImage
+      } 
+      // Use external URLs as-is if they're already absolute
+      else if (articleImage.startsWith('http://') || articleImage.startsWith('https://')) {
+        absoluteImageUrl = articleImage
+      }
+      // Convert relative URLs to absolute
+      else if (articleImage.startsWith('/')) {
+        absoluteImageUrl = `https://www.culturealberta.com${articleImage}`
+      }
+      // Handle other relative paths
+      else {
+        absoluteImageUrl = `https://www.culturealberta.com/${articleImage}`
+      }
+    }
     
     // Debug logging for metadata
     console.log('Article Metadata Debug:', {
@@ -114,6 +142,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
             width: 1200,
             height: 630,
             alt: loadedArticle.title,
+            type: 'image/jpeg', // Explicitly set image type for better compatibility
           }
         ],
         siteName: 'Culture Alberta',
@@ -135,12 +164,21 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       alternates: {
         canonical: fullUrl,
       },
+      // Additional meta tags for Reddit and other platforms
       other: {
         'article:author': loadedArticle.author || 'Culture Alberta',
         'article:section': loadedArticle.category,
         'article:published_time': loadedArticle.date,
         'article:modified_time': loadedArticle.updatedAt || loadedArticle.date,
-      }
+        // Reddit-specific: Ensure proper content type
+        'og:image:secure_url': absoluteImageUrl,
+        'og:image:type': 'image/jpeg',
+        // Additional tags for better social sharing
+        'og:image:width': '1200',
+        'og:image:height': '630',
+      },
+      // Metadata for better Reddit previews
+      metadataBase: new URL('https://www.culturealberta.com'),
     }
   } catch (error) {
     console.error('Error generating metadata:', error)
