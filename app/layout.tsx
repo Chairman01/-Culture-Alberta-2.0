@@ -3,11 +3,13 @@ import { MainNavigation } from '@/components/main-navigation'
 import { Footer } from '@/components/footer'
 import { LoadingProvider } from '@/components/loading-context'
 import { PerformanceOptimizer } from '@/components/seo/performance-optimizer'
+import { CookieConsent } from '@/components/cookie-consent'
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { optimizeSpeedInsights } from '@/lib/vercel-optimizations'
 import { Metadata } from 'next'
+import { WebsiteStructuredData, OrganizationStructuredData } from '@/components/seo/structured-data'
 
 export const metadata: Metadata = {
   title: 'Culture Alberta | Best Culture, Events & Food in Calgary & Edmonton',
@@ -51,6 +53,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body suppressHydrationWarning={true}>
+        {/* Structured Data for Rich Snippets - Required for Google sitelinks like blogTO */}
+        <WebsiteStructuredData />
+        <OrganizationStructuredData />
         {/* Google AdSense - Must be in head for verification, using beforeInteractive strategy */}
         <Script
           async
@@ -78,6 +83,7 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights {...optimizeSpeedInsights()} />
         <PerformanceOptimizer />
+        <CookieConsent />
       </body>
     </html>
   )

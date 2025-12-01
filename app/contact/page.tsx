@@ -3,7 +3,7 @@ import { Mail, Phone, MapPin, Clock } from 'lucide-react'
 export default function ContactPage() {
   return (
     <>
-      
+
       <div className="min-h-screen bg-gray-50">
         {/* Hero Section */}
         <div className="bg-white border-b border-gray-200">
@@ -13,7 +13,7 @@ export default function ContactPage() {
                 Get in Touch
               </h1>
               <p className="text-xl text-gray-600 leading-relaxed">
-                Have questions about Alberta's culture scene? Want to collaborate or share a story? 
+                Have questions about Alberta's culture scene? Want to collaborate or share a story?
                 We'd love to hear from you.
               </p>
             </div>
@@ -24,7 +24,7 @@ export default function ContactPage() {
         <div className="container mx-auto px-4 py-16">
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              
+
               {/* Contact Details */}
               <div className="space-y-8">
                 <div>
@@ -45,11 +45,11 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Email</h3>
-                    <a 
-                      href="mailto:culturemedia101@gmail.com" 
+                    <a
+                      href="mailto:culturealberta101@gmail.com"
                       className="text-blue-600 hover:text-blue-700 transition-colors text-lg"
                     >
-                      culturemedia101@gmail.com
+                      culturealberta101@gmail.com
                     </a>
                     <p className="text-gray-600 mt-1">
                       We typically respond within 24 hours
@@ -66,8 +66,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Phone</h3>
-                    <a 
-                      href="tel:+12262361828" 
+                    <a
+                      href="tel:+12262361828"
                       className="text-green-600 hover:text-green-700 transition-colors text-lg"
                     >
                       (226) 236-1828
@@ -121,10 +121,10 @@ export default function ContactPage() {
                   Quick Message
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  For immediate assistance, please use our contact information above. 
+                  For immediate assistance, please use our contact information above.
                   We're here to help with:
                 </p>
-                
+
                 <ul className="space-y-3 mb-8">
                   <li className="flex items-center space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -148,7 +148,7 @@ export default function ContactPage() {
                   <h4 className="font-semibold text-blue-900 mb-2">Need immediate help?</h4>
                   <p className="text-blue-700 text-sm">
                     Call us at <a href="tel:+12262361828" className="font-semibold hover:underline">(226) 236-1828</a> or email us at{' '}
-                    <a href="mailto:culturemedia101@gmail.com" className="font-semibold hover:underline">culturemedia101@gmail.com</a>
+                    <a href="mailto:culturealberta101@gmail.com" className="font-semibold hover:underline">culturealberta101@gmail.com</a>
                   </p>
                 </div>
               </div>
@@ -164,18 +164,18 @@ export default function ContactPage() {
                 Let's Connect
               </h2>
               <p className="text-gray-600 mb-6">
-                Whether you're a local business, event organizer, or cultural enthusiast, 
+                Whether you're a local business, event organizer, or cultural enthusiast,
                 we're always excited to hear from our community.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a 
-                  href="mailto:culturemedia101@gmail.com"
+                <a
+                  href="mailto:culturealberta101@gmail.com"
                   className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <Mail className="w-5 h-5 mr-2" />
                   Send us an email
                 </a>
-                <a 
+                <a
                   href="tel:+12262361828"
                   className="inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
                 >

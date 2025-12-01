@@ -4,6 +4,7 @@ import { Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Footer } from "@/components/footer"
 
 export default function CareersPage() {
   return (
@@ -322,27 +323,7 @@ export default function CareersPage() {
           </div>
         </section>
       </main>
-      <footer className="w-full border-t bg-background py-6">
-        <div className="container flex flex-col items-center justify-between gap-4 md:flex-row">
-          <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
-            © 2025 Culture Alberta. All rights reserved.
-          </p>
-          <nav className="flex gap-4 sm:gap-6">
-            <Link href="/about" className="text-sm font-medium hover:underline underline-offset-4">
-              About
-            </Link>
-            <Link href="/contact" className="text-sm font-medium hover:underline underline-offset-4">
-              Contact
-            </Link>
-            <Link href="/partner" className="text-sm font-medium hover:underline underline-offset-4">
-              Partner with Us
-            </Link>
-            <Link href="/careers" className="text-sm font-medium hover:underline underline-offset-4">
-              Careers
-            </Link>
-          </nav>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

@@ -86,19 +86,28 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "Culture Alberta",
+    "alternateName": "Culture Alberta TM",
     "description": "Alberta's premier cultural guide featuring the best events, restaurants, arts, and experiences in Calgary and Edmonton.",
     "url": baseUrl,
-    "logo": `${baseUrl}/images/culture-alberta-logo.png`,
+    "logo": {
+      "@type": "ImageObject",
+      "url": `${baseUrl}/favicon.svg`,
+      "width": 32,
+      "height": 32
+    },
+    "image": `${baseUrl}/images/culture-alberta-og.jpg`,
     "sameAs": [
       // Add your social media URLs here when available
       // "https://www.facebook.com/culturealberta",
-      // "https://www.instagram.com/culturealberta",
-      // "https://www.twitter.com/culturealberta"
+      // "https://www.instagram.com/culturealberta._",
+      // "https://www.twitter.com/culturealberta",
+      // "https://www.youtube.com/@culturealberta"
     ],
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "customer service",
-      "url": `${baseUrl}/contact`
+      "url": `${baseUrl}/contact`,
+      "email": "culturemedia101@gmail.com"
     },
     "areaServed": [
       {
@@ -113,6 +122,14 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
         "@type": "Place",
         "name": "Edmonton, Alberta"
       }
+    ],
+    "knowsAbout": [
+      "Alberta Culture",
+      "Calgary Events",
+      "Edmonton Events",
+      "Alberta Restaurants",
+      "Alberta Tourism",
+      "Local Events"
     ]
   }
 

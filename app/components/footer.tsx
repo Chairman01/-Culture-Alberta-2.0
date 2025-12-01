@@ -148,8 +148,8 @@ export function Footer() {
               <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">Contact</Link>
               <Link href="/partner" className="text-sm text-muted-foreground hover:text-primary">Partner with Us</Link>
               <Link href="/careers" className="text-sm text-muted-foreground hover:text-primary">Careers</Link>
-              <Link href="/privacy" className="text-sm text-muted-foreground hover:text-primary">Privacy Policy</Link>
-              <Link href="/terms" className="text-sm text-muted-foreground hover:text-primary">Terms of Service</Link>
+              <Link href="/privacy-policy" className="text-sm text-muted-foreground hover:text-primary">Privacy Policy</Link>
+              <Link href="/terms-of-service" className="text-sm text-muted-foreground hover:text-primary">Terms of Service</Link>
             </nav>
           </div>
           <div>
