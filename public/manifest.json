@@ -1,18 +1,23 @@
 {
   "name": "Culture Alberta",
-  "short_name": "CA",
-  "description": "Discover the vibrant culture and arts scene of Alberta",
+  "short_name": "Culture AB",
+  "description": "Your guide to Alberta's culture: events, restaurants, festivals & local experiences in Calgary, Edmonton & beyond",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#1a1a1a",
+  "theme_color": "#d4af37",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/images/culture-alberta-logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "32x32",
+      "type": "image/svg+xml"
     },
     {
       "src": "/icon-192x192.svg",
@@ -26,7 +31,12 @@
       "type": "image/x-icon"
     }
   ],
-  "categories": ["lifestyle", "travel", "entertainment"],
+  "categories": [
+    "lifestyle",
+    "travel",
+    "entertainment",
+    "news"
+  ],
   "lang": "en-CA",
   "scope": "/"
 }

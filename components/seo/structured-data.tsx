@@ -22,7 +22,9 @@ export function ArticleStructuredData({ article, baseUrl = 'https://www.culturea
       "name": "Culture Alberta",
       "logo": {
         "@type": "ImageObject",
-        "url": `${baseUrl}/images/culture-alberta-logo.png`
+        "url": `${baseUrl}/images/culture-alberta-logo.svg`,
+        "width": 1200,
+        "height": 1200
       }
     },
     "datePublished": article.date,
@@ -68,7 +70,9 @@ export function WebsiteStructuredData({ baseUrl = 'https://www.culturealberta.co
       "name": "Culture Alberta",
       "logo": {
         "@type": "ImageObject",
-        "url": `${baseUrl}/images/culture-alberta-logo.png`
+        "url": `${baseUrl}/images/culture-alberta-logo.svg`,
+        "width": 1200,
+        "height": 1200
       }
     }
   }
@@ -85,42 +89,53 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": `${baseUrl}/#organization`,
     "name": "Culture Alberta",
     "alternateName": "Culture Alberta TM",
+    "legalName": "Culture Alberta",
+    "slogan": "Your Guide to Alberta's Culture",
     "description": "Alberta's premier cultural guide featuring the best events, restaurants, arts, and experiences in Calgary and Edmonton.",
     "url": baseUrl,
     "logo": {
       "@type": "ImageObject",
-      "url": `${baseUrl}/favicon.svg`,
-      "width": 32,
-      "height": 32
+      "url": `${baseUrl}/images/culture-alberta-logo.svg`,
+      "width": 1200,
+      "height": 1200
     },
-    "image": `${baseUrl}/images/culture-alberta-og.jpg`,
+    "image": [
+      `${baseUrl}/images/culture-alberta-logo.svg`,
+      `${baseUrl}/images/culture-alberta-og.jpg`
+    ],
     "sameAs": [
-      // Add your social media URLs here when available
+      "https://www.instagram.com/culturealberta._"
+      // Add more social media URLs when available:
       // "https://www.facebook.com/culturealberta",
-      // "https://www.instagram.com/culturealberta._",
-      // "https://www.twitter.com/culturealberta",
+      // "https://twitter.com/culturealberta",
       // "https://www.youtube.com/@culturealberta"
     ],
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "customer service",
       "url": `${baseUrl}/contact`,
-      "email": "culturemedia101@gmail.com"
+      "email": "culturemedia101@gmail.com",
+      "areaServed": "CA",
+      "availableLanguage": "English"
     },
     "areaServed": [
       {
         "@type": "Place",
-        "name": "Alberta, Canada"
+        "name": "Alberta, Canada",
+        "@id": "https://en.wikipedia.org/wiki/Alberta"
       },
       {
-        "@type": "Place", 
-        "name": "Calgary, Alberta"
+        "@type": "City",
+        "name": "Calgary",
+        "containedInPlace": "Alberta, Canada"
       },
       {
-        "@type": "Place",
-        "name": "Edmonton, Alberta"
+        "@type": "City",
+        "name": "Edmonton",
+        "containedInPlace": "Alberta, Canada"
       }
     ],
     "knowsAbout": [
@@ -129,8 +144,85 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
       "Edmonton Events",
       "Alberta Restaurants",
       "Alberta Tourism",
-      "Local Events"
-    ]
+      "Local Events",
+      "Canadian Culture",
+      "Arts and Entertainment"
+    ],
+    "parentOrganization": {
+      "@type": "Organization",
+      "name": "Culture Media",
+      "email": "culturemedia101@gmail.com"
+    }
+  }
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  )
+}
+
+export function LocalBusinessStructuredData({ baseUrl = 'https://www.culturealberta.com' }) {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "MediaOrganization",
+    "@id": `${baseUrl}/#localbusiness`,
+    "name": "Culture Alberta",
+    "description": "Alberta's premier cultural guide and media organization covering events, restaurants, arts, and experiences.",
+    "url": baseUrl,
+    "logo": {
+      "@type": "ImageObject",
+      "url": `${baseUrl}/images/culture-alberta-logo.svg`
+    },
+    "address": {
+      "@type": "PostalAddress",
+      "addressRegion": "AB",
+      "addressCountry": "CA"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": "53.5461",
+      "longitude": "-113.4938"
+    },
+    "areaServed": {
+      "@type": "State",
+      "name": "Alberta",
+      "containedInPlace": {
+        "@type": "Country",
+        "name": "Canada"
+      }
+    },
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Cultural Content & Guides",
+      "itemListElement": [
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Event Listings",
+            "description": "Curated listings of cultural events in Alberta"
+          }
+        },
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Restaurant Reviews",
+            "description": "Reviews and guides to Alberta's dining scene"
+          }
+        },
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Cultural Articles",
+            "description": "In-depth articles about Alberta's culture and lifestyle"
+          }
+        }
+      ]
+    }
   }
 
   return (

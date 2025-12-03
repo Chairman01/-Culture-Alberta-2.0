@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" width="1200" height="1200">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;display=swap');
+    </style>
+  </defs>
+  
+  <!-- Black circular background -->
+  <circle cx="600" cy="600" r="600" fill="#000000"/>
+  
+  <!-- CULTURE text -->
+  <text x="600" y="480" 
+        font-family="'Bebas Neue', 'Arial Black', sans-serif" 
+        font-size="180" 
+        font-weight="700" 
+        text-anchor="middle" 
+        fill="#FFFFFF" 
+        letter-spacing="12">
+    CULTURE
+  </text>
+  
+  <!-- ALBERTA text (larger) -->
+  <text x="600" y="720" 
+        font-family="'Bebas Neue', 'Arial Black', sans-serif" 
+        font-size="240" 
+        font-weight="900" 
+        text-anchor="middle" 
+        fill="#FFFFFF" 
+        letter-spacing="8">
+    ALBERTA
+  </text>
+</svg>

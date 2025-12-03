@@ -1,0 +1,151 @@
+{
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "WebSite",
+            "name": "Culture Alberta",
+            "description": "Discover the best culture, events, food, and experiences in Alberta. Your guide to Calgary and Edmonton's vibrant cultural scene.",
+            "url": "https://www.culturealberta.com",
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": {
+                    "@type": "EntryPoint",
+                    "urlTemplate": "https://www.culturealberta.com/articles?search={search_term_string}"
+                },
+                "query-input": "required name=search_term_string"
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "Culture Alberta",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://www.culturealberta.com/images/culture-alberta-logo.svg",
+                    "width": 1200,
+                    "height": 1200
+                }
+            }
+        },
+        {
+            "@type": "Organization",
+            "@id": "https://www.culturealberta.com/#organization",
+            "name": "Culture Alberta",
+            "alternateName": "Culture Alberta TM",
+            "legalName": "Culture Alberta",
+            "slogan": "Your Guide to Alberta's Culture",
+            "description": "Alberta's premier cultural guide featuring the best events, restaurants, arts, and experiences in Calgary and Edmonton.",
+            "url": "https://www.culturealberta.com",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://www.culturealberta.com/images/culture-alberta-logo.svg",
+                "width": 1200,
+                "height": 1200
+            },
+            "image": [
+                "https://www.culturealberta.com/images/culture-alberta-logo.svg",
+                "https://www.culturealberta.com/images/culture-alberta-og.jpg"
+            ],
+            "sameAs": [
+                "https://www.instagram.com/culturealberta._"
+            ],
+            "contactPoint": {
+                "@type": "ContactPoint",
+                "contactType": "customer service",
+                "url": "https://www.culturealberta.com/contact",
+                "email": "culturemedia101@gmail.com",
+                "areaServed": "CA",
+                "availableLanguage": "English"
+            },
+            "areaServed": [
+                {
+                    "@type": "Place",
+                    "name": "Alberta, Canada",
+                    "@id": "https://en.wikipedia.org/wiki/Alberta"
+                },
+                {
+                    "@type": "City",
+                    "name": "Calgary",
+                    "containedInPlace": "Alberta, Canada"
+                },
+                {
+                    "@type": "City",
+                    "name": "Edmonton",
+                    "containedInPlace": "Alberta, Canada"
+                }
+            ],
+            "knowsAbout": [
+                "Alberta Culture",
+                "Calgary Events",
+                "Edmonton Events",
+                "Alberta Restaurants",
+                "Alberta Tourism",
+                "Local Events",
+                "Canadian Culture",
+                "Arts and Entertainment"
+            ],
+            "parentOrganization": {
+                "@type": "Organization",
+                "name": "Culture Media",
+                "email": "culturemedia101@gmail.com"
+            }
+        },
+        {
+            "@type": "MediaOrganization",
+            "@id": "https://www.culturealberta.com/#localbusiness",
+            "name": "Culture Alberta",
+            "description": "Alberta's premier cultural guide and media organization covering events, restaurants, arts, and experiences.",
+            "url": "https://www.culturealberta.com",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://www.culturealberta.com/images/culture-alberta-logo.svg"
+            },
+            "address": {
+                "@type": "PostalAddress",
+                "addressRegion": "AB",
+                "addressCountry": "CA"
+            },
+            "geo": {
+                "@type": "GeoCoordinates",
+                "latitude": "53.5461",
+                "longitude": "-113.4938"
+            },
+            "areaServed": {
+                "@type": "State",
+                "name": "Alberta",
+                "containedInPlace": {
+                    "@type": "Country",
+                    "name": "Canada"
+                }
+            },
+            "hasOfferCatalog": {
+                "@type": "OfferCatalog",
+                "name": "Cultural Content & Guides",
+                "itemListElement": [
+                    {
+                        "@type": "Offer",
+                        "itemOffered": {
+                            "@type": "Service",
+                            "name": "Event Listings",
+                            "description": "Curated listings of cultural events in Alberta"
+                        }
+                    },
+                    {
+                        "@type": "Offer",
+                        "itemOffered": {
+                            "@type": "Service",
+                            "name": "Restaurant Reviews",
+                            "description": "Reviews and guides to Alberta's dining scene"
+                        }
+                    },
+                    {
+                        "@type": "Offer",
+                        "itemOffered": {
+                            "@type": "Service",
+                            "name": "Cultural Articles",
+                            "description": "In-depth articles about Alberta's culture and lifestyle"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

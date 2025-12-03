@@ -9,7 +9,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { optimizeSpeedInsights } from '@/lib/vercel-optimizations'
 import { Metadata } from 'next'
-import { WebsiteStructuredData, OrganizationStructuredData } from '@/components/seo/structured-data'
+import { WebsiteStructuredData, OrganizationStructuredData, LocalBusinessStructuredData } from '@/components/seo/structured-data'
 
 export const metadata: Metadata = {
   title: 'Culture Alberta | Best Culture, Events & Food in Calgary & Edmonton',
@@ -20,15 +20,35 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: 'https://www.culturealberta.com',
+    siteName: 'Culture Alberta',
+    locale: 'en_CA',
     title: 'Culture Alberta - Discover Alberta\'s Best Culture, Events & Experiences',
     description: 'Discover the best of Alberta\'s culture, events, restaurants, and experiences. Your guide to Calgary, Edmonton, and beyond.',
-    images: ['https://www.culturealberta.com/images/culture-alberta-og.jpg'],
+    images: [
+      {
+        url: 'https://www.culturealberta.com/images/culture-alberta-og.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Culture Alberta - Your Guide to Alberta\'s Culture',
+      },
+      {
+        url: 'https://www.culturealberta.com/images/culture-alberta-logo.svg',
+        width: 1200,
+        height: 1200,
+        alt: 'Culture Alberta Logo',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Culture Alberta - Discover Alberta\'s Best Culture, Events & Experiences',
     description: 'Discover the best of Alberta\'s culture, events, restaurants, and experiences. Your guide to Calgary, Edmonton, and beyond.',
-    images: ['https://www.culturealberta.com/images/culture-alberta-og.jpg'],
+    images: [
+      {
+        url: 'https://www.culturealberta.com/images/culture-alberta-og.jpg',
+        alt: 'Culture Alberta - Your Guide to Alberta\'s Culture',
+      },
+    ],
   },
   alternates: {
     canonical: 'https://www.culturealberta.com',
@@ -37,6 +57,7 @@ export const metadata: Metadata = {
     icon: [
       { url: '/favicon.ico', type: 'image/x-icon' },
       { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/images/culture-alberta-logo.svg', sizes: '1200x1200', type: 'image/svg+xml' },
     ],
     apple: '/favicon.svg',
   },
@@ -56,6 +77,7 @@ export default function RootLayout({
         {/* Structured Data for Rich Snippets - Required for Google sitelinks like blogTO */}
         <WebsiteStructuredData />
         <OrganizationStructuredData />
+        <LocalBusinessStructuredData />
         {/* Google AdSense - Must be in head for verification, using beforeInteractive strategy */}
         <Script
           async
