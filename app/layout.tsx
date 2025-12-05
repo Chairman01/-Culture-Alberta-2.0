@@ -55,11 +55,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.ico', type: 'image/x-icon' },
       { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/images/culture-alberta-logo.svg', sizes: '1200x1200', type: 'image/svg+xml' },
+      { url: '/favicon-32x32.svg', type: 'image/svg+xml', sizes: '32x32' },
     ],
     apple: '/favicon.svg',
+    shortcut: '/favicon.svg',
   },
   other: {
     'google-adsense-account': 'ca-pub-6902227267422426',
