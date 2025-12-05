@@ -35,11 +35,16 @@ export default function robots(): MetadataRoute.Robots {
         '/articles/article-1755737833735-4dpy9893u',
         '/articles/article-1755470408146-4r1ljnu1r',
         '/articles/article-1755917044327-nw8ghveg1',
-        // Remove best-of shopping page
+        // Remove best-of pages that don't exist
         '/best-of/shopping',
-        // Remove favicon and robots.txt from indexing
+        '/best-of/dentists',
+        // Remove invalid/broken URLs
+        '/articles/e',
+        // Remove resource files from indexing
         '/favicon.ico',
         '/robots.txt',
+        '/sitemap.xml',
+        '/sitemap-0.xml',
       ],
     },
     sitemap: 'https://www.culturealberta.com/sitemap.xml',
