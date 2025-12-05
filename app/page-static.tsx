@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default async function StaticHomePage() {
   // This will be cached and served statically
   const posts = await getOptimizedHomepageArticles()
-  
+
   // Filter for different sections
   const featuredPosts = posts.filter(post => post.featuredHome).slice(0, 3)
   const trendingPosts = posts.filter(post => post.trendingHome).slice(0, 6)
@@ -33,7 +33,7 @@ export default async function StaticHomePage() {
       const now = new Date()
       const diffTime = Math.abs(now.getTime() - date.getTime())
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      
+
       if (diffDays === 1) return '1 day ago'
       if (diffDays < 7) return `${diffDays} days ago`
       if (diffDays < 14) return '1 week ago'
@@ -274,7 +274,7 @@ export default async function StaticHomePage() {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>&copy; 2024 Culture Alberta. All rights reserved.</p>
+            <p>&copy; 2025 Culture Alberta. All rights reserved.</p>
           </div>
         </div>
       </footer>

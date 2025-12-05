@@ -107,11 +107,9 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
       `${baseUrl}/images/culture-alberta-og.jpg`
     ],
     "sameAs": [
-      "https://www.instagram.com/culturealberta._"
-      // Add more social media URLs when available:
-      // "https://www.facebook.com/culturealberta",
-      // "https://twitter.com/culturealberta",
-      // "https://www.youtube.com/@culturealberta"
+      "https://www.instagram.com/culturealberta._",
+      "https://www.youtube.com/@CultureAlberta_",
+      "https://www.facebook.com/profile.php?id=100064044099295"
     ],
     "contactPoint": {
       "@type": "ContactPoint",

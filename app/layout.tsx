@@ -73,12 +73,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Google AdSense - MUST be in head for verification */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6902227267422426"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body suppressHydrationWarning={true}>
         {/* Structured Data for Rich Snippets - Required for Google sitelinks like blogTO */}
         <WebsiteStructuredData />
         <OrganizationStructuredData />
         <LocalBusinessStructuredData />
-        {/* Google AdSense - Must be in head for verification, using beforeInteractive strategy */}
+        {/* Google AdSense - Duplicate in body as backup */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6902227267422426"

@@ -11,7 +11,7 @@ export function Footer() {
               Your guide to Alberta's best culture, events, and experiences.
             </p>
           </div>
-          
+
           <div>
             <h4 className="font-semibold mb-4">Explore</h4>
             <ul className="space-y-2 text-sm">
@@ -21,7 +21,7 @@ export function Footer() {
               <li><Link href="/food-drink" className="text-gray-600 hover:text-gray-900">Food & Drink</Link></li>
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-semibold mb-4">Company</h4>
             <ul className="space-y-2 text-sm">
@@ -30,7 +30,7 @@ export function Footer() {
               <li><Link href="/partner" className="text-gray-600 hover:text-gray-900">Partner with Us</Link></li>
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-semibold mb-4">Legal</h4>
             <ul className="space-y-2 text-sm">
@@ -39,9 +39,9 @@ export function Footer() {
             </ul>
           </div>
         </div>
-        
+
         <div className="border-t mt-8 pt-8 text-center text-sm text-gray-600">
-          <p>&copy; 2024 Culture Alberta. All rights reserved.</p>
+          <p>&copy; 2025 Culture Alberta. All rights reserved.</p>
         </div>
       </div>
     </footer>
