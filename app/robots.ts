@@ -35,9 +35,12 @@ export default function robots(): MetadataRoute.Robots {
         '/articles/article-1755737833735-4dpy9893u',
         '/articles/article-1755470408146-4r1ljnu1r',
         '/articles/article-1755917044327-nw8ghveg1',
-        // Remove best-of pages that don't exist
+        // Remove best-of pages that don't exist or have no content
         '/best-of/shopping',
         '/best-of/dentists',
+        '/best-of/attractions',
+        '/best-of/lawyers',
+        '/best-of/food',
         // Remove invalid/broken URLs
         '/articles/e',
         // Remove resource files from indexing
