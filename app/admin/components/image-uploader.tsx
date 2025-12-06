@@ -14,8 +14,9 @@ export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null)
 
-  const MAX_SIZE_MB = 2
+  const MAX_SIZE_MB = 5
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -27,36 +28,58 @@ export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
     setIsDragging(false)
   }
 
+  // Upload image to Supabase Storage via API
+  const uploadImage = async (file: File) => {
+    setIsLoading(true)
+    setError(null)
+    setUploadProgress('Uploading image...')
+
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const response = await fetch('/api/upload/image', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to upload image')
+      }
+
+      setUploadProgress('Upload complete!')
+
+      // Return the public URL from Supabase Storage
+      onSelect(result.url)
+    } catch (err) {
+      console.error('Image upload error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to upload image')
+    } finally {
+      setIsLoading(false)
+      setUploadProgress(null)
+    }
+  }
+
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
     setError(null)
+
     const file = e.dataTransfer.files[0]
     if (file && file.type.startsWith('image/')) {
       if (file.size > MAX_SIZE_MB * 1024 * 1024) {
         setError(`Image must be less than ${MAX_SIZE_MB}MB.`)
         return
       }
-      setIsLoading(true)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const result = e.target?.result
-        if (typeof result === 'string') {
-          onSelect(result)
-        }
-        setIsLoading(false)
-      }
-      reader.onerror = () => {
-        setError('Failed to read image file.')
-        setIsLoading(false)
-      }
-      reader.readAsDataURL(file)
+      await uploadImage(file)
     } else {
       setError('Please select a valid image file.')
     }
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null)
     const file = e.target.files?.[0]
     if (file && file.type.startsWith('image/')) {
@@ -64,20 +87,7 @@ export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
         setError(`Image must be less than ${MAX_SIZE_MB}MB.`)
         return
       }
-      setIsLoading(true)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const result = e.target?.result
-        if (typeof result === 'string') {
-          onSelect(result)
-        }
-        setIsLoading(false)
-      }
-      reader.onerror = () => {
-        setError('Failed to read image file.')
-        setIsLoading(false)
-      }
-      reader.readAsDataURL(file)
+      await uploadImage(file)
     } else {
       setError('Please select a valid image file.')
     }
@@ -94,9 +104,8 @@ export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
         </div>
 
         <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center ${
-            isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
-          }`}
+          className={`border-2 border-dashed rounded-lg p-8 text-center ${isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
+            }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -117,8 +126,16 @@ export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
               <p className="text-sm text-muted-foreground">
                 Drag and drop an image here, or click to select
               </p>
+              <p className="text-xs text-muted-foreground">
+                Images will be stored securely and work on social media
+              </p>
               <Button variant="outline" disabled={isLoading}>Select Image</Button>
-              {isLoading && <div className="flex justify-center mt-2"><Spinner /></div>}
+              {isLoading && (
+                <div className="flex flex-col items-center gap-2 mt-2">
+                  <Spinner />
+                  {uploadProgress && <p className="text-sm text-muted-foreground">{uploadProgress}</p>}
+                </div>
+              )}
               {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
             </div>
           </label>
@@ -127,3 +144,4 @@ export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
     </div>
   )
 }
+
