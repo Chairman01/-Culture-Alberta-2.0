@@ -10,7 +10,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 async function syncArticles() {
     try {
         console.log('🚀 Syncing articles from Supabase to optimized-fallback.json...');
-        
+
         // Fetch ALL articles with content from Supabase
         const response = await fetch(`${SUPABASE_URL}/rest/v1/articles?select=*&order=created_at.desc`, {
             headers: {
@@ -28,25 +28,45 @@ async function syncArticles() {
         console.log(`✅ Fetched ${articles.length} articles from Supabase`);
 
         // Check content status
-        const articlesWithContent = articles.filter(article => 
+        const articlesWithContent = articles.filter(article =>
             article.content && article.content.trim().length > 10
         );
-        
+
         console.log(`📊 Articles with content: ${articlesWithContent.length}/${articles.length}`);
 
-        // Map image_url to imageUrl for compatibility
+        // Map snake_case to camelCase for frontend compatibility
         const mappedArticles = articles.map(article => ({
             ...article,
+            // Image URL mapping
             imageUrl: article.image_url || article.image || null,
-            // Remove the old image field to avoid confusion
-            image: undefined
+            // Featured/Trending field mappings (snake_case to camelCase)
+            featuredHome: article.featured_home || false,
+            featuredEdmonton: article.featured_edmonton || false,
+            featuredCalgary: article.featured_calgary || false,
+            trendingHome: article.trending_home || false,
+            trendingEdmonton: article.trending_edmonton || false,
+            trendingCalgary: article.trending_calgary || false,
+            // Date field mappings
+            createdAt: article.created_at,
+            updatedAt: article.updated_at,
+            // Remove old fields to avoid confusion
+            image: undefined,
+            image_url: undefined,
+            featured_home: undefined,
+            featured_edmonton: undefined,
+            featured_calgary: undefined,
+            trending_home: undefined,
+            trending_edmonton: undefined,
+            trending_calgary: undefined,
+            created_at: undefined,
+            updated_at: undefined
         }));
 
         // Save to optimized-fallback.json
         const optimizedFallbackPath = path.join(process.cwd(), 'optimized-fallback.json');
         fs.writeFileSync(optimizedFallbackPath, JSON.stringify(mappedArticles, null, 2), 'utf-8');
         console.log(`✅ Updated optimized-fallback.json with ${mappedArticles.length} articles`);
-        
+
         // Also update lib/data/articles.json for backup
         const articlesPath = path.join(process.cwd(), 'lib', 'data', 'articles.json');
         fs.writeFileSync(articlesPath, JSON.stringify(articles, null, 2), 'utf-8');
