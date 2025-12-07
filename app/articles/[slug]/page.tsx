@@ -487,9 +487,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                         {loadedArticle.title}
                       </h1>
 
-                      {loadedArticle.excerpt && (
+                      {/* Use description (full text) if available, otherwise fall back to excerpt */}
+                      {(loadedArticle.description || loadedArticle.excerpt) && (
                         <p className="text-xl text-gray-600 leading-relaxed max-w-3xl">
-                          {loadedArticle.excerpt}
+                          {loadedArticle.description || loadedArticle.excerpt}
                         </p>
                       )}
                     </div>
