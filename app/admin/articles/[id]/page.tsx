@@ -62,7 +62,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  
+
   // Trending selection options
   const [trendingHome, setTrendingHome] = useState(false)
   const [trendingEdmonton, setTrendingEdmonton] = useState(false)
@@ -85,14 +85,14 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       if (!response.ok) {
         throw new Error(`Failed to fetch article: ${response.status}`)
       }
-      
+
       const articleData = await response.json()
       console.log('Loaded article data:', articleData)
       console.log('Article title:', articleData.title)
       console.log('Article content length:', articleData.content?.length || 0)
       console.log('Article excerpt:', articleData.excerpt)
       console.log('Article imageUrl:', articleData.imageUrl)
-      
+
       if (!articleData) {
         toast({
           title: "Article not found",
@@ -101,7 +101,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         })
         return
       }
-      
+
       setArticle(articleData)
       setTitle(articleData.title || "")
       setCategory(articleData.category || "")
@@ -120,7 +120,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setFeaturedHome(articleData.featuredHome || false)
       setFeaturedEdmonton(articleData.featuredEdmonton || false)
       setFeaturedCalgary(articleData.featuredCalgary || false)
-      
+
       console.log('Form fields set - Title:', title, 'Content length:', content?.length || 0)
     } catch (error) {
       console.error("Error loading article:", error)
@@ -213,9 +213,9 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         featuredEdmonton,
         featuredCalgary
       }
-      
+
       console.log('Sending update data:', updateData)
-      
+
       const response = await fetch(`/api/admin/articles/${resolvedParams.id}`, {
         method: 'PUT',
         headers: {
@@ -238,7 +238,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       // Trigger revalidation for article pages
       try {
         const articleSlug = createSlug(title)
-        
+
         await fetch('/api/revalidate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -383,9 +383,12 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               id="excerpt"
               value={excerpt}
               onChange={(e) => setExcerpt(e.target.value)}
-              placeholder="Brief description of the article"
-              rows={3}
+              placeholder="Brief description of the article (recommended: 150-300 characters for optimal social media previews)"
+              rows={5}
             />
+            <p className="text-sm text-gray-500 mt-1">
+              {excerpt.length} characters {excerpt.length < 150 ? '(add more for better previews)' : excerpt.length > 300 ? '(consider shortening)' : '(good length)'}
+            </p>
           </div>
 
           <div>
@@ -426,11 +429,11 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       <div className="border rounded-lg p-6 bg-gray-50">
         <h3 className="text-lg font-semibold mb-4">Trending Options</h3>
         <p className="text-sm text-gray-600 mb-4">Select where this article should appear in trending sections:</p>
-        
+
         <div className="space-y-3">
           <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="trending-home" 
+            <Checkbox
+              id="trending-home"
               checked={trendingHome}
               onCheckedChange={(checked) => setTrendingHome(checked as boolean)}
             />
@@ -438,10 +441,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               Show in Home Page Trending
             </Label>
           </div>
-          
+
           <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="trending-edmonton" 
+            <Checkbox
+              id="trending-edmonton"
               checked={trendingEdmonton}
               onCheckedChange={(checked) => setTrendingEdmonton(checked as boolean)}
             />
@@ -449,10 +452,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               Show in Edmonton Trending
             </Label>
           </div>
-          
+
           <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="trending-calgary" 
+            <Checkbox
+              id="trending-calgary"
               checked={trendingCalgary}
               onCheckedChange={(checked) => setTrendingCalgary(checked as boolean)}
             />
@@ -467,11 +470,11 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       <div className="border rounded-lg p-6 bg-blue-50">
         <h3 className="text-lg font-semibold mb-4">Featured Article Options</h3>
         <p className="text-sm text-gray-600 mb-4">Select where this article should appear as the featured article:</p>
-        
+
         <div className="space-y-3">
           <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="featured-home" 
+            <Checkbox
+              id="featured-home"
               checked={featuredHome}
               onCheckedChange={(checked) => setFeaturedHome(checked as boolean)}
             />
@@ -479,10 +482,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               Show as Home Page Featured Article
             </Label>
           </div>
-          
+
           <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="featured-edmonton" 
+            <Checkbox
+              id="featured-edmonton"
               checked={featuredEdmonton}
               onCheckedChange={(checked) => setFeaturedEdmonton(checked as boolean)}
             />
@@ -490,10 +493,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               Show as Edmonton Page Featured Article
             </Label>
           </div>
-          
+
           <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="featured-calgary" 
+            <Checkbox
+              id="featured-calgary"
               checked={featuredCalgary}
               onCheckedChange={(checked) => setFeaturedCalgary(checked as boolean)}
             />
@@ -514,9 +517,9 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       </div>
 
       {showImageUploader && (
-        <ImageUploader 
-          onSelect={handleImageSelect} 
-          onClose={() => setShowImageUploader(false)} 
+        <ImageUploader
+          onSelect={handleImageSelect}
+          onClose={() => setShowImageUploader(false)}
         />
       )}
     </div>
