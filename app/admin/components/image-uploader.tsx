@@ -10,6 +10,73 @@ interface ImageUploaderProps {
   onClose: () => void
 }
 
+// Convert WebP or other formats to JPEG for social media compatibility
+// Reddit and some other platforms don't reliably support WebP for Open Graph images
+async function convertToJpeg(file: File): Promise<File> {
+  // If already JPEG or PNG, return as-is (PNG is also widely supported)
+  if (file.type === 'image/jpeg' || file.type === 'image/png') {
+    return file
+  }
+
+  console.log('🔄 Converting image from', file.type, 'to JPEG for social media compatibility')
+
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+
+    img.onload = () => {
+      // Create canvas with image dimensions
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        URL.revokeObjectURL(url)
+        reject(new Error('Failed to get canvas context'))
+        return
+      }
+
+      // Fill with white background (for transparency in WebP/PNG)
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Draw image
+      ctx.drawImage(img, 0, 0)
+
+      // Convert to JPEG blob
+      canvas.toBlob(
+        (blob) => {
+          URL.revokeObjectURL(url)
+          if (!blob) {
+            reject(new Error('Failed to convert image'))
+            return
+          }
+
+          // Create new file with .jpg extension
+          const jpegFile = new File(
+            [blob],
+            file.name.replace(/\.[^.]+$/, '.jpg'),
+            { type: 'image/jpeg' }
+          )
+
+          console.log('✅ Image converted to JPEG:', jpegFile.name, 'Size:', jpegFile.size)
+          resolve(jpegFile)
+        },
+        'image/jpeg',
+        0.9 // Quality: 90%
+      )
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Failed to load image for conversion'))
+    }
+
+    img.src = url
+  })
+}
+
 export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -32,11 +99,17 @@ export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
   const uploadImage = async (file: File) => {
     setIsLoading(true)
     setError(null)
-    setUploadProgress('Uploading image...')
+    setUploadProgress('Preparing image...')
 
     try {
+      // Convert WebP and other formats to JPEG for social media compatibility
+      // Reddit/Embedly don't reliably support WebP for Open Graph previews
+      setUploadProgress('Converting to JPEG for social media compatibility...')
+      const convertedFile = await convertToJpeg(file)
+
+      setUploadProgress('Uploading image...')
       const formData = new FormData()
-      formData.append('image', file)
+      formData.append('image', convertedFile)
 
       const response = await fetch('/api/upload/image', {
         method: 'POST',
