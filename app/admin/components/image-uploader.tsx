@@ -10,11 +10,11 @@ interface ImageUploaderProps {
   onClose: () => void
 }
 
-// Convert WebP or other formats to JPEG for social media compatibility
-// Reddit and some other platforms don't reliably support WebP for Open Graph images
+// Convert all images to JPEG for maximum social media compatibility
+// Reddit's crawler has issues with PNG format for Open Graph images
 async function convertToJpeg(file: File): Promise<File> {
-  // If already JPEG or PNG, return as-is (PNG is also widely supported)
-  if (file.type === 'image/jpeg' || file.type === 'image/png') {
+  // Only skip if already JPEG - convert PNG and other formats to JPEG for Reddit compatibility
+  if (file.type === 'image/jpeg') {
     return file
   }
 
