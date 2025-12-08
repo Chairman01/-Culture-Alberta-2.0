@@ -100,12 +100,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         console.warn('Article image is base64, using default OG image for social sharing')
         absoluteImageUrl = defaultOgImage
       }
-      // CRITICAL: Supabase Storage sends x-robots-tag: none which blocks Reddit/Embed.ly
-      // Route Supabase images through our proxy to remove that header
-      else if (articleImage.includes('supabase.co/storage')) {
-        absoluteImageUrl = `https://www.culturealberta.com/api/og-image?url=${encodeURIComponent(articleImage)}`
-      }
-      // Use external URLs as-is if they're already absolute
+      // Use external URLs as-is if they're already absolute (including Supabase)
       else if (articleImage.startsWith('http://') || articleImage.startsWith('https://')) {
         absoluteImageUrl = articleImage
       }
