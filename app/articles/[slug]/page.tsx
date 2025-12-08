@@ -114,11 +114,28 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       }
     }
 
+    // Detect image MIME type from URL extension
+    const getImageMimeType = (url: string): string => {
+      const ext = url.split('.').pop()?.toLowerCase()
+      switch (ext) {
+        case 'png': return 'image/png'
+        case 'gif': return 'image/gif'
+        case 'webp': return 'image/webp'
+        case 'svg': return 'image/svg+xml'
+        case 'jpg':
+        case 'jpeg':
+        default: return 'image/jpeg'
+      }
+    }
+
+    const imageMimeType = getImageMimeType(absoluteImageUrl)
+
     // Debug logging for metadata
     console.log('Article Metadata Debug:', {
       title: fullTitle,
       description: description,
       image: absoluteImageUrl,
+      imageMimeType: imageMimeType,
       url: fullUrl,
       originalImage: loadedArticle.imageUrl
     })
@@ -140,7 +157,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
             width: 1200,  // Standard OG image width
             height: 630,  // Standard OG image height (1.91:1 aspect ratio)
             alt: loadedArticle.title,
-            type: 'image/jpeg',
+            type: imageMimeType,
           }
         ],
         siteName: 'Culture Alberta',
@@ -170,7 +187,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         'article:modified_time': loadedArticle.updatedAt || loadedArticle.date,
         // Reddit-specific: Complete og:image tags
         'og:image:secure_url': absoluteImageUrl,
-        'og:image:type': 'image/jpeg',
+        'og:image:type': imageMimeType,
         'og:image:width': '1200',
         'og:image:height': '630',
       },
