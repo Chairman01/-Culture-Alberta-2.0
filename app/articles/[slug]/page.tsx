@@ -153,11 +153,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         images: [
           {
             url: absoluteImageUrl,
-            secureUrl: absoluteImageUrl, // og:image:secure_url - required by some platforms
-            width: 1200,  // Standard OG image width
-            height: 630,  // Standard OG image height (1.91:1 aspect ratio)
             alt: loadedArticle.title,
-            type: imageMimeType,
           }
         ],
         siteName: 'Culture Alberta',
@@ -179,17 +175,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       alternates: {
         canonical: fullUrl,
       },
-      // Additional meta tags for Reddit and other platforms
+      // Additional meta tags for article info
       other: {
         'article:author': loadedArticle.author || 'Culture Alberta',
         'article:section': loadedArticle.category,
         'article:published_time': loadedArticle.date,
         'article:modified_time': loadedArticle.updatedAt || loadedArticle.date,
-        // Reddit-specific: Complete og:image tags
-        'og:image:secure_url': absoluteImageUrl,
-        'og:image:type': imageMimeType,
-        'og:image:width': '1200',
-        'og:image:height': '630',
       },
       // Metadata for better Reddit previews
       metadataBase: new URL('https://www.culturealberta.com'),
