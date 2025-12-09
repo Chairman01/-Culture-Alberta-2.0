@@ -364,7 +364,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
     const formatDate = (dateString: string) => {
       try {
+        // Handle empty or invalid date strings
+        if (!dateString || dateString.trim() === '') {
+          return ''
+        }
         const date = new Date(dateString)
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+          return ''
+        }
         const year = date.getFullYear()
         const month = date.getMonth()
         const day = date.getDate()
@@ -372,7 +380,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           'July', 'August', 'September', 'October', 'November', 'December']
         return `${monthNames[month]} ${day}, ${year}`
       } catch {
-        return dateString
+        return ''
       }
     }
 
@@ -572,11 +580,13 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     </div>
 
                     {/* Article Footer */}
-                    <div className="flex items-center justify-end pt-8 border-t border-gray-200">
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <span>Published {formatDate(loadedArticle.date || '')}</span>
+                    {loadedArticle.date && formatDate(loadedArticle.date) && (
+                      <div className="flex items-center justify-end pt-8 border-t border-gray-200">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <span>Published {formatDate(loadedArticle.date)}</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Newsletter Signup - Now floating/sticky */}
                     <ArticleNewsletterSignup
