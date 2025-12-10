@@ -1,17 +1,43 @@
 import { Article } from '@/lib/types'
+import { createSlug } from '@/lib/utils/slug'
 
 interface StructuredDataProps {
   article: Article
   baseUrl?: string
 }
 
+// Helper to get proper image URL
+function getArticleImageUrl(imageUrl: string | undefined, baseUrl: string): string {
+  const defaultImage = `${baseUrl}/images/culture-alberta-og.jpg`
+
+  if (!imageUrl) return defaultImage
+
+  // Skip base64 images
+  if (imageUrl.startsWith('data:image')) return defaultImage
+
+  // Already absolute URL (Supabase, etc.)
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+
+  // Relative URL
+  if (imageUrl.startsWith('/')) {
+    return `${baseUrl}${imageUrl}`
+  }
+
+  return `${baseUrl}/${imageUrl}`
+}
+
 export function ArticleStructuredData({ article, baseUrl = 'https://www.culturealberta.com' }: StructuredDataProps) {
+  // Generate slug from title for consistent URLs
+  const articleSlug = article.slug || createSlug(article.title)
+
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Article",
     "headline": article.title,
     "description": article.excerpt || article.content?.substring(0, 160) || `Discover ${article.title} in Alberta`,
-    "image": article.imageUrl ? `${baseUrl}${article.imageUrl}` : `${baseUrl}/images/culture-alberta-og.jpg`,
+    "image": getArticleImageUrl(article.imageUrl, baseUrl),
     "author": {
       "@type": "Organization",
       "name": "Culture Alberta",
@@ -28,12 +54,12 @@ export function ArticleStructuredData({ article, baseUrl = 'https://www.culturea
       }
     },
     "datePublished": article.date,
-    "dateModified": article.date,
+    "dateModified": article.updatedAt || article.date,
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `${baseUrl}/articles/${article.slug}`
+      "@id": `${baseUrl}/articles/${articleSlug}`
     },
-    "url": `${baseUrl}/articles/${article.slug}`,
+    "url": `${baseUrl}/articles/${articleSlug}`,
     "articleSection": article.category || "Culture",
     "keywords": article.tags?.join(', ') || `${article.category}, Alberta, Culture`,
     "about": {
@@ -49,6 +75,7 @@ export function ArticleStructuredData({ article, baseUrl = 'https://www.culturea
     />
   )
 }
+
 
 export function WebsiteStructuredData({ baseUrl = 'https://www.culturealberta.com' }) {
   const structuredData = {
@@ -151,6 +178,72 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
       "name": "Culture Media",
       "email": "culturemedia101@gmail.com"
     }
+  }
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  )
+}
+
+// Breadcrumb structured data for article pages
+interface BreadcrumbProps {
+  articleTitle: string
+  articleCategory?: string
+  articleSlug: string
+  baseUrl?: string
+}
+
+export function BreadcrumbStructuredData({
+  articleTitle,
+  articleCategory,
+  articleSlug,
+  baseUrl = 'https://www.culturealberta.com'
+}: BreadcrumbProps) {
+  const breadcrumbItems = [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": baseUrl
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Articles",
+      "item": `${baseUrl}/articles`
+    }
+  ]
+
+  // Add category if available
+  if (articleCategory) {
+    breadcrumbItems.push({
+      "@type": "ListItem",
+      "position": 3,
+      "name": articleCategory,
+      "item": `${baseUrl}/${articleCategory.toLowerCase().replace(/\s+/g, '-')}`
+    })
+    breadcrumbItems.push({
+      "@type": "ListItem",
+      "position": 4,
+      "name": articleTitle,
+      "item": `${baseUrl}/articles/${articleSlug}`
+    })
+  } else {
+    breadcrumbItems.push({
+      "@type": "ListItem",
+      "position": 3,
+      "name": articleTitle,
+      "item": `${baseUrl}/articles/${articleSlug}`
+    })
+  }
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": breadcrumbItems
   }
 
   return (

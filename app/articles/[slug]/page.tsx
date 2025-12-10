@@ -10,6 +10,7 @@ import { getArticleUrl } from '@/lib/utils/article-url'
 import { createSlug } from '@/lib/utils/slug'
 import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
+import { ArticleStructuredData, BreadcrumbStructuredData } from '@/components/seo/structured-data'
 
 // Force dynamic rendering to use fast fallback system
 export const dynamic = 'force-dynamic'
@@ -386,6 +387,14 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
     return (
       <>
+        {/* Structured Data for Google Rich Snippets */}
+        <ArticleStructuredData article={loadedArticle} />
+        <BreadcrumbStructuredData
+          articleTitle={loadedArticle.title}
+          articleCategory={loadedArticle.category}
+          articleSlug={slug}
+        />
+
         {/* Metadata is now handled by generateMetadata function */}
         <div className="min-h-screen bg-gray-50">
           {/* Sticky Header */}
