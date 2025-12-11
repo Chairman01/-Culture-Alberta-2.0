@@ -2,20 +2,36 @@
 
 import Link from "next/link"
 import { Search } from "lucide-react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 export function MainNavigation() {
   const pathname = usePathname()
+  const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState("")
+
   const isEdmonton = pathname?.includes("/edmonton")
   const isCalgary = pathname?.includes("/calgary")
   const isAdmin = pathname?.startsWith("/admin")
-  
+
   // Don't show navigation on admin pages
   if (isAdmin) {
     return null
+  }
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push(`/articles?search=${encodeURIComponent(searchQuery.trim())}`)
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch()
+    }
   }
 
   return (
@@ -30,25 +46,23 @@ export function MainNavigation() {
             </span>
           </Link>
         </div>
-        
+
         <nav className="hidden md:flex items-center justify-center gap-8">
           <Link
             href="/edmonton"
-            className={`text-sm font-medium transition-colors ${
-              isEdmonton 
-                ? "text-blue-600 hover:text-blue-700" 
+            className={`text-sm font-medium transition-colors ${isEdmonton
+                ? "text-blue-600 hover:text-blue-700"
                 : "text-gray-600 hover:text-gray-900"
-            }`}
+              }`}
           >
             Edmonton
           </Link>
           <Link
             href="/calgary"
-            className={`text-sm font-medium transition-colors ${
-              isCalgary 
-                ? "text-red-600 hover:text-red-700" 
+            className={`text-sm font-medium transition-colors ${isCalgary
+                ? "text-red-600 hover:text-red-700"
                 : "text-gray-600 hover:text-gray-900"
-            }`}
+              }`}
           >
             Calgary
           </Link>
@@ -75,21 +89,28 @@ export function MainNavigation() {
         <div className="flex items-center gap-4">
           <div className="hidden md:flex relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-            <Input 
-              type="search" 
-              placeholder="Search..." 
+            <Input
+              type="search"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
               className="pl-9 w-[200px] bg-gray-50 border-gray-200 focus:bg-white"
             />
           </div>
-          <Button className={
-            isEdmonton ? "bg-blue-600 hover:bg-blue-700" : 
-            isCalgary ? "bg-red-600 hover:bg-red-700" : 
-            "bg-black hover:bg-gray-800"
-          }>
-            Subscribe
+          <Button
+            onClick={handleSearch}
+            className={
+              isEdmonton ? "bg-blue-600 hover:bg-blue-700" :
+                isCalgary ? "bg-red-600 hover:bg-red-700" :
+                  "bg-black hover:bg-gray-800"
+            }
+          >
+            Search
           </Button>
         </div>
       </div>
     </header>
   )
 }
+
