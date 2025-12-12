@@ -1,21 +1,37 @@
 ﻿import { MetadataRoute } from 'next'
-import { getAllArticles } from '@/lib/articles'
+import { supabase } from '@/lib/supabase'
 import { getAllEvents } from '@/lib/events'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.culturealberta.com'
 
-  // Fetch all dynamic content
-  const [articles, events] = await Promise.all([
-    getAllArticles(),
-    getAllEvents()
-  ])
+  // Fetch articles directly from Supabase (always fresh, no fallback file)
+  let articles: any[] = []
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('id, title, created_at, updated_at, status, type, category, categories')
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Sitemap: Failed to fetch articles from Supabase:', error)
+    } else {
+      articles = data || []
+      console.log(`Sitemap: Fetched ${articles.length} articles from Supabase`)
+    }
+  } catch (err) {
+    console.error('Sitemap: Error fetching articles:', err)
+  }
+
+  // Fetch events
+  const events = await getAllEvents()
 
   // Create sitemap entries for articles
   const articleEntries: MetadataRoute.Sitemap = articles.map((article) => ({
     url: `${baseUrl}${getArticleUrl(article)}`,
-    lastModified: new Date(article.updatedAt || article.createdAt || new Date()),
+    lastModified: new Date(article.updated_at || article.created_at || new Date()),
     changeFrequency: 'weekly',
     priority: 0.8,
   }))

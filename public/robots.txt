@@ -1,68 +1,11 @@
-# ===========================================
-# Culture Alberta - robots.txt
-# ===========================================
-
-# Social Media Crawlers - allow full access for previews
-User-agent: facebookexternalhit
-Allow: /
-
-User-agent: Facebot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: redditbot
-Allow: /
-
-User-agent: LinkedInBot
-Allow: /
-
-User-agent: Discordbot
-Allow: /
-
-User-agent: Slackbot
-Allow: /
-
-User-agent: TelegramBot
-Allow: /
-
-User-agent: WhatsApp
-Allow: /
-
-User-agent: Embedly
-Allow: /
-
-# Google and other search engines
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-# All other bots - default rules
+# *
 User-agent: *
 Allow: /
-
-# Block admin and API routes (not for public consumption)
 Disallow: /admin/
 Disallow: /api/
-
-# Block test and debug pages
 Disallow: /test/
 Disallow: /test-supabase/
-Disallow: /test-connection/
-Disallow: /test-env/
-Disallow: /test-table/
-Disallow: /debug/
-Disallow: /debug-simple/
 Disallow: /populate/
-
-# Block empty best-of categories (no content yet)
-Disallow: /best-of/shopping
-Disallow: /best-of/dentists
-Disallow: /best-of/attractions
-Disallow: /best-of/lawyers
 
 # Host
 Host: https://www.culturealberta.com
