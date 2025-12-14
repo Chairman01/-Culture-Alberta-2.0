@@ -98,7 +98,13 @@ const nextConfig = {
     ]
   },
   async rewrites() {
-    return []
+    return [
+      // Alternative sitemap URL that serves from API route
+      {
+        source: '/sitemap-api.xml',
+        destination: '/api/sitemap',
+      },
+    ]
   },
   // Production-specific headers
   async headers() {
