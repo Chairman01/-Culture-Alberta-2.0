@@ -43,11 +43,9 @@ export default function robots(): MetadataRoute.Robots {
         '/best-of/food',
         // Remove invalid/broken URLs
         '/articles/e',
-        // Remove resource files from indexing
+        // Remove resource files from indexing (but NOT sitemap - Google needs to access it!)
         '/favicon.ico',
         '/robots.txt',
-        '/sitemap.xml',
-        '/sitemap-0.xml',
       ],
     },
     sitemap: 'https://www.culturealberta.com/sitemap.xml',
