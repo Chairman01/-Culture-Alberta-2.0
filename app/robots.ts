@@ -17,11 +17,7 @@ export default function robots(): MetadataRoute.Robots {
         '/test-supabase-connection/',
         '/test-table/',
         '/populate/',
-        '/$',
-        '/&',
-        '/*$*',
-        '/*&*',
-        // Remove specific article URLs from indexing
+        // Remove specific article URLs from indexing (placeholder/test articles)
         '/articles/article-1755471413706-6x340tv5w',
         '/articles/article-1757443668525-it4u5nhfo',
         '/articles/article-1754957054981-fturxi4mi',
@@ -40,12 +36,8 @@ export default function robots(): MetadataRoute.Robots {
         '/best-of/dentists',
         '/best-of/attractions',
         '/best-of/lawyers',
-        '/best-of/food',
         // Remove invalid/broken URLs
         '/articles/e',
-        // Remove resource files from indexing (but NOT sitemap - Google needs to access it!)
-        '/favicon.ico',
-        '/robots.txt',
       ],
     },
     sitemap: 'https://www.culturealberta.com/sitemap.xml',
