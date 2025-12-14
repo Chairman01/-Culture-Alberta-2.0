@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
-import { Calendar, Clock, Share2, Bookmark, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Calendar, Clock, Bookmark, ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArticleActions } from '@/components/article-actions'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getArticleById, getArticleBySlug } from '@/lib/supabase-articles'
@@ -412,16 +413,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     </h1>
                   </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <button className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
-                    <Share2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Share</span>
-                  </button>
-                  <button className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
-                    <Bookmark className="w-4 h-4" />
-                    <span className="hidden sm:inline">Save</span>
-                  </button>
-                </div>
+                <ArticleActions
+                  articleTitle={loadedArticle.title}
+                  articleUrl={`/articles/${slug}`}
+                />
               </div>
               {/* Reading Progress Bar */}
               <div className="w-full bg-gray-200 rounded-full h-1 mt-3">
