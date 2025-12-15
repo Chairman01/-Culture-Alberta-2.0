@@ -8,8 +8,8 @@ import { Article } from "@/lib/types/article"
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { ArrowRight, Clock, MapPin, Star, Users, Calendar, Tag, Palette, Music, Theater, Landmark, Heart, Sparkles, Globe, Award } from "lucide-react"
 
-// Enable ISR for better performance
-export const revalidate = 120 // 2 minutes
+// Use dynamic rendering to avoid ISR page size limits (page has large base64 images)
+export const dynamic = 'force-dynamic'
 
 interface ExtendedArticle extends Article {
   description?: string;
