@@ -18,11 +18,11 @@ interface ExtendedArticle extends Article {
 async function getCultureData() {
   try {
     console.log('🔄 Loading Culture articles with fallback system...')
-    
+
     // Get culture articles with fallback to articles.json
     const cultureArticles = await getCultureArticlesWithFallback()
     console.log(`✅ Culture articles loaded: ${cultureArticles.length}`)
-    
+
     // Map articles to extended format
     const processedCultureArticles = cultureArticles.map(article => ({
       ...article,
@@ -47,7 +47,7 @@ async function getCultureData() {
     }
   } catch (error) {
     console.error('❌ Error loading Culture data:', error)
-    
+
     // CRITICAL: Provide fallback content to prevent empty page
     console.log('🔄 Setting fallback content to prevent empty page')
     const fallbackArticle: ExtendedArticle = {
@@ -67,7 +67,7 @@ async function getCultureData() {
       status: 'published',
       description: 'We\'re working on bringing you amazing cultural content. Check back soon!'
     }
-    
+
     return {
       articles: [fallbackArticle],
       featuredArticle: fallbackArticle
@@ -81,10 +81,10 @@ export default async function CulturePage() {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
       })
     } catch {
       return 'Recently'
@@ -136,19 +136,19 @@ export default async function CulturePage() {
                 <Theater className="w-5 h-5 text-gray-600" />
               </div>
             </div>
-            
+
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">
               Alberta's Cultural
               <span className="block text-gray-700">
                 Tapestry
               </span>
             </h1>
-            
+
             <p className="max-w-3xl text-lg text-gray-600 leading-relaxed">
-              From Indigenous heritage to contemporary arts, discover the vibrant stories, 
+              From Indigenous heritage to contemporary arts, discover the vibrant stories,
               traditions, and creative expressions that make Alberta truly special.
             </p>
-            
+
             <div className="flex flex-wrap gap-3 justify-center mt-6">
               <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
                 Visual Arts
@@ -175,7 +175,7 @@ export default async function CulturePage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Featured Story</h2>
               <div className="w-16 h-0.5 bg-gray-300 mx-auto"></div>
             </div>
-            
+
             <div className="bg-white rounded-lg overflow-hidden shadow-md border border-gray-200">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                 <div className="relative aspect-[4/3] lg:aspect-square group">
@@ -210,7 +210,7 @@ export default async function CulturePage() {
                     <p className="text-gray-600 leading-relaxed">
                       {featuredArticle.excerpt}
                     </p>
-                    <Link 
+                    <Link
                       href={getArticleUrl(featuredArticle)}
                       className="inline-flex items-center bg-gray-900 text-white px-6 py-2 rounded-md font-medium hover:bg-gray-800 transition-colors group"
                     >
@@ -233,20 +233,34 @@ export default async function CulturePage() {
               <h2 className="text-xl font-bold text-gray-900 mb-1">Explore by Category</h2>
               <p className="text-gray-600 text-sm">Discover stories that resonate with your interests</p>
             </div>
-            
+
             <div className="flex flex-wrap gap-3 justify-center">
-              {categories.map((category) => {
-                const IconComponent = category.icon
-                return (
-                  <div
-                    key={category.id}
-                    className="group flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm bg-white text-gray-700 border border-gray-200"
-                  >
-                    <IconComponent className="w-4 h-4 text-gray-600" />
-                    {category.name}
-                  </div>
-                )
-              })}
+              {/* All Stories - links to culture page */}
+              <Link
+                href="/culture"
+                className="group flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm bg-gray-900 text-white border border-gray-900 hover:bg-gray-800 transition-colors"
+              >
+                <Sparkles className="w-4 h-4" />
+                All Stories
+              </Link>
+
+              {/* Calgary - links to Calgary page */}
+              <Link
+                href="/calgary"
+                className="group flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+              >
+                <Sparkles className="w-4 h-4 text-gray-600" />
+                Calgary
+              </Link>
+
+              {/* Edmonton - links to Edmonton page */}
+              <Link
+                href="/edmonton"
+                className="group flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+              >
+                <Sparkles className="w-4 h-4 text-gray-600" />
+                Edmonton
+              </Link>
             </div>
           </div>
         </section>
@@ -361,7 +375,7 @@ export default async function CulturePage() {
                     Get the latest cultural events and community stories delivered to your inbox.
                   </p>
                 </div>
-                <NewsletterSignup 
+                <NewsletterSignup
                   title=""
                   description=""
                   defaultCity=""
@@ -378,7 +392,7 @@ export default async function CulturePage() {
                   {Array.from(new Set(articles.map(a => a.category).filter(Boolean))).slice(0, 8).map((category) => {
                     const IconComponent = getCategoryIcon(category || '')
                     return (
-                      <Link 
+                      <Link
                         key={category}
                         href={`/culture?category=${category?.toLowerCase()}`}
                         className="flex items-center gap-3 text-gray-600 hover:text-gray-900 transition-colors py-2 px-3 rounded-md hover:bg-gray-50 group"
@@ -405,7 +419,7 @@ export default async function CulturePage() {
                   {articles.slice(0, 4).map((article) => {
                     const IconComponent = getCategoryIcon(article.category || '')
                     return (
-                      <Link 
+                      <Link
                         key={article.id}
                         href={getArticleUrl(article)}
                         className="block group"
