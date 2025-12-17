@@ -3,13 +3,24 @@ import Image from 'next/image'
 import { ArrowRight, Calendar, MapPin } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { PageSEO } from '@/components/seo/page-seo'
 import { PageTracker } from '@/components/analytics/page-tracker'
 import { trackLocationView } from '@/lib/analytics'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getCityArticlesWithFallback } from '@/lib/fallback-articles'
 import { getAllEvents } from '@/lib/events'
 import { Article } from '@/lib/types/article'
+import { Metadata } from 'next'
+
+// Proper App Router metadata export (replaces broken PageSEO component)
+export const metadata: Metadata = {
+  title: 'Edmonton - Culture Alberta',
+  description: "Discover the latest news, events, and stories from Alberta's capital city. Explore Edmonton's vibrant neighborhoods, cultural venues, and outdoor activities.",
+  openGraph: {
+    title: 'Edmonton - Culture Alberta',
+    description: "Discover the latest news, events, and stories from Alberta's capital city.",
+    url: 'https://www.culturealberta.com/edmonton',
+  },
+}
 
 // Force dynamic rendering - fetch fresh data on EVERY request
 export const revalidate = 0 // No caching - always fetch fresh data
@@ -28,45 +39,45 @@ interface EdmontonArticle extends Article {
 async function getEdmontonData() {
   try {
     console.log('🔄 Loading Edmonton articles with fallback system...')
-    
+
     // Get Edmonton articles with fallback to articles.json (exclude events)
     const allEdmontonContent = await getCityArticlesWithFallback('edmonton') as EdmontonArticle[]
     const edmontonArticles = allEdmontonContent.filter(item => item.type !== 'event' && item.type !== 'Event')
     console.log(`✅ Edmonton articles loaded: ${edmontonArticles.length} (filtered out ${allEdmontonContent.length - edmontonArticles.length} events)`)
-    
+
     // Sort by date (newest first)
     const sortedArticles = edmontonArticles.sort((a, b) => {
       const dateA = new Date(a.date || a.createdAt || 0).getTime()
       const dateB = new Date(b.date || b.createdAt || 0).getTime()
       return dateB - dateA // Newest first
     })
-    
+
     // Get Edmonton events from the articles data (includes events from articles.json)
     const now = new Date()
     const upcomingEvents = sortedArticles.filter(
       (a) => {
         // First check if it's an event type
         if (a.type !== 'event' && a.type !== 'Event') return false
-        
+
         // Check if it's Edmonton-related
         const isEdmontonEvent = a.location?.toLowerCase().includes('edmonton') ||
-                               a.category?.toLowerCase().includes('edmonton') ||
-                               a.categories?.some((cat: string) => cat.toLowerCase().includes('edmonton')) ||
-                               a.title.toLowerCase().includes('edmonton')
-        
+          a.category?.toLowerCase().includes('edmonton') ||
+          a.categories?.some((cat: string) => cat.toLowerCase().includes('edmonton')) ||
+          a.title.toLowerCase().includes('edmonton')
+
         if (!isEdmontonEvent) return false
-        
+
         // Check if it has a date and is in the future
         const dateToCheck = a.date || a.eventDate || a.createdAt
         if (!dateToCheck) return false
-        
+
         // Handle date formats like "August 15 - 17, 2025" or "August 15, 2025"
         let dateStr = dateToCheck.toString()
         if (dateStr.includes(' - ')) {
           // Take the first date from a range
           dateStr = dateStr.split(' - ')[0]
         }
-        
+
         try {
           const eventDate = new Date(dateStr)
           return eventDate > now
@@ -93,25 +104,25 @@ async function getEdmontonData() {
       const dateB = getDate(b.date || b.eventDate || b.createdAt || '')
       return dateA.getTime() - dateB.getTime()
     })
-    
+
     console.log(`🔍 Edmonton events found: ${upcomingEvents.length}`)
     upcomingEvents.forEach((event, index) => {
       console.log(`  ${index + 1}. ${event.title} (${event.location || event.category}) - ${event.date || event.eventDate}`)
     })
-    
+
     // Get trending articles - if no trendingEdmonton flag, use recent articles
     const trendingArticles = sortedArticles.filter(a => a.trendingEdmonton === true && a.type !== 'event' && a.type !== 'Event')
-    const finalTrendingArticles = trendingArticles.length > 0 
+    const finalTrendingArticles = trendingArticles.length > 0
       ? trendingArticles.slice(0, 4)
       : sortedArticles.filter(a => a.type !== 'event' && a.type !== 'Event').slice(0, 4)
-    
+
     // Get featured article - if no featuredEdmonton flag, use the first article
-    const featuredArticle = sortedArticles.find(post => post.featuredEdmonton === true) || 
-                           sortedArticles.find(post => post.type !== 'event' && post.type !== 'Event') || 
-                           null
-    
+    const featuredArticle = sortedArticles.find(post => post.featuredEdmonton === true) ||
+      sortedArticles.find(post => post.type !== 'event' && post.type !== 'Event') ||
+      null
+
     console.log(`📊 Edmonton page data: ${sortedArticles.length} articles, ${finalTrendingArticles.length} trending, ${featuredArticle ? '1' : '0'} featured`)
-    
+
     return {
       articles: sortedArticles,
       events: upcomingEvents.slice(0, 3),
@@ -138,7 +149,7 @@ export default async function EdmontonPage() {
       const now = new Date()
       const diffTime = Math.abs(now.getTime() - date.getTime())
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      
+
       if (diffDays === 1) return '1 day ago'
       if (diffDays < 7) return `${diffDays} days ago`
       if (diffDays < 14) return '1 week ago'
@@ -151,7 +162,7 @@ export default async function EdmontonPage() {
 
   const formatEventDate = (dateString: string) => {
     if (!dateString) return 'Date TBA'
-    
+
     try {
       // Parse the date string and ensure it's treated as local time, not UTC
       const [year, month, day] = dateString.split('-').map(Number)
@@ -165,10 +176,7 @@ export default async function EdmontonPage() {
 
   return (
     <>
-      <PageSEO
-        title="Edmonton - Culture Alberta"
-        description="Discover the latest news, events, and stories from Alberta's capital city. Explore Edmonton's vibrant neighborhoods, cultural venues, and outdoor activities."
-      />
+      {/* Metadata is now handled by the metadata export above */}
       <PageTracker title="Edmonton - Culture Alberta" />
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
@@ -272,8 +280,8 @@ export default async function EdmontonPage() {
                           <p className="text-gray-600 text-xs">From festivals to concerts</p>
                         </div>
                       </div>
-                      <Link 
-                        href="/events" 
+                      <Link
+                        href="/events"
                         className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md text-sm transition-colors duration-200"
                       >
                         <span>Explore</span>
@@ -283,7 +291,7 @@ export default async function EdmontonPage() {
                   </div>
 
                   {/* Newsletter */}
-                  <NewsletterSignup 
+                  <NewsletterSignup
                     defaultCity="edmonton"
                     title="Newsletter"
                     description="Stay updated with the latest cultural news and events from Edmonton and across Alberta."
@@ -344,8 +352,8 @@ export default async function EdmontonPage() {
                   </div>
                   {articles.length > 3 && (
                     <div className="mt-6 text-center">
-                      <Link 
-                        href="/edmonton/all-articles" 
+                      <Link
+                        href="/edmonton/all-articles"
                         className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                       >
                         View All Edmonton Articles ({articles.length})
@@ -386,8 +394,8 @@ export default async function EdmontonPage() {
                   </div>
                   {articles.filter((article) => article.category?.toLowerCase().includes('food')).length > 3 && (
                     <div className="mt-6 text-center">
-                      <Link 
-                        href="/edmonton/food-drink" 
+                      <Link
+                        href="/edmonton/food-drink"
                         className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                       >
                         View All Food & Drink Articles ({articles.filter((article) => article.category?.toLowerCase().includes('food')).length})
@@ -428,8 +436,8 @@ export default async function EdmontonPage() {
                   </div>
                   {articles.filter((article) => article.category?.toLowerCase().includes('art')).length > 3 && (
                     <div className="mt-6 text-center">
-                      <Link 
-                        href="/edmonton/arts-culture" 
+                      <Link
+                        href="/edmonton/arts-culture"
                         className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                       >
                         View All Arts & Culture Articles ({articles.filter((article) => article.category?.toLowerCase().includes('art')).length})
@@ -470,8 +478,8 @@ export default async function EdmontonPage() {
                   </div>
                   {articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).length > 3 && (
                     <div className="mt-6 text-center">
-                      <Link 
-                        href="/edmonton/outdoors" 
+                      <Link
+                        href="/edmonton/outdoors"
                         className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                       >
                         View All Outdoors Articles ({articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).length})
@@ -495,7 +503,7 @@ export default async function EdmontonPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {(() => {
-                  const neighborhoodArticles = articles.filter(article => 
+                  const neighborhoodArticles = articles.filter(article =>
                     article.category?.toLowerCase().includes('neighborhood') ||
                     article.category?.toLowerCase().includes('neighbourhood') ||
                     article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
@@ -505,7 +513,7 @@ export default async function EdmontonPage() {
                     article.title?.toLowerCase().includes('neighbourhood') ||
                     article.title?.toLowerCase().includes('neighborhood')
                   )
-                  
+
                   return neighborhoodArticles.slice(0, 4).map((article) => (
                     <Link key={article.id} href={getArticleUrl(article)}>
                       <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
@@ -526,7 +534,7 @@ export default async function EdmontonPage() {
                   ))
                 })()}
                 {/* Show placeholder if no neighborhood articles */}
-                {articles.filter(article => 
+                {articles.filter(article =>
                   article.category?.toLowerCase().includes('neighborhood') ||
                   article.category?.toLowerCase().includes('neighbourhood') ||
                   article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
@@ -536,14 +544,14 @@ export default async function EdmontonPage() {
                   article.title?.toLowerCase().includes('neighbourhood') ||
                   article.title?.toLowerCase().includes('neighborhood')
                 ).length === 0 && (
-                  <div className="col-span-full text-center py-12">
-                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl">🏘️</span>
+                    <div className="col-span-full text-center py-12">
+                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">🏘️</span>
+                      </div>
+                      <h3 className="font-semibold text-lg mb-2">No Neighborhood Articles Yet</h3>
+                      <p className="text-gray-600 text-sm">Create articles with "Neighborhood" category to see them here.</p>
                     </div>
-                    <h3 className="font-semibold text-lg mb-2">No Neighborhood Articles Yet</h3>
-                    <p className="text-gray-600 text-sm">Create articles with "Neighborhood" category to see them here.</p>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           </section>
@@ -559,13 +567,13 @@ export default async function EdmontonPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {(() => {
-                  const guideArticles = articles.filter(article => 
+                  const guideArticles = articles.filter(article =>
                     article.category?.toLowerCase().includes('guide') ||
                     article.categories?.some(cat => cat.toLowerCase().includes('guide')) ||
                     article.tags?.some(tag => tag.toLowerCase().includes('guide')) ||
                     article.type?.toLowerCase().includes('guide')
                   )
-                  
+
                   return guideArticles.slice(0, 3).map((article) => (
                     <Link key={article.id} href={getArticleUrl(article)}>
                       <div className="bg-white rounded-lg overflow-hidden shadow-sm p-4">
@@ -579,20 +587,20 @@ export default async function EdmontonPage() {
                   ))
                 })()}
                 {/* Show placeholder if no guide articles */}
-                {articles.filter(article => 
+                {articles.filter(article =>
                   article.category?.toLowerCase().includes('guide') ||
                   article.categories?.some(cat => cat.toLowerCase().includes('guide')) ||
                   article.tags?.some(tag => tag.toLowerCase().includes('guide')) ||
                   article.type?.toLowerCase().includes('guide')
                 ).length === 0 && (
-                  <div className="col-span-full text-center py-12">
-                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl">📖</span>
+                    <div className="col-span-full text-center py-12">
+                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">📖</span>
+                      </div>
+                      <h3 className="font-semibold text-lg mb-2">No Guide Articles Yet</h3>
+                      <p className="text-gray-600 text-sm">Create articles with "Guide" category or type to see them here.</p>
                     </div>
-                    <h3 className="font-semibold text-lg mb-2">No Guide Articles Yet</h3>
-                    <p className="text-gray-600 text-sm">Create articles with "Guide" category or type to see them here.</p>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           </section>

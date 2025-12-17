@@ -4,7 +4,6 @@ import { getHomepageArticles } from '@/lib/articles'
 import { getAllEvents } from '@/lib/events'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
-import { PageSEO } from '@/components/seo/page-seo'
 import { Article } from '@/lib/types/article'
 import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
@@ -443,10 +442,7 @@ export default async function HomeStatic() {
 
   return (
     <>
-      <PageSEO
-        title="Culture Alberta - Home"
-        description="Discover the best of Alberta's culture, events, and local businesses. Stay informed with the latest news and updates."
-      />
+      {/* Metadata is handled by layout.tsx - no PageSEO needed in App Router */}
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Featured Article + Trending Sidebar */}

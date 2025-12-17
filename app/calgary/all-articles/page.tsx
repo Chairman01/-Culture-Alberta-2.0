@@ -3,8 +3,14 @@ import { Article } from "@/lib/types/article"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, ArrowRight } from "lucide-react"
-import { PageSEO } from '@/components/seo/page-seo'
 import { getArticleUrl } from '@/lib/utils/article-url'
+import { Metadata } from 'next'
+
+// Proper App Router metadata export
+export const metadata: Metadata = {
+  title: 'All Calgary Articles - Culture Alberta',
+  description: "Browse all articles about Calgary, Alberta. Discover the latest news, events, and stories from Alberta's largest city.",
+}
 
 // Force dynamic rendering to prevent oversized static generation
 export const dynamic = 'force-dynamic'
@@ -19,7 +25,7 @@ export default async function CalgaryAllArticlesPage() {
   // Get Calgary articles with fallback to articles.json (exclude events)
   const allCalgaryContent = await getCityArticlesWithFallback('calgary') as CalgaryArticle[]
   const articles = allCalgaryContent.filter(item => item.type !== 'event' && item.type !== 'Event')
-  
+
   console.log(`✅ Calgary all articles loaded: ${articles.length} (filtered out ${allCalgaryContent.length - articles.length} events)`)
 
   const formatDate = (dateString: string) => {
@@ -28,7 +34,7 @@ export default async function CalgaryAllArticlesPage() {
       const now = new Date()
       const diffTime = Math.abs(now.getTime() - date.getTime())
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      
+
       if (diffDays === 1) return '1 day ago'
       if (diffDays < 7) return `${diffDays} days ago`
       if (diffDays < 14) return '1 week ago'
@@ -41,18 +47,15 @@ export default async function CalgaryAllArticlesPage() {
 
   return (
     <>
-      <PageSEO
-        title="All Calgary Articles - Culture Alberta"
-        description="Browse all articles about Calgary, Alberta. Discover the latest news, events, and stories from Alberta's largest city."
-      />
+      {/* Metadata is now handled by the metadata export above */}
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Header Section */}
           <section className="w-full py-6 bg-red-50">
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center gap-4 mb-4">
-                <Link 
-                  href="/calgary" 
+                <Link
+                  href="/calgary"
                   className="flex items-center gap-2 text-red-600 hover:text-red-700 font-medium"
                 >
                   <ArrowLeft className="w-4 h-4" />

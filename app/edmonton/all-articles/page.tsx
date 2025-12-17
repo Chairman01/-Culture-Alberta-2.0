@@ -3,8 +3,14 @@ import { Article } from "@/lib/types/article"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, ArrowRight } from "lucide-react"
-import { PageSEO } from '@/components/seo/page-seo'
 import { getArticleUrl } from '@/lib/utils/article-url'
+import { Metadata } from 'next'
+
+// Proper App Router metadata export
+export const metadata: Metadata = {
+  title: 'All Edmonton Articles - Culture Alberta',
+  description: "Browse all articles about Edmonton, Alberta. Discover the latest news, events, and stories from Alberta's capital city.",
+}
 
 // Force dynamic rendering to prevent oversized static generation
 export const dynamic = 'force-dynamic'
@@ -19,7 +25,7 @@ export default async function EdmontonAllArticlesPage() {
   // Get Edmonton articles with fallback to articles.json (exclude events)
   const allEdmontonContent = await getCityArticlesWithFallback('edmonton') as EdmontonArticle[]
   const articles = allEdmontonContent.filter(item => item.type !== 'event' && item.type !== 'Event')
-  
+
   console.log(`✅ Edmonton all articles loaded: ${articles.length} (filtered out ${allEdmontonContent.length - articles.length} events)`)
 
   const formatDate = (dateString: string) => {
@@ -28,7 +34,7 @@ export default async function EdmontonAllArticlesPage() {
       const now = new Date()
       const diffTime = Math.abs(now.getTime() - date.getTime())
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      
+
       if (diffDays === 1) return '1 day ago'
       if (diffDays < 7) return `${diffDays} days ago`
       if (diffDays < 14) return '1 week ago'
@@ -41,18 +47,15 @@ export default async function EdmontonAllArticlesPage() {
 
   return (
     <>
-      <PageSEO
-        title="All Edmonton Articles - Culture Alberta"
-        description="Browse all articles about Edmonton, Alberta. Discover the latest news, events, and stories from Alberta's capital city."
-      />
+      {/* Metadata is now handled by the metadata export above */}
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Header Section */}
           <section className="w-full py-6 bg-blue-50">
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center gap-4 mb-4">
-                <Link 
-                  href="/edmonton" 
+                <Link
+                  href="/edmonton"
                   className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
                 >
                   <ArrowLeft className="w-4 h-4" />

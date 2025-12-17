@@ -88,12 +88,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.8,
     },
-    {
-      url: baseUrl + '/arts',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
+    // Note: /arts route removed - only /culture page exists
     {
       url: baseUrl + '/food-drink',
       lastModified: new Date(),

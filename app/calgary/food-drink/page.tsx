@@ -6,7 +6,6 @@ import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 import { Footer } from "@/components/footer"
-import { PageSEO } from '@/components/seo/page-seo'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
 interface CalgaryArticle extends Article {
@@ -29,7 +28,7 @@ export default function CalgaryFoodDrinkPage() {
         }
         const allArticles = await response.json()
         // Filter for food & drink articles
-        const foodDrinkArticles = allArticles.filter((article: any) => 
+        const foodDrinkArticles = allArticles.filter((article: any) =>
           article.category?.toLowerCase().includes('food') ||
           article.category?.toLowerCase().includes('drink') ||
           article.category?.toLowerCase().includes('restaurant') ||
@@ -51,7 +50,7 @@ export default function CalgaryFoodDrinkPage() {
       const now = new Date()
       const diffTime = Math.abs(now.getTime() - date.getTime())
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      
+
       if (diffDays === 1) return '1 day ago'
       if (diffDays < 7) return `${diffDays} days ago`
       if (diffDays < 14) return '1 week ago'
@@ -78,18 +77,15 @@ export default function CalgaryFoodDrinkPage() {
 
   return (
     <>
-      <PageSEO
-        title="Calgary Food & Drink Articles - Culture Alberta"
-        description="Discover the best restaurants, cafes, and dining experiences in Calgary, Alberta. Food reviews, restaurant guides, and culinary adventures."
-      />
+      {/* Metadata for client components is set via layout file */}
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Header Section */}
           <section className="w-full py-6 bg-orange-50">
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center gap-4 mb-4">
-                <Link 
-                  href="/calgary" 
+                <Link
+                  href="/calgary"
                   className="flex items-center gap-2 text-red-600 hover:text-red-700 font-medium"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -153,23 +149,22 @@ export default function CalgaryFoodDrinkPage() {
                         <ArrowLeft className="w-4 h-4" />
                         Previous
                       </button>
-                      
+
                       <div className="flex items-center gap-2">
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                           <button
                             key={page}
                             onClick={() => setCurrentPage(page)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                              currentPage === page
+                            className={`px-3 py-2 rounded-lg text-sm font-medium ${currentPage === page
                                 ? 'bg-orange-600 text-white'
                                 : 'text-gray-700 hover:bg-gray-100'
-                            }`}
+                              }`}
                           >
                             {page}
                           </button>
                         ))}
                       </div>
-                      
+
                       <button
                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                         disabled={currentPage === totalPages}

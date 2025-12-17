@@ -3,10 +3,21 @@ import Image from "next/image"
 import { ArrowRight, Calendar, MapPin, Clock } from "lucide-react"
 import NewsletterSignup from "@/components/newsletter-signup"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { PageSEO } from '@/components/seo/page-seo'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getCityArticlesWithFallback } from '@/lib/fallback-articles'
 import { Article } from "@/lib/types/article"
+import { Metadata } from 'next'
+
+// Proper App Router metadata export (replaces broken PageSEO component)
+export const metadata: Metadata = {
+  title: 'Calgary - Culture Alberta',
+  description: "Discover the latest news, events, and stories from Alberta's largest city. Explore Calgary's vibrant neighborhoods, unique attractions, and local culture.",
+  openGraph: {
+    title: 'Calgary - Culture Alberta',
+    description: "Discover the latest news, events, and stories from Alberta's largest city.",
+    url: 'https://www.culturealberta.com/calgary',
+  },
+}
 
 // Force dynamic rendering - fetch fresh data on EVERY request
 export const revalidate = 0 // No caching - always fetch fresh data
@@ -24,57 +35,57 @@ interface CalgaryArticle extends Article {
 async function getCalgaryData() {
   try {
     console.log('🔄 Loading Calgary articles with fallback system...')
-    
+
     // Get Calgary articles with fallback to articles.json (exclude events)
     const allCalgaryContent = await getCityArticlesWithFallback('calgary') as CalgaryArticle[]
     const calgaryArticles = allCalgaryContent.filter(item => item.type !== 'event' && item.type !== 'Event')
     console.log(`✅ Calgary articles loaded: ${calgaryArticles.length} (filtered out ${allCalgaryContent.length - calgaryArticles.length} events)`)
-    
+
     // Sort by date (newest first)
     const sortedArticles = calgaryArticles.sort((a, b) => {
       const dateA = new Date(a.date || a.createdAt || 0).getTime()
       const dateB = new Date(b.date || b.createdAt || 0).getTime()
       return dateB - dateA // Newest first
     })
-    
+
     // Featured article: first article with featuredCalgary flag, or first Calgary article (excluding events) as fallback
-    const featuredArticle = sortedArticles.find(post => post.featuredCalgary === true) || 
-                           sortedArticles.find(post => post.type !== 'event' && post.type !== 'Event') || 
-                           null
-    
+    const featuredArticle = sortedArticles.find(post => post.featuredCalgary === true) ||
+      sortedArticles.find(post => post.type !== 'event' && post.type !== 'Event') ||
+      null
+
     // Trending: articles marked as trending for Calgary (excluding events)
     // If no trendingCalgary flag, use recent articles
     const trendingWithFlag = sortedArticles.filter(a => a.trendingCalgary === true && a.type !== 'event' && a.type !== 'Event')
-    const trendingArticles = trendingWithFlag.length > 0 
+    const trendingArticles = trendingWithFlag.length > 0
       ? trendingWithFlag.slice(0, 4)
       : sortedArticles.filter(a => a.type !== 'event' && a.type !== 'Event').slice(0, 4)
-    
+
     // Upcoming events: Calgary events only, sorted by date
     const now = new Date()
     const calgaryEvents = sortedArticles.filter(
       (a) => {
         // First check if it's an event type
         if (a.type !== 'event' && a.type !== 'Event') return false
-        
+
         // Check if it's Calgary-related
         const isCalgaryEvent = a.location?.toLowerCase().includes('calgary') ||
-                              a.category?.toLowerCase().includes('calgary') ||
-                              a.categories?.some((cat: string) => cat.toLowerCase().includes('calgary')) ||
-                              a.title.toLowerCase().includes('calgary')
-        
+          a.category?.toLowerCase().includes('calgary') ||
+          a.categories?.some((cat: string) => cat.toLowerCase().includes('calgary')) ||
+          a.title.toLowerCase().includes('calgary')
+
         if (!isCalgaryEvent) return false
-        
+
         // Check if it has a date and is in the future
         const dateToCheck = a.date || a.eventDate || a.createdAt
         if (!dateToCheck) return false
-        
+
         // Handle date formats like "August 15 - 17, 2025" or "August 15, 2025"
         let dateStr = dateToCheck.toString()
         if (dateStr.includes(' - ')) {
           // Take the first date from a range
           dateStr = dateStr.split(' - ')[0]
         }
-        
+
         try {
           const eventDate = new Date(dateStr)
           return eventDate > now
@@ -101,14 +112,14 @@ async function getCalgaryData() {
       const dateB = getDate(b.date || b.eventDate || b.createdAt || '')
       return dateA.getTime() - dateB.getTime()
     })
-    
+
     console.log(`🔍 Calgary events found: ${calgaryEvents.length}`)
     calgaryEvents.forEach((event, index) => {
       console.log(`  ${index + 1}. ${event.title} (${event.location || event.category}) - ${event.date || event.eventDate}`)
     })
-    
+
     console.log(`📊 Calgary page data: ${sortedArticles.length} articles, ${trendingArticles.length} trending, ${featuredArticle ? '1' : '0'} featured`)
-    
+
     return {
       articles: sortedArticles,
       featuredArticle,
@@ -135,7 +146,7 @@ export default async function CalgaryPage() {
       const now = new Date()
       const diffTime = Math.abs(now.getTime() - date.getTime())
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      
+
       if (diffDays === 1) return '1 day ago'
       if (diffDays < 7) return `${diffDays} days ago`
       if (diffDays < 14) return '1 week ago'
@@ -148,7 +159,7 @@ export default async function CalgaryPage() {
 
   const formatEventDate = (dateString: string) => {
     if (!dateString) return 'Date TBA'
-    
+
     try {
       // Parse the date string and ensure it's treated as local time, not UTC
       const [year, month, day] = dateString.split('-').map(Number)
@@ -162,10 +173,7 @@ export default async function CalgaryPage() {
 
   return (
     <>
-      <PageSEO
-        title="Calgary - Culture Alberta"
-        description="Discover the latest news, events, and stories from Alberta's largest city. Explore Calgary's vibrant neighborhoods, unique attractions, and local culture."
-      />
+      {/* Metadata is now handled by the metadata export above */}
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Header Section */}
@@ -256,33 +264,33 @@ export default async function CalgaryPage() {
                     </div>
                   </div>
 
-                                     {/* Upcoming Events */}
-                   <div className="bg-white rounded-xl shadow-sm p-4">
-                     <h2 className="font-display text-xl font-bold mb-3">Upcoming Events</h2>
-                     <div className="flex items-center justify-between bg-red-50 rounded-lg p-4">
-                       <div className="flex items-center gap-3">
-                         <Calendar className="h-8 w-8 text-red-600" />
-                         <div>
-                           <h3 className="font-display font-semibold text-sm text-gray-900">Discover Calgary's Best Events</h3>
-                           <p className="text-gray-600 text-xs">From festivals to concerts</p>
-                         </div>
-                       </div>
-                       <Link 
-                         href="/events" 
-                         className="inline-flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-md text-sm transition-colors duration-200"
-                       >
-                         <span>Explore</span>
-                         <ArrowRight className="h-3 w-3" />
-                       </Link>
-                     </div>
-                   </div>
+                  {/* Upcoming Events */}
+                  <div className="bg-white rounded-xl shadow-sm p-4">
+                    <h2 className="font-display text-xl font-bold mb-3">Upcoming Events</h2>
+                    <div className="flex items-center justify-between bg-red-50 rounded-lg p-4">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-8 w-8 text-red-600" />
+                        <div>
+                          <h3 className="font-display font-semibold text-sm text-gray-900">Discover Calgary's Best Events</h3>
+                          <p className="text-gray-600 text-xs">From festivals to concerts</p>
+                        </div>
+                      </div>
+                      <Link
+                        href="/events"
+                        className="inline-flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-md text-sm transition-colors duration-200"
+                      >
+                        <span>Explore</span>
+                        <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  </div>
 
-                                  {/* Newsletter */}
-                               <NewsletterSignup 
-                  defaultCity="calgary"
-                  title="Newsletter"
-                  description="Stay updated with the latest cultural news and events from Calgary and across Alberta."
-                />
+                  {/* Newsletter */}
+                  <NewsletterSignup
+                    defaultCity="calgary"
+                    title="Newsletter"
+                    description="Stay updated with the latest cultural news and events from Calgary and across Alberta."
+                  />
                 </div>
               </div>
             </div>
@@ -338,8 +346,8 @@ export default async function CalgaryPage() {
                   </div>
                   {articles.length > 3 && (
                     <div className="mt-6 text-center">
-                      <Link 
-                        href="/calgary/all-articles" 
+                      <Link
+                        href="/calgary/all-articles"
                         className="inline-flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
                       >
                         View All Calgary Articles ({articles.length})
@@ -379,8 +387,8 @@ export default async function CalgaryPage() {
                   </div>
                   {articles.filter((article) => article.category?.toLowerCase().includes('food')).length > 3 && (
                     <div className="mt-6 text-center">
-                      <Link 
-                        href="/calgary/food-drink" 
+                      <Link
+                        href="/calgary/food-drink"
                         className="inline-flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
                       >
                         View All Food & Drink Articles ({articles.filter((article) => article.category?.toLowerCase().includes('food')).length})
@@ -420,8 +428,8 @@ export default async function CalgaryPage() {
                   </div>
                   {articles.filter((article) => article.category?.toLowerCase().includes('art')).length > 3 && (
                     <div className="mt-6 text-center">
-                      <Link 
-                        href="/calgary/arts-culture" 
+                      <Link
+                        href="/calgary/arts-culture"
                         className="inline-flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
                       >
                         View All Arts & Culture Articles ({articles.filter((article) => article.category?.toLowerCase().includes('art')).length})
@@ -461,8 +469,8 @@ export default async function CalgaryPage() {
                   </div>
                   {articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).length > 3 && (
                     <div className="mt-6 text-center">
-                      <Link 
-                        href="/calgary/outdoors" 
+                      <Link
+                        href="/calgary/outdoors"
                         className="inline-flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
                       >
                         View All Outdoors Articles ({articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).length})
@@ -486,28 +494,28 @@ export default async function CalgaryPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {(() => {
-                  const neighborhoodArticles = articles.filter(article => 
+                  const neighborhoodArticles = articles.filter(article =>
                     article.category?.toLowerCase().includes('neighborhood') ||
                     article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
                     article.tags?.some(tag => tag.toLowerCase().includes('neighborhood'))
                   )
-                  
-                  console.log('All Calgary articles:', articles.map(a => ({ 
-                    id: a.id, 
-                    title: a.title, 
-                    category: a.category, 
-                    categories: a.categories, 
-                    tags: a.tags 
+
+                  console.log('All Calgary articles:', articles.map(a => ({
+                    id: a.id,
+                    title: a.title,
+                    category: a.category,
+                    categories: a.categories,
+                    tags: a.tags
                   })))
                   console.log('Calgary neighborhood articles found:', neighborhoodArticles.length)
-                  console.log('Calgary neighborhood articles:', neighborhoodArticles.map(a => ({ 
-                    id: a.id, 
-                    title: a.title, 
-                    category: a.category, 
-                    categories: a.categories, 
-                    tags: a.tags 
+                  console.log('Calgary neighborhood articles:', neighborhoodArticles.map(a => ({
+                    id: a.id,
+                    title: a.title,
+                    category: a.category,
+                    categories: a.categories,
+                    tags: a.tags
                   })))
-                  
+
                   return neighborhoodArticles.slice(0, 4).map((article) => (
                     <Link key={article.id} href={getArticleUrl(article)}>
                       <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
@@ -527,19 +535,19 @@ export default async function CalgaryPage() {
                   ))
                 })()}
                 {/* Show placeholder if no neighborhood articles */}
-                {articles.filter(article => 
+                {articles.filter(article =>
                   article.category?.toLowerCase().includes('neighborhood') ||
                   article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
                   article.tags?.some(tag => tag.toLowerCase().includes('neighborhood'))
                 ).length === 0 && (
-                  <div className="col-span-full text-center py-12">
-                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl">🏘️</span>
+                    <div className="col-span-full text-center py-12">
+                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">🏘️</span>
+                      </div>
+                      <h3 className="font-semibold text-lg mb-2">No Neighborhood Articles Yet</h3>
+                      <p className="text-gray-600 text-sm">Create articles with "Neighborhood" category to see them here.</p>
                     </div>
-                    <h3 className="font-semibold text-lg mb-2">No Neighborhood Articles Yet</h3>
-                    <p className="text-gray-600 text-sm">Create articles with "Neighborhood" category to see them here.</p>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           </section>
@@ -555,23 +563,23 @@ export default async function CalgaryPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {(() => {
-                  const guideArticles = articles.filter(article => 
+                  const guideArticles = articles.filter(article =>
                     article.category?.toLowerCase().includes('guide') ||
                     article.categories?.some(cat => cat.toLowerCase().includes('guide')) ||
                     article.tags?.some(tag => tag.toLowerCase().includes('guide')) ||
                     article.type?.toLowerCase().includes('guide')
                   )
-                  
+
                   console.log('Calgary guide articles found:', guideArticles.length)
-                  console.log('Calgary guide articles:', guideArticles.map(a => ({ 
-                    id: a.id, 
-                    title: a.title, 
-                    category: a.category, 
-                    categories: a.categories, 
+                  console.log('Calgary guide articles:', guideArticles.map(a => ({
+                    id: a.id,
+                    title: a.title,
+                    category: a.category,
+                    categories: a.categories,
                     tags: a.tags,
                     type: a.type
                   })))
-                  
+
                   return guideArticles.slice(0, 3).map((article) => (
                     <Link key={article.id} href={getArticleUrl(article)}>
                       <div className="bg-white rounded-lg overflow-hidden shadow-sm p-4">
@@ -585,20 +593,20 @@ export default async function CalgaryPage() {
                   ))
                 })()}
                 {/* Show placeholder if no guide articles */}
-                {articles.filter(article => 
+                {articles.filter(article =>
                   article.category?.toLowerCase().includes('guide') ||
                   article.categories?.some(cat => cat.toLowerCase().includes('guide')) ||
                   article.tags?.some(tag => tag.toLowerCase().includes('guide')) ||
                   article.type?.toLowerCase().includes('guide')
                 ).length === 0 && (
-                  <div className="col-span-full text-center py-12">
-                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl">📖</span>
+                    <div className="col-span-full text-center py-12">
+                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">📖</span>
+                      </div>
+                      <h3 className="font-semibold text-lg mb-2">No Guide Articles Yet</h3>
+                      <p className="text-gray-600 text-sm">Create articles with "Guide" category or type to see them here.</p>
                     </div>
-                    <h3 className="font-semibold text-lg mb-2">No Guide Articles Yet</h3>
-                    <p className="text-gray-600 text-sm">Create articles with "Guide" category or type to see them here.</p>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           </section>
