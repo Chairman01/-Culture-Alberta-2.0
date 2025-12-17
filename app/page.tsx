@@ -18,8 +18,8 @@ export const dynamicParams = true // Generate pages on-demand
 // Server-side data loading for dynamic rendering (NOT static generation)
 async function getHomePageData() {
   try {
-          // Use the sustainable homepage articles function with optimized fallback
-          const apiArticles = await getHomepageArticles()
+    // Use the sustainable homepage articles function with optimized fallback
+    const apiArticles = await getHomepageArticles()
     console.log('🔍 DEBUG: getHomepageArticles returned:', apiArticles?.length || 0, 'articles')
     if (apiArticles && apiArticles.length > 0) {
       console.log('🔍 DEBUG: First article:', apiArticles[0].title)
@@ -28,7 +28,7 @@ async function getHomePageData() {
     } else {
       console.warn('⚠️ DEBUG: No articles found from getHomepageArticlesWithFallback')
     }
-    
+
     // Get events separately for the "Upcoming Events" section
     let events: any[] = []
     try {
@@ -38,7 +38,7 @@ async function getHomePageData() {
       console.error('❌ Error fetching events:', error)
       events = [] // Fallback to empty array
     }
-    
+
     // Convert events to article format for homepage display only
     const eventAsArticles = events.map(event => ({
       id: event.id,
@@ -62,12 +62,12 @@ async function getHomePageData() {
       featuredCalgary: event.featured_calgary || false,
       type: 'event'
     }))
-    
+
     // Use articles only for general content (events are filtered out in getHomepageArticles)
     // Events are handled separately for the "Upcoming Events" section
     const combinedPosts = [...apiArticles, ...eventAsArticles]
     console.log('🔍 DEBUG: Combined posts before deduplication:', combinedPosts.length)
-    
+
     // DEDUPLICATE: Remove any duplicate IDs (can happen if same content is in both sources)
     const seenIds = new Set<string>()
     const allPosts = combinedPosts.filter(post => {
@@ -79,12 +79,12 @@ async function getHomePageData() {
       return true
     })
     console.log('🔍 DEBUG: Combined posts (articles + events for homepage):', allPosts.length, '(removed', combinedPosts.length - allPosts.length, 'duplicates)')
-    
+
     // Simple approach: Use all posts for all sections, filter by categories
     const allPostsForFiltering = allPosts
     console.log('🔍 DEBUG: allPostsForFiltering length:', allPostsForFiltering.length)
     console.log('🔍 DEBUG: First few post titles:', allPostsForFiltering.slice(0, 3).map(p => p.title))
-    
+
     // CRITICAL: If no posts are found, create fallback content to prevent empty homepage
     if (allPostsForFiltering.length === 0) {
       console.warn('⚠️ No articles found in database, using fast fallback content')
@@ -92,7 +92,7 @@ async function getHomePageData() {
       console.log('🔍 DEBUG: apiArticles length:', apiArticles?.length || 0)
       console.log('🔍 DEBUG: events length:', events?.length || 0)
       console.log('🔍 DEBUG: combinedPosts length:', combinedPosts?.length || 0)
-      
+
       // Pre-created fallback for maximum speed - no object creation overhead
       const fallbackPosts = [{
         id: 'fallback-1',
@@ -115,23 +115,23 @@ async function getHomePageData() {
       }]
       return { posts: fallbackPosts, events: [] }
     }
-    
+
     // Debug: Check what status values we have
     console.log('🔍 DEBUG: Status values in articles:', allPostsForFiltering.map(p => ({ title: p.title, status: p.status })).slice(0, 3))
-    
+
     // Filter by status, but be more lenient if status is undefined
-    const publishedPosts = allPostsForFiltering.filter(post => 
+    const publishedPosts = allPostsForFiltering.filter(post =>
       post.status === 'published' || post.status === undefined || post.status === null
     )
     console.log('🔍 DEBUG: Published posts after filtering:', publishedPosts.length)
-    
+
     return {
       posts: publishedPosts,
       events: [] // We'll filter events by category later
     }
   } catch (error) {
     console.error("Error loading posts:", error)
-    
+
     // CRITICAL: Always return fallback content instead of empty arrays
     console.warn('⚠️ Database error, using fast fallback content to prevent empty homepage')
     // Pre-created fallback for maximum speed - no Date() calls or object creation overhead
@@ -168,7 +168,7 @@ export default async function HomeStatic() {
       const now = new Date()
       const diffTime = Math.abs(now.getTime() - date.getTime())
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      
+
       if (diffDays === 1) return '1 day ago'
       if (diffDays < 7) return `${diffDays} days ago`
       if (diffDays < 14) return '1 week ago'
@@ -181,7 +181,7 @@ export default async function HomeStatic() {
 
   const formatEventDate = (dateString: string) => {
     if (!dateString) return 'Date TBA'
-    
+
     try {
       // Handle both ISO format and simple date format
       let date: Date
@@ -198,17 +198,17 @@ export default async function HomeStatic() {
         const [year, month, day] = dateString.split('-').map(Number)
         date = new Date(year, month - 1, day) // month is 0-indexed
       }
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         console.error('Invalid date string:', dateString)
         return 'Date TBA'
       }
-      
-      return date.toLocaleDateString('en-US', { 
+
+      return date.toLocaleDateString('en-US', {
         month: 'long',
-        day: 'numeric', 
-        year: 'numeric' 
+        day: 'numeric',
+        year: 'numeric'
       })
     } catch (error) {
       console.error('Error formatting date:', error, 'Date string:', dateString)
@@ -222,8 +222,7 @@ export default async function HomeStatic() {
 
   const getPostExcerpt = (post: Article) => {
     if (post.excerpt) {
-      // Truncate long excerpts to 200 characters for better display
-      return post.excerpt.length > 200 ? post.excerpt.substring(0, 200) + '...' : post.excerpt
+      return post.excerpt
     }
     if (post.content && post.content.trim()) {
       return post.content.substring(0, 150) + '...'
@@ -245,14 +244,14 @@ export default async function HomeStatic() {
     const regularDate = post.date
     const createdAt = post.createdAt
     const fallback = new Date().toISOString()
-    
+
     console.log('Server getPostDate for post:', post.title, {
       event_date: eventDate,
       date: regularDate,
       createdAt: createdAt,
       type: (post as any).type
     })
-    
+
     return eventDate || regularDate || createdAt || fallback
   }
 
@@ -262,12 +261,12 @@ export default async function HomeStatic() {
 
   // Only show a featured ARTICLE when explicitly flagged; otherwise show the placeholder
   const featuredPost = posts.find(post => post.featuredHome === true && post.type !== 'event') || null
-  
+
   // Sort articles by date (newest first) before filtering
   // For articles, prioritize date; for events, use date or createdAt
   const sortedPosts = posts.sort((a, b) => {
     let dateA: Date, dateB: Date;
-    
+
     if (a.type === 'event') {
       // For events, use event_date if available, otherwise createdAt
       dateA = new Date(a.date || a.createdAt || 0)
@@ -275,7 +274,7 @@ export default async function HomeStatic() {
       // For articles, prioritize date over createdAt (since articles use date field)
       dateA = new Date(a.date || a.createdAt || 0)
     }
-    
+
     if (b.type === 'event') {
       // For events, use event_date if available, otherwise createdAt
       dateB = new Date(b.date || b.createdAt || 0)
@@ -283,86 +282,86 @@ export default async function HomeStatic() {
       // For articles, prioritize date over createdAt (since articles use date field)
       dateB = new Date(b.date || b.createdAt || 0)
     }
-    
+
     return dateB.getTime() - dateA.getTime() // Newest first
   })
-  
-  
+
+
   // SIMPLE CATEGORY-BASED FILTERING
   const edmontonPosts = sortedPosts.filter(post => {
     // First filter out events - events should not appear in city sections
     if (post.type === 'event') return false;
-    
+
     // Check if article has "Edmonton" in category or categories array
     const hasEdmontonCategory = post.category?.toLowerCase().includes('edmonton');
-    const hasEdmontonInCategories = post.categories?.some((cat: string) => 
+    const hasEdmontonInCategories = post.categories?.some((cat: string) =>
       cat.toLowerCase().includes('edmonton')
     );
-    
+
     return hasEdmontonCategory || hasEdmontonInCategories;
   }).slice(0, 3)
-  
+
   const calgaryPosts = sortedPosts.filter(post => {
     // First filter out events - events should not appear in city sections
     if (post.type === 'event') return false;
-    
+
     // Check if article has "Calgary" in category or categories array
     const hasCalgaryCategory = post.category?.toLowerCase().includes('calgary');
-    const hasCalgaryInCategories = post.categories?.some((cat: string) => 
+    const hasCalgaryInCategories = post.categories?.some((cat: string) =>
       cat.toLowerCase().includes('calgary')
     );
-    
+
     return hasCalgaryCategory || hasCalgaryInCategories;
   }).slice(0, 3)
   // SIMPLE CATEGORY-BASED FILTERING for Food & Drink
   const foodDrinkPosts = sortedPosts.filter(post => {
     // First filter out events - events should not appear in Food & Drink section
     if (post.type === 'event') return false;
-    
+
     // Check if article has "Food & Drink" in category or categories array
     const category = post.category?.toLowerCase() || '';
     const categories = post.categories || [];
     const title = post.title?.toLowerCase() || '';
-    
+
     // Check for exact match or contains food/drink
-    const hasFoodCategory = category.includes('food & drink') || 
-                           category.includes('food') || 
-                           category.includes('drink');
-    
+    const hasFoodCategory = category.includes('food & drink') ||
+      category.includes('food') ||
+      category.includes('drink');
+
     const hasFoodInCategories = categories.some((cat: string) => {
       const catLower = cat.toLowerCase();
       return catLower.includes('food & drink') ||
-             catLower.includes('food') ||
-             catLower.includes('drink');
+        catLower.includes('food') ||
+        catLower.includes('drink');
     });
-    
+
     // Also check title for food-related keywords (fallback for missing categories)
     // Be more specific to avoid false positives like "showcases" containing "eat"
-    const hasFoodInTitle = title.includes('restaurant') || 
-                          title.includes('sushi') || 
-                          title.includes('food') ||
-                          title.includes('romantic') ||
-                          title.includes('dining') ||
-                          title.includes('cafe') ||
-                          title.includes('bar') ||
-                          title.includes('drink') ||
-                          title.includes('coffee') ||
-                          title.includes('bite') ||
-                          title.includes('cuisine') ||
-                          title.includes('chef') ||
-                          title.includes('menu') ||
-                          title.includes('meal') ||
-                          title.includes('taste') ||
-                          title.includes('flavor') ||
-                          title.includes('cook') ||
-                          title.includes('recipe');
-    
+    const hasFoodInTitle = title.includes('restaurant') ||
+      title.includes('sushi') ||
+      title.includes('food') ||
+      title.includes('romantic') ||
+      title.includes('dining') ||
+      title.includes('cafe') ||
+      title.includes('bar') ||
+      title.includes('drink') ||
+      title.includes('coffee') ||
+      title.includes('bite') ||
+      title.includes('cuisine') ||
+      title.includes('chef') ||
+      title.includes('menu') ||
+      title.includes('meal') ||
+      title.includes('taste') ||
+      title.includes('flavor') ||
+      title.includes('cook') ||
+      title.includes('recipe');
+
     const isFoodDrink = hasFoodCategory || hasFoodInCategories || hasFoodInTitle;
-    
+
     return isFoodDrink;
   }).slice(0, 3) // Take the first 3 (which should be the newest since sortedPosts is already sorted by date)
-  
-  
+
+
   // SIMPLE CATEGORY-BASED FILTERING for Events
   const eventPosts = sortedPosts.filter(post => {
     // Only include items that are actually events (type: 'event') or have specific event categories
@@ -370,42 +369,42 @@ export default async function HomeStatic() {
     if (post.type === 'event') {
       return true; // Always include actual events
     }
-    
+
     // For articles, only include if they have specific event-related categories
     // but exclude health alerts, news, etc. that might have "Events" category
-    const hasEventCategory = post.category?.toLowerCase() === 'events' || 
-                            post.category?.toLowerCase().includes('art') ||
-                            post.category?.toLowerCase().includes('festival');
-    const hasEventInCategories = post.categories?.some((cat: string) => 
+    const hasEventCategory = post.category?.toLowerCase() === 'events' ||
+      post.category?.toLowerCase().includes('art') ||
+      post.category?.toLowerCase().includes('festival');
+    const hasEventInCategories = post.categories?.some((cat: string) =>
       cat.toLowerCase() === 'events' ||
       cat.toLowerCase().includes('art') ||
       cat.toLowerCase().includes('festival')
     );
-    
+
     // Additional check: exclude news articles about health alerts, strikes, etc.
     const isNewsArticle = post.title?.toLowerCase().includes('alert') ||
-                         post.title?.toLowerCase().includes('strike') ||
-                         post.title?.toLowerCase().includes('exposure') ||
-                         post.title?.toLowerCase().includes('rally');
-    
+      post.title?.toLowerCase().includes('strike') ||
+      post.title?.toLowerCase().includes('exposure') ||
+      post.title?.toLowerCase().includes('rally');
+
     if (isNewsArticle) {
       return false; // Don't show news articles as events
     }
-    
+
     return hasEventCategory || hasEventInCategories;
   }).slice(0, 3)
-  
+
   // Show top 5 most recent articles instead of only trending ones
   const trendingPosts = sortedPosts.filter(post => post.type !== 'event').slice(0, 5)
-  
+
   // Debug logging for homepage articles
   console.log('Total posts loaded:', posts.length)
   console.log('Posts with trendingHome flag:', posts.filter(post => post.trendingHome === true).length)
   console.log('Top 5 articles selected:', trendingPosts.length)
   console.log('Featured post found:', featuredPost ? featuredPost.title : 'None')
   console.log('First few posts:', posts.slice(0, 3).map(p => ({ title: p.title, type: p.type, featuredHome: p.featuredHome })))
-  
-  
+
+
   // Debug: Show all unique categories and types
   const allCategories = [...new Set(posts.map(p => p.category).filter(Boolean))]
   const allTypes = [...new Set(posts.map(p => p.type).filter(Boolean))]
@@ -413,33 +412,33 @@ export default async function HomeStatic() {
   console.log('All unique categories:', allCategories)
   console.log('All unique types:', allTypes)
   console.log('All unique category arrays:', allCategoryArrays)
-  
+
   // Debug logging for Edmonton posts
   console.log('=== SIMPLE CATEGORY-BASED FILTERING RESULTS ===')
   console.log('Edmonton posts found:', edmontonPosts.length)
   console.log('Edmonton posts:', edmontonPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
-  
+
   console.log('Calgary posts found:', calgaryPosts.length)
   console.log('Calgary posts:', calgaryPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
-  
-  
+
+
   // Debug: Check all posts with food/drink related content
   console.log('DEBUG: All posts with food/drink keywords:')
   sortedPosts.forEach((post, index) => {
     const title = post.title?.toLowerCase() || '';
     const category = post.category?.toLowerCase() || '';
     const categories = post.categories?.map(c => c.toLowerCase()) || [];
-    
-    if (title.includes('food') || title.includes('restaurant') || title.includes('sushi') || 
-        title.includes('drink') || category.includes('food') || category.includes('drink') ||
-        categories.some(c => c.includes('food') || c.includes('drink'))) {
+
+    if (title.includes('food') || title.includes('restaurant') || title.includes('sushi') ||
+      title.includes('drink') || category.includes('food') || category.includes('drink') ||
+      categories.some(c => c.includes('food') || c.includes('drink'))) {
       console.log(`  ${index}: "${post.title}" - category: "${post.category}", categories: [${categories.join(', ')}]`)
     }
   })
-  
+
   console.log('Events found:', eventPosts.length)
   console.log('Events:', eventPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
-  
+
   const upcomingEvents = eventPosts.slice(0, 3) // Get the first 3 events
 
   return (
@@ -531,7 +530,7 @@ export default async function HomeStatic() {
                   </div>
 
                   {/* Newsletter */}
-                  <NewsletterSignup 
+                  <NewsletterSignup
                     title="Newsletter"
                     description="Stay updated with the latest cultural news and events from across Alberta."
                   />
@@ -610,13 +609,13 @@ export default async function HomeStatic() {
                     </div>
                   </Link>
                 ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
           {/* Upcoming Events */}
           <section className="w-full py-8">
-          <div className="container mx-auto px-4 md:px-6">
+            <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-4xl font-bold">Upcoming Events</h2>
                 <Link href="/events" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
@@ -649,7 +648,7 @@ export default async function HomeStatic() {
                         <Link href={getEventUrl(event)}>
                           <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
                             View Details
-                </button>
+                          </button>
                         </Link>
                       </div>
                     </div>
@@ -678,7 +677,7 @@ export default async function HomeStatic() {
                         <p className="font-body text-sm text-gray-600 mb-3">Check back soon for upcoming cultural events!</p>
                         <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
                           View Details
-                  </button>
+                        </button>
                       </div>
                     </div>
                   </>
@@ -747,8 +746,8 @@ export default async function HomeStatic() {
                   </div>
                 )}
               </div>
-          </div>
-        </section>
+            </div>
+          </section>
 
           {/* Best of Alberta */}
           <BestOfSection />

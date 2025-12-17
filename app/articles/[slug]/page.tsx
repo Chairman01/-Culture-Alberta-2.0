@@ -20,7 +20,7 @@ import { getAllEvents, getEventBySlug } from '@/lib/events'
 import { Metadata } from 'next'
 // import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
 
-// YouTube embedding feature removed - URLs will display as plain links
+import { processArticleContent } from '@/lib/utils/youtube'
 
 // import NewsletterSignup from '@/components/newsletter-signup' // Removed - using ArticleNewsletterSignup instead
 // Removed ArticleContent import to fix hydration issues
@@ -598,7 +598,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                           loadedArticle.content !== 'undefined' ? (
                           <div
                             className="prose prose-lg max-w-none article-content-wrapper"
-                            dangerouslySetInnerHTML={{ __html: loadedArticle.content }}
+                            dangerouslySetInnerHTML={{ __html: processArticleContent(loadedArticle.content) }}
                             suppressHydrationWarning={true}
                           />
                         ) : loadedArticle.excerpt ? (
