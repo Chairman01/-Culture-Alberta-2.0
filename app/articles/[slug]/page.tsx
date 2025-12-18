@@ -452,7 +452,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     Back to Home
                   </Link>
                   <div className="hidden md:block">
-                    <h1 className="text-lg font-semibold text-gray-900 truncate max-w-md">
+                    <h1 className="text-lg font-semibold text-gray-900 truncate max-w-2xl">
                       {loadedArticle.title}
                     </h1>
                   </div>
