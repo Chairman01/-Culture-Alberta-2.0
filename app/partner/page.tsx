@@ -1,944 +1,512 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Search, Download, Mail, Phone, LocateIcon as Location } from "lucide-react"
+import Image from "next/image"
+import { ArrowRight, X, MapPin, Phone, Mail, Download, Users, Eye, TrendingUp, Zap, Target, BarChart3, Sparkles, CheckCircle2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Footer } from "@/components/footer"
+
+// Client logos with their websites
+const clients = [
+  { name: "Moveology", logo: "/images/clients/moveology.png", url: "https://moveology.ca" },
+  { name: "Tutti Frutti", logo: "/images/clients/tutti-frutti.png", url: "https://tuttifrutti.com" },
+  { name: "Neon YYC", logo: "/images/clients/neon-yyc.png", url: "#" },
+  { name: "Pho City YYC", logo: "/images/clients/pho-city-yyc.png", url: "#" },
+  { name: "TC Legal", logo: "/images/clients/tc-legal.png", url: "#" },
+  { name: "Sport Calgary", logo: "/images/clients/sport-calgary.png", url: "https://sportcalgary.ca" },
+  { name: "Gamecon Canada", logo: "/images/clients/gamecon-canada.png", url: "#" },
+  { name: "Pekko Chicken", logo: "/images/clients/pekko-chicken.png", url: "#" },
+  { name: "Tire Doctors", logo: "/images/clients/tiredoctors.png", url: "#" },
+]
+
+// Animated counter component
+function AnimatedCounter({ end, suffix = "", duration = 2000 }: { end: number; suffix?: string; duration?: number }) {
+  const [count, setCount] = useState(0)
+  const [hasAnimated, setHasAnimated] = useState(false)
+
+  useEffect(() => {
+    if (hasAnimated) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setHasAnimated(true)
+          let startTime: number
+          const animate = (currentTime: number) => {
+            if (!startTime) startTime = currentTime
+            const progress = Math.min((currentTime - startTime) / duration, 1)
+            setCount(Math.floor(progress * end))
+            if (progress < 1) {
+              requestAnimationFrame(animate)
+            }
+          }
+          requestAnimationFrame(animate)
+        }
+      },
+      { threshold: 0.5 }
+    )
+
+    const element = document.getElementById(`counter-${end}`)
+    if (element) observer.observe(element)
+
+    return () => observer.disconnect()
+  }, [end, duration, hasAnimated])
+
+  return (
+    <span id={`counter-${end}`}>
+      {count.toLocaleString()}{suffix}
+    </span>
+  )
+}
 
 export default function PartnerPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
-        <section className="w-full py-6 bg-muted/30">
-          <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">Partner with Us</h1>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  Join us in celebrating and promoting Alberta's vibrant culture.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* Hero Section - Clean & Modern */}
+        <section className="w-full py-16 md:py-24 lg:py-32 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
+          {/* Subtle decorative elements */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-red-100/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/30">
-          <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Focus Areas</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  Our diversified and extensive pillars of editorial coverage will ensure that your brand and promotion
-                  always sit within the matching context, right at the moment when our audience is consuming the
-                  content.
-                </p>
+          <div className="container relative z-10 mx-auto max-w-6xl px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-8 text-center">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-sm font-medium">
+                <Sparkles className="h-4 w-4" />
+                Alberta's Leading Local Media
               </div>
-            </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 md:grid-cols-4 lg:gap-12 mt-8">
-              {focusAreas.map((area, index) => (
-                <div key={index} className="flex flex-col items-center space-y-2 text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
-                    <span className="text-xl font-bold">{index + 1}</span>
-                  </div>
-                  <h3 className="text-xl font-bold">{area}</h3>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
 
-        <section className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Culture Media Ecosystem</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  At Culture Media, we pride ourselves in offering a wide range of opportunities for advertisers to tap
-                  into the power of our platforms.
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 max-w-7xl mx-auto">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Brand Amplification</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>
-                    By partnering with us, advertisers can amplify their message within the realm of culture media,
-                    increase brand visibility, and effectively communicate key messages directly to our engaged
-                    audience.
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Strategic Narrative</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>
-                    In our marketing strategy, we focus on crafting a captivating narrative that deeply connects with
-                    our target audience, while conversion entails transforming that narrative into tangible actions or
-                    loyal followers.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
+              {/* Main headline */}
+              <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-gray-900 leading-tight">
+                We Reach <AnimatedCounter end={1000000} suffix="+" />
+                <br />
+                <span className="text-blue-600 font-black">Albertans</span>
+              </h1>
 
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/30">
-          <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Our Insights</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  Every organization needs a digital footprint. Culture Media has you covered.
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-6 md:grid-cols-3 max-w-7xl mx-auto">
-              <Card className="text-center">
-                <CardHeader>
-                  <CardTitle className="text-4xl font-bold">380,000+</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xl">Total Followers</p>
-                </CardContent>
-              </Card>
-              <Card className="text-center">
-                <CardHeader>
-                  <CardTitle className="text-4xl font-bold">24,500+</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xl">Total Accounts Reached</p>
-                </CardContent>
-              </Card>
-              <Card className="text-center">
-                <CardHeader>
-                  <CardTitle className="text-4xl font-bold">700,000+</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xl">Total Impressions</p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
+              <p className="max-w-2xl text-lg md:text-xl text-gray-600 leading-relaxed font-body">
+                From the hottest new restaurants to viral local moments, we're the ultimate guide to
+                Calgary and Edmonton's trending culture, events, and lifestyle.
+              </p>
 
-        <section className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Demographics</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  Understanding our audience helps you target your message effectively
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-12 md:grid-cols-2 max-w-7xl mx-auto">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Culture YYC Demographics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div>
-                      <h4 className="mb-2 text-lg font-medium">Gender</h4>
-                      <div className="flex items-center gap-4">
-                        <div className="w-full">
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm font-medium">Female</span>
-                            <span className="text-sm font-medium">60%</span>
-                          </div>
-                          <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
-                            <div className="h-full bg-black" style={{ width: "60%" }}></div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 mt-2">
-                        <div className="w-full">
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm font-medium">Male</span>
-                            <span className="text-sm font-medium">40%</span>
-                          </div>
-                          <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
-                            <div className="h-full bg-black" style={{ width: "40%" }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="mb-2 text-lg font-medium">Age</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { age: "13-17", percentage: "5%" },
-                          { age: "18-24", percentage: "20%" },
-                          { age: "25-34", percentage: "40%" },
-                          { age: "35-44", percentage: "20%" },
-                          { age: "45-54", percentage: "10%" },
-                          { age: "55-64", percentage: "3%" },
-                          { age: "65+", percentage: "2%" },
-                        ].map((item, index) => (
-                          <div key={index} className="flex items-center justify-between">
-                            <span className="text-sm">{item.age}</span>
-                            <span className="text-sm font-medium">{item.percentage}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="mb-2 text-lg font-medium">Location</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">Calgary</span>
-                          <span className="text-sm font-medium">85%</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">Airdrie</span>
-                          <span className="text-sm font-medium">15%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Culture Alberta Demographics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div>
-                      <h4 className="mb-2 text-lg font-medium">Gender</h4>
-                      <div className="flex items-center gap-4">
-                        <div className="w-full">
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm font-medium">Female</span>
-                            <span className="text-sm font-medium">60%</span>
-                          </div>
-                          <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
-                            <div className="h-full bg-black" style={{ width: "60%" }}></div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 mt-2">
-                        <div className="w-full">
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm font-medium">Male</span>
-                            <span className="text-sm font-medium">40%</span>
-                          </div>
-                          <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
-                            <div className="h-full bg-black" style={{ width: "40%" }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="mb-2 text-lg font-medium">Age</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { age: "13-17", percentage: "3%" },
-                          { age: "18-24", percentage: "15%" },
-                          { age: "25-34", percentage: "45%" },
-                          { age: "35-44", percentage: "25%" },
-                          { age: "45-54", percentage: "8%" },
-                          { age: "55-64", percentage: "3%" },
-                          { age: "65+", percentage: "1%" },
-                        ].map((item, index) => (
-                          <div key={index} className="flex items-center justify-between">
-                            <span className="text-sm">{item.age}</span>
-                            <span className="text-sm font-medium">{item.percentage}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="mb-2 text-lg font-medium">Location</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">Edmonton</span>
-                          <span className="text-sm font-medium">65.7%</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">Calgary</span>
-                          <span className="text-sm font-medium">30.3%</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">Saint Albert</span>
-                          <span className="text-sm font-medium">4.0%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/30">
-          <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Advertising Rates</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  Effective solutions to promote your brand across our platforms
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Instagram Featured Post</CardTitle>
-                  <CardDescription>Average Reach: 10,000 to 30,000</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-4xl font-bold">$250</div>
-                  <p className="mt-2 text-muted-foreground">Per post</p>
-                </CardContent>
-                <CardFooter>
-                  <Button className="w-full bg-black hover:bg-gray-800">Get Started</Button>
-                </CardFooter>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Instagram Story</CardTitle>
-                  <CardDescription>Average Views: 5,000 to 20,000</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-4xl font-bold">$125</div>
-                  <p className="mt-2 text-muted-foreground">Per story</p>
-                </CardContent>
-                <CardFooter>
-                  <Button className="w-full bg-black hover:bg-gray-800">Get Started</Button>
-                </CardFooter>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Instagram Giveaway Bundle</CardTitle>
-                  <CardDescription>Includes featured posts and stories</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-4xl font-bold">$400</div>
-                  <p className="mt-2 text-muted-foreground">Average Reach: 35,000 to 55,000</p>
-                </CardContent>
-                <CardFooter>
-                  <Button className="w-full bg-black hover:bg-gray-800">Get Started</Button>
-                </CardFooter>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        <section className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Campaign Packages</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  Long-term partnerships for sustained brand visibility
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-6 md:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Basic Package</CardTitle>
-                  <CardDescription>2 Feed Posts Per Month</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2 h-4 w-4"
-                      >
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                      Posts can be giveaways
-                    </li>
-                    <li className="flex items-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2 h-4 w-4"
-                      >
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                      Carousels/Reels Included
-                    </li>
-                    <li className="flex items-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2 h-4 w-4"
-                      >
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                      2 Instagram Story Shares
-                    </li>
-                  </ul>
-                  <div className="pt-4">
-                    <div className="mb-2 text-sm font-medium">Total Estimated Reach:</div>
-                    <div className="text-sm">30,000 to 60,000</div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4">
-                  <div className="grid w-full grid-cols-3 gap-2">
-                    <div className="flex flex-col items-center justify-center rounded-lg border p-4">
-                      <span className="text-sm font-medium">3 Month</span>
-                      <span className="text-lg font-bold">$250/M</span>
-                    </div>
-                    <div className="flex flex-col items-center justify-center rounded-lg border p-4">
-                      <span className="text-sm font-medium">6 Month</span>
-                      <span className="text-lg font-bold">$225/M</span>
-                    </div>
-                    <div className="flex flex-col items-center justify-center rounded-lg border p-4">
-                      <span className="text-sm font-medium">12 Month</span>
-                      <span className="text-lg font-bold">$200/M</span>
-                    </div>
-                  </div>
-                  <Button className="w-full bg-black hover:bg-gray-800">Get Started</Button>
-                </CardFooter>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Standard Package</CardTitle>
-                  <CardDescription>3 Feed Posts Per Month</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2 h-4 w-4"
-                      >
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                      Posts can be giveaways
-                    </li>
-                    <li className="flex items-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2 h-4 w-4"
-                      >
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                      Carousels/Reels Included
-                    </li>
-                    <li className="flex items-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2 h-4 w-4"
-                      >
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                      3 Instagram Story Shares
-                    </li>
-                  </ul>
-                  <div className="pt-4">
-                    <div className="mb-2 text-sm font-medium">Total Estimated Reach:</div>
-                    <div className="text-sm">50,000 to 120,000</div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4">
-                  <div className="grid w-full grid-cols-3 gap-2">
-                    <div className="flex flex-col items-center justify-center rounded-lg border p-4">
-                      <span className="text-sm font-medium">3 Month</span>
-                      <span className="text-lg font-bold">$350/M</span>
-                    </div>
-                    <div className="flex flex-col items-center justify-center rounded-lg border p-4">
-                      <span className="text-sm font-medium">6 Month</span>
-                      <span className="text-lg font-bold">$325/M</span>
-                    </div>
-                    <div className="flex flex-col items-center justify-center rounded-lg border p-4">
-                      <span className="text-sm font-medium">12 Month</span>
-                      <span className="text-lg font-bold">$300/M</span>
-                    </div>
-                  </div>
-                  <Button className="w-full bg-black hover:bg-gray-800">Get Started</Button>
-                </CardFooter>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Premium Package</CardTitle>
-                  <CardDescription>4 Feed Posts Per Month</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2 h-4 w-4"
-                      >
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                      Posts can be giveaways
-                    </li>
-                    <li className="flex items-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2 h-4 w-4"
-                      >
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                      Carousels/Reels Included
-                    </li>
-                    <li className="flex items-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2 h-4 w-4"
-                      >
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                      4 Instagram Story Shares
-                    </li>
-                  </ul>
-                  <div className="pt-4">
-                    <div className="mb-2 text-sm font-medium">Total Estimated Reach:</div>
-                    <div className="text-sm">70,000 to 160,000</div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4">
-                  <div className="grid w-full grid-cols-3 gap-2">
-                    <div className="flex flex-col items-center justify-center rounded-lg border p-4">
-                      <span className="text-sm font-medium">3 Month</span>
-                      <span className="text-lg font-bold">$450/M</span>
-                    </div>
-                    <div className="flex flex-col items-center justify-center rounded-lg border p-4">
-                      <span className="text-sm font-medium">6 Month</span>
-                      <span className="text-lg font-bold">$425/M</span>
-                    </div>
-                    <div className="flex flex-col items-center justify-center rounded-lg border p-4">
-                      <span className="text-sm font-medium">12 Month</span>
-                      <span className="text-lg font-bold">$400/M</span>
-                    </div>
-                  </div>
-                  <Button className="w-full bg-black hover:bg-gray-800">Get Started</Button>
-                </CardFooter>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/30">
-          <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">The Campaign Process</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  How we work with you to create successful campaigns
-                </p>
-              </div>
-            </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-              <div className="flex flex-col items-center space-y-2 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
-                  <span className="text-xl font-bold">1</span>
-                </div>
-                <h3 className="text-xl font-bold">Gather Strategic Insights</h3>
-                <p className="text-sm text-muted-foreground">
-                  We collaborate together to understand your business objectives and provide tailored strategies
-                </p>
-              </div>
-              <div className="flex flex-col items-center space-y-2 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
-                  <span className="text-xl font-bold">2</span>
-                </div>
-                <h3 className="text-xl font-bold">Create Captivating Content</h3>
-                <p className="text-sm text-muted-foreground">
-                  Drawing upon our audience insights, we possess the expertise to shape your message into captivating
-                  and powerful storytelling
-                </p>
-              </div>
-              <div className="flex flex-col items-center space-y-2 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
-                  <span className="text-xl font-bold">3</span>
-                </div>
-                <h3 className="text-xl font-bold">Release It To The World</h3>
-                <p className="text-sm text-muted-foreground">
-                  Maximize your campaign's reach through our owned media portfolio, including websites, social
-                  platforms, and more
-                </p>
-              </div>
-              <div className="flex flex-col items-center space-y-2 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
-                  <span className="text-xl font-bold">4</span>
-                </div>
-                <h3 className="text-xl font-bold">Campaign Debrief</h3>
-                <p className="text-sm text-muted-foreground">
-                  We analyze results and provide detailed reporting on campaign performance and audience engagement
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Additional Services</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  Beyond advertising, we offer comprehensive digital solutions
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Social Media Management</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-4">
-                    At Culture Media, we recognize the challenges of running a business and the limited time available
-                    for managing social media channels.
-                  </p>
-                  <p className="mb-4">
-                    Our customized management services are dedicated to elevating your brand's online presence.
-                  </p>
-                  <div className="mt-4">
-                    <h4 className="text-lg font-medium mb-2">Our services include:</h4>
-                    <ul className="space-y-1">
-                      <li className="flex items-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mr-2 h-4 w-4"
-                        >
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        Reputation Management
-                      </li>
-                      <li className="flex items-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mr-2 h-4 w-4"
-                        >
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        Strategy Development
-                      </li>
-                      <li className="flex items-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mr-2 h-4 w-4"
-                        >
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        Content Creation and Curation
-                      </li>
-                      <li className="flex items-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mr-2 h-4 w-4"
-                        >
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        Posting and Scheduling
-                      </li>
-                      <li className="flex items-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mr-2 h-4 w-4"
-                        >
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        Community Management
-                      </li>
-                      <li className="flex items-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mr-2 h-4 w-4"
-                        >
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        Performance Tracking and Analysis
-                      </li>
-                      <li className="flex items-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mr-2 h-4 w-4"
-                        >
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        Advertising and Campaign Management
-                      </li>
-                    </ul>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button className="w-full bg-black hover:bg-gray-800">Learn More</Button>
-                </CardFooter>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Digital Media Strategy</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-4">
-                    Whether you're just starting out or have been in business for years, developing a solid digital
-                    media strategy is vital for your success.
-                  </p>
-                  <p className="mb-4">
-                    At Culture Media, we specialize in building effective and customized digital media strategies
-                    tailored to your unique goals and objectives.
-                  </p>
-                  <p className="mb-4">
-                    Our team of experts will work closely with you to understand your target audience, identify the most
-                    appropriate digital platforms, and create compelling content that resonates with your audience.
-                  </p>
-                  <p>
-                    We will also help you establish policies and guidelines to regulate your company's use of digital
-                    media, ensuring a consistent and cohesive brand presence.
-                  </p>
-                </CardContent>
-                <CardFooter>
-                  <Button className="w-full bg-black hover:bg-gray-800">Learn More</Button>
-                </CardFooter>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/30">
-          <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Our Clients</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  We've partnered with many businesses based in Alberta and have helped them reach a large audience
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-6">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((index) => (
-                <div key={index} className="flex items-center justify-center p-4">
-                  <div className="h-16 w-32 bg-muted rounded-md flex items-center justify-center">
-                    <span className="text-muted-foreground">Client Logo</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="space-y-2">
-                  <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Let's work together!</h2>
-                  <p className="max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                    Ready to take your brand to the next level? Contact us today to discuss how we can help you reach
-                    your target audience.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <a
-                    href="/files/culture-alberta-media-kit.pdf"
-                    download
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-black text-white hover:bg-gray-800 h-10 px-4 py-2"
+              <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                <Button
+                  size="lg"
+                  className="bg-black text-white hover:bg-gray-800 font-semibold text-lg px-8 py-6 gap-2 rounded-full"
+                  onClick={() => setIsModalOpen(true)}
+                >
+                  Get Your Brand Featured
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+                <Link href="https://culturemedia.ca" target="_blank" rel="noopener noreferrer">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold text-lg px-8 py-6 rounded-full"
                   >
-                    <Download className="mr-2 h-4 w-4" /> Download Media Kit
-                  </a>
-                  <Button variant="outline">Contact Us</Button>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Location className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">1685 Centre Street SW, Calgary, AB, T2G 5P6</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">226 236 1828</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">culturemedia101@gmail.com</span>
-                  </div>
-                </div>
+                    View Media Kit
+                  </Button>
+                </Link>
               </div>
-              <div className="flex flex-col gap-4">
-                <div className="rounded-lg border bg-card p-6">
-                  <h3 className="mb-4 text-lg font-bold">Contact Form</h3>
-                  <form className="space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <label htmlFor="first-name" className="text-sm font-medium">
-                          First name
-                        </label>
-                        <Input id="first-name" placeholder="Enter your first name" />
-                      </div>
-                      <div className="space-y-2">
-                        <label htmlFor="last-name" className="text-sm font-medium">
-                          Last name
-                        </label>
-                        <Input id="last-name" placeholder="Enter your last name" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="email" className="text-sm font-medium">
-                        Email
-                      </label>
-                      <Input id="email" placeholder="Enter your email" type="email" />
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="company" className="text-sm font-medium">
-                        Company
-                      </label>
-                      <Input id="company" placeholder="Enter your company name" />
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="message" className="text-sm font-medium">
-                        Message
-                      </label>
-                      <textarea
-                        id="message"
-                        className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        placeholder="Enter your message"
-                      />
-                    </div>
-                    <Button type="submit" className="w-full bg-black hover:bg-gray-800">
-                      Send Message
-                    </Button>
-                  </form>
+            </div>
+          </div>
+        </section>
+
+        {/* Cities Section - Hyper-Local Coverage */}
+        <section className="w-full py-16 bg-white">
+          <div className="container mx-auto max-w-6xl px-4 md:px-6">
+            <div className="text-center mb-10">
+              <h2 className="font-display text-4xl md:text-5xl font-black text-gray-900 mb-4">
+                Hyper-Local Coverage
+              </h2>
+              <p className="text-lg text-gray-600 font-body">We know Alberta inside and out</p>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-4">
+              {[
+                { name: "CALGARY", color: "bg-red-600 text-white" },
+                { name: "EDMONTON", color: "bg-blue-600 text-white" },
+                { name: "RED DEER", color: "bg-gray-100 text-gray-700 border border-gray-200" },
+                { name: "LETHBRIDGE", color: "bg-gray-100 text-gray-700 border border-gray-200" },
+                { name: "& MORE", color: "bg-gray-100 text-gray-700 border border-gray-200" },
+              ].map((city) => (
+                <div
+                  key={city.name}
+                  className={`px-6 py-3 rounded-full font-bold text-lg transition-all duration-300 hover:scale-105 ${city.color}`}
+                >
+                  {city.name}
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Trusted Clients Section */}
+        <section className="w-full py-20 bg-gray-50">
+          <div className="container mx-auto max-w-6xl px-4 md:px-6">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              {/* Left side - Text */}
+              <div className="space-y-6">
+                <h2 className="font-display text-4xl md:text-5xl font-black text-gray-900 leading-tight">
+                  Trusted by
+                  <span className="text-blue-600"> local businesses </span>
+                  across Alberta
+                </h2>
+                <p className="text-lg text-gray-600 font-body">
+                  From restaurants to retailers, we help Alberta businesses connect with their community
+                  through authentic storytelling and strategic content placement.
+                </p>
+                <div className="space-y-3">
+                  {[
+                    "Authentic content that resonates locally",
+                    "Instagram, YouTube, Newsletter & Web",
+                    "Real engagement from real Albertans"
+                  ].map((item, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      <span className="text-gray-700 font-body">{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  className="bg-black text-white hover:bg-gray-800 font-semibold px-8 py-6 rounded-full gap-2"
+                  onClick={() => setIsModalOpen(true)}
+                >
+                  Partner With Us!
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
               </div>
+
+              {/* Right side - Logo Grid */}
+              <div className="grid grid-cols-3 gap-4">
+                {clients.map((client, index) => (
+                  <Link
+                    key={index}
+                    href={client.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center h-28 p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md hover:scale-105 transition-all duration-300"
+                    title={client.name}
+                  >
+                    <Image
+                      src={client.logo}
+                      alt={client.name}
+                      width={140}
+                      height={70}
+                      className="object-contain max-h-20"
+                    />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Stats Section - Clean Cards */}
+        <section className="w-full py-16 bg-white">
+          <div className="container mx-auto max-w-6xl px-4 md:px-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                { icon: Users, value: 50000, suffix: "+", label: "Total Followers", color: "blue" },
+                { icon: Eye, value: 1000000, suffix: "+", label: "Monthly Impressions", color: "green" },
+                { icon: TrendingUp, value: 250000, suffix: "+", label: "Accounts Reached Weekly", color: "purple" },
+              ].map((stat, index) => (
+                <div
+                  key={index}
+                  className="group p-8 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-lg hover:border-gray-300 transition-all duration-300"
+                >
+                  <div className={`inline-flex p-3 rounded-xl mb-4 ${stat.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                    stat.color === 'green' ? 'bg-green-100 text-green-600' :
+                      'bg-purple-100 text-purple-600'
+                    }`}>
+                    <stat.icon className="h-6 w-6" />
+                  </div>
+                  <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">
+                    <AnimatedCounter end={stat.value} suffix={stat.suffix} />
+                  </div>
+                  <div className="text-lg text-gray-500 font-body">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* What We Offer */}
+        <section className="w-full py-20 bg-gray-50">
+          <div className="container mx-auto max-w-6xl px-4 md:px-6">
+            <div className="text-center mb-12">
+              <h2 className="font-display text-4xl md:text-5xl font-black text-gray-900 mb-4">
+                Why Partner With Us?
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto font-body">
+                We create authentic content that resonates with Albertans and drives real results for your brand.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                { icon: Zap, title: "Viral Content", desc: "Our team crafts share-worthy content that gets your brand noticed" },
+                { icon: Target, title: "Targeted Reach", desc: "Connect with Calgary & Edmonton's most engaged audiences" },
+                { icon: BarChart3, title: "Proven Results", desc: "Data-driven campaigns that deliver measurable ROI" },
+                { icon: Users, title: "Community Trust", desc: "Built on 50K+ followers who trust our recommendations" },
+                { icon: Sparkles, title: "Creative Excellence", desc: "In-house team dedicated to making your brand shine" },
+                { icon: TrendingUp, title: "Local Expertise", desc: "Deep understanding of Alberta's culture and trends" },
+              ].map((item, index) => (
+                <div
+                  key={index}
+                  className="group p-6 rounded-xl bg-white border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300"
+                >
+                  <div className="inline-flex p-3 rounded-xl bg-gray-100 mb-4 group-hover:bg-black group-hover:text-white transition-colors">
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-display text-xl font-bold text-gray-900 mb-2">{item.title}</h3>
+                  <p className="text-gray-600 font-body">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* The Campaign Process */}
+        <section className="w-full py-20 bg-white">
+          <div className="container mx-auto max-w-6xl px-4 md:px-6">
+            <div className="text-center mb-16">
+              <h2 className="font-display text-4xl md:text-5xl font-black text-gray-900 mb-4 italic">
+                The Campaign Process
+              </h2>
+              <p className="text-lg text-gray-600 font-body">
+                How we work with you to create successful campaigns
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {[
+                {
+                  step: 1,
+                  title: "Gather Strategic Insights",
+                  desc: "We collaborate together to understand your business objectives and provide tailored strategies"
+                },
+                {
+                  step: 2,
+                  title: "Create Captivating Content",
+                  desc: "Drawing upon our audience insights, we possess the expertise to shape your message into captivating and powerful storytelling"
+                },
+                {
+                  step: 3,
+                  title: "Release It To The World",
+                  desc: "Maximize your campaign's reach through our owned media portfolio, including websites, social platforms, and more"
+                },
+                {
+                  step: 4,
+                  title: "Campaign Debrief",
+                  desc: "We analyze results and provide detailed reporting on campaign performance and audience engagement"
+                },
+              ].map((item) => (
+                <div key={item.step} className="flex flex-col items-center text-center">
+                  <div className="w-16 h-16 rounded-full bg-black text-white flex items-center justify-center text-2xl font-bold mb-6">
+                    {item.step}
+                  </div>
+                  <h3 className="font-display text-xl font-bold text-gray-900 mb-3">
+                    {item.title}
+                  </h3>
+                  <p className="text-gray-600 font-body text-sm leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* What We Cover */}
+        <section className="w-full py-20 bg-gray-50">
+          <div className="container mx-auto max-w-6xl px-4 md:px-6">
+            <div className="text-center mb-12">
+              <h2 className="font-display text-4xl md:text-5xl font-black text-gray-900 mb-4">
+                What We Cover
+              </h2>
+              <p className="text-lg text-gray-600 font-body">
+                Your brand reaches the right audience at the perfect moment
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+              {[
+                { name: "Food & Drinks", emoji: "🍔" },
+                { name: "Events", emoji: "🎉" },
+                { name: "Entertainment", emoji: "🎬" },
+                { name: "Sports", emoji: "⚡" },
+                { name: "Arts & Culture", emoji: "🎨" },
+                { name: "Real Estate", emoji: "🏠" },
+                { name: "Local News", emoji: "📰" },
+                { name: "Things To Do", emoji: "🗺️" },
+              ].map((area) => (
+                <div
+                  key={area.name}
+                  className="group flex items-center justify-center gap-3 py-5 px-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-black hover:shadow-md transition-all duration-300"
+                >
+                  <span className="text-2xl group-hover:scale-125 transition-transform">{area.emoji}</span>
+                  <span className="font-semibold text-gray-700">{area.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="w-full py-20 bg-gray-900">
+          <div className="container mx-auto max-w-4xl px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-8 text-center">
+              <h2 className="font-display text-4xl md:text-5xl font-bold text-white leading-tight">
+                Ready to Reach Alberta?
+              </h2>
+              <p className="max-w-xl text-lg text-gray-300 font-body">
+                Fill in the form and a member of our team will reach out to get started on your branded campaign.
+              </p>
+              <Button
+                size="lg"
+                className="bg-white text-black hover:bg-gray-100 font-bold text-lg px-10 py-7 gap-3 rounded-full shadow-lg"
+                onClick={() => setIsModalOpen(true)}
+              >
+                Let's Work Together
+                <ArrowRight className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         </section>
       </main>
-      <Footer />
+
+      {/* Contact Modal - Clean Style */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsModalOpen(false)}
+          />
+
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            {/* Close button */}
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+            >
+              <X className="h-6 w-6 text-gray-500" />
+            </button>
+
+            <div className="grid md:grid-cols-2 gap-0">
+              {/* Left side - Info */}
+              <div className="p-8 md:p-10 bg-gray-50 rounded-l-2xl">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-sm font-medium mb-6">
+                  <Sparkles className="h-4 w-4" />
+                  Partner With Us
+                </div>
+                <h2 className="font-display text-3xl font-bold text-gray-900 mb-4">Let's create something amazing together!</h2>
+                <p className="text-gray-600 mb-8 font-body">
+                  Ready to take your brand to the next level? Contact us today to discuss how we can help you reach Alberta's most engaged audience.
+                </p>
+
+                <div className="flex gap-3 mb-8">
+                  <Link href="https://culturemedia.ca" target="_blank" rel="noopener noreferrer">
+                    <Button className="bg-black text-white hover:bg-gray-800 gap-2 rounded-full px-6">
+                      <Download className="h-4 w-4" />
+                      Media Kit
+                    </Button>
+                  </Link>
+                  <Link href="/contact">
+                    <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full px-6">
+                      Contact Page
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="space-y-4 text-gray-600">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-200 rounded-lg">
+                      <MapPin className="h-4 w-4" />
+                    </div>
+                    <span>Calgary, AB</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-200 rounded-lg">
+                      <Phone className="h-4 w-4" />
+                    </div>
+                    <span>226 236 1828</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-200 rounded-lg">
+                      <Mail className="h-4 w-4" />
+                    </div>
+                    <span>culturemedia101@gmail.com</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right side - Form */}
+              <div className="p-8 md:p-10">
+                <h3 className="font-display text-xl font-bold text-gray-900 mb-6">Send us a message</h3>
+                <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="firstName" className="text-sm font-medium text-gray-700">First name</label>
+                      <Input
+                        id="firstName"
+                        placeholder="John"
+                        className="border-gray-300 focus:border-black focus:ring-black rounded-xl h-12"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="lastName" className="text-sm font-medium text-gray-700">Last name</label>
+                      <Input
+                        id="lastName"
+                        placeholder="Doe"
+                        className="border-gray-300 focus:border-black focus:ring-black rounded-xl h-12"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="email" className="text-sm font-medium text-gray-700">Email</label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="john@company.com"
+                      className="border-gray-300 focus:border-black focus:ring-black rounded-xl h-12"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="company" className="text-sm font-medium text-gray-700">Company</label>
+                    <Input
+                      id="company"
+                      placeholder="Your company name"
+                      className="border-gray-300 focus:border-black focus:ring-black rounded-xl h-12"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="message" className="text-sm font-medium text-gray-700">Message</label>
+                    <textarea
+                      id="message"
+                      className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+                      placeholder="Tell us about your brand and what you're looking for..."
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-black text-white hover:bg-gray-800 font-bold h-14 text-lg rounded-xl"
+                  >
+                    Send Message
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
-const focusAreas = ["News", "Things to do", "Fashion", "Food & Drinks", "Events", "Money", "Real Estate", "Sports"]
