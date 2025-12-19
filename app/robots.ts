@@ -52,8 +52,6 @@ export default function robots(): MetadataRoute.Robots {
         '/best-of/attractions',
         '/best-of/lawyers',
         '/best-of/food',
-        // Remove invalid/broken URLs
-        '/articles/e',
       ],
     },
     sitemap: 'https://www.culturealberta.com/sitemap.xml',
