@@ -37,7 +37,6 @@ interface OptimizedArticle {
 
 const OPTIMIZED_FALLBACK_PATH = path.join(process.cwd(), 'optimized-fallback.json')
 const MAX_EXCERPT_LENGTH = 150 // Keep excerpts short for performance
-const MAX_TITLE_LENGTH = 80 // Keep titles reasonable
 const MAX_CONTENT_LENGTH = 1000000 // Increased limit to allow full articles (1MB)
 
 /**
@@ -46,9 +45,7 @@ const MAX_CONTENT_LENGTH = 1000000 // Increased limit to allow full articles (1M
 function optimizeArticle(article: Article): OptimizedArticle {
   return {
     id: article.id,
-    title: article.title.length > MAX_TITLE_LENGTH 
-      ? article.title.substring(0, MAX_TITLE_LENGTH) + '...'
-      : article.title,
+    title: article.title, // Full titles - CSS line-clamp handles visual truncation
     excerpt: article.excerpt && article.excerpt.length > MAX_EXCERPT_LENGTH
       ? article.excerpt.substring(0, MAX_EXCERPT_LENGTH) + '...'
       : (article.excerpt || ''),
@@ -85,19 +82,19 @@ function optimizeArticle(article: Article): OptimizedArticle {
 export async function updateOptimizedFallback(articles: Article[]): Promise<void> {
   try {
     console.log(`🔄 Updating optimized fallback with ${articles.length} articles...`)
-    
+
     // Convert to optimized format
     const optimizedArticles = articles.map(optimizeArticle)
-    
+
     // Write optimized file
     fs.writeFileSync(OPTIMIZED_FALLBACK_PATH, JSON.stringify(optimizedArticles, null, 2))
-    
+
     // Log file size
     const stats = fs.statSync(OPTIMIZED_FALLBACK_PATH)
     const sizeKB = Math.round(stats.size / 1024)
-    
+
     console.log(`✅ Optimized fallback updated: ${sizeKB} KB (${articles.length} articles)`)
-    
+
     // Warn if getting too big
     if (sizeKB > 500) {
       console.warn(`⚠️ Optimized fallback is ${sizeKB} KB - consider reducing excerpt lengths`)
@@ -116,10 +113,10 @@ export async function loadOptimizedFallback(): Promise<Article[]> {
       console.log('📁 No optimized fallback file found')
       return []
     }
-    
+
     const fileContent = fs.readFileSync(OPTIMIZED_FALLBACK_PATH, 'utf-8')
     const optimizedArticles: OptimizedArticle[] = JSON.parse(fileContent)
-    
+
     // Convert back to full Article format (with content if available)
     const articles: Article[] = optimizedArticles.map(opt => ({
       ...opt,
@@ -127,13 +124,13 @@ export async function loadOptimizedFallback(): Promise<Article[]> {
       slug: opt.id, // Use ID as slug
       updatedAt: opt.createdAt, // Use createdAt as updatedAt fallback
     }))
-    
+
     // DEBUG: Check how many articles have content
-    const articlesWithContent = articles.filter(article => 
+    const articlesWithContent = articles.filter(article =>
       article.content && article.content.trim().length > 10
     )
     console.log(`✅ Loaded ${articles.length} articles from optimized fallback, ${articlesWithContent.length} have content`)
-    
+
     return articles
   } catch (error) {
     console.error('❌ Failed to load optimized fallback:', error)
@@ -149,11 +146,11 @@ export function getFallbackStats() {
     if (!fs.existsSync(OPTIMIZED_FALLBACK_PATH)) {
       return { exists: false, sizeKB: 0, articleCount: 0 }
     }
-    
+
     const stats = fs.statSync(OPTIMIZED_FALLBACK_PATH)
     const fileContent = fs.readFileSync(OPTIMIZED_FALLBACK_PATH, 'utf-8')
     const articles = JSON.parse(fileContent)
-    
+
     return {
       exists: true,
       sizeKB: Math.round(stats.size / 1024),

@@ -450,13 +450,25 @@ export default function PartnerPage() {
               {/* Right side - Form */}
               <div className="p-8 md:p-10">
                 <h3 className="font-display text-xl font-bold text-gray-900 mb-6">Send us a message</h3>
-                <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+                <form
+                  className="space-y-5"
+                  action="https://formsubmit.co/Culturemedia101@gmail.com"
+                  method="POST"
+                >
+                  {/* FormSubmit configuration */}
+                  <input type="hidden" name="_subject" value="New Partnership Inquiry - Culture Alberta" />
+                  <input type="hidden" name="_captcha" value="false" />
+                  <input type="hidden" name="_next" value="https://www.culturealberta.com/partner?success=true" />
+                  <input type="hidden" name="_template" value="table" />
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label htmlFor="firstName" className="text-sm font-medium text-gray-700">First name</label>
                       <Input
                         id="firstName"
+                        name="firstName"
                         placeholder="John"
+                        required
                         className="border-gray-300 focus:border-black focus:ring-black rounded-xl h-12"
                       />
                     </div>
@@ -464,7 +476,9 @@ export default function PartnerPage() {
                       <label htmlFor="lastName" className="text-sm font-medium text-gray-700">Last name</label>
                       <Input
                         id="lastName"
+                        name="lastName"
                         placeholder="Doe"
+                        required
                         className="border-gray-300 focus:border-black focus:ring-black rounded-xl h-12"
                       />
                     </div>
@@ -473,8 +487,10 @@ export default function PartnerPage() {
                     <label htmlFor="email" className="text-sm font-medium text-gray-700">Email</label>
                     <Input
                       id="email"
+                      name="email"
                       type="email"
                       placeholder="john@company.com"
+                      required
                       className="border-gray-300 focus:border-black focus:ring-black rounded-xl h-12"
                     />
                   </div>
@@ -482,6 +498,7 @@ export default function PartnerPage() {
                     <label htmlFor="company" className="text-sm font-medium text-gray-700">Company</label>
                     <Input
                       id="company"
+                      name="company"
                       placeholder="Your company name"
                       className="border-gray-300 focus:border-black focus:ring-black rounded-xl h-12"
                     />
@@ -490,6 +507,8 @@ export default function PartnerPage() {
                     <label htmlFor="message" className="text-sm font-medium text-gray-700">Message</label>
                     <textarea
                       id="message"
+                      name="message"
+                      required
                       className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
                       placeholder="Tell us about your brand and what you're looking for..."
                     />
