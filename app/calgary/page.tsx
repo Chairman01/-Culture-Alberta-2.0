@@ -204,7 +204,7 @@ export default async function CalgaryPage() {
                           alt={featuredArticle.title}
                           width={800}
                           height={500}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
                       <div className="mt-3">
