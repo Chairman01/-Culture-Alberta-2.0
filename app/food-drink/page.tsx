@@ -18,11 +18,11 @@ interface ExtendedArticle extends Article {
 async function getFoodDrinkData() {
   try {
     console.log('🔄 Loading Food & Drink articles with fallback system...')
-    
+
     // Get food & drink articles with fallback to articles.json
     const foodArticles = await getFoodDrinkArticlesWithFallback()
     console.log(`✅ Food & Drink articles loaded: ${foodArticles.length}`)
-    
+
     // Map articles to extended format
     const processedFoodArticles = foodArticles.map(article => ({
       ...article,
@@ -47,7 +47,7 @@ async function getFoodDrinkData() {
     }
   } catch (error) {
     console.error('❌ Error loading Food & Drink data:', error)
-    
+
     // CRITICAL: Provide fallback content to prevent empty page
     console.log('🔄 Setting fallback content to prevent empty page')
     const fallbackArticle: ExtendedArticle = {
@@ -67,7 +67,7 @@ async function getFoodDrinkData() {
       status: 'published',
       description: 'We\'re working on bringing you amazing food and drink content. Check back soon!'
     }
-    
+
     return {
       articles: [fallbackArticle],
       featuredArticle: fallbackArticle
@@ -81,10 +81,10 @@ export default async function FoodDrinkPage() {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
       })
     } catch {
       return 'Recently'
@@ -128,25 +128,25 @@ export default async function FoodDrinkPage() {
                 <p className="text-xl text-gray-600 leading-relaxed">
                   {featuredArticle.excerpt}
                 </p>
-                <Link 
+                <Link
                   href={getArticleUrl(featuredArticle)}
                   className="inline-flex items-center text-orange-600 hover:text-orange-700 font-semibold text-lg group"
                 >
-                  Read More 
+                  Read More
                   <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
-              <div className="relative">
+              <Link href={getArticleUrl(featuredArticle)} className="group relative block">
                 <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl">
                   <Image
                     src={featuredArticle.imageUrl || "/placeholder.svg"}
                     alt={featuredArticle.title}
                     fill
-                    className="object-cover"
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
                     priority
                   />
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
         </section>
@@ -170,12 +170,12 @@ export default async function FoodDrinkPage() {
                   <Link key={article.id} href={getArticleUrl(article)} className="group">
                     <article className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="relative aspect-[4/3]">
+                        <div className="relative aspect-[4/3] overflow-hidden">
                           <Image
                             src={article.imageUrl || "/placeholder.svg"}
                             alt={article.title}
                             fill
-                            className="object-cover"
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                         </div>
                         <div className="p-6 space-y-4">
@@ -217,7 +217,7 @@ export default async function FoodDrinkPage() {
             <div className="space-y-8">
               {/* Newsletter */}
               <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                <NewsletterSignup 
+                <NewsletterSignup
                   title="Stay Hungry"
                   description="Get the latest restaurant reviews, food trends, and dining guides delivered to your inbox."
                   defaultCity=""
@@ -229,7 +229,7 @@ export default async function FoodDrinkPage() {
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Categories</h3>
                 <div className="space-y-3">
                   {Array.from(new Set(articles.map(a => a.category).filter(Boolean))).slice(0, 5).map((category) => (
-                    <Link 
+                    <Link
                       key={category}
                       href={`/food-drink?category=${category?.toLowerCase()}`}
                       className="block text-gray-600 hover:text-orange-600 transition-colors py-2 border-b border-gray-100 last:border-b-0"
