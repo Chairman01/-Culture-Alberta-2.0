@@ -24,50 +24,50 @@ export function clearEventsCache() {
 export async function getEventBySlug(slug: string): Promise<Event | null> {
   try {
     console.log('🔍 Getting event by slug:', slug)
-
+    
     // Get all events first
     const events = await getAllEvents()
-
+    
     if (!events || events.length === 0) {
       console.log('❌ No events found')
       return null
     }
-
+    
     // Try to find event by exact slug match first
     let event = events.find(e => {
       const eventSlug = createSlug(e.title)
       return eventSlug === slug
     })
-
+    
     if (event) {
       console.log('✅ Found event by exact slug match:', event.title)
       return event
     }
-
+    
     // Try partial matching if exact match fails
     event = events.find(e => {
       const eventSlug = createSlug(e.title)
       const slugWords = slug.split('-')
       const eventSlugWords = eventSlug.split('-')
-
+      
       // Check if at least 70% of words match
-      const matchingWords = slugWords.filter(word =>
-        eventSlugWords.some(eventWord =>
+      const matchingWords = slugWords.filter(word => 
+        eventSlugWords.some(eventWord => 
           eventWord.includes(word) || word.includes(eventWord)
         )
       )
-
+      
       return (matchingWords.length / slugWords.length) >= 0.7
     })
-
+    
     if (event) {
       console.log('✅ Found event by partial slug match:', event.title)
       return event
     }
-
+    
     console.log('❌ No event found for slug:', slug)
     return null
-
+    
   } catch (error) {
     console.error('❌ Error getting event by slug:', error)
     return null
@@ -78,20 +78,21 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
 export async function getAllEvents(): Promise<Event[]> {
   try {
     console.log('=== getAllEvents called ===')
-    console.log('🔄 Loading events from Supabase with fallback...')
-
+    
+    // TESTING: Skip Supabase entirely, use optimized fallback only
+    console.log('🧪 TESTING: Loading events from optimized fallback only...')
+    
     try {
-      // Try to get events from Supabase first with timeout
-      const { getArticlesWithFallback } = await import('./fallback-articles')
-      const allArticles = await getArticlesWithFallback(8000) // 8 second timeout
-      console.log(`✅ Loaded ${allArticles.length} articles from Supabase`)
-
+      const { loadOptimizedFallback } = await import('./optimized-fallback')
+      const fallbackArticles = await loadOptimizedFallback()
+      console.log(`⚡ FALLBACK ONLY: Loaded ${fallbackArticles.length} articles from optimized fallback`)
+      
       // Filter for events only
-      const events = allArticles.filter(article => article.type === 'event')
-      console.log(`✅ Found ${events.length} events in articles data`)
+      const events = fallbackArticles.filter(article => article.type === 'event')
+      console.log(`✅ Found ${events.length} events in fallback data`)
       return events as unknown as Event[]
-    } catch (error) {
-      console.error('❌ Failed to load events:', error)
+    } catch (fallbackError) {
+      console.error('❌ Optimized fallback failed:', fallbackError)
       return []
     }
   } catch (error) {
@@ -104,24 +105,24 @@ export async function getAllEvents(): Promise<Event[]> {
 export async function getEventsByLocation(location: string): Promise<Event[]> {
   try {
     console.log(`=== getEventsByLocation called for: ${location} ===`)
-
+    
     const now = Date.now()
     const cacheKey = `location_${location.toLowerCase()}`
     const cacheTime = eventsCacheTimestamp.get(cacheKey) || 0
-
+    
     // Check cache first
     if (eventsCache.has(cacheKey) && (now - cacheTime) < getCacheDuration()) {
       console.log(`Returning cached ${location} events:`, eventsCache.get(cacheKey)?.length || 0, 'events')
       return eventsCache.get(cacheKey) || []
     }
-
+    
     if (!supabase) {
       console.error('Supabase client is not initialized')
       return []
     }
 
     console.log(`Fetching ${location} events from Supabase...`)
-
+    
     const { data, error } = await supabase
       .from('events')
       .select('*')
@@ -151,16 +152,16 @@ export async function getEventsByLocation(location: string): Promise<Event[]> {
 export async function getUpcomingEvents(limit: number = 10): Promise<Event[]> {
   try {
     console.log(`=== getUpcomingEvents called (limit: ${limit}) ===`)
-
+    
     const now = new Date().toISOString()
-
+    
     if (!supabase) {
       console.error('Supabase client is not initialized')
       return []
     }
 
     console.log('Fetching upcoming events from Supabase...')
-
+    
     const { data, error } = await supabase
       .from('events')
       .select('*')
@@ -187,14 +188,14 @@ export async function getUpcomingEvents(limit: number = 10): Promise<Event[]> {
 export async function getFeaturedEvents(): Promise<Event[]> {
   try {
     console.log('=== getFeaturedEvents called ===')
-
+    
     if (!supabase) {
       console.error('Supabase client is not initialized')
       return []
     }
 
     console.log('Fetching featured events from Supabase...')
-
+    
     const { data, error } = await supabase
       .from('events')
       .select('*')
@@ -220,7 +221,7 @@ export async function getFeaturedEvents(): Promise<Event[]> {
 export async function getEventById(id: string): Promise<Event | null> {
   try {
     console.log(`=== getEventById called for: ${id} ===`)
-
+    
     if (!supabase) {
       console.error('Supabase client is not initialized')
       return null
@@ -250,7 +251,7 @@ export async function getEventById(id: string): Promise<Event | null> {
 export async function createEvent(eventData: EventFormData): Promise<Event | null> {
   try {
     console.log('=== createEvent called ===')
-
+    
     if (!supabase) {
       console.error('Supabase client is not initialized')
       return null
@@ -299,7 +300,7 @@ export async function updateEvent(id: string, eventData: Partial<EventFormData>)
   try {
     console.log(`=== updateEvent called for: ${id} ===`)
     console.log('📝 Update data:', eventData)
-
+    
     if (!supabase) {
       console.error('Supabase client is not initialized')
       return null
@@ -340,7 +341,7 @@ export async function updateEvent(id: string, eventData: Partial<EventFormData>)
 export async function deleteEvent(id: string): Promise<boolean> {
   try {
     console.log(`=== deleteEvent called for: ${id} ===`)
-
+    
     if (!supabase) {
       console.error('Supabase client is not initialized')
       return false
