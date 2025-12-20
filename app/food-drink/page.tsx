@@ -122,9 +122,11 @@ export default async function FoodDrinkPage() {
                     {formatDate(featuredArticle.date || '')}
                   </span>
                 </div>
-                <h2 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
-                  {featuredArticle.title}
-                </h2>
+                <Link href={getArticleUrl(featuredArticle)} className="group block">
+                  <h2 className="text-4xl md:text-5xl font-bold text-gray-900 group-hover:text-orange-600 transition-colors leading-tight">
+                    {featuredArticle.title}
+                  </h2>
+                </Link>
                 <p className="text-xl text-gray-600 leading-relaxed">
                   {featuredArticle.excerpt}
                 </p>
