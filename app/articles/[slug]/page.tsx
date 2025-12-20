@@ -636,11 +636,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       </div>
                     )}
 
-                    {/* Newsletter Signup - Now floating/sticky */}
-                    <ArticleNewsletterSignup
+                    {/* Newsletter Signup - Temporarily Disabled */}
+                    {/* <ArticleNewsletterSignup
                       articleTitle={loadedArticle.title}
                       articleCategory={loadedArticle.category}
-                    />
+                    /> */}
 
                     {/* More Articles Section */}
                     {relatedArticles.length > 0 && (
