@@ -25,9 +25,10 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+    // BANDWIDTH OPTIMIZATION: Always use modern formats
+    formats: ['image/avif', 'image/webp'],
     // Production image optimizations
     ...(process.env.NODE_ENV === 'production' && {
-      formats: ['image/avif', 'image/webp'], // Prioritize AVIF for better compression
       minimumCacheTTL: 31536000, // 1 year
       dangerouslyAllowSVG: true,
       contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
@@ -156,12 +157,13 @@ const nextConfig = {
             },
           ],
         },
+        // BANDWIDTH OPTIMIZATION: Cache pages for CDN with revalidation window
         {
-          source: '/((?!_next/static|_next/image|favicon.ico).*)',
+          source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
           headers: [
             {
               key: 'Cache-Control',
-              value: 'public, max-age=0, s-maxage=0, must-revalidate',
+              value: 'public, s-maxage=3600, stale-while-revalidate=86400',
             },
           ],
         },

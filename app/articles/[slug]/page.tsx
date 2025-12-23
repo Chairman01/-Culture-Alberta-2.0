@@ -560,29 +560,19 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     </div>
 
                     {/* Featured Image */}
-                    {loadedArticle.imageUrl && (
+                    {loadedArticle.imageUrl && !loadedArticle.imageUrl.startsWith('data:image') && (
                       <div className="relative w-full h-[400px] lg:h-[500px] rounded-xl overflow-hidden">
-                        {loadedArticle.imageUrl.startsWith('data:image') || (loadedArticle.imageUrl.length > 1000 && !loadedArticle.imageUrl.includes('http')) ? (
-                          <img
-                            src={loadedArticle.imageUrl.startsWith('data:image') ? loadedArticle.imageUrl : `data:image/jpeg;base64,${loadedArticle.imageUrl}`}
-                            alt={loadedArticle.title || 'Article image'}
-                            className="w-full h-full object-cover"
-                            loading="eager"
-                            decoding="sync"
-                          />
-                        ) : (
-                          <Image
-                            src={loadedArticle.imageUrl}
-                            alt={loadedArticle.title || 'Article image'}
-                            fill
-                            className="object-cover"
-                            priority
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            quality={85}
-                            placeholder="blur"
-                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                          />
-                        )}
+                        <Image
+                          src={loadedArticle.imageUrl}
+                          alt={loadedArticle.title || 'Article image'}
+                          fill
+                          className="object-cover"
+                          priority
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          quality={85}
+                          placeholder="blur"
+                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                        />
                       </div>
                     )}
 
@@ -655,26 +645,16 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                             >
                               <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
                                 <div className="aspect-[16/10] w-full bg-gray-200 relative overflow-hidden">
-                                  {relatedArticle.imageUrl ? (
-                                    relatedArticle.imageUrl.startsWith('data:image') || (relatedArticle.imageUrl.length > 1000 && !relatedArticle.imageUrl.includes('http')) ? (
-                                      <img
-                                        src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
-                                        alt={relatedArticle.title}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                        loading="lazy"
-                                        decoding="async"
-                                      />
-                                    ) : (
-                                      <Image
-                                        src={relatedArticle.imageUrl}
-                                        alt={relatedArticle.title}
-                                        fill
-                                        className="object-cover group-hover:scale-110 transition-transform duration-500"
-                                        loading="lazy"
-                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                        quality={75}
-                                      />
-                                    )
+                                  {relatedArticle.imageUrl && !relatedArticle.imageUrl.startsWith('data:image') ? (
+                                    <Image
+                                      src={relatedArticle.imageUrl}
+                                      alt={relatedArticle.title}
+                                      fill
+                                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                                      loading="lazy"
+                                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                      quality={75}
+                                    />
                                   ) : (
                                     <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                                       <span className="text-gray-400 text-lg">No Image</span>
@@ -732,27 +712,17 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                           >
                             <div className="flex gap-3">
                               <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
-                                {relatedArticle.imageUrl ? (
-                                  relatedArticle.imageUrl.startsWith('data:image') || (relatedArticle.imageUrl.length > 1000 && !relatedArticle.imageUrl.includes('http')) ? (
-                                    <img
-                                      src={relatedArticle.imageUrl.startsWith('data:image') ? relatedArticle.imageUrl : `data:image/jpeg;base64,${relatedArticle.imageUrl}`}
-                                      alt={relatedArticle.title}
-                                      className="w-full h-full object-cover"
-                                      loading="lazy"
-                                      decoding="async"
-                                    />
-                                  ) : (
-                                    <Image
-                                      src={relatedArticle.imageUrl}
-                                      alt={relatedArticle.title}
-                                      width={64}
-                                      height={64}
-                                      className="w-full h-full object-cover"
-                                      loading="lazy"
-                                      sizes="64px"
-                                      quality={60}
-                                    />
-                                  )
+                                {relatedArticle.imageUrl && !relatedArticle.imageUrl.startsWith('data:image') ? (
+                                  <Image
+                                    src={relatedArticle.imageUrl}
+                                    alt={relatedArticle.title}
+                                    width={64}
+                                    height={64}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                    sizes="64px"
+                                    quality={60}
+                                  />
                                 ) : (
                                   <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                                     <span className="text-gray-400 text-xs">No Image</span>

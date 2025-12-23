@@ -82,8 +82,8 @@ export function CultureArticles({ articles }: CultureArticlesProps) {
                         <button
                             onClick={() => setFilter('all')}
                             className={`group flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${filter === 'all'
-                                    ? 'bg-gray-900 text-white border border-gray-900'
-                                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                ? 'bg-gray-900 text-white border border-gray-900'
+                                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                                 }`}
                         >
                             <Sparkles className="w-4 h-4" />
@@ -94,8 +94,8 @@ export function CultureArticles({ articles }: CultureArticlesProps) {
                         <button
                             onClick={() => setFilter('calgary')}
                             className={`group flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${filter === 'calgary'
-                                    ? 'bg-gray-900 text-white border border-gray-900'
-                                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                ? 'bg-gray-900 text-white border border-gray-900'
+                                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                                 }`}
                         >
                             <Sparkles className={`w-4 h-4 ${filter === 'calgary' ? '' : 'text-gray-600'}`} />
@@ -106,8 +106,8 @@ export function CultureArticles({ articles }: CultureArticlesProps) {
                         <button
                             onClick={() => setFilter('edmonton')}
                             className={`group flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${filter === 'edmonton'
-                                    ? 'bg-gray-900 text-white border border-gray-900'
-                                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                ? 'bg-gray-900 text-white border border-gray-900'
+                                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                                 }`}
                         >
                             <Sparkles className={`w-4 h-4 ${filter === 'edmonton' ? '' : 'text-gray-600'}`} />
@@ -149,20 +149,12 @@ export function CultureArticles({ articles }: CultureArticlesProps) {
                                             <article className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
                                                     <div className="md:col-span-1 relative aspect-[4/3] overflow-hidden">
-                                                        {article.imageUrl && (article.imageUrl.startsWith('data:image') || (article.imageUrl.length > 1000 && !article.imageUrl.includes('http'))) ? (
-                                                            <img
-                                                                src={article.imageUrl.startsWith('data:image') ? article.imageUrl : `data:image/jpeg;base64,${article.imageUrl}`}
-                                                                alt={article.title}
-                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                                            />
-                                                        ) : (
-                                                            <Image
-                                                                src={article.imageUrl || "/placeholder.svg"}
-                                                                alt={article.title}
-                                                                fill
-                                                                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                                            />
-                                                        )}
+                                                        <Image
+                                                            src={article.imageUrl || "/placeholder.svg"}
+                                                            alt={article.title}
+                                                            fill
+                                                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                                        />
                                                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                                     </div>
                                                     <div className="md:col-span-2 p-8 space-y-4">
@@ -267,20 +259,12 @@ export function CultureArticles({ articles }: CultureArticlesProps) {
                                             >
                                                 <div className="flex gap-3">
                                                     <div className="relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden">
-                                                        {article.imageUrl && (article.imageUrl.startsWith('data:image') || (article.imageUrl.length > 1000 && !article.imageUrl.includes('http'))) ? (
-                                                            <img
-                                                                src={article.imageUrl.startsWith('data:image') ? article.imageUrl : `data:image/jpeg;base64,${article.imageUrl}`}
-                                                                alt={article.title}
-                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                                            />
-                                                        ) : (
-                                                            <Image
-                                                                src={article.imageUrl || "/placeholder.svg"}
-                                                                alt={article.title}
-                                                                fill
-                                                                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                                            />
-                                                        )}
+                                                        <Image
+                                                            src={article.imageUrl || "/placeholder.svg"}
+                                                            alt={article.title}
+                                                            fill
+                                                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                                        />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2 mb-1">

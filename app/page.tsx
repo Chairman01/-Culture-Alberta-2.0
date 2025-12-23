@@ -230,7 +230,12 @@ export default async function HomeStatic() {
   }
 
   const getPostImage = (post: Article) => {
-    return post.imageUrl || '/placeholder.svg'
+    // BANDWIDTH FIX: Skip base64 images to prevent embedding in HTML
+    const imageUrl = post.imageUrl
+    if (!imageUrl || imageUrl.startsWith('data:image')) {
+      return '/placeholder.svg'
+    }
+    return imageUrl
   }
 
   const getPostCategory = (post: Article) => {

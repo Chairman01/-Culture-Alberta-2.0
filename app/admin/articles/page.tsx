@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { 
+import {
   latestArticles,
   edmontonArticles,
   calgaryArticles,
@@ -73,17 +73,11 @@ export default function AdminArticles() {
       }
     }
 
-    const handleFocus = () => {
-      console.log('🔄 Window focused, refreshing articles to check for new content...')
-      loadAllArticles(true) // Force refresh when window regains focus
-    }
-
+    // Only listen to visibility change, not focus (to avoid refresh when using Ctrl+F)
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleFocus)
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleFocus)
     }
   }, [])
 
@@ -94,10 +88,10 @@ export default function AdminArticles() {
     try {
       const date = new Date(dateString)
       if (isNaN(date.getTime())) return dateString
-      return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       })
     } catch {
       return dateString
@@ -108,7 +102,7 @@ export default function AdminArticles() {
     setIsLoading(true)
     try {
       console.log('Admin: Loading articles...', forceRefresh ? '(force refresh)' : '')
-      
+
       const url = forceRefresh ? '/api/admin/articles?refresh=true' : '/api/admin/articles'
       const response = await fetch(url)
       if (!response.ok) {
@@ -118,7 +112,7 @@ export default function AdminArticles() {
       }
       const data = await response.json()
       console.log('Admin: Articles loaded:', data)
-      
+
       // Ensure all required fields are strings
       const normalized = data.map((a: any) => ({
         ...a,
@@ -129,7 +123,7 @@ export default function AdminArticles() {
       }))
       console.log('Admin: Normalized articles:', normalized)
       setArticles(normalized)
-      
+
       // Only show success message for force refresh
       if (forceRefresh && normalized.length > 0) {
         toast({
@@ -153,7 +147,7 @@ export default function AdminArticles() {
     try {
       // Reload articles (cache invalidation handled server-side)
       await loadAllArticles()
-      
+
       // Force revalidation of all major pages
       try {
         await fetch('/api/revalidate', {
@@ -167,7 +161,7 @@ export default function AdminArticles() {
       } catch (revalidateError) {
         console.log('Revalidation not available, cache cleared instead')
       }
-      
+
       // Show success message
       toast({
         title: "Cache cleared",
@@ -188,7 +182,7 @@ export default function AdminArticles() {
     try {
       setSyncing(true)
       console.log('🔄 Admin: Starting auto-sync...')
-      
+
       // Try the optimized sync endpoint first
       const response = await fetch('/api/sync-articles-optimized', {
         method: 'POST',
@@ -196,9 +190,9 @@ export default function AdminArticles() {
           'Content-Type': 'application/json',
         },
       })
-      
+
       const result = await response.json()
-      
+
       if (result.success) {
         setLastSync(new Date())
         toast({
@@ -247,7 +241,7 @@ export default function AdminArticles() {
           VERCEL: process.env.VERCEL,
           window: typeof window !== 'undefined'
         })
-        
+
         // Call the delete function via API (Supabase + fallback)
         const deleteResponse = await fetch(`/api/admin/articles/${article.id}`, {
           method: 'DELETE',
@@ -255,23 +249,23 @@ export default function AdminArticles() {
             'Content-Type': 'application/json',
           },
         })
-        
+
         if (!deleteResponse.ok) {
           throw new Error('Failed to delete article')
         }
-        
+
         const deleteResult = await deleteResponse.json()
         console.log('✅ Article deleted successfully, result:', deleteResult)
-        
+
         // Immediately remove from local state for better UX
         setArticles(prevArticles => prevArticles.filter(a => a.id !== article.id))
-        
+
         // Show success message
         toast({
           title: "Article deleted",
           description: `"${article.title}" has been deleted successfully!`,
         })
-        
+
         // Trigger page revalidation so lists/homepage update quickly
         try {
           await fetch('/api/revalidate', {
@@ -284,11 +278,11 @@ export default function AdminArticles() {
         } catch (e) {
           console.log('Revalidation not available during development')
         }
-        
+
         // Reload articles to ensure consistency
         console.log('🔄 Reloading articles...')
         await loadAllArticles(true) // Force refresh to get latest data
-        
+
       } catch (error) {
         console.error('❌ Error deleting article:', error)
         console.error('❌ Full error details:', {
@@ -301,7 +295,7 @@ export default function AdminArticles() {
           description: `Failed to delete "${article.title}". ${error instanceof Error ? error.message : 'Unknown error'}`,
           variant: "destructive",
         })
-        
+
         // If deletion failed, reload the articles to get the current state
         await loadAllArticles(true) // Force refresh to get latest data
       }
@@ -357,8 +351,8 @@ export default function AdminArticles() {
           )}
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => loadAllArticles(true)}
             disabled={isLoading}
             className="flex items-center gap-2"
@@ -366,8 +360,8 @@ export default function AdminArticles() {
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => {
               console.log('🔄 Force refreshing from Supabase...')
               loadAllArticles(true)
@@ -378,8 +372,8 @@ export default function AdminArticles() {
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Force Refresh
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleAutoSync}
             disabled={syncing}
             className="flex items-center gap-2"
@@ -391,8 +385,8 @@ export default function AdminArticles() {
             )}
             {syncing ? 'Syncing...' : 'Auto Sync'}
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleRefreshCache}
             className="flex items-center gap-2"
           >
@@ -510,7 +504,7 @@ export default function AdminArticles() {
                         const label = getContentQualityLabel(score)
                         const hasIssues = validation.issues.length > 0
                         const hasWarnings = validation.warnings.length > 0
-                        
+
                         let bgColor = 'bg-green-100 text-green-800'
                         if (hasIssues) {
                           bgColor = 'bg-red-100 text-red-800'
@@ -519,7 +513,7 @@ export default function AdminArticles() {
                         } else if (score < 60) {
                           bgColor = 'bg-orange-100 text-orange-800'
                         }
-                        
+
                         return (
                           <div className="flex flex-col gap-1">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor}`}>
@@ -550,7 +544,7 @@ export default function AdminArticles() {
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
                         <Link href={`/admin/articles/${article.id}`}>
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(article)}>
+                          <Button variant="outline" size="sm">
                             <Edit className="w-4 h-4" />
                           </Button>
                         </Link>
