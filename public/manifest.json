@@ -1,10 +1,10 @@
 {
-  "name": "Culture Alberta",
-  "short_name": "Culture AB",
+  "name": "Culture Alberta - Your Guide to Alberta's Culture, Events & Experiences",
+  "short_name": "Culture Alberta",
   "description": "Your guide to Alberta's culture: events, restaurants, festivals & local experiences in Calgary, Edmonton & beyond",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1a1a",
+  "background_color": "#000000",
   "theme_color": "#d4af37",
   "orientation": "portrait-primary",
   "icons": [
@@ -16,18 +16,34 @@
     },
     {
       "src": "/favicon.svg",
-      "sizes": "32x32",
+      "sizes": "any",
       "type": "image/svg+xml"
     },
     {
-      "src": "/icon-192x192.svg",
+      "src": "/favicon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/web-app-manifest-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
       "src": "/favicon.ico",
-      "sizes": "32x32",
+      "sizes": "48x48",
       "type": "image/x-icon"
     }
   ],

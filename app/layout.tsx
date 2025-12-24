@@ -64,6 +64,7 @@ export const metadata: Metadata = {
     ],
     shortcut: '/favicon.ico',
   },
+  manifest: '/manifest.json',
   other: {
     'google-adsense-account': 'ca-pub-6902227267422426',
   },
