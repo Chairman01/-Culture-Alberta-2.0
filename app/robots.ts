@@ -56,6 +56,9 @@ export default function robots(): MetadataRoute.Robots {
         '/articles/article-1765775179976-8ckzfvlun',
         '/articles/article-1765435206227-z3f7y8f1e',
         '/articles/article-2',
+        // Test articles to be deleted
+        '/articles/afro-music-fest',
+        '/articles/hello-this-is-a-tet',
         // Remove best-of pages that don't have content or have thin content
         '/best-of/shopping',
         '/best-of/dentists',
