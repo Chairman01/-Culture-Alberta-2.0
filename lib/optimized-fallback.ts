@@ -36,7 +36,8 @@ interface OptimizedArticle {
 }
 
 const OPTIMIZED_FALLBACK_PATH = path.join(process.cwd(), 'optimized-fallback.json')
-const MAX_EXCERPT_LENGTH = 150 // Keep excerpts short for performance
+// NOTE: We do NOT truncate excerpts here - CSS line-clamp handles visual truncation on listings
+// Article detail pages need full excerpts for proper display and SEO
 const MAX_CONTENT_LENGTH = 1000000 // Increased limit to allow full articles (1MB)
 
 /**
@@ -46,9 +47,7 @@ function optimizeArticle(article: Article): OptimizedArticle {
   return {
     id: article.id,
     title: article.title, // Full titles - CSS line-clamp handles visual truncation
-    excerpt: article.excerpt && article.excerpt.length > MAX_EXCERPT_LENGTH
-      ? article.excerpt.substring(0, MAX_EXCERPT_LENGTH) + '...'
-      : (article.excerpt || ''),
+    excerpt: article.excerpt || '', // Keep full excerpts - CSS line-clamp handles visual truncation on listings
     description: article.description || '',
     content: article.content || '', // Use full content without truncation
     category: article.category || 'General',
@@ -97,7 +96,7 @@ export async function updateOptimizedFallback(articles: Article[]): Promise<void
 
     // Warn if getting too big
     if (sizeKB > 500) {
-      console.warn(`⚠️ Optimized fallback is ${sizeKB} KB - consider reducing excerpt lengths`)
+      console.warn(`⚠️ Optimized fallback is ${sizeKB} KB - consider optimizing image URLs or content`)
     }
   } catch (error) {
     console.error('❌ Failed to update optimized fallback:', error)
