@@ -190,7 +190,7 @@ function ArticlesContent() {
                       {article.title}
                     </h2>
                     {(article.excerpt || article.description) && (
-                      <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+                      <p className="text-gray-600 text-sm line-clamp-3 mb-3">
                         {article.excerpt || article.description}
                       </p>
                     )}
