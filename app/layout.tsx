@@ -10,12 +10,16 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import { optimizeSpeedInsights } from '@/lib/vercel-optimizations'
 import { Metadata } from 'next'
 import { WebsiteStructuredData, OrganizationStructuredData, LocalBusinessStructuredData } from '@/components/seo/structured-data'
+import { SitelinksData, DEFAULT_NAVIGATION_LINKS } from '@/components/seo/sitelinks-data'
 
 export const metadata: Metadata = {
   title: 'Culture Alberta | Best Culture, Events & Food in Calgary & Edmonton',
   description: 'Your guide to Alberta\'s culture: events, restaurants, festivals & local experiences in Calgary, Edmonton & beyond.',
   keywords: 'Alberta culture, Calgary events, Edmonton culture, Alberta tourism, local events, cultural activities, Alberta restaurants, Alberta attractions',
   authors: [{ name: 'Culture Alberta' }],
+  applicationName: 'Culture Alberta',
+  referrer: 'origin-when-cross-origin',
+  category: 'Arts & Culture',
   robots: 'index, follow',
   openGraph: {
     type: 'website',
@@ -90,6 +94,7 @@ export default function RootLayout({
         <WebsiteStructuredData />
         <OrganizationStructuredData />
         <LocalBusinessStructuredData />
+        <SitelinksData navigationLinks={DEFAULT_NAVIGATION_LINKS} />
         {/* Google AdSense - Duplicate in body as backup */}
         <Script
           async

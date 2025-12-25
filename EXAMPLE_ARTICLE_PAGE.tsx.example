@@ -1,0 +1,191 @@
+/**
+ * Example Article Page with SEO Rich Results
+ * 
+ * This example demonstrates how to integrate all the SEO schema components
+ * for maximum search visibility and rich results.
+ */
+
+import { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import { ArticleStructuredData, BreadcrumbStructuredData } from '@/components/seo/structured-data'
+import { FAQSchema, extractFAQsFromContent } from '@/components/seo/faq-schema'
+import { ReviewSchema, StarRating } from '@/components/seo/review-schema'
+import { HowToSchema } from '@/components/seo/howto-schema'
+import { generatePageMetadata } from '@/lib/metadata-generator'
+import { generateArticleSchema } from '@/lib/schema-utils'
+
+// Example: Get article from database
+async function getArticle(slug: string) {
+    // Replace with your actual data fetching logic
+    return {
+        id: '123',
+        slug: slug,
+        title: 'The Best Restaurants in Calgary 2024',
+        excerpt: 'Discover Calgary\'s top dining experiences, from fine dining to hidden gems.',
+        content: `
+# The Best Restaurants in Calgary 2024
+
+Calgary's culinary scene has exploded in recent years...
+
+## What makes Calgary's food scene special?
+
+Calgary combines Alberta beef, international influences, and innovative chefs to create a unique dining landscape.
+
+## How do I choose the right restaurant?
+
+Consider your budget, preferred cuisine, and occasion. Downtown offers upscale options, while Kensington has trendy casual spots.
+
+## What are the must-try dishes?
+
+Alberta beef, bison tartare, and locally-sourced vegetables are Calgary specialties you won't want to miss.
+    `,
+        category: 'Food',
+        tags: ['restaurants', 'Calgary', 'dining', 'food'],
+        location: 'Calgary, Alberta',
+        imageUrl: 'https://www.culturealberta.com/images/calgary-restaurants.jpg',
+        date: '2024-12-20',
+        updatedAt: '2024-12-23',
+        rating: 4.7,
+        reviewCount: 156,
+        status: 'published'
+    }
+}
+
+// Generate metadata for SEO
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+    const article = await getArticle(params.slug)
+
+    if (!article) {
+        return {
+            title: 'Article Not Found | Culture Alberta'
+        }
+    }
+
+    // Use our metadata generator utility
+    return generatePageMetadata(article)
+}
+
+export default async function ArticlePage({ params }: { params: { slug: string } }) {
+    const article = await getArticle(params.slug)
+
+    if (!article) {
+        notFound()
+    }
+
+    // Extract FAQs from article content
+    const faqs = extractFAQsFromContent(article.content)
+
+    // Example HowTo steps (if applicable)
+    const howToSteps = article.category === 'Guide' ? [
+        {
+            name: 'Research Options',
+            text: 'Read reviews and compare restaurants in your preferred area.'
+        },
+        {
+            name: 'Make Reservations',
+            text: 'Book ahead, especially for weekend dining.'
+        },
+        {
+            name: 'Arrive on Time',
+            text: 'Show up 5-10 minutes before your reservation time.'
+        }
+    ] : null
+
+    return (
+        <>
+            {/* SEO Structured Data Components */}
+            <ArticleStructuredData article={article} />
+
+            <BreadcrumbStructuredData
+                articleTitle={article.title}
+                articleCategory={article.category}
+                articleSlug={article.slug}
+            />
+
+            {/* Add FAQ schema if we found questions */}
+            {faqs.length > 0 && <FAQSchema faqs={faqs} />}
+
+            {/* Add review schema if we have ratings */}
+            {article.rating && article.reviewCount && (
+                <ReviewSchema
+                    itemName={article.title}
+                    itemType="Article"
+                    rating={article.rating}
+                    reviewCount={article.reviewCount}
+                    reviewBody={article.excerpt}
+                    datePublished={article.date}
+                />
+            )}
+
+            {/* Add HowTo schema for guide articles */}
+            {howToSteps && (
+                <HowToSchema
+                    name={article.title}
+                    description={article.excerpt || ''}
+                    steps={howToSteps}
+                    totalTime="PT30M"
+                />
+            )}
+
+            {/* Your actual article content */}
+            <article className="max-w-4xl mx-auto px-4 py-8">
+                <header className="mb-8">
+                    <h1 className="article-headline text-4xl font-bold mb-4">
+                        {article.title}
+                    </h1>
+
+                    <p className="article-excerpt text-xl text-gray-600 mb-4">
+                        {article.excerpt}
+                    </p>
+
+                    {article.rating && (
+                        <div className="flex items-center gap-4">
+                            <StarRating rating={article.rating} />
+                            <span className="text-sm text-gray-500">
+                                {article.reviewCount} reviews
+                            </span>
+                        </div>
+                    )}
+
+                    <div className="text-sm text-gray-500 mt-4">
+                        <time dateTime={article.date}>
+                            {new Date(article.date).toLocaleDateString('en-CA', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            })}
+                        </time>
+                        {' • '}
+                        <span>{article.category}</span>
+                        {' • '}
+                        <span>{article.location}</span>
+                    </div>
+                </header>
+
+                <div className="article-content prose prose-lg max-w-none">
+                    {/* Your article content rendering here */}
+                    <div dangerouslySetInnerHTML={{ __html: article.content }} />
+                </div>
+
+                {/* FAQ section (visual display) */}
+                {faqs.length > 0 && (
+                    <section className="mt-12">
+                        <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
+                        <div className="space-y-4">
+                            {faqs.map((faq, index) => (
+                                <details key={index} className="border rounded-lg p-4">
+                                    <summary className="font-semibold cursor-pointer">
+                                        {faq.question}
+                                    </summary>
+                                    <p className="mt-2 text-gray-700">
+                                        {faq.answer}
+                                    </p>
+                                </details>
+                            ))}
+                        </div>
+                    </section>
+                )}
+            </article>
+        </>
+    )
+}

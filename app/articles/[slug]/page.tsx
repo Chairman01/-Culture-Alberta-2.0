@@ -21,6 +21,9 @@ import { Metadata } from 'next'
 // import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
 
 import { processArticleContent } from '@/lib/utils/youtube'
+import { CommentForm } from '@/components/comment-form'
+import { CommentList } from '@/components/comment-list'
+import { CommentsSection } from '@/components/comments-section'
 
 // import NewsletterSignup from '@/components/newsletter-signup' // Removed - using ArticleNewsletterSignup instead
 // Removed ArticleContent import to fix hydration issues
@@ -631,6 +634,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       articleTitle={loadedArticle.title}
                       articleCategory={loadedArticle.category}
                     /> */}
+
+                    {/* Comments Section */}
+                    <CommentsSection articleId={loadedArticle.id} />
 
                     {/* More Articles Section */}
                     {relatedArticles.length > 0 && (

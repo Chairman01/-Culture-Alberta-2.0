@@ -136,8 +136,16 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
     "sameAs": [
       "https://www.instagram.com/culturealberta._",
       "https://www.youtube.com/@CultureAlberta_",
-      "https://www.facebook.com/profile.php?id=100064044099295"
+      "https://www.facebook.com/profile.php?id=100064044099295",
+      "https://www.tiktok.com/@culturealberta",
+      "https://twitter.com/culturealberta"
     ],
+    "foundingDate": "2024",
+    "foundingLocation": {
+      "@type": "Place",
+      "name": "Alberta, Canada"
+    },
+    "knowsLanguage": "en-CA",
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "customer service",
@@ -171,8 +179,15 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
       "Alberta Tourism",
       "Local Events",
       "Canadian Culture",
-      "Arts and Entertainment"
+      "Arts and Entertainment",
+      "Food and Dining",
+      "Cultural Events",
+      "Arts and Music",
+      "Travel and Tourism"
     ],
+    "actionableFeedbackPolicy": `${baseUrl}/about#feedback`,
+    "correctionsPolicy": `${baseUrl}/about#corrections`,
+    "diversityPolicy": `${baseUrl}/about#diversity`,
     "parentOrganization": {
       "@type": "Organization",
       "name": "Culture Media",
