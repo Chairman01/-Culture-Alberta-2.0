@@ -8,6 +8,16 @@ export default function robots(): MetadataRoute.Robots {
       disallow: [
         '/admin/',
         '/api/',
+        // Next.js build artifacts - should never be indexed
+        '/_next/static/css/*',
+        '/_next/static/chunks/*',
+        '/_next/static/*',
+        '/_next/data/*',
+        // Utility files
+        '/favicon.ico',
+        '/files/*.pdf',
+        // Broken/edge case URLs
+        '/articles/e',
         '/debug/',
         '/debug-simple/',
         // Test routes - block with and without trailing slashes
@@ -46,9 +56,12 @@ export default function robots(): MetadataRoute.Robots {
         '/articles/article-1765775179976-8ckzfvlun',
         '/articles/article-1765435206227-z3f7y8f1e',
         '/articles/article-2',
-        // Remove best-of pages that don't exist or have no content
+        // Remove best-of pages that don't have content or have thin content
         '/best-of/shopping',
         '/best-of/dentists',
+        '/best-of/accountants',
+        '/best-of/restaurants',
+        '/best-of/culture',
         '/best-of/attractions',
         '/best-of/lawyers',
         '/best-of/food',
