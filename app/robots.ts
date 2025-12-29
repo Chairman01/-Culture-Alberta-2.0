@@ -56,6 +56,10 @@ export default function robots(): MetadataRoute.Robots {
         '/articles/article-1765775179976-8ckzfvlun',
         '/articles/article-1765435206227-z3f7y8f1e',
         '/articles/article-2',
+        '/articles/article-1766002547858-dem6yogey',
+        // Inactive articles that should not be indexed
+        '/articles/redditors-top-romantic-edmonton-spots',
+        '/articles/the-5-best-brunch-spots-in-edmonton-you-need-to-try-at-least-once',
         // Test articles to be deleted
         '/articles/afro-music-fest',
         '/articles/hello-this-is-a-tet',
