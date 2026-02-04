@@ -1,5 +1,5 @@
 import { Article, CreateArticleInput, UpdateArticleInput } from './types/article'
-import { 
+import {
   getAllArticles as getAllArticlesFromSupabase,
   getHomepageArticles as getHomepageArticlesFromSupabase,
   getAdminArticles as getAdminArticlesFromSupabase,
@@ -18,46 +18,78 @@ import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fall
 
 export async function getAllArticles(): Promise<Article[]> {
   console.log('🚀 Loading articles...')
-  
+
   try {
-    // Use optimized fallback as primary source (fastest and most reliable)
+    // Try Supabase first for live data (ensures new articles appear immediately)
+    console.log('🔄 Fetching articles from Supabase...')
+    const supabaseArticles = await getAllArticlesFromSupabase()
+
+    if (supabaseArticles && supabaseArticles.length > 0) {
+      console.log(`✅ Loaded ${supabaseArticles.length} articles from Supabase`)
+
+      // Filter out events - only return articles
+      const articlesOnly = supabaseArticles.filter(item => item.type !== 'event')
+      console.log(`📰 Returning ${articlesOnly.length} articles`)
+
+      return articlesOnly
+    }
+
+    console.warn('⚠️ No articles from Supabase, falling back to optimized fallback')
+    throw new Error('No articles from Supabase')
+  } catch (supabaseError) {
+    console.warn('⚠️ Supabase failed, using optimized fallback:', supabaseError)
+
+    // Fall back to optimized fallback if Supabase fails
     const fallbackArticles = await loadOptimizedFallback()
     console.log(`⚡ Loaded ${fallbackArticles.length} articles from optimized fallback`)
-    
+
     // Filter out events - only return articles
     const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
     console.log(`📰 Returning ${articlesOnly.length} articles`)
-    
+
     return articlesOnly
-  } catch (fallbackError) {
-    console.error('❌ Optimized fallback failed:', fallbackError)
-    return []
   }
 }
 
 export async function getHomepageArticles(): Promise<Article[]> {
   console.log('🚀 Loading homepage articles...')
-  
+
   try {
-    // Use optimized fallback as primary source
+    // Try Supabase first for live data (ensures new articles appear immediately)
+    console.log('🔄 Fetching articles from Supabase...')
+    const supabaseArticles = await getHomepageArticlesFromSupabase()
+
+    if (supabaseArticles && supabaseArticles.length > 0) {
+      console.log(`✅ Loaded ${supabaseArticles.length} articles from Supabase`)
+
+      // Filter out events - only return articles
+      const articlesOnly = supabaseArticles.filter(item => item.type !== 'event')
+      console.log(`📰 Returning ${articlesOnly.length} articles for homepage`)
+
+      return articlesOnly
+    }
+
+    console.warn('⚠️ No articles from Supabase, falling back to optimized fallback')
+    throw new Error('No articles from Supabase')
+  } catch (supabaseError) {
+    console.warn('⚠️ Supabase failed, using optimized fallback:', supabaseError)
+
+    // Fall back to optimized fallback if Supabase fails
     const fallbackArticles = await loadOptimizedFallback()
     console.log(`⚡ Loaded ${fallbackArticles.length} articles from optimized fallback`)
-    
+
     // Filter out events - only return articles
     const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
     console.log(`📰 Returning ${articlesOnly.length} articles for homepage`)
-    
+
     return articlesOnly
-  } catch (fallbackError) {
-    console.error('❌ Optimized fallback failed:', fallbackError)
-    return []
   }
 }
 
 export async function getCityArticles(city: string): Promise<Article[]> {
   try {
     console.log(`🔄 Fetching ${city} articles from Supabase...`)
-    
+
     // Type guard to ensure we only pass valid city names to Supabase function
     const validCity = city.toLowerCase() as 'edmonton' | 'calgary'
     if (validCity !== 'edmonton' && validCity !== 'calgary') {
@@ -67,21 +99,21 @@ export async function getCityArticles(city: string): Promise<Article[]> {
       return allFallbackArticles.filter(article => {
         // First filter out events
         if (article.type === 'event') return false
-        
+
         const hasCityCategory = article.category?.toLowerCase().includes(city.toLowerCase())
         const hasCityLocation = article.location?.toLowerCase().includes(city.toLowerCase())
-        const hasCityCategories = article.categories?.some((cat: string) => 
+        const hasCityCategories = article.categories?.some((cat: string) =>
           cat.toLowerCase().includes(city.toLowerCase())
         )
-        const hasCityTags = article.tags?.some((tag: string) => 
+        const hasCityTags = article.tags?.some((tag: string) =>
           tag.toLowerCase().includes(city.toLowerCase())
         )
         return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags
       })
     }
-    
+
     const articles = await getCityArticlesFromSupabase(validCity)
-    
+
     // Update optimized fallback with fresh data ONLY if we got articles
     if (articles.length > 0) {
       await updateOptimizedFallback(articles)
@@ -89,7 +121,7 @@ export async function getCityArticles(city: string): Promise<Article[]> {
     } else {
       console.log('⚠️ No articles from Supabase, skipping fallback update to preserve existing data')
     }
-    
+
     console.log(`✅ Loaded ${articles.length} ${city} articles from Supabase`)
     return articles
   } catch (error) {
@@ -99,8 +131,8 @@ export async function getCityArticles(city: string): Promise<Article[]> {
     return fallbackArticles.filter(article => {
       // First filter out events
       if (article.type === 'event') return false
-      
-      return article.category === city || 
+
+      return article.category === city ||
         (article.categories && article.categories.includes(city))
     })
   }
@@ -110,7 +142,7 @@ export async function getEventsArticles(): Promise<Article[]> {
   try {
     console.log('🔄 Fetching events from Supabase...')
     const articles = await getEventsArticlesFromSupabase()
-    
+
     // Update optimized fallback with fresh data ONLY if we got articles
     if (articles.length > 0) {
       await updateOptimizedFallback(articles)
@@ -118,7 +150,7 @@ export async function getEventsArticles(): Promise<Article[]> {
     } else {
       console.log('⚠️ No articles from Supabase, skipping fallback update to preserve existing data')
     }
-    
+
     console.log(`✅ Loaded ${articles.length} events from Supabase`)
     return articles
   } catch (error) {
