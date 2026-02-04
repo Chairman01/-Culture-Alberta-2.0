@@ -211,7 +211,31 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     let loadedArticle = await getFastArticleBySlug(slug)
     console.log('Fast cache result:', loadedArticle ? 'Found' : 'Not found')
 
-    // Skip expensive Supabase fallbacks for instant loading
+    // If not in fast cache, try Supabase (for newly created articles)
+    if (!loadedArticle) {
+      console.log('Article not in fast cache, trying Supabase...')
+      try {
+        loadedArticle = await getArticleBySlug(slug)
+        if (loadedArticle) {
+          console.log('✅ Found article in Supabase:', loadedArticle.title)
+        }
+      } catch (supabaseError) {
+        console.warn('Supabase lookup failed:', supabaseError)
+      }
+    }
+
+    // If still not found, try by ID
+    if (!loadedArticle) {
+      console.log('Trying to find article by ID...')
+      try {
+        loadedArticle = await getArticleById(slug)
+        if (loadedArticle) {
+          console.log('✅ Found article by ID:', loadedArticle.title)
+        }
+      } catch (idError) {
+        console.warn('ID lookup failed:', idError)
+      }
+    }
 
     // Last resort - use fast articles instead of expensive getAllArticles()
     if (!loadedArticle) {
