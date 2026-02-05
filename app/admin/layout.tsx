@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { BarChart2, FileText, Calendar, Award, Mail, RefreshCw } from "lucide-react"
+import { BarChart2, FileText, Calendar, Award, Mail, RefreshCw, LogOut } from "lucide-react"
 import { Toaster } from "@/components/ui/toaster"
 
 export default function AdminLayout({
@@ -25,24 +25,24 @@ export default function AdminLayout({
     if (!isClient) return
 
     console.log("Admin layout: Checking authentication...")
-    
+
     // Check if user is authenticated
     const adminAuthenticated = localStorage.getItem('admin_authenticated')
     const adminToken = localStorage.getItem('admin_token')
     const loginTime = localStorage.getItem('admin_login_time')
-    
+
     console.log("Admin layout: Auth check results:", {
       adminAuthenticated,
       hasToken: !!adminToken,
       loginTime
     })
-    
+
     // Check if token is expired (24 hours)
     if (loginTime) {
       const loginTimestamp = parseInt(loginTime)
       const now = Date.now()
       const hoursSinceLogin = (now - loginTimestamp) / (1000 * 60 * 60)
-      
+
       if (hoursSinceLogin > 24) {
         console.log("Admin layout: Token expired, clearing storage")
         // Token expired, clear storage and redirect to login
@@ -55,18 +55,30 @@ export default function AdminLayout({
         return
       }
     }
-    
+
     if (!adminAuthenticated || !adminToken) {
       console.log("Admin layout: Not authenticated, redirecting to login")
       setIsLoading(false)
       router.push('/admin/login')
       return
     }
-    
+
     console.log("Admin layout: Authenticated successfully")
     setIsAuthenticated(true)
     setIsLoading(false)
   }, [router, pathname, isClient])
+
+  const handleLogout = () => {
+    console.log("Logging out...")
+    // Clear all admin authentication data
+    localStorage.removeItem('admin_authenticated')
+    localStorage.removeItem('admin_token')
+    localStorage.removeItem('admin_user')
+    localStorage.removeItem('admin_login_time')
+
+    // Redirect to login page
+    router.push('/admin/login')
+  }
 
   const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart2 },
@@ -127,11 +139,10 @@ export default function AdminLayout({
                   <Link
                     key={item.name}
                     href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-black text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                      ? 'bg-black text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
                     <item.icon className="h-5 w-5" />
                     {item.name}
@@ -139,6 +150,17 @@ export default function AdminLayout({
                 )
               })}
             </nav>
+          </div>
+
+          {/* Logout Button */}
+          <div className="p-3 border-t border-gray-200">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full text-gray-700 hover:bg-red-50 hover:text-red-600"
+            >
+              <LogOut className="h-5 w-5" />
+              Logout
+            </button>
           </div>
         </div>
       </div>
@@ -149,7 +171,7 @@ export default function AdminLayout({
           {children}
         </main>
       </div>
-      
+
       {/* Toast notifications */}
       <Toaster />
     </div>

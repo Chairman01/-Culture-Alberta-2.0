@@ -23,7 +23,14 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '10', 10)
         const offset = parseInt(searchParams.get('offset') || '0', 10)
 
+        console.log('📥 GET /api/comments - Request received:', {
+            articleId,
+            limit,
+            offset
+        })
+
         if (!articleId) {
+            console.warn('❌ GET /api/comments - Missing article ID')
             return NextResponse.json(
                 { error: 'Article ID is required' },
                 { status: 400 }
@@ -32,6 +39,7 @@ export async function GET(request: NextRequest) {
 
         // Validate pagination parameters
         if (limit < 1 || limit > 50) {
+            console.warn('❌ GET /api/comments - Invalid limit:', limit)
             return NextResponse.json(
                 { error: 'Limit must be between 1 and 50' },
                 { status: 400 }
@@ -39,6 +47,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (offset < 0) {
+            console.warn('❌ GET /api/comments - Invalid offset:', offset)
             return NextResponse.json(
                 { error: 'Offset must be non-negative' },
                 { status: 400 }
@@ -46,6 +55,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Get total count of approved comments
+        console.log('🔍 Counting comments for article:', articleId)
         const { count, error: countError } = await supabase
             .from('comments')
             .select('*', { count: 'exact', head: true })
@@ -53,14 +63,23 @@ export async function GET(request: NextRequest) {
             .eq('status', 'approved')
 
         if (countError) {
-            console.error('Error counting comments:', countError)
+            console.error('❌ Error counting comments:')
+            console.error('- Article ID:', articleId)
+            console.error('- Error code:', countError.code)
+            console.error('- Error message:', countError.message)
+            console.error('- Error details:', countError.details)
+            console.error('- Error hint:', countError.hint)
+            console.error('- Full error:', JSON.stringify(countError, null, 2))
             return NextResponse.json(
-                { error: 'Failed to count comments' },
+                { error: 'Failed to count comments', details: countError.message },
                 { status: 500 }
             )
         }
 
+        console.log('✅ Comment count:', count)
+
         // Fetch approved comments with pagination
+        console.log('🔍 Fetching comments...')
         const { data: comments, error } = await supabase
             .from('comments')
             .select('id, author_name, content, created_at')
@@ -70,12 +89,20 @@ export async function GET(request: NextRequest) {
             .range(offset, offset + limit - 1)
 
         if (error) {
-            console.error('Error fetching comments:', error)
+            console.error('❌ Error fetching comments:')
+            console.error('- Article ID:', articleId)
+            console.error('- Error code:', error.code)
+            console.error('- Error message:', error.message)
+            console.error('- Error details:', error.details)
+            console.error('- Error hint:', error.hint)
+            console.error('- Full error:', JSON.stringify(error, null, 2))
             return NextResponse.json(
-                { error: 'Failed to fetch comments' },
+                { error: 'Failed to fetch comments', details: error.message },
                 { status: 500 }
             )
         }
+
+        console.log('✅ Comments fetched successfully:', comments?.length || 0)
 
         return NextResponse.json({
             comments: comments || [],
@@ -84,9 +111,12 @@ export async function GET(request: NextRequest) {
             offset
         })
     } catch (error) {
-        console.error('Error in GET /api/comments:', error)
+        console.error('❌ Unexpected error in GET /api/comments:')
+        console.error('- Error type:', typeof error)
+        console.error('- Error:', error)
+        console.error('- Stack:', error instanceof Error ? error.stack : 'N/A')
         return NextResponse.json(
-            { error: 'Internal server error' },
+            { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
             { status: 500 }
         )
     }
