@@ -17,15 +17,45 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 3600 // Revalidate every hour
 
 async function getEvents() {
-  try {
-    console.log('🔧 SSR: Loading events from optimized fallback...')
+  console.log('🔄 Loading events with fallback system...')
 
+  // Try Supabase first
+  try {
+    const { getAllArticles } = await import('@/lib/supabase-articles')
+    const articles = await getAllArticles()
+
+    // Filter for events only
+    const events = articles.filter(article => article.type === 'event')
+
+    if (events.length > 0) {
+      console.log(`✅ Loaded ${events.length} events from Supabase`)
+
+      // Transform to expected format
+      return events.map(event => ({
+        id: event.id,
+        title: event.title,
+        excerpt: event.excerpt || event.content?.substring(0, 200) || '',
+        description: event.content || '',
+        category: event.category || 'General',
+        location: event.location || 'Alberta',
+        date: (event as any).event_date || (event as any).eventDate || event.date || event.createdAt || new Date().toISOString(),
+        imageUrl: event.imageUrl || '',
+        author: event.author || 'Event Organizer',
+      }))
+    }
+  } catch (error) {
+    console.warn('⚠️ Supabase failed for events, using fallback:', error)
+  }
+
+  // Fallback to optimized JSON
+  try {
+    console.log('⚠️ Using optimized fallback for events')
     const fallbackArticles = await loadOptimizedFallback()
-    console.log(`✅ SSR: Loaded ${fallbackArticles.length} articles from optimized fallback`)
+    console.log(`⚡ FALLBACK: Loaded ${fallbackArticles.length} articles from optimized fallback`)
 
     // Filter for events only
     const events = fallbackArticles.filter(article => article.type === 'event')
-    console.log(`✅ SSR: Found ${events.length} events in fallback data`)
+    console.log(`✅ Found ${events.length} events in fallback data`)
 
     // Transform to expected format
     return events.map(event => ({
@@ -40,7 +70,7 @@ async function getEvents() {
       author: event.author || 'Event Organizer',
     }))
   } catch (error) {
-    console.error('❌ SSR: Failed to load events:', error)
+    console.error('❌ Failed to load events from fallback:', error)
     // Return fallback event to prevent empty page
     return [{
       id: 'fallback-event',
