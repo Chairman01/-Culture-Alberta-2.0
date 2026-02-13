@@ -34,13 +34,13 @@ async function getEvents() {
       return events.map(event => ({
         id: event.id,
         title: event.title,
-        excerpt: event.excerpt || event.content?.substring(0, 200) || '',
-        description: event.content || '',
+        excerpt: event.excerpt || event.description?.substring(0, 200) || '',
+        description: event.description || '',
         category: event.category || 'General',
         location: event.location || 'Alberta',
-        date: (event as any).event_date || (event as any).eventDate || event.date || event.createdAt || new Date().toISOString(),
-        imageUrl: event.imageUrl || '',
-        author: event.author || 'Event Organizer',
+        date: event.event_date || new Date().toISOString(),
+        imageUrl: event.image_url || '',
+        author: event.organizer || 'Event Organizer',
       }))
     }
   } catch (error) {
