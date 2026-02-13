@@ -19,13 +19,13 @@ export const revalidate = 3600 // Revalidate every hour
 async function getEvents() {
   console.log('🔄 Loading events with fallback system...')
 
-  // Try Supabase first
+  // Try Supabase first using the events library
   try {
-    const { getAllArticles } = await import('@/lib/supabase-articles')
-    const articles = await getAllArticles()
+    const { getAllEvents } = await import('@/lib/events')
+    const supabaseEvents = await getAllEvents()
 
-    // Filter for events only
-    const events = articles.filter(article => article.type === 'event')
+    // Filter for events only (getAllEvents already returns only events)
+    const events = supabaseEvents
 
     if (events.length > 0) {
       console.log(`✅ Loaded ${events.length} events from Supabase`)
