@@ -125,7 +125,93 @@ export async function PUT(
       )
     }
 
-    // Update the local fallback file (events are stored locally)
+    // Try to update in Supabase first
+    try {
+      if (!supabase) {
+        console.warn('⚠️ Supabase client not initialized, using fallback')
+        throw new Error('Supabase not initialized')
+      }
+
+      console.log(`🔄 Admin API: Updating event ${eventId} in Supabase...`)
+
+      // Map camelCase to snake_case for Supabase
+      const supabaseUpdateData: SupabaseUpdateData = {
+        title: updateData.title,
+        description: updateData.description,
+        excerpt: updateData.excerpt,
+        category: updateData.category,
+        location: updateData.location,
+        image_url: updateData.imageUrl,
+        organizer: updateData.organizer,
+        price: updateData.price,
+        link: updateData.link,
+        status: updateData.status,
+        featured_home: updateData.featuredHome,
+        featured_calgary: updateData.featuredCalgary,
+        featured_edmonton: updateData.featuredEdmonton,
+        trending_home: updateData.trendingHome,
+        trending_calgary: updateData.trendingCalgary,
+        trending_edmonton: updateData.trendingEdmonton,
+        event_date: updateData.event_date,
+        event_end_date: updateData.event_end_date,
+        updated_at: new Date().toISOString()
+      }
+
+      // Remove undefined values
+      Object.keys(supabaseUpdateData).forEach(key => {
+        if (supabaseUpdateData[key as keyof SupabaseUpdateData] === undefined) {
+          delete supabaseUpdateData[key as keyof SupabaseUpdateData]
+        }
+      })
+
+      const { data: supabaseResult, error: supabaseError } = await supabase
+        .from('events')
+        .update(supabaseUpdateData)
+        .eq('id', eventId)
+        .select()
+        .single()
+
+      if (supabaseError) {
+        console.warn(`⚠️ Supabase update failed:`, supabaseError)
+        throw supabaseError
+      }
+
+      console.log(`✅ Admin API: Event ${eventId} updated successfully in Supabase`)
+
+      // Also update fallback for consistency
+      try {
+        const fallbackArticles = await loadOptimizedFallback()
+        const eventIndex = fallbackArticles.findIndex(article =>
+          article.id === eventId && article.type === 'event'
+        )
+
+        if (eventIndex !== -1) {
+          const updatedEvent = {
+            ...fallbackArticles[eventIndex],
+            ...updateData,
+            id: eventId,
+            type: 'event',
+            updatedAt: new Date().toISOString()
+          }
+          fallbackArticles[eventIndex] = updatedEvent
+          await updateOptimizedFallback(fallbackArticles)
+          console.log(`✅ Admin API: Event also updated in fallback for consistency`)
+        }
+      } catch (fallbackError) {
+        console.warn('⚠️ Failed to update fallback, but Supabase update succeeded:', fallbackError)
+      }
+
+      return NextResponse.json(createApiResponse(
+        true,
+        supabaseResult,
+        undefined,
+        'Event updated successfully'
+      ))
+    } catch (error) {
+      console.warn('⚠️ Supabase update failed, trying fallback:', error)
+    }
+
+    // Fallback: Update only in local fallback file
     console.log(`🔄 Admin API: Updating event ${eventId} in local fallback...`)
 
     const fallbackArticles = await loadOptimizedFallback()
@@ -158,7 +244,7 @@ export async function PUT(
       true,
       updatedEvent,
       undefined,
-      'Event updated successfully'
+      'Event updated successfully (fallback only - Supabase unavailable)'
     ))
   } catch (error) {
     const errorResponse = handleApiError(error, 'update event')
