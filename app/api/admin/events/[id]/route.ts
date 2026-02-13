@@ -54,22 +54,50 @@ export async function GET(
   try {
     const resolvedParams = await params
     const eventId = resolvedParams.id
-    
+
     console.log(`🔧 Admin API: Getting event by ID: ${eventId}`)
-    
+
+    // Try Supabase first
+    try {
+      if (!supabase) {
+        console.warn('⚠️ Supabase client not initialized, using fallback')
+        throw new Error('Supabase not initialized')
+      }
+
+      const { data: supabaseEvent, error: supabaseError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .single()
+
+      if (supabaseError) {
+        console.warn(`⚠️ Supabase query failed:`, supabaseError)
+        throw supabaseError
+      }
+
+      if (supabaseEvent) {
+        console.log(`✅ Admin API: Found event in Supabase: ${supabaseEvent.title}`)
+        return NextResponse.json(createApiResponse(true, supabaseEvent, undefined, 'Event retrieved successfully'))
+      }
+    } catch (error) {
+      console.warn('⚠️ Supabase failed, trying fallback:', error)
+    }
+
+    // Fallback to optimized JSON
+    console.log('⚠️ Using optimized fallback for event')
     const fallbackArticles = await loadOptimizedFallback()
-    console.log(`✅ Admin API: Loaded ${fallbackArticles.length} articles from optimized fallback`)
-    
+    console.log(`⚡ FALLBACK: Loaded ${fallbackArticles.length} articles from optimized fallback`)
+
     // Find the specific event
-    const event = fallbackArticles.find(article => 
+    const event = fallbackArticles.find(article =>
       article.id === eventId && article.type === 'event'
     )
-    
+
     if (!event) {
       return NextResponse.json(createApiResponse(false, undefined, 'Event not found'), { status: 404 })
     }
-    
-    console.log(`✅ Admin API: Found event: ${event.title}`)
+
+    console.log(`✅ Admin API: Found event in fallback: ${event.title}`)
     return NextResponse.json(createApiResponse(true, event, undefined, 'Event retrieved successfully'))
   } catch (error) {
     const errorResponse = handleApiError(error, 'get event')
@@ -85,10 +113,10 @@ export async function PUT(
     const resolvedParams = await params
     const eventId = resolvedParams.id
     const updateData: EventUpdateData = await request.json()
-    
+
     console.log(`🔧 Admin API: Updating event ID: ${eventId}`)
     console.log(`📝 Update data:`, updateData)
-    
+
     // Quick validation - only validate required fields for performance
     if (!updateData.title?.trim()) {
       return NextResponse.json(
@@ -96,12 +124,12 @@ export async function PUT(
         { status: 400 }
       )
     }
-    
+
     // Update the local fallback file (events are stored locally)
     console.log(`🔄 Admin API: Updating event ${eventId} in local fallback...`)
 
     const fallbackArticles = await loadOptimizedFallback()
-    const eventIndex = fallbackArticles.findIndex(article => 
+    const eventIndex = fallbackArticles.findIndex(article =>
       article.id === eventId && article.type === 'event'
     )
 
