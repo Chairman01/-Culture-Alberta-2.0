@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { quickSyncArticle } from '@/lib/auto-sync'
 import { revalidatePath } from 'next/cache'
+import { notifySearchEngines } from '@/lib/indexing'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -265,8 +266,15 @@ export async function PUT(
       console.error('❌ Revalidation failed:', revalidateError)
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    // Auto-notify search engines about the updated article (non-blocking)
+    if (data.status === 'published') {
+      notifySearchEngines(`/articles/${articleId}`).catch(err =>
+        console.warn('⚠️ Search engine notification failed (non-fatal):', err)
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
       article: data,
       message: 'Article updated successfully!'
     })

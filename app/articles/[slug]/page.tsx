@@ -424,49 +424,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         />
 
         {/* Metadata is now handled by generateMetadata function */}
-
-        {/* JSON-LD Article Structured Data for Google rich results */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Article",
-              "headline": loadedArticle.title,
-              "description": loadedArticle.excerpt || loadedArticle.description || `Read about ${loadedArticle.title} on Culture Alberta`,
-              "image": (() => {
-                const imageUrl = loadedArticle.imageUrl;
-                if (!imageUrl || imageUrl.startsWith('data:image')) {
-                  return "https://www.culturealberta.com/images/culture-alberta-og.jpg";
-                }
-                if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-                  return imageUrl;
-                }
-                return `https://www.culturealberta.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-              })(),
-              "datePublished": loadedArticle.date || loadedArticle.createdAt,
-              "dateModified": loadedArticle.updatedAt || loadedArticle.date || loadedArticle.createdAt,
-              "author": {
-                "@type": "Person",
-                "name": loadedArticle.author || "Culture Alberta"
-              },
-              "publisher": {
-                "@type": "Organization",
-                "name": "Culture Alberta",
-                "logo": {
-                  "@type": "ImageObject",
-                  "url": "https://www.culturealberta.com/images/culture-alberta-og.jpg"
-                }
-              },
-              "mainEntityOfPage": {
-                "@type": "WebPage",
-                "@id": `https://www.culturealberta.com/articles/${slug}`
-              },
-              "articleSection": loadedArticle.category || "Culture",
-              "keywords": loadedArticle.tags?.join(', ') || loadedArticle.category || "Alberta Culture"
-            })
-          }}
-        />
+        {/* Article JSON-LD is handled by <ArticleStructuredData> above — inline duplicate removed */}
 
         <div className="min-h-screen bg-gray-50">
           {/* Sticky Header */}

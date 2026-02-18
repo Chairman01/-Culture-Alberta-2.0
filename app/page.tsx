@@ -450,6 +450,9 @@ export default async function HomeStatic() {
       {/* Metadata is handled by layout.tsx - no PageSEO needed in App Router */}
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
+          {/* SEO H1 - visually hidden but present for search engines */}
+          <h1 className="sr-only">Culture Alberta — Your Guide to Events, Culture & Food in Calgary & Edmonton</h1>
+
           {/* Featured Article + Trending Sidebar */}
           <section className="w-full py-8 md:py-10 lg:py-12 bg-gradient-to-b from-gray-50 to-white">
             <div className="container mx-auto px-4 md:px-6">
@@ -476,7 +479,7 @@ export default async function HomeStatic() {
                             <span className="rounded-full bg-black text-white px-4 py-1.5 font-medium">{getPostCategory(featuredPost)}</span>
                             <span className="font-medium">{formatDate(getPostDate(featuredPost))}</span>
                           </div>
-                          <h1 className="font-display text-4xl font-bold group-hover:text-gray-600 transition-colors duration-300 mb-3 leading-tight">{getPostTitle(featuredPost)}</h1>
+                          <h2 className="font-display text-4xl font-bold group-hover:text-gray-600 transition-colors duration-300 mb-3 leading-tight">{getPostTitle(featuredPost)}</h2>
                           <p className="font-body text-gray-600 text-lg leading-relaxed">{getPostExcerpt(featuredPost)}</p>
                         </div>
                       </div>

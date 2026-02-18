@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { quickSyncArticle } from '@/lib/auto-sync'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { revalidatePath } from 'next/cache'
+import { notifySearchEngines } from '@/lib/indexing'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -120,8 +121,16 @@ export async function POST(request: NextRequest) {
       // Don't fail the entire request if revalidation fails
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    // Auto-notify search engines about the new article (non-blocking)
+    if (data.status === 'published') {
+      const articleSlug = data.id // slug is based on id or title
+      notifySearchEngines(`/articles/${articleSlug}`).catch(err =>
+        console.warn('⚠️ Search engine notification failed (non-fatal):', err)
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
       article: data,
       message: 'Article created successfully!'
     })

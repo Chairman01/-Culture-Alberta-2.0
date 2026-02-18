@@ -16,8 +16,7 @@ export default function robots(): MetadataRoute.Robots {
         // Utility files
         '/favicon.ico',
         '/files/*.pdf',
-        // Broken/edge case URLs
-        '/articles/e',
+        // Broken/edge case URLs — NOTE: removed '/articles/e' (too broad, was blocking /articles/edmonton-* URLs)
         '/debug/',
         '/debug-simple/',
         // Test routes - block with and without trailing slashes
@@ -63,15 +62,16 @@ export default function robots(): MetadataRoute.Robots {
         // Test articles to be deleted
         '/articles/afro-music-fest',
         '/articles/hello-this-is-a-tet',
-        // Remove best-of pages that don't have content or have thin content
-        '/best-of/shopping',
-        '/best-of/dentists',
-        '/best-of/accountants',
-        '/best-of/restaurants',
-        '/best-of/culture',
-        '/best-of/attractions',
-        '/best-of/lawyers',
-        '/best-of/food',
+        // NOTE: best-of pages re-enabled for indexing — they are valuable SEO landing pages
+        // Only block specific best-of pages if they are genuinely empty/thin
+        // '/best-of/shopping',  // unblocked - indexable content
+        // '/best-of/dentists',  // unblocked - indexable content
+        // '/best-of/accountants', // unblocked
+        // '/best-of/restaurants', // unblocked - high value SEO page
+        // '/best-of/culture',   // unblocked
+        // '/best-of/attractions', // unblocked
+        // '/best-of/lawyers',   // unblocked
+        // '/best-of/food',      // unblocked - high value SEO page
       ],
     },
     sitemap: 'https://www.culturealberta.com/sitemap.xml',
