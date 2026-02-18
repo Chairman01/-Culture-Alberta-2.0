@@ -26,8 +26,8 @@ export const metadata: Metadata = {
     url: 'https://www.culturealberta.com',
     siteName: 'Culture Alberta',
     locale: 'en_CA',
-    title: 'Culture Alberta - Discover Alberta\'s Best Culture, Events & Experiences',
-    description: 'Discover the best of Alberta\'s culture, events, restaurants, and experiences. Your guide to Calgary, Edmonton, and beyond.',
+    title: 'Culture Alberta | Best Culture, Events & Food in Calgary & Edmonton',
+    description: 'Your guide to Alberta\'s culture: events, restaurants, festivals & local experiences in Calgary, Edmonton & beyond.',
     images: [
       {
         url: 'https://www.culturealberta.com/images/culture-alberta-og.jpg',
@@ -45,8 +45,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Culture Alberta - Discover Alberta\'s Best Culture, Events & Experiences',
-    description: 'Discover the best of Alberta\'s culture, events, restaurants, and experiences. Your guide to Calgary, Edmonton, and beyond.',
+    title: 'Culture Alberta | Best Culture, Events & Food in Calgary & Edmonton',
+    description: 'Your guide to Alberta\'s culture: events, restaurants, festivals & local experiences in Calgary, Edmonton & beyond.',
     images: [
       {
         url: 'https://www.culturealberta.com/images/culture-alberta-og.jpg',
@@ -91,10 +91,10 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning={true}>
         {/* Structured Data for Rich Snippets - Required for Google sitelinks like blogTO */}
+        {/* WebsiteStructuredData covers WebSite schema — SitelinksData removed (was duplicate WebSite schema) */}
         <WebsiteStructuredData />
         <OrganizationStructuredData />
         <LocalBusinessStructuredData />
-        <SitelinksData navigationLinks={DEFAULT_NAVIGATION_LINKS} />
         {/* Google AdSense - Duplicate in body as backup */}
         <Script
           async
