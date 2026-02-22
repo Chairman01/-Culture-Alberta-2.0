@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
-import { SimpleTextEditor } from "@/app/admin/components/simple-text-editor"
+import { RichTextEditor } from "@/app/admin/components/rich-text-editor"
 import { useToast } from "@/hooks/use-toast"
 
 export default function NewEventPage() {
@@ -23,9 +23,11 @@ export default function NewEventPage() {
   const [startMonth, setStartMonth] = useState("")
   const [startDay, setStartDay] = useState("")
   const [startYear, setStartYear] = useState("")
+  const [startTime, setStartTime] = useState("")
   const [endMonth, setEndMonth] = useState("")
   const [endDay, setEndDay] = useState("")
   const [endYear, setEndYear] = useState("")
+  const [endTime, setEndTime] = useState("")
   const [location, setLocation] = useState("")
   const [description, setDescription] = useState("")
   const [imageUrl, setImageUrl] = useState("")
@@ -100,10 +102,12 @@ export default function NewEventPage() {
     setIsSaving(true)
 
     try {
-      // Build date strings from dropdowns
+      // Build date strings - use toISOString() so local time is stored correctly (avoids UTC misinterpretation)
       const startDateString = `${startYear}-${startMonth.padStart(2, '0')}-${startDay.padStart(2, '0')}`
+      const startDateTime = new Date(`${startDateString}T${startTime || '00:00'}:00`).toISOString()
       const endDateString = endMonth && endDay && endYear ? 
         `${endYear}-${endMonth.padStart(2, '0')}-${endDay.padStart(2, '0')}` : null
+      const endDateTime = endDateString ? new Date(`${endDateString}T${endTime || '00:00'}:00`).toISOString() : null
 
       // Create a new event object for the events table
       const newEvent = {
@@ -114,8 +118,8 @@ export default function NewEventPage() {
         location,
         organizer: organizer || 'Event Organizer',
         organizer_contact: contactEmail || contactPhone || '',
-        event_date: new Date(startDateString).toISOString(), // Convert to ISO format
-        event_end_date: endDateString ? new Date(endDateString).toISOString() : undefined,
+        event_date: startDateTime,
+        event_end_date: endDateTime || undefined,
         imageUrl: imageUrl || '', // Fixed: use imageUrl instead of image_url
         website_url: ticketUrl || '',
         status: 'published' as const
@@ -295,6 +299,17 @@ export default function NewEventPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="start-time">Start Time</Label>
+                  <Input
+                    id="start-time"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    placeholder="e.g. 11:00"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label>End Date (Optional)</Label>
                   <div className="grid grid-cols-3 gap-2">
                     <Select value={endMonth} onValueChange={setEndMonth}>
@@ -347,14 +362,24 @@ export default function NewEventPage() {
                     </Select>
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="end-time">End Time (Optional)</Label>
+                  <Input
+                    id="end-time"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <SimpleTextEditor
-                  content={description}
+                <RichTextEditor
+                  content={description || ''}
                   onChange={setDescription}
-                  placeholder="Write your event description here..."
+                  placeholder="Write your event description here. Add images, change font size and style like in articles."
                 />
               </div>
 

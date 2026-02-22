@@ -2,13 +2,15 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, Calendar, MapPin } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
+import { SearchBar } from '@/components/search-bar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { PageTracker } from '@/components/analytics/page-tracker'
 import { trackLocationView } from '@/lib/analytics'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getCityArticlesWithFallback } from '@/lib/fallback-articles'
-import { getAllEvents } from '@/lib/events'
+import { getTrendingByViews } from '@/lib/trending-articles'
+import { getEventsByLocation } from '@/lib/events'
 import { Article } from '@/lib/types/article'
+import { isNeighborhoodArticle, isGuideArticle, isRegularArticle } from '@/lib/utils/article-filters'
 import { Metadata } from 'next'
 
 // Proper App Router metadata export (replaces broken PageSEO component)
@@ -40,81 +42,57 @@ async function getEdmontonData() {
   try {
     console.log('🔄 Loading Edmonton articles with fallback system...')
 
-    // Get Edmonton articles with fallback to articles.json (exclude events)
-    const allEdmontonContent = await getCityArticlesWithFallback('edmonton') as EdmontonArticle[]
-    const edmontonArticles = allEdmontonContent.filter(item => item.type !== 'event' && item.type !== 'Event')
-    console.log(`✅ Edmonton articles loaded: ${edmontonArticles.length} (filtered out ${allEdmontonContent.length - edmontonArticles.length} events)`)
+    // Get Edmonton articles (events excluded at source - only on events page)
+    const edmontonArticles = await getCityArticlesWithFallback('edmonton') as EdmontonArticle[]
+    console.log(`✅ Edmonton articles loaded: ${edmontonArticles.length}`)
+
+    // Regular articles only (exclude neighborhood + guide - those have dedicated pages)
+    const regularArticles = edmontonArticles.filter(isRegularArticle)
+    console.log(`📰 Regular articles (main section): ${regularArticles.length}, neighborhood/guide excluded`)
 
     // Sort by date (newest first)
-    const sortedArticles = edmontonArticles.sort((a, b) => {
+    const sortedArticles = regularArticles.sort((a, b) => {
       const dateA = new Date(a.date || a.createdAt || 0).getTime()
       const dateB = new Date(b.date || b.createdAt || 0).getTime()
       return dateB - dateA // Newest first
     })
 
-    // Get Edmonton events from the articles data (includes events from articles.json)
+    // Get Edmonton events from events table (not articles - events only on events page)
+    const edmontonEventsRaw = await getEventsByLocation('Edmonton')
     const now = new Date()
-    const upcomingEvents = sortedArticles.filter(
-      (a) => {
-        // First check if it's an event type
-        if (a.type !== 'event' && a.type !== 'Event') return false
-
-        // Check if it's Edmonton-related
-        const isEdmontonEvent = a.location?.toLowerCase().includes('edmonton') ||
-          a.category?.toLowerCase().includes('edmonton') ||
-          a.categories?.some((cat: string) => cat.toLowerCase().includes('edmonton')) ||
-          a.title.toLowerCase().includes('edmonton')
-
-        if (!isEdmontonEvent) return false
-
-        // Check if it has a date and is in the future
-        const dateToCheck = a.date || a.eventDate || a.createdAt
-        if (!dateToCheck) return false
-
-        // Handle date formats like "August 15 - 17, 2025" or "August 15, 2025"
-        let dateStr = dateToCheck.toString()
-        if (dateStr.includes(' - ')) {
-          // Take the first date from a range
-          dateStr = dateStr.split(' - ')[0]
-        }
-
+    const upcomingEvents = edmontonEventsRaw
+      .filter(e => {
+        const d = e.event_date || (e as any).event_date
+        if (!d) return false
         try {
-          const eventDate = new Date(dateStr)
-          return eventDate > now
-        } catch (error) {
-          console.warn('Could not parse date:', dateToCheck, error)
-          return false
-        }
-      }
-    ).sort((a, b) => {
-      // Sort by date, handling date ranges
-      const getDate = (dateStr: string) => {
-        if (!dateStr) return new Date(0)
-        let dateToCheck = dateStr
-        if (dateStr.includes(' - ')) {
-          dateToCheck = dateStr.split(' - ')[0]
-        }
-        try {
-          return new Date(dateToCheck)
-        } catch {
-          return new Date(0)
-        }
-      }
-      const dateA = getDate(a.date || a.eventDate || a.createdAt || '')
-      const dateB = getDate(b.date || b.eventDate || b.createdAt || '')
-      return dateA.getTime() - dateB.getTime()
-    })
+          return new Date(d) >= now
+        } catch { return false }
+      })
+      .sort((a, b) => {
+        const dA = new Date(a.event_date || 0).getTime()
+        const dB = new Date(b.event_date || 0).getTime()
+        return dA - dB
+      })
+      .slice(0, 5)
 
     console.log(`🔍 Edmonton events found: ${upcomingEvents.length}`)
-    upcomingEvents.forEach((event, index) => {
-      console.log(`  ${index + 1}. ${event.title} (${event.location || event.category}) - ${event.date || event.eventDate}`)
-    })
 
-    // Get trending articles - if no trendingEdmonton flag, use recent articles
-    const trendingArticles = sortedArticles.filter(a => a.trendingEdmonton === true && a.type !== 'event' && a.type !== 'Event')
-    const finalTrendingArticles = trendingArticles.length > 0
-      ? trendingArticles.slice(0, 4)
-      : sortedArticles.filter(a => a.type !== 'event' && a.type !== 'Event').slice(0, 4)
+    // Get trending articles - use actual view data when available, else manual flags, else recent
+    const eligibleArticles = sortedArticles.filter(a => a.type !== 'event' && a.type !== 'Event')
+    const trendingByViews = await getTrendingByViews(eligibleArticles, { days: 7, limit: 4 })
+    const trendingByFlag = eligibleArticles.filter(a => a.trendingEdmonton === true)
+    const finalTrendingArticles = trendingByViews.length > 0
+      ? trendingByViews
+      : trendingByFlag.length > 0
+        ? trendingByFlag.slice(0, 4)
+        : eligibleArticles.slice(0, 4)
+    // Top Stories: same logic, 6 articles
+    const topStoriesByViews = await getTrendingByViews(eligibleArticles, { days: 7, limit: 6 })
+    const topStories = topStoriesByViews.length > 0
+      ? topStoriesByViews
+      : trendingByFlag.length > 0
+        ? trendingByFlag.slice(0, 6)
+        : eligibleArticles.slice(0, 6)
 
     // Get featured article - if no featuredEdmonton flag, use the first article
     const featuredArticle = sortedArticles.find(post => post.featuredEdmonton === true) ||
@@ -123,25 +101,34 @@ async function getEdmontonData() {
 
     console.log(`📊 Edmonton page data: ${sortedArticles.length} articles, ${finalTrendingArticles.length} trending, ${featuredArticle ? '1' : '0'} featured`)
 
+    const neighborhoodArticles = edmontonArticles.filter(isNeighborhoodArticle)
+    const guideArticles = edmontonArticles.filter(isGuideArticle)
+
     return {
       articles: sortedArticles,
+      neighborhoodArticles,
+      guideArticles,
       events: upcomingEvents.slice(0, 3),
       trendingArticles: finalTrendingArticles,
-      featuredArticle: featuredArticle
+      featuredArticle: featuredArticle,
+      topStories
     }
   } catch (error) {
     console.error('❌ Error loading Edmonton data:', error)
     return {
       articles: [],
+      neighborhoodArticles: [],
+      guideArticles: [],
       events: [],
       trendingArticles: [],
-      featuredArticle: null
+      featuredArticle: null,
+      topStories: []
     }
   }
 }
 
 export default async function EdmontonPage() {
-  const { articles, events, trendingArticles, featuredArticle } = await getEdmontonData()
+  const { articles, neighborhoodArticles, guideArticles, events, trendingArticles, featuredArticle, topStories } = await getEdmontonData()
 
   const formatDate = (dateString: string) => {
     try {
@@ -164,11 +151,17 @@ export default async function EdmontonPage() {
     if (!dateString) return 'Date TBA'
 
     try {
-      // Parse the date string and ensure it's treated as local time, not UTC
-      const [year, month, day] = dateString.split('-').map(Number)
-      const date = new Date(year, month - 1, day) // month is 0-indexed
-      const monthName = date.toLocaleDateString('en-US', { month: 'long' })
-      return `${monthName} ${day}, ${year}`
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return 'Date TBA'
+
+      const datePart = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+      const timeMatch = dateString.match(/T(\d{1,2}):(\d{2})/)
+      const isMidnight = timeMatch && parseInt(timeMatch[1], 10) === 0 && parseInt(timeMatch[2], 10) === 0
+      const timePart = timeMatch && !isMidnight
+        ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        : ''
+
+      return timePart ? `${datePart} at ${timePart}` : datePart
     } catch {
       return 'Date TBA'
     }
@@ -177,7 +170,6 @@ export default async function EdmontonPage() {
   return (
     <>
       {/* Metadata is now handled by the metadata export above */}
-      <PageTracker title="Edmonton - Culture Alberta" />
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
           {/* Header Section */}
@@ -228,6 +220,10 @@ export default async function EdmontonPage() {
 
                 {/* Sidebar (right) */}
                 <div className="space-y-6">
+                  {/* Search */}
+                  <div className="bg-white rounded-xl shadow-sm p-6">
+                    <SearchBar variant="edmonton" className="mb-0" />
+                  </div>
                   {/* Trending in Edmonton */}
                   <div className="bg-white rounded-xl shadow-sm p-6">
                     <h2 className="font-display text-2xl font-bold mb-4">Trending This Week</h2>
@@ -249,7 +245,7 @@ export default async function EdmontonPage() {
                           </Link>
                         ))
                       ) : (
-                        // Fallback: show recent Edmonton articles if no trending articles
+                        // Fallback: show recent regular articles if no trending
                         articles.slice(0, 3).map((article, index) => (
                           <Link
                             key={`recent-${article.id}-${index}`}
@@ -269,25 +265,65 @@ export default async function EdmontonPage() {
                     </div>
                   </div>
 
-                  {/* Upcoming Events */}
+                  {/* Edmonton Events */}
                   <div className="bg-white rounded-xl shadow-sm p-4">
-                    <h2 className="font-display text-xl font-bold mb-3">Upcoming Events</h2>
-                    <div className="flex items-center justify-between bg-blue-50 rounded-lg p-4">
-                      <div className="flex items-center gap-3">
-                        <Calendar className="h-8 w-8 text-blue-600" />
-                        <div>
-                          <h3 className="font-display font-semibold text-sm text-gray-900">Discover Edmonton's Best Events</h3>
-                          <p className="text-gray-600 text-xs">From festivals to concerts</p>
-                        </div>
+                    <h2 className="font-display text-xl font-bold mb-3">Edmonton Events</h2>
+                    {events.length > 0 ? (
+                      <div className="space-y-3">
+                        {events.slice(0, 3).map((event) => (
+                          <div key={event.id} className="flex gap-3 p-3 rounded-lg border bg-gray-50/50 hover:bg-gray-50">
+                            <div className="w-20 h-20 flex-shrink-0 rounded overflow-hidden bg-gray-200">
+                              <Image
+                                src={(event as any).image_url || (event as any).imageUrl || "/placeholder.svg"}
+                                alt={event.title}
+                                width={80}
+                                height={80}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-display font-semibold text-sm line-clamp-2">{event.title}</h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {formatEventDate((event as any).event_date || (event as any).eventDate || '')} · {(event as any).location || 'Edmonton'}
+                              </p>
+                              <div className="flex gap-2 mt-2">
+                                <Link href={getEventUrl(event as any)}>
+                                  <span className="text-xs font-medium text-blue-600 hover:underline">View Details</span>
+                                </Link>
+                                {(event as any).website_url && (
+                                  <a href={(event as any).website_url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-blue-600 hover:underline">
+                                    Register
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <Link
+                          href="/events"
+                          className="block text-center text-sm text-blue-600 hover:underline font-medium py-2"
+                        >
+                          View all events →
+                        </Link>
                       </div>
-                      <Link
-                        href="/events"
-                        className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md text-sm transition-colors duration-200"
-                      >
-                        <span>Explore</span>
-                        <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    </div>
+                    ) : (
+                      <div className="flex items-center justify-between bg-blue-50 rounded-lg p-4">
+                        <div className="flex items-center gap-3">
+                          <Calendar className="h-8 w-8 text-blue-600" />
+                          <div>
+                            <h3 className="font-display font-semibold text-sm text-gray-900">Discover Edmonton's Best Events</h3>
+                            <p className="text-gray-600 text-xs">From festivals to concerts</p>
+                          </div>
+                        </div>
+                        <Link
+                          href="/events"
+                          className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md text-sm transition-colors duration-200"
+                        >
+                          <span>Explore</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      </div>
+                    )}
                   </div>
 
                   {/* Newsletter */}
@@ -309,16 +345,10 @@ export default async function EdmontonPage() {
                   <TabsList className="mx-auto sm:mx-0">
                     <TabsTrigger value="all">All</TabsTrigger>
                     <TabsTrigger value="food">Food & Drink</TabsTrigger>
+                    <TabsTrigger value="top">Top Stories</TabsTrigger>
                     <TabsTrigger value="arts">Arts & Culture</TabsTrigger>
                     <TabsTrigger value="outdoors">Outdoors</TabsTrigger>
                   </TabsList>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Sort by:</span>
-                    <select className="rounded-md border border-input bg-background px-3 py-1 text-sm">
-                      <option value="newest">Newest</option>
-                      <option value="popular">Popular</option>
-                    </select>
-                  </div>
                 </div>
 
                 <TabsContent value="all" className="mt-4">
@@ -402,6 +432,40 @@ export default async function EdmontonPage() {
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="top" className="mt-4">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {topStories.slice(0, 6).map((article) => (
+                      <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                        <div className="overflow-hidden rounded-lg">
+                          <div className="aspect-[4/3] w-full bg-gray-200">
+                            <Image
+                              src={article.imageUrl || "/placeholder.svg"}
+                              alt={article.title}
+                              width={400}
+                              height={300}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">
+                              {article.location || article.category}
+                            </span>
+                            <span>{formatDate(article.date || '')}</span>
+                          </div>
+                          <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                  {topStories.length === 0 && (
+                    <p className="text-center text-muted-foreground py-12">No top stories yet. Mark articles as trending in the admin to feature them here.</p>
                   )}
                 </TabsContent>
 
@@ -497,53 +561,38 @@ export default async function EdmontonPage() {
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-3xl font-bold">Edmonton Neighborhoods</h2>
-                <Link href="/edmonton/all-articles" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
+                <Link href="/neighborhoods?city=edmonton" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {(() => {
-                  const neighborhoodArticles = articles.filter(article =>
-                    article.category?.toLowerCase().includes('neighborhood') ||
-                    article.category?.toLowerCase().includes('neighbourhood') ||
-                    article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
-                    article.categories?.some(cat => cat.toLowerCase().includes('neighbourhood')) ||
-                    article.tags?.some(tag => tag.toLowerCase().includes('neighborhood')) ||
-                    article.tags?.some(tag => tag.toLowerCase().includes('neighbourhood')) ||
-                    article.title?.toLowerCase().includes('neighbourhood') ||
-                    article.title?.toLowerCase().includes('neighborhood')
-                  )
-
-                  return neighborhoodArticles.slice(0, 4).map((article) => (
-                    <Link key={article.id} href={getArticleUrl(article)}>
-                      <div className="bg-white rounded-lg overflow-hidden shadow-sm p-6 text-center">
-                        <div className="aspect-[4/3] w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-                          <Image
-                            src={article.imageUrl || "/placeholder.svg"}
-                            alt={article.title}
-                            width={400}
-                            height={300}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {neighborhoodArticles.slice(0, 4).map((article) => (
+                  <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                    <div className="rounded-2xl overflow-hidden border border-gray-100 bg-white shadow-sm hover:shadow-lg transition-all duration-300">
+                      <div className="aspect-[4/3] relative overflow-hidden">
+                        <Image
+                          src={article.imageUrl || "/placeholder.svg"}
+                          alt={article.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 p-4">
+                          <h3 className="font-semibold text-lg text-white drop-shadow-md line-clamp-2">{article.title}</h3>
                         </div>
-                        <h3 className="font-semibold text-lg mb-2">{article.title}</h3>
-                        <p className="text-gray-600 text-sm">{article.excerpt}</p>
                       </div>
-                    </Link>
-                  ))
-                })()}
-                {/* Show placeholder if no neighborhood articles */}
-                {articles.filter(article =>
-                  article.category?.toLowerCase().includes('neighborhood') ||
-                  article.category?.toLowerCase().includes('neighbourhood') ||
-                  article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
-                  article.categories?.some(cat => cat.toLowerCase().includes('neighbourhood')) ||
-                  article.tags?.some(tag => tag.toLowerCase().includes('neighborhood')) ||
-                  article.tags?.some(tag => tag.toLowerCase().includes('neighbourhood')) ||
-                  article.title?.toLowerCase().includes('neighbourhood') ||
-                  article.title?.toLowerCase().includes('neighborhood')
-                ).length === 0 && (
+                      <div className="p-4">
+                        <p className="text-gray-600 text-sm line-clamp-2">{article.excerpt}</p>
+                        <span className="inline-flex items-center gap-1 mt-2 text-blue-600 font-medium text-sm group-hover:gap-2 transition-all">
+                          Explore <ArrowRight className="w-4 h-4" />
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+                {neighborhoodArticles.length === 0 && (
                     <div className="col-span-full text-center py-12">
                       <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
                         <span className="text-2xl">🏘️</span>
@@ -561,38 +610,31 @@ export default async function EdmontonPage() {
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-3xl font-bold">Edmonton Guides</h2>
-                <Link href="/edmonton/all-articles" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
+                <Link href="/guides?city=edmonton" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {(() => {
-                  const guideArticles = articles.filter(article =>
-                    article.category?.toLowerCase().includes('guide') ||
-                    article.categories?.some(cat => cat.toLowerCase().includes('guide')) ||
-                    article.tags?.some(tag => tag.toLowerCase().includes('guide')) ||
-                    article.type?.toLowerCase().includes('guide')
-                  )
-
-                  return guideArticles.slice(0, 3).map((article) => (
-                    <Link key={article.id} href={getArticleUrl(article)}>
-                      <div className="bg-white rounded-lg overflow-hidden shadow-sm p-4">
-                        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {guideArticles.slice(0, 3).map((article) => (
+                  <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                    <div className="flex gap-4 p-5 rounded-xl border border-gray-200 bg-white hover:border-blue-200 hover:shadow-md transition-all duration-200 h-full">
+                      {article.imageUrl ? (
+                        <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-100">
+                          <Image src={article.imageUrl} alt="" width={80} height={80} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="flex-shrink-0 w-20 h-20 rounded-lg bg-blue-50 flex items-center justify-center">
                           <span className="text-2xl">📖</span>
                         </div>
-                        <h3 className="font-display font-bold text-lg text-center mb-2">{article.title}</h3>
-                        <p className="text-sm text-gray-600 text-center">{article.excerpt}</p>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-base text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">{article.title}</h3>
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{article.excerpt}</p>
                       </div>
-                    </Link>
-                  ))
-                })()}
-                {/* Show placeholder if no guide articles */}
-                {articles.filter(article =>
-                  article.category?.toLowerCase().includes('guide') ||
-                  article.categories?.some(cat => cat.toLowerCase().includes('guide')) ||
-                  article.tags?.some(tag => tag.toLowerCase().includes('guide')) ||
-                  article.type?.toLowerCase().includes('guide')
-                ).length === 0 && (
+                    </div>
+                  </Link>
+                ))}
+                {guideArticles.length === 0 && (
                     <div className="col-span-full text-center py-12">
                       <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
                         <span className="text-2xl">📖</span>

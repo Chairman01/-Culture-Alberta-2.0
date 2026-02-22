@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
 import { RichTextEditor } from "@/app/admin/components/rich-text-editor"
 import { useToast } from "@/hooks/use-toast"
-import { MAIN_CATEGORIES } from "@/lib/data"
+import { MAIN_CATEGORIES, TIER1_LOCATIONS, OTHER_COMMUNITY_LOCATIONS } from "@/lib/data"
 
 export default function NewArticlePage() {
   const router = useRouter()
@@ -35,11 +35,13 @@ export default function NewArticlePage() {
   const [trendingHome, setTrendingHome] = useState(false)
   const [trendingEdmonton, setTrendingEdmonton] = useState(false)
   const [trendingCalgary, setTrendingCalgary] = useState(false)
+  const [trendingAlberta, setTrendingAlberta] = useState(false)
 
   // Featured article options
   const [featuredHome, setFeaturedHome] = useState(false)
   const [featuredEdmonton, setFeaturedEdmonton] = useState(false)
   const [featuredCalgary, setFeaturedCalgary] = useState(false)
+  const [featuredAlberta, setFeaturedAlberta] = useState(false)
 
   const handleImageSelect = (url: string) => {
     setImageUrl(url)
@@ -113,10 +115,11 @@ export default function NewArticlePage() {
           trendingHome,
           trendingEdmonton,
           trendingCalgary,
-          // Add featured article flags
+          trendingAlberta,
           featuredHome,
           featuredEdmonton,
-          featuredCalgary
+          featuredCalgary,
+          featuredAlberta
         })
       })
 
@@ -139,7 +142,7 @@ export default function NewArticlePage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            paths: ['/', `/articles/${articleSlug}`, '/edmonton', '/calgary', '/culture', '/food-drink', '/events']
+            paths: ['/', `/articles/${articleSlug}`, '/edmonton', '/calgary', '/alberta', '/culture', '/food-drink', '/events']
           })
         })
         console.log('✅ Triggered revalidation for new article')
@@ -219,12 +222,23 @@ export default function NewArticlePage() {
 
           <div>
             <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g., Edmonton, Calgary, Alberta"
-            />
+            <Select value={location || undefined} onValueChange={setLocation}>
+              <SelectTrigger id="location">
+                <SelectValue placeholder="Select location (e.g., Edmonton, Calgary, Red Deer)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Edmonton">Edmonton</SelectItem>
+                <SelectItem value="Calgary">Calgary</SelectItem>
+                <SelectItem value="Alberta">Alberta</SelectItem>
+                {TIER1_LOCATIONS.map((loc) => (
+                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                ))}
+                {OTHER_COMMUNITY_LOCATIONS.map((loc) => (
+                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-gray-500 mt-1">For Alberta communities outside Edmonton/Calgary</p>
           </div>
 
           <div>
@@ -338,6 +352,17 @@ export default function NewArticlePage() {
               Show in Calgary Trending
             </Label>
           </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="trending-alberta"
+              checked={trendingAlberta}
+              onCheckedChange={(checked) => setTrendingAlberta(checked as boolean)}
+            />
+            <Label htmlFor="trending-alberta" className="text-sm font-medium">
+              Show in Alberta Trending
+            </Label>
+          </div>
         </div>
       </div>
 
@@ -377,6 +402,17 @@ export default function NewArticlePage() {
             />
             <Label htmlFor="featured-calgary" className="text-sm font-medium">
               Show as Calgary Page Featured Article
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="featured-alberta"
+              checked={featuredAlberta}
+              onCheckedChange={(checked) => setFeaturedAlberta(checked as boolean)}
+            />
+            <Label htmlFor="featured-alberta" className="text-sm font-medium">
+              Show as Alberta Page Featured Article
             </Label>
           </div>
         </div>

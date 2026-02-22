@@ -3,11 +3,11 @@
  */
 
 /**
- * Converts a title to a URL-friendly format
+ * Converts a title to a URL-friendly slug
  * @param title - The article title
  * @returns A URL-friendly version of the title
  */
-function titleToUrl(title: string): string {
+export function titleToSlug(title: string): string {
   return title
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
@@ -23,7 +23,7 @@ function titleToUrl(title: string): string {
  * @returns The article URL path
  */
 export function getArticleUrl(article: { id: string; title: string }): string {
-  const urlTitle = titleToUrl(article.title)
+  const urlTitle = titleToSlug(article.title)
   return `/articles/${urlTitle}`
 }
 
@@ -33,8 +33,15 @@ export function getArticleUrl(article: { id: string; title: string }): string {
  * @returns The article URL path
  */
 export function getArticleUrlByTitle(title: string): string {
-  const urlTitle = titleToUrl(title)
+  const urlTitle = titleToSlug(title)
   return `/articles/${urlTitle}`
+}
+
+/**
+ * Get the article path for analytics matching (e.g. /articles/my-article-slug)
+ */
+export function getArticlePath(article: { title: string }): string {
+  return `/articles/${titleToSlug(article.title)}`
 }
 
 /**
@@ -43,7 +50,7 @@ export function getArticleUrlByTitle(title: string): string {
  * @returns The event URL path
  */
 export function getEventUrl(event: { id: string; title: string }): string {
-  const urlTitle = titleToUrl(event.title)
+  const urlTitle = titleToSlug(event.title)
   return `/events/${urlTitle}`
 }
 

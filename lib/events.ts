@@ -122,7 +122,7 @@ export async function getAllEvents(): Promise<Event[]> {
   }
 }
 
-// Get events by location
+// Get events by location (with fallback to getAllEvents when Supabase fails)
 export async function getEventsByLocation(location: string): Promise<Event[]> {
   try {
     console.log(`=== getEventsByLocation called for: ${location} ===`)
@@ -137,32 +137,34 @@ export async function getEventsByLocation(location: string): Promise<Event[]> {
       return eventsCache.get(cacheKey) || []
     }
 
-    if (!supabase) {
-      console.error('Supabase client is not initialized')
-      return []
+    if (supabase) {
+      console.log(`Fetching ${location} events from Supabase...`)
+
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('status', 'published')
+        .ilike('location', `%${location}%`)
+        .order('event_date', { ascending: true })
+
+      if (!error && data && data.length > 0) {
+        console.log(`Successfully fetched ${location} events from Supabase:`, data.length, 'events')
+        eventsCache.set(cacheKey, data)
+        eventsCacheTimestamp.set(cacheKey, now)
+        return data
+      }
     }
 
-    console.log(`Fetching ${location} events from Supabase...`)
-
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .eq('status', 'published')
-      .ilike('location', `%${location}%`)
-      .order('event_date', { ascending: true })
-
-    if (error) {
-      console.error(`Error fetching ${location} events:`, error)
-      return []
-    }
-
-    console.log(`Successfully fetched ${location} events from Supabase:`, data?.length || 0, 'events')
-
-    // Update cache
-    eventsCache.set(cacheKey, data || [])
+    // Fallback: use getAllEvents (has optimized fallback) and filter by location
+    console.log(`⚠️ Using fallback for ${location} events`)
+    const allEvents = await getAllEvents()
+    const loc = location.toLowerCase()
+    const filtered = allEvents.filter(e =>
+      (e.location || '').toLowerCase().includes(loc)
+    )
+    eventsCache.set(cacheKey, filtered)
     eventsCacheTimestamp.set(cacheKey, now)
-
-    return data || []
+    return filtered
   } catch (error) {
     console.error(`Error in getEventsByLocation for ${location}:`, error)
     return []

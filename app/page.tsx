@@ -4,9 +4,11 @@ import { getHomepageArticles } from '@/lib/articles'
 import { getAllEvents } from '@/lib/events'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
+import { SearchBar } from '@/components/search-bar'
 import { Article } from '@/lib/types/article'
 import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
+import { getTrendingByViews } from '@/lib/trending-articles'
 
 // CRITICAL: Force dynamic rendering - fetch fresh data on EVERY request
 export const revalidate = 0 // No caching - always fetch fresh data
@@ -182,33 +184,22 @@ export default async function HomeStatic() {
     if (!dateString) return 'Date TBA'
 
     try {
-      // Handle both ISO format and simple date format
-      let date: Date
-      if (dateString.includes('T')) {
-        // ISO format: "2025-11-01T00:00:00.000Z" - parse as local date to avoid timezone issues
-        const isoDate = new Date(dateString)
-        // Extract just the date part and create a local date
-        const year = isoDate.getUTCFullYear()
-        const month = isoDate.getUTCMonth()
-        const day = isoDate.getUTCDate()
-        date = new Date(year, month, day) // Create local date
-      } else {
-        // Simple format: "2025-11-01"
-        const [year, month, day] = dateString.split('-').map(Number)
-        date = new Date(year, month - 1, day) // month is 0-indexed
-      }
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return 'Date TBA'
 
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        console.error('Invalid date string:', dateString)
-        return 'Date TBA'
-      }
-
-      return date.toLocaleDateString('en-US', {
+      // Use local timezone - new Date(iso) parses UTC, toLocale* displays in user's local time
+      const datePart = date.toLocaleDateString('en-US', {
         month: 'long',
         day: 'numeric',
         year: 'numeric'
       })
+      const timeMatch = dateString.match(/T\d{1,2}:\d{2}/)
+      const isMidnight = timeMatch && date.getHours() === 0 && date.getMinutes() === 0
+      const timePart = timeMatch && !isMidnight
+        ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        : ''
+
+      return timePart ? `${datePart} at ${timePart}` : datePart
     } catch (error) {
       console.error('Error formatting date:', error, 'Date string:', dateString)
       return 'Date TBA'
@@ -291,31 +282,45 @@ export default async function HomeStatic() {
   })
 
 
-  // SIMPLE CATEGORY-BASED FILTERING
+  // Other Alberta cities - exclude these from Edmonton/Calgary spotlights (fixes mis-tagged articles)
+  const OTHER_ALBERTA_CITIES = ['red deer', 'lethbridge', 'medicine hat', 'grande prairie', 'fort mcmurray', 'airdrie', 'st. albert', 'okotoks', 'canmore', 'banff', 'brooks', 'edson', 'camrose', 'lloydminster', 'drumheller', 'jasper']
+  const isFromOtherAlbertaCity = (post: Article) => {
+    const loc = (post.location || '').toLowerCase()
+    const cats = (post.categories || []).map((c: string) => c.toLowerCase())
+    const tags = ((post as any).tags || []).map((t: string) => t.toLowerCase())
+    const combined = [loc, ...cats, ...tags].join(' ')
+    return OTHER_ALBERTA_CITIES.some(city => combined.includes(city))
+  }
+
+  // Edmonton Spotlight: Edmonton-only, exclude Red Deer/Lethbridge etc (even if mis-tagged)
   const edmontonPosts = sortedPosts.filter(post => {
-    // First filter out events - events should not appear in city sections
-    if (post.type === 'event') return false;
+    if (post.type === 'event') return false
+    if (isFromOtherAlbertaCity(post)) return false
 
-    // Check if article has "Edmonton" in category or categories array
-    const hasEdmontonCategory = post.category?.toLowerCase().includes('edmonton');
-    const hasEdmontonInCategories = post.categories?.some((cat: string) =>
-      cat.toLowerCase().includes('edmonton')
-    );
-
-    return hasEdmontonCategory || hasEdmontonInCategories;
+    const hasEdmonton = post.category?.toLowerCase().includes('edmonton') ||
+      post.categories?.some((cat: string) => cat.toLowerCase().includes('edmonton')) ||
+      post.location?.toLowerCase().includes('edmonton') ||
+      (post as any).tags?.some((tag: string) => tag.toLowerCase().includes('edmonton'))
+    return !!hasEdmonton
   }).slice(0, 3)
 
+  // Calgary Spotlight: Calgary-only, exclude Red Deer/Lethbridge etc (even if mis-tagged)
   const calgaryPosts = sortedPosts.filter(post => {
-    // First filter out events - events should not appear in city sections
-    if (post.type === 'event') return false;
+    if (post.type === 'event') return false
+    if (isFromOtherAlbertaCity(post)) return false
 
-    // Check if article has "Calgary" in category or categories array
-    const hasCalgaryCategory = post.category?.toLowerCase().includes('calgary');
-    const hasCalgaryInCategories = post.categories?.some((cat: string) =>
-      cat.toLowerCase().includes('calgary')
-    );
+    const hasCalgary = post.category?.toLowerCase().includes('calgary') ||
+      post.categories?.some((cat: string) => cat.toLowerCase().includes('calgary')) ||
+      post.location?.toLowerCase().includes('calgary') ||
+      (post as any).tags?.some((tag: string) => tag.toLowerCase().includes('calgary'))
+    return !!hasCalgary
+  }).slice(0, 3)
 
-    return hasCalgaryCategory || hasCalgaryInCategories;
+  // More From Alberta: Red Deer, Lethbridge, Medicine Hat, etc. (excludes Edmonton & Calgary)
+  const moreFromAlbertaPosts = sortedPosts.filter(post => {
+    if (post.type === 'event') return false
+    if (isFromOtherAlbertaCity(post)) return true
+    return false
   }).slice(0, 3)
   // SIMPLE CATEGORY-BASED FILTERING for Food & Drink
   const foodDrinkPosts = sortedPosts.filter(post => {
@@ -398,8 +403,15 @@ export default async function HomeStatic() {
     return hasEventCategory || hasEventInCategories;
   }).slice(0, 3)
 
-  // Show top 5 most recent articles instead of only trending ones
-  const trendingPosts = sortedPosts.filter(post => post.type !== 'event').slice(0, 5)
+  // Trending: use actual view data when available, else recent articles
+  const eligiblePosts = sortedPosts.filter(post => post.type !== 'event')
+  const trendingByViews = await getTrendingByViews(eligiblePosts, { days: 7, limit: 5 })
+  const trendingByFlag = eligiblePosts.filter(post => post.trendingHome === true)
+  const trendingPosts = trendingByViews.length > 0
+    ? trendingByViews
+    : trendingByFlag.length > 0
+      ? trendingByFlag.slice(0, 5)
+      : eligiblePosts.slice(0, 5)
 
   // Debug logging for homepage articles
   console.log('Total posts loaded:', posts.length)
@@ -500,6 +512,10 @@ export default async function HomeStatic() {
 
                 {/* Trending Sidebar */}
                 <div className="space-y-6">
+                  {/* Search */}
+                  <div className="bg-white rounded-xl shadow-sm p-6">
+                    <SearchBar variant="default" className="mb-0" />
+                  </div>
                   {/* Trending This Week */}
                   <div className="bg-white rounded-xl shadow-sm p-6">
                     <h2 className="font-display text-2xl font-bold mb-4">Trending This Week</h2>
@@ -616,6 +632,49 @@ export default async function HomeStatic() {
               </div>
             </div>
           </section>
+
+          {/* More From Alberta */}
+          {moreFromAlbertaPosts.length > 0 && (
+            <section className="w-full py-8">
+              <div className="container mx-auto px-4 md:px-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="font-display text-4xl font-bold text-emerald-700">More From Alberta</h2>
+                  <Link href="/alberta" className="text-emerald-700 hover:text-emerald-800 flex items-center gap-2 font-body font-medium">
+                    View All <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {moreFromAlbertaPosts.map((post) => {
+                    const loc = (post.location || '').trim() || post.categories?.[0] || (post as any).tags?.[0] || ''
+                    const displayLoc = loc || 'Alberta'
+                    return (
+                      <Link key={post.id} href={getArticleUrl(post)} className="group block">
+                        <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                          <div className="aspect-[16/9] w-full bg-gray-200 relative">
+                            <Image
+                              src={getPostImage(post)}
+                              alt={getPostTitle(post)}
+                              width={400}
+                              height={225}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          </div>
+                          <div className="p-4">
+                            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                              <span className="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1.5 font-medium">{displayLoc}</span>
+                              <span className="font-medium">{formatDate(getPostDate(post))}</span>
+                            </div>
+                            <h3 className="font-display font-bold text-xl group-hover:text-emerald-600 transition-colors duration-300 line-clamp-2 leading-tight">{getPostTitle(post)}</h3>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Upcoming Events */}
           <section className="w-full py-8">

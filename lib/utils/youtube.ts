@@ -61,7 +61,34 @@ export function processYouTubeAnchors(content: string): string {
 }
 
 /**
- * Main function to process all YouTube content in an article
+ * Add width/height to img tags to prevent CLS (Cumulative Layout Shift)
+ * Google recommends explicit dimensions for all images
+ */
+function fixImageDimensions(html: string): string {
+    if (!html) return html
+    return html.replace(/<img([^>]*)>/gi, (match, attrs) => {
+        const hasWidth = /width\s*=/i.test(attrs)
+        const hasHeight = /height\s*=/i.test(attrs)
+        if (hasWidth && hasHeight) return match
+        const hasStyle = /style\s*=/i.test(attrs)
+        const aspectStyle = 'aspect-ratio: 16/9;'
+        const styleMatch = attrs.match(/style\s*=\s*["']([^"']*)["']/i)
+        if (styleMatch) {
+            const style = styleMatch[1]
+            if (!style.includes('aspect-ratio')) {
+                const newStyle = style.trim().endsWith(';') ? `${style} ${aspectStyle}` : `${style}; ${aspectStyle}`
+                return `<img${attrs.replace(/style\s*=\s*["']([^"']*)["']/i, `style="${newStyle}"`)}>`
+            }
+        } else {
+            const style = `style="${aspectStyle} max-width:100%;height:auto;"`
+            return `<img${attrs} ${style}>`
+        }
+        return match
+    })
+}
+
+/**
+ * Main function to process all YouTube content and fix images for CLS
  * This is a pure string manipulation function that works on both server and client
  */
 export function processArticleContent(content: string): string {
@@ -72,6 +99,9 @@ export function processArticleContent(content: string): string {
 
     // Then process any remaining standalone YouTube URLs
     processed = processYouTubeLinks(processed)
+
+    // Add dimensions to img tags to prevent CLS (Core Web Vitals)
+    processed = fixImageDimensions(processed)
 
     return processed
 }

@@ -21,6 +21,13 @@ export interface Article {
 export const MAIN_CATEGORIES = [
   "Edmonton",
   "Calgary",
+  "Alberta",
+  "Red Deer",
+  "Lethbridge",
+  "Grande Prairie",
+  "Other communities",
+  "Neighborhood",
+  "Guide",
   "Food & Drink",
   "Events",
   "Culture",
@@ -29,6 +36,14 @@ export const MAIN_CATEGORIES = [
 ] as const
 
 export type MainCategory = typeof MAIN_CATEGORIES[number]
+
+// Location options for articles (Tier 1 cities + other communities)
+export const TIER1_LOCATIONS = ['Red Deer', 'Lethbridge', 'Medicine Hat', 'Grande Prairie'] as const
+export const OTHER_COMMUNITY_LOCATIONS = [
+  'Fort McMurray', 'Airdrie', 'St. Albert', 'Spruce Grove', 'Stony Plain', 'Leduc',
+  'Cochrane', 'Okotoks', 'Canmore', 'Banff', 'Brooks', 'Edson', 'Camrose',
+  'Lloydminster', 'Drumheller', 'Jasper'
+] as const
 
 interface SpotlightArticle {
   id: string

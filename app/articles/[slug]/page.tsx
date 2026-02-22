@@ -611,11 +611,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       </div>
                     )}
 
-                    {/* Newsletter Signup - Temporarily Disabled */}
-                    {/* <ArticleNewsletterSignup
+                    {/* Newsletter - Inline only (AdSense-friendly: no overlap with ads) */}
+                    <ArticleNewsletterSignup
                       articleTitle={loadedArticle.title}
                       articleCategory={loadedArticle.category}
-                    /> */}
+                      variant="inline"
+                    />
 
                     {/* Comments Section */}
                     <CommentsSection articleId={loadedArticle.id} />

@@ -1,39 +1,26 @@
 "use client"
 
 import Link from "next/link"
-import { Search, Menu, X } from "lucide-react"
-import { usePathname, useRouter } from "next/navigation"
+import { Menu, X, LogIn, UserPlus, LogOut } from "lucide-react"
+import { usePathname } from "next/navigation"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useAuth } from "@/components/auth-provider"
 
 export function MainNavigation() {
   const pathname = usePathname()
-  const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState("")
+  const { user, loading, signOut } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const isEdmonton = pathname?.includes("/edmonton")
   const isCalgary = pathname?.includes("/calgary")
+  const isAlberta = pathname?.includes("/alberta")
   const isAdmin = pathname?.startsWith("/admin")
 
   // Don't show navigation on admin pages
   if (isAdmin) {
     return null
-  }
-
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      router.push(`/articles?search=${encodeURIComponent(searchQuery.trim())}`)
-      setMobileMenuOpen(false)
-    }
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch()
-    }
   }
 
   const closeMobileMenu = () => {
@@ -46,7 +33,7 @@ export function MainNavigation() {
         <div className="flex items-center">
           <Link href="/" className="flex items-center">
             <span
-              className={`text-2xl font-bold ${isEdmonton ? "text-blue-600" : isCalgary ? "text-red-600" : "text-primary"}`}
+              className={`text-2xl font-bold ${isEdmonton ? "text-blue-600" : isCalgary ? "text-red-600" : isAlberta ? "text-amber-700" : "text-primary"}`}
             >
               Culture Alberta
             </span>
@@ -73,6 +60,15 @@ export function MainNavigation() {
           >
             Calgary
           </Link>
+          <Link
+            href="/alberta"
+            className={`text-sm font-medium transition-colors ${isAlberta
+              ? "text-amber-700 hover:text-amber-800"
+              : "text-gray-600 hover:text-gray-900"
+              }`}
+          >
+            Alberta
+          </Link>
           <Link href="/food-drink" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Food & Drink
           </Link>
@@ -88,33 +84,44 @@ export function MainNavigation() {
           <Link href="/partner" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Partner with Us
           </Link>
-          <Link href="/contact" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-            Contact
-          </Link>
         </nav>
 
         <div className="flex items-center gap-4">
-          {/* Desktop Search */}
-          <div className="hidden md:flex relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-            <Input
-              type="search"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="pl-9 w-[200px] bg-gray-50 border-gray-200 focus:bg-white"
-            />
+          {/* Auth links - Desktop */}
+          <div className="hidden md:flex items-center gap-2">
+            {loading ? (
+              <span className="text-sm text-gray-500">...</span>
+            ) : user ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 truncate max-w-[120px]" title={user.email}>
+                  {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Account'}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => signOut()}
+                  className="text-gray-600 hover:text-gray-900"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Link href="/auth/signin">
+                  <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
+                    <LogIn className="w-4 h-4 mr-1" />
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/auth/signup">
+                  <Button size="sm" className="bg-gray-900 hover:bg-black">
+                    <UserPlus className="w-4 h-4 mr-1" />
+                    Sign Up
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
-          <Button
-            onClick={handleSearch}
-            className={`hidden md:inline-flex ${isEdmonton ? "bg-blue-600 hover:bg-blue-700" :
-                isCalgary ? "bg-red-600 hover:bg-red-700" :
-                  "bg-black hover:bg-gray-800"
-              }`}
-          >
-            Search
-          </Button>
 
           {/* Mobile Menu Button */}
           <Button
@@ -153,6 +160,16 @@ export function MainNavigation() {
               Calgary
             </Link>
             <Link
+              href="/alberta"
+              onClick={closeMobileMenu}
+              className={`text-base font-medium transition-colors py-2 ${isAlberta
+                ? "text-amber-700"
+                : "text-gray-600"
+                }`}
+            >
+              Alberta
+            </Link>
+            <Link
               href="/food-drink"
               onClick={closeMobileMenu}
               className="text-base font-medium text-gray-600 py-2"
@@ -187,35 +204,33 @@ export function MainNavigation() {
             >
               Partner with Us
             </Link>
-            <Link
-              href="/contact"
-              onClick={closeMobileMenu}
-              className="text-base font-medium text-gray-600 py-2"
-            >
-              Contact
-            </Link>
 
-            {/* Mobile Search */}
-            <div className="relative mt-2">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-              <Input
-                type="search"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="pl-9 w-full bg-gray-50 border-gray-200 focus:bg-white"
-              />
+            {/* Mobile Auth links */}
+            <div className="flex flex-col gap-2 pt-4 border-t mt-4">
+              {loading ? (
+                <span className="text-sm text-gray-500">...</span>
+              ) : user ? (
+                <Button variant="ghost" onClick={() => { signOut(); closeMobileMenu(); }}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              ) : (
+                <>
+                  <Link href="/auth/signin" onClick={closeMobileMenu}>
+                    <Button variant="ghost" className="w-full justify-start">
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/auth/signup" onClick={closeMobileMenu}>
+                    <Button className="w-full bg-gray-900 hover:bg-black">
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Sign Up
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
-            <Button
-              onClick={handleSearch}
-              className={`w-full ${isEdmonton ? "bg-blue-600 hover:bg-blue-700" :
-                  isCalgary ? "bg-red-600 hover:bg-red-700" :
-                    "bg-black hover:bg-gray-800"
-                }`}
-            >
-              Search
-            </Button>
           </nav>
         </div>
       )}

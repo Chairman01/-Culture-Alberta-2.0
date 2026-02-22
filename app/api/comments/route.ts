@@ -122,24 +122,37 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST: Submit a new comment
+// POST: Submit a new comment (requires authentication)
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json()
-        const { articleId, authorName, authorEmail, content } = body
+        // Require Authorization header with Bearer token
+        const authHeader = request.headers.get('authorization')
+        const token = authHeader?.replace(/^Bearer\s+/i, '')
 
-        // Validate required fields
-        if (!articleId || !authorName || !content) {
+        if (!token) {
             return NextResponse.json(
-                { error: 'Article ID, author name, and content are required' },
-                { status: 400 }
+                { error: 'Sign in required to comment. Please create an account or sign in.' },
+                { status: 401 }
             )
         }
 
-        // Validate author name length
-        if (authorName.trim().length < 2 || authorName.trim().length > 100) {
+        // Verify the JWT and get user
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+
+        if (authError || !user) {
             return NextResponse.json(
-                { error: 'Name must be between 2 and 100 characters' },
+                { error: 'Invalid or expired session. Please sign in again.' },
+                { status: 401 }
+            )
+        }
+
+        const body = await request.json()
+        const { articleId, content } = body
+
+        // Validate required fields
+        if (!articleId || !content) {
+            return NextResponse.json(
+                { error: 'Article ID and content are required' },
                 { status: 400 }
             )
         }
@@ -152,20 +165,9 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Validate email if provided
-        if (authorEmail && authorEmail.trim()) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-            if (!emailRegex.test(authorEmail)) {
-                return NextResponse.json(
-                    { error: 'Invalid email address' },
-                    { status: 400 }
-                )
-            }
-        }
-
-        // Sanitize inputs
-        const sanitizedName = authorName.trim().substring(0, 100)
-        const sanitizedEmail = authorEmail?.trim().substring(0, 255) || null
+        // Get author info from authenticated user
+        const authorName = (user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous').trim().substring(0, 100)
+        const authorEmail = user.email?.trim().substring(0, 255) || null
         const sanitizedContent = sanitizeContent(content)
 
         // Get IP address for spam prevention
@@ -176,11 +178,10 @@ export async function POST(request: NextRequest) {
         // Insert comment with 'pending' status
         console.log('📝 Attempting to insert comment:', {
             article_id: articleId,
-            author_name: sanitizedName,
-            author_email: sanitizedEmail,
+            author_name: authorName,
+            author_email: authorEmail,
             content_length: sanitizedContent.length,
             status: 'pending',
-            ip_address: ipAddress,
         })
 
         const { data: comment, error } = await supabase
@@ -188,8 +189,8 @@ export async function POST(request: NextRequest) {
             .insert([
                 {
                     article_id: articleId,
-                    author_name: sanitizedName,
-                    author_email: sanitizedEmail,
+                    author_name: authorName,
+                    author_email: authorEmail,
                     content: sanitizedContent,
                     status: 'pending',
                     ip_address: ipAddress,

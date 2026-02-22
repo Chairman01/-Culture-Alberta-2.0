@@ -74,6 +74,11 @@ export const DEFAULT_NAVIGATION_LINKS: NavigationLink[] = [
         description: 'Explore Edmonton\'s arts and culture'
     },
     {
+        name: 'Around Alberta',
+        url: 'https://www.culturealberta.com/alberta',
+        description: 'Stories from Lethbridge, Red Deer, Edson, and beyond'
+    },
+    {
         name: 'Wiki',
         url: 'https://www.culturealberta.com/wiki',
         description: 'Comprehensive guides to Alberta culture'

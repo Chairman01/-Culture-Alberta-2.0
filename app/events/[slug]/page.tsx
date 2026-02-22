@@ -13,31 +13,14 @@ import { Article } from '@/lib/types/article'
 import { Metadata } from 'next'
 import { EventImage } from '@/components/event-image'
 
-// Date formatting functions
+// Date formatting - use local timezone (new Date parses UTC, toLocale* displays in user's local time)
 function formatEventDate(dateString: string): string {
   if (!dateString) return 'Date TBD'
 
   try {
-    // Handle both ISO format and simple date format
-    let date: Date
-    if (dateString.includes('T')) {
-      // ISO format: "2025-11-01T00:00:00.000Z" - parse as local date to avoid timezone issues
-      const isoDate = new Date(dateString)
-      // Extract just the date part and create a local date
-      const year = isoDate.getUTCFullYear()
-      const month = isoDate.getUTCMonth()
-      const day = isoDate.getUTCDate()
-      date = new Date(year, month, day) // Create local date
-    } else {
-      // Simple format: "2025-11-01"
-      const [year, month, day] = dateString.split('-').map(Number)
-      date = new Date(year, month - 1, day) // month is 0-indexed
-    }
-    
-    if (isNaN(date.getTime())) {
-      return 'Date TBD'
-    }
-    
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'Date TBD'
+
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -53,26 +36,9 @@ function formatEventTime(dateString: string): string {
   if (!dateString) return 'Time TBD'
 
   try {
-    // Handle both ISO format and simple date format
-    let date: Date
-    if (dateString.includes('T')) {
-      // ISO format: "2025-11-01T00:00:00.000Z" - parse as local date to avoid timezone issues
-      const isoDate = new Date(dateString)
-      // Extract just the date part and create a local date
-      const year = isoDate.getUTCFullYear()
-      const month = isoDate.getUTCMonth()
-      const day = isoDate.getUTCDate()
-      date = new Date(year, month, day) // Create local date
-    } else {
-      // Simple format: "2025-11-01"
-      const [year, month, day] = dateString.split('-').map(Number)
-      date = new Date(year, month - 1, day) // month is 0-indexed
-    }
-    
-    if (isNaN(date.getTime())) {
-      return 'Time TBD'
-    }
-    
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'Time TBD'
+
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',

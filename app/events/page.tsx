@@ -41,6 +41,7 @@ async function getEvents() {
         date: event.event_date || new Date().toISOString(),
         imageUrl: event.image_url || '',
         author: event.organizer || 'Event Organizer',
+        websiteUrl: event.website_url || '',
       }))
     }
   } catch (error) {
@@ -68,6 +69,7 @@ async function getEvents() {
       date: (event as any).event_date || (event as any).eventDate || event.date || event.createdAt || new Date().toISOString(),
       imageUrl: event.imageUrl || '',
       author: event.author || 'Event Organizer',
+      websiteUrl: (event as any).website_url || (event as any).websiteUrl || '',
     }))
   } catch (error) {
     console.error('❌ Failed to load events from fallback:', error)

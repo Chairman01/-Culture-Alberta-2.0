@@ -2,6 +2,7 @@ import './globals.css'
 import { MainNavigation } from '@/components/main-navigation'
 import { Footer } from '@/components/footer'
 import { LoadingProvider } from '@/components/loading-context'
+import { AuthProvider } from '@/components/auth-provider'
 import { PerformanceOptimizer } from '@/components/seo/performance-optimizer'
 import { CookieConsent } from '@/components/cookie-consent'
 import Script from 'next/script'
@@ -11,6 +12,7 @@ import { optimizeSpeedInsights } from '@/lib/vercel-optimizations'
 import { Metadata } from 'next'
 import { WebsiteStructuredData, OrganizationStructuredData, LocalBusinessStructuredData } from '@/components/seo/structured-data'
 import { SitelinksData, DEFAULT_NAVIGATION_LINKS } from '@/components/seo/sitelinks-data'
+import { PageTracker } from '@/components/analytics/page-tracker'
 
 export const metadata: Metadata = {
   title: 'Culture Alberta | Best Culture, Events & Food in Calgary & Edmonton',
@@ -114,15 +116,18 @@ export default function RootLayout({
             gtag('config', 'G-48EV1DX840');
           `}
         </Script>
-        <LoadingProvider>
-          <MainNavigation />
-          <main>{children}</main>
-          <Footer />
-        </LoadingProvider>
-        <Analytics />
-        <SpeedInsights {...optimizeSpeedInsights()} />
-        <PerformanceOptimizer />
-        <CookieConsent />
+        <AuthProvider>
+          <PageTracker />
+          <LoadingProvider>
+            <MainNavigation />
+            <main>{children}</main>
+            <Footer />
+          </LoadingProvider>
+          <Analytics />
+          <SpeedInsights {...optimizeSpeedInsights()} />
+          <PerformanceOptimizer />
+          <CookieConsent />
+        </AuthProvider>
       </body>
     </html>
   )

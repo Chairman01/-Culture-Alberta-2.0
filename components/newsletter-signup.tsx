@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { testNewsletterConnection } from "@/lib/newsletter"
-import { Instagram, Youtube, Facebook, Twitter } from "lucide-react"
+import { Instagram, Youtube, Facebook, Mail } from "lucide-react"
+import { NEWSLETTER_CITIES } from "@/lib/newsletter-cities"
 
 interface NewsletterSignupProps {
   defaultCity?: string
@@ -112,10 +113,9 @@ export default function NewsletterSignup({
             onChange={(e) => setCity(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Select your city</option>
-            <option value="Edmonton">Edmonton</option>
-            <option value="Calgary">Calgary</option>
-            <option value="Other">Other</option>
+            {NEWSLETTER_CITIES.map(({ value, label }) => (
+              <option key={value || 'placeholder'} value={value}>{label}</option>
+            ))}
           </select>
         </div>
         <button
@@ -135,24 +135,29 @@ export default function NewsletterSignup({
   }
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm p-6 ${className}`}>
-      <h2 className="font-display text-2xl font-bold mb-3">{title}</h2>
-      <p className="font-body text-gray-600 text-sm mb-4 leading-relaxed">
-        {description}
-      </p>
+    <div className={`bg-gradient-to-br from-slate-50 to-blue-50/30 rounded-2xl shadow-sm border border-slate-200/80 p-6 md:p-8 ${className}`}>
+      <div className="flex items-start gap-4 mb-5">
+        <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+          <Mail className="w-7 h-7 text-blue-600" />
+        </div>
+        <div>
+          <h2 className="font-display text-2xl font-bold text-gray-900 mb-1">{title}</h2>
+          <p className="font-body text-gray-600 text-sm leading-relaxed">
+            {description}
+          </p>
+        </div>
+      </div>
       
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <select 
           value={city}
           onChange={(e) => setCity(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-body"
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white font-body transition-all"
           required
         >
-          <option value="">Select your city</option>
-          <option value="calgary">Calgary</option>
-          <option value="edmonton">Edmonton</option>
-          <option value="other-alberta">Other Alberta</option>
-          <option value="outside-alberta">Outside Alberta</option>
+          {NEWSLETTER_CITIES.map(({ value, label }) => (
+            <option key={value || 'placeholder'} value={value}>{label}</option>
+          ))}
         </select>
         
         <input
@@ -160,21 +165,21 @@ export default function NewsletterSignup({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Enter your email"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-body"
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-body transition-all"
           required
         />
         
         <button 
           type="submit"
           disabled={isSubmitting || isConnected === false}
-          className="w-full bg-black text-white py-3 px-4 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors font-body disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl text-sm font-semibold transition-all font-body disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
         >
           {isSubmitting ? "Subscribing..." : isConnected === false ? "Setting up..." : "Subscribe"}
         </button>
       </form>
 
       {message && (
-        <div className={`mt-3 p-3 rounded-lg text-sm ${
+        <div className={`mt-4 p-4 rounded-xl text-sm ${
           messageType === "success" 
             ? "bg-green-50 text-green-700 border border-green-200" 
             : "bg-red-50 text-red-700 border border-red-200"

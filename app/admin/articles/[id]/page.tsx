@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
 import { RichTextEditor } from "@/app/admin/components/rich-text-editor"
 import { useToast } from "@/hooks/use-toast"
-import { MAIN_CATEGORIES } from "@/lib/data"
+import { MAIN_CATEGORIES, TIER1_LOCATIONS, OTHER_COMMUNITY_LOCATIONS } from "@/lib/data"
 
 interface Article {
   id: string
@@ -39,10 +39,11 @@ interface Article {
   trendingHome?: boolean
   trendingEdmonton?: boolean
   trendingCalgary?: boolean
-  // Featured article flags
+  trendingAlberta?: boolean
   featuredHome?: boolean
   featuredEdmonton?: boolean
   featuredCalgary?: boolean
+  featuredAlberta?: boolean
 }
 
 export default function EditArticlePage({ params }: { params: Promise<{ id: string }> }) {
@@ -67,11 +68,12 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [trendingHome, setTrendingHome] = useState(false)
   const [trendingEdmonton, setTrendingEdmonton] = useState(false)
   const [trendingCalgary, setTrendingCalgary] = useState(false)
+  const [trendingAlberta, setTrendingAlberta] = useState(false)
 
-  // Featured article options
   const [featuredHome, setFeaturedHome] = useState(false)
   const [featuredEdmonton, setFeaturedEdmonton] = useState(false)
   const [featuredCalgary, setFeaturedCalgary] = useState(false)
+  const [featuredAlberta, setFeaturedAlberta] = useState(false)
 
   useEffect(() => {
     loadArticle()
@@ -116,10 +118,11 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setTrendingHome(articleData.trendingHome || false)
       setTrendingEdmonton(articleData.trendingEdmonton || false)
       setTrendingCalgary(articleData.trendingCalgary || false)
-      // Load featured article flags
+      setTrendingAlberta(articleData.trendingAlberta || false)
       setFeaturedHome(articleData.featuredHome || false)
       setFeaturedEdmonton(articleData.featuredEdmonton || false)
       setFeaturedCalgary(articleData.featuredCalgary || false)
+      setFeaturedAlberta(articleData.featuredAlberta || false)
 
       console.log('Form fields set - Title:', title, 'Content length:', content?.length || 0)
     } catch (error) {
@@ -208,10 +211,11 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         trendingHome,
         trendingEdmonton,
         trendingCalgary,
-        // Add featured article flags
+        trendingAlberta,
         featuredHome,
         featuredEdmonton,
-        featuredCalgary
+        featuredCalgary,
+        featuredAlberta
       }
 
       console.log('Sending update data:', updateData)
@@ -243,7 +247,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            paths: ['/', `/articles/${articleSlug}`, '/edmonton', '/calgary', '/culture', '/food-drink', '/events']
+            paths: ['/', `/articles/${articleSlug}`, '/edmonton', '/calgary', '/alberta', '/culture', '/food-drink', '/events']
           })
         })
         console.log('✅ Triggered revalidation for updated article')
@@ -344,12 +348,25 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
 
           <div>
             <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g., Edmonton, Calgary, Alberta"
-            />
+            <Select value={location || undefined} onValueChange={setLocation}>
+              <SelectTrigger id="location">
+                <SelectValue placeholder="Select location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Edmonton">Edmonton</SelectItem>
+                <SelectItem value="Calgary">Calgary</SelectItem>
+                <SelectItem value="Alberta">Alberta</SelectItem>
+                {TIER1_LOCATIONS.map((loc) => (
+                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                ))}
+                {OTHER_COMMUNITY_LOCATIONS.map((loc) => (
+                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                ))}
+                {location && ![...TIER1_LOCATIONS, ...OTHER_COMMUNITY_LOCATIONS, 'Edmonton', 'Calgary', 'Alberta'].includes(location) && (
+                  <SelectItem value={location}>{location}</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
@@ -463,6 +480,17 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               Show in Calgary Trending
             </Label>
           </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="trending-alberta"
+              checked={trendingAlberta}
+              onCheckedChange={(checked) => setTrendingAlberta(checked as boolean)}
+            />
+            <Label htmlFor="trending-alberta" className="text-sm font-medium">
+              Show in Alberta Trending
+            </Label>
+          </div>
         </div>
       </div>
 
@@ -502,6 +530,17 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
             />
             <Label htmlFor="featured-calgary" className="text-sm font-medium">
               Show as Calgary Page Featured Article
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="featured-alberta"
+              checked={featuredAlberta}
+              onCheckedChange={(checked) => setFeaturedAlberta(checked as boolean)}
+            />
+            <Label htmlFor="featured-alberta" className="text-sm font-medium">
+              Show as Alberta Page Featured Article
             </Label>
           </div>
         </div>

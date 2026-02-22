@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { ImageUploader } from "@/app/admin/components/image-uploader"
-import { SimpleTextEditor } from "@/app/admin/components/simple-text-editor"
+import { RichTextEditor } from "@/app/admin/components/rich-text-editor"
 import { useToast } from "@/hooks/use-toast"
 import { Event } from "@/lib/types/event"
 
@@ -73,7 +73,9 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [category, setCategory] = useState("")
   const [type, setType] = useState("event")
   const [startDate, setStartDate] = useState("")
+  const [startTime, setStartTime] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [endTime, setEndTime] = useState("")
   const [location, setLocation] = useState("")
   const [description, setDescription] = useState("")
   const [excerpt, setExcerpt] = useState("")
@@ -98,19 +100,25 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       setOrganizer(event.organizer || "")
       setContactEmail(event.organizer_contact || "")
       
-      // Parse event dates - handle empty strings and invalid dates
+      // Parse event dates and times - use LOCAL date/time (DB stores UTC, display in user's timezone)
       if (event.event_date && event.event_date.trim() !== '') {
-        const startDate = new Date(event.event_date)
-        if (!isNaN(startDate.getTime())) {
-          // Convert to YYYY-MM-DD format for date input
-          setStartDate(startDate.toISOString().split('T')[0])
+        const d = new Date(event.event_date)
+        if (!isNaN(d.getTime())) {
+          const y = d.getFullYear()
+          const m = String(d.getMonth() + 1).padStart(2, '0')
+          const day = String(d.getDate()).padStart(2, '0')
+          setStartDate(`${y}-${m}-${day}`)
+          setStartTime(String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'))
         }
       }
       if (event.event_end_date && event.event_end_date.trim() !== '') {
-        const endDate = new Date(event.event_end_date)
-        if (!isNaN(endDate.getTime())) {
-          // Convert to YYYY-MM-DD format for date input
-          setEndDate(endDate.toISOString().split('T')[0])
+        const d = new Date(event.event_end_date)
+        if (!isNaN(d.getTime())) {
+          const y = d.getFullYear()
+          const m = String(d.getMonth() + 1).padStart(2, '0')
+          const day = String(d.getDate()).padStart(2, '0')
+          setEndDate(`${y}-${m}-${day}`)
+          setEndTime(String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'))
         }
       }
     }
@@ -155,8 +163,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         website_url: ticketUrl,
         organizer,
         organizer_contact: contactEmail,
-        event_date: startDate || "",
-        event_end_date: endDate || "",
+        event_date: startDate ? new Date(`${startDate}T${startTime || '00:00'}:00`).toISOString() : "",
+        ...(endDate && { event_end_date: new Date(`${endDate}T${endTime || '00:00'}:00`).toISOString() }),
       }
 
       console.log("🔧 Updating event with data:", updateData)
@@ -318,38 +326,61 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="start-date">Start Date</Label>
                   <Input 
                     id="start-date" 
                     type="date"
                     value={startDate || ''} 
-                    onChange={(e) => {
-                      setStartDate(e.target.value)
-                    }} 
+                    onChange={(e) => setStartDate(e.target.value)} 
                   />
                 </div>
-
+                <div className="space-y-2">
+                  <Label htmlFor="start-time">Start Time</Label>
+                  <Input 
+                    id="start-time" 
+                    type="time"
+                    value={startTime || ''} 
+                    onChange={(e) => setStartTime(e.target.value)} 
+                    placeholder="e.g. 18:00"
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="end-date">End Date (Optional)</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      id="end-date" 
+                      type="date"
+                      value={endDate || ''} 
+                      onChange={(e) => setEndDate(e.target.value)} 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setEndDate(startDate || ''); setEndTime(startTime ? startTime : '23:30') }}
+                      className="text-sm text-muted-foreground hover:text-foreground underline whitespace-nowrap"
+                    >
+                      Same day
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="end-time">End Time (Optional)</Label>
                   <Input 
-                    id="end-date" 
-                    type="date"
-                    value={endDate || ''} 
-                    onChange={(e) => {
-                      setEndDate(e.target.value)
-                    }} 
+                    id="end-time" 
+                    type="time"
+                    value={endTime || ''} 
+                    onChange={(e) => setEndTime(e.target.value)} 
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <SimpleTextEditor
-                  content={description.replace(/<[^>]*>/g, '')} // Strip HTML for editing
+                <RichTextEditor
+                  content={description || ''}
                   onChange={setDescription}
-                  placeholder="Write your event description here..."
+                  placeholder="Write your event description here. Add images, change font size and style like in articles."
                 />
               </div>
 

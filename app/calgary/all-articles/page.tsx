@@ -1,5 +1,6 @@
 import { getCityArticlesWithFallback } from "@/lib/fallback-articles"
 import { Article } from "@/lib/types/article"
+import { isRegularArticle } from "@/lib/utils/article-filters"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, ArrowRight } from "lucide-react"
@@ -24,9 +25,11 @@ interface CalgaryArticle extends Article {
 export default async function CalgaryAllArticlesPage() {
   // Get Calgary articles with fallback to articles.json (exclude events)
   const allCalgaryContent = await getCityArticlesWithFallback('calgary') as CalgaryArticle[]
-  const articles = allCalgaryContent.filter(item => item.type !== 'event' && item.type !== 'Event')
+  const articles = allCalgaryContent
+    .filter(item => item.type !== 'event' && item.type !== 'Event')
+    .filter(isRegularArticle) // Exclude neighborhood & guide (they have dedicated pages)
 
-  console.log(`✅ Calgary all articles loaded: ${articles.length} (filtered out ${allCalgaryContent.length - articles.length} events)`)
+  console.log(`✅ Calgary all articles loaded: ${articles.length} regular articles (neighborhood/guide excluded)`)
 
   const formatDate = (dateString: string) => {
     try {

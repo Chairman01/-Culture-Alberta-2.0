@@ -17,6 +17,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li><Link href="/edmonton" className="text-gray-600 hover:text-gray-900">Edmonton</Link></li>
               <li><Link href="/calgary" className="text-gray-600 hover:text-gray-900">Calgary</Link></li>
+              <li><Link href="/alberta" className="text-gray-600 hover:text-gray-900">Around Alberta</Link></li>
               <li><Link href="/events" className="text-gray-600 hover:text-gray-900">Events</Link></li>
               <li><Link href="/food-drink" className="text-gray-600 hover:text-gray-900">Food & Drink</Link></li>
             </ul>

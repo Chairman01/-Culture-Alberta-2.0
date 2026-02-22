@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { supabase } from '@/lib/supabase'
 import { createApiResponse, handleApiError, validateEventData } from '@/lib/cursor-web-utils'
+import { clearEventsCache } from '@/lib/events'
 
 // Types for better type safety with Cursor web assistance
 interface EventUpdateData {
@@ -14,6 +15,7 @@ interface EventUpdateData {
   organizer?: string
   price?: string
   link?: string
+  website_url?: string
   status?: string
   featuredHome?: boolean
   featuredCalgary?: boolean
@@ -35,6 +37,7 @@ interface SupabaseUpdateData {
   organizer?: string
   price?: string
   link?: string
+  website_url?: string
   status?: string
   featured_home?: boolean
   featured_calgary?: boolean
@@ -145,6 +148,7 @@ export async function PUT(
         organizer: updateData.organizer,
         price: updateData.price,
         link: updateData.link,
+        website_url: updateData.website_url,
         status: updateData.status,
         featured_home: updateData.featuredHome,
         featured_calgary: updateData.featuredCalgary,
@@ -157,9 +161,10 @@ export async function PUT(
         updated_at: new Date().toISOString()
       }
 
-      // Remove undefined values
+      // Remove undefined and empty string values ("" would fail for timestamp columns)
       Object.keys(supabaseUpdateData).forEach(key => {
-        if (supabaseUpdateData[key as keyof SupabaseUpdateData] === undefined) {
+        const val = supabaseUpdateData[key as keyof SupabaseUpdateData]
+        if (val === undefined || val === '') {
           delete supabaseUpdateData[key as keyof SupabaseUpdateData]
         }
       })
@@ -177,6 +182,8 @@ export async function PUT(
       }
 
       console.log(`✅ Admin API: Event ${eventId} updated successfully in Supabase`)
+
+      clearEventsCache()
 
       // Also update fallback for consistency
       try {
@@ -239,6 +246,7 @@ export async function PUT(
     await updateOptimizedFallback(fallbackArticles)
 
     console.log(`✅ Admin API: Event ${eventId} updated successfully in fallback`)
+    clearEventsCache()
 
     return NextResponse.json(createApiResponse(
       true,

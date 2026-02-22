@@ -87,6 +87,12 @@ ALTER TABLE analytics_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics_content_views ENABLE ROW LEVEL SECURITY;
 
 -- Create policies to allow all operations (for analytics data)
+-- Drop first so script can be re-run safely if policies already exist
+DROP POLICY IF EXISTS "Allow all operations on analytics_events" ON analytics_events;
+DROP POLICY IF EXISTS "Allow all operations on analytics_page_views" ON analytics_page_views;
+DROP POLICY IF EXISTS "Allow all operations on analytics_sessions" ON analytics_sessions;
+DROP POLICY IF EXISTS "Allow all operations on analytics_content_views" ON analytics_content_views;
+
 CREATE POLICY "Allow all operations on analytics_events" ON analytics_events FOR ALL USING (true);
 CREATE POLICY "Allow all operations on analytics_page_views" ON analytics_page_views FOR ALL USING (true);
 CREATE POLICY "Allow all operations on analytics_sessions" ON analytics_sessions FOR ALL USING (true);

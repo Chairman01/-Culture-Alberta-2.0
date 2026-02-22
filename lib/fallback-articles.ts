@@ -116,14 +116,18 @@ export async function getCityArticlesWithFallback(city: string): Promise<Article
     // Validate city
     const validCity = city.toLowerCase()
     if (validCity === 'edmonton' || validCity === 'calgary') {
-      const articles = await getCityArticles(validCity)
+      const raw = await getCityArticles(validCity)
 
-      if (articles.length > 0) {
-        console.log(`✅ Loaded ${articles.length} ${city} articles from Supabase`)
+      if (raw.length > 0) {
+        // Exclude events - articles only (events belong on events page and city events sections)
+        const articles = raw.filter((a: Article & { type?: string; categories?: string[] }) =>
+          a.type !== 'event' && a.type !== 'Event' && !a.categories?.includes('Events')
+        )
+        console.log(`✅ Loaded ${articles.length} ${city} articles from Supabase (excluded ${raw.length - articles.length} events)`)
 
         // Update optimized fallback with fresh data
         // We catch this to ensure the main request doesn't fail if file write fails
-        updateOptimizedFallback(articles).catch(err =>
+        updateOptimizedFallback(raw).catch(err =>
           console.warn('⚠️ Background update of fallback failed:', err)
         )
 
@@ -139,8 +143,12 @@ export async function getCityArticlesWithFallback(city: string): Promise<Article
     console.log(`⚠️ Using optimized fallback for ${city}`)
     const fallbackArticles = await loadOptimizedFallback()
 
-    // Filter for city-specific articles
+    // Filter for city-specific articles and exclude events (events only on events page)
     return fallbackArticles.filter(article => {
+      // Exclude events
+      if ((article as any).type === 'event' || (article as any).type === 'Event') return false
+      if ((article as any).categories?.includes('Events')) return false
+
       const hasCityCategory = article.category?.toLowerCase().includes(city.toLowerCase())
       const hasCityLocation = article.location?.toLowerCase().includes(city.toLowerCase())
       const hasCityCategories = article.categories?.some((cat: string) =>

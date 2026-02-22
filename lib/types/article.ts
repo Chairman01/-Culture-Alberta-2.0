@@ -24,10 +24,11 @@ export interface Article {
   trendingHome?: boolean;
   trendingEdmonton?: boolean;
   trendingCalgary?: boolean;
-  // Featured article flags
+  trendingAlberta?: boolean;
   featuredHome?: boolean;
   featuredEdmonton?: boolean;
   featuredCalgary?: boolean;
+  featuredAlberta?: boolean;
 }
 
 export interface CreateArticleInput {
@@ -49,10 +50,11 @@ export interface CreateArticleInput {
   trendingHome?: boolean;
   trendingEdmonton?: boolean;
   trendingCalgary?: boolean;
-  // Featured article flags
+  trendingAlberta?: boolean;
   featuredHome?: boolean;
   featuredEdmonton?: boolean;
   featuredCalgary?: boolean;
+  featuredAlberta?: boolean;
 }
 
 export interface UpdateArticleInput extends Partial<CreateArticleInput> {

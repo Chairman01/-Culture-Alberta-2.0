@@ -51,9 +51,11 @@ export async function GET(
       trendingHome: data.trending_home || false,
       trendingEdmonton: data.trending_edmonton || false,
       trendingCalgary: data.trending_calgary || false,
+      trendingAlberta: data.trending_alberta || false,
       featuredHome: data.featured_home || false,
       featuredEdmonton: data.featured_edmonton || false,
       featuredCalgary: data.featured_calgary || false,
+      featuredAlberta: data.featured_alberta || false,
     }
 
     return NextResponse.json(mapped)

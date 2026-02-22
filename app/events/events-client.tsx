@@ -17,6 +17,7 @@ interface Event {
     date: string
     imageUrl: string
     author: string
+    websiteUrl?: string
 }
 
 interface EventsClientProps {
@@ -88,28 +89,22 @@ export default function EventsClient({ events }: EventsClientProps) {
         if (!dateString) return 'Date TBA'
 
         try {
-            let date: Date
-            if (dateString.includes('T')) {
-                const isoDate = new Date(dateString)
-                const year = isoDate.getUTCFullYear()
-                const month = isoDate.getUTCMonth()
-                const day = isoDate.getUTCDate()
-                date = new Date(year, month, day)
-            } else {
-                const [year, month, day] = dateString.split('-').map(Number)
-                date = new Date(year, month - 1, day)
-            }
+            const date = new Date(dateString)
+            if (isNaN(date.getTime())) return 'Date TBA'
 
-            if (isNaN(date.getTime())) {
-                return 'Date TBA'
-            }
-
-            return date.toLocaleDateString('en-US', {
+            const datePart = date.toLocaleDateString('en-US', {
                 weekday: 'long',
                 month: 'long',
                 day: 'numeric',
                 year: 'numeric'
             })
+            const timeMatch = dateString.match(/T(\d{1,2}):(\d{2})/)
+            const isMidnight = timeMatch && parseInt(timeMatch[1], 10) === 0 && parseInt(timeMatch[2], 10) === 0
+            const timePart = timeMatch && !isMidnight
+                ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                : ''
+
+            return timePart ? `${datePart} at ${timePart}` : datePart
         } catch {
             return 'Date TBA'
         }
@@ -263,7 +258,13 @@ export default function EventsClient({ events }: EventsClientProps) {
                                     <Link href={getEventUrl(event as any)}>
                                         <Button variant="outline">View Details</Button>
                                     </Link>
-                                    <Button>Register</Button>
+                                    {event.websiteUrl ? (
+                                        <a href={event.websiteUrl} target="_blank" rel="noopener noreferrer">
+                                            <Button>Register</Button>
+                                        </a>
+                                    ) : (
+                                        <Button disabled>Register</Button>
+                                    )}
                                 </div>
                             </div>
                         </div>
