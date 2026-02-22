@@ -739,13 +739,10 @@ export async function getAllArticles(): Promise<Article[]> {
   try {
     console.log('=== getAllArticles called ===')
 
-    // CRITICAL FIX: DISABLE ALL CACHING - Always fetch fresh data
-    console.log('🚀 FORCING FRESH DATA FETCH - Cache disabled for production fix')
     const now = Date.now()
-    // if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
-    //   console.log('✅ Returning cached articles:', articlesCache.length, 'articles')
-    //   return articlesCache
-    // }
+    if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
+      return articlesCache
+    }
 
     // SPEED OPTIMIZATION: Always try file system first (not just build time)
     if (shouldUseFileSystemFirst() && fileArticlesModule) {
@@ -783,8 +780,7 @@ export async function getAllArticles(): Promise<Article[]> {
 
     console.log('⚡ FAST: Attempting to fetch articles from Supabase (NO CONTENT)...')
 
-    // SPEED OPTIMIZATION: Reasonable timeout to allow Supabase connection
-    const timeoutDuration = 10000 // 10 seconds - give Supabase more time to connect
+    const timeoutDuration = 5000 // 5 seconds - fail fast, use fallback
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
     )
@@ -796,7 +792,7 @@ export async function getAllArticles(): Promise<Article[]> {
       .from('articles')
       .select(fields)
       .order('created_at', { ascending: false })
-      .limit(50) // Limit to 50 most recent articles for better performance
+      .limit(200) // Increased from 50 - admin updates to Red Deer/Lethbridge/etc must be included
 
     const { data, error } = await Promise.race([
       supabasePromise,
@@ -825,14 +821,31 @@ export async function getAllArticles(): Promise<Article[]> {
       featured_calgary: data[0].featured_calgary
     } : 'No articles')
 
+    // Normalize categories: Supabase may return string, JSON string, or array
+    const normalizeCategories = (val: unknown): string[] => {
+      if (Array.isArray(val)) return val.map((c) => String(c || '').trim()).filter(Boolean)
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val)
+          return Array.isArray(parsed) ? parsed.map((c: unknown) => String(c || '').trim()).filter(Boolean) : [val.trim()].filter(Boolean)
+        } catch {
+          return val.trim() ? [val.trim()] : []
+        }
+      }
+      return []
+    }
+
     // Map Supabase data to match our Article interface
     const mappedArticles = (data || []).map((article: any) => {
       // REMOVED: Content size limit that was truncating articles
       // Articles should show full content, not be artificially limited
       let content = article.content || ''
+      const categories = normalizeCategories(article.categories)
 
       return {
         ...article,
+        category: article.category || (categories[0] ?? ''),
+        categories: categories.length > 0 ? categories : (article.category ? [article.category] : []),
         content: content, // Use full content without truncation
         imageUrl: validateImageUrl(article.image_url || article.image, article.title), // Map 'image_url' or 'image' column to 'imageUrl'
         date: article.created_at, // Map 'created_at' to 'date' for compatibility
@@ -852,11 +865,8 @@ export async function getAllArticles(): Promise<Article[]> {
       featuredEdmonton: a.featuredEdmonton
     })))
 
-    // CRITICAL FIX: DISABLE CACHE UPDATES IN PRODUCTION
-    console.log('🚀 [PRODUCTION] Skipping cache update - always fetch fresh data')
-    // articlesCache = mappedArticles
-    // cacheTimestamp = now
-    // console.log('Updated articles cache')
+    articlesCache = mappedArticles
+    cacheTimestamp = now
 
     return mappedArticles
   } catch (error) {

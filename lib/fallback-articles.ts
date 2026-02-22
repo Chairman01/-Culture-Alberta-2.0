@@ -102,6 +102,38 @@ export async function getHomepageArticlesWithFallback(): Promise<Article[]> {
   return getArticlesWithFallback(10000) // 10 second timeout for homepage - give Supabase more time
 }
 
+// Other Alberta cities/locations - exclude from Edmonton and Calgary pages (primary location wins)
+const OTHER_ALBERTA_LOCATIONS = ['red deer', 'lethbridge', 'medicine hat', 'grande prairie', 'fort mcmurray', 'airdrie', 'st. albert', 'okotoks', 'canmore', 'banff', 'brooks', 'edson', 'camrose', 'lloydminster', 'drumheller', 'jasper']
+
+/** Exclude articles whose primary location/category is another Alberta city or general Alberta-only */
+function excludeOtherCityArticles(articles: Article[], targetCity: string): Article[] {
+  const target = targetCity.toLowerCase()
+  return articles.filter(article => {
+    const loc = (article.location || '').toLowerCase().trim()
+    const cat = (article.category || '').toLowerCase().trim()
+    const cats = (article.categories || []).map((c: string) => c.toLowerCase())
+    const tags = ((article as any).tags || []).map((t: string) => t.toLowerCase())
+    const combined = [loc, cat, ...cats, ...tags]
+
+    // Exclude if primary location/category is another Alberta city
+    if (OTHER_ALBERTA_LOCATIONS.some(other => loc.includes(other) || cat.includes(other))) {
+      return false
+    }
+    // Exclude if categories/tags ONLY have other cities (no target city)
+    const hasTarget = combined.some(s => s.includes(target))
+    const hasOtherCity = OTHER_ALBERTA_LOCATIONS.some(other => combined.some(s => s.includes(other)))
+    if (hasOtherCity && !hasTarget) return false
+    // Exclude when location is "Alberta" - province-wide stories belong on /alberta, not city pages
+    if (loc === 'alberta' && target !== 'alberta') return false
+    // Exclude general "Alberta" only when category is alberta and no city reference
+    if (cat === 'alberta' && target !== 'alberta') {
+      const hasCityRef = combined.some(s => s.includes('edmonton') || s.includes('calgary'))
+      if (!hasCityRef) return false
+    }
+    return true
+  })
+}
+
 /**
  * Load articles for city pages with fallback
  */
@@ -120,13 +152,14 @@ export async function getCityArticlesWithFallback(city: string): Promise<Article
 
       if (raw.length > 0) {
         // Exclude events - articles only (events belong on events page and city events sections)
-        const articles = raw.filter((a: Article & { type?: string; categories?: string[] }) =>
+        let articles = raw.filter((a: Article & { type?: string; categories?: string[] }) =>
           a.type !== 'event' && a.type !== 'Event' && !a.categories?.includes('Events')
         )
-        console.log(`✅ Loaded ${articles.length} ${city} articles from Supabase (excluded ${raw.length - articles.length} events)`)
+        // Exclude articles assigned to Red Deer, Lethbridge, Alberta-only, etc.
+        articles = excludeOtherCityArticles(articles, validCity)
+        console.log(`✅ Loaded ${articles.length} ${city} articles from Supabase (excluded events + other cities)`)
 
         // Update optimized fallback with fresh data
-        // We catch this to ensure the main request doesn't fail if file write fails
         updateOptimizedFallback(raw).catch(err =>
           console.warn('⚠️ Background update of fallback failed:', err)
         )
@@ -143,9 +176,8 @@ export async function getCityArticlesWithFallback(city: string): Promise<Article
     console.log(`⚠️ Using optimized fallback for ${city}`)
     const fallbackArticles = await loadOptimizedFallback()
 
-    // Filter for city-specific articles and exclude events (events only on events page)
-    return fallbackArticles.filter(article => {
-      // Exclude events
+    // Filter for city-specific articles and exclude events
+    let filtered = fallbackArticles.filter(article => {
       if ((article as any).type === 'event' || (article as any).type === 'Event') return false
       if ((article as any).categories?.includes('Events')) return false
 
@@ -154,12 +186,12 @@ export async function getCityArticlesWithFallback(city: string): Promise<Article
       const hasCityCategories = article.categories?.some((cat: string) =>
         cat.toLowerCase().includes(city.toLowerCase())
       )
-      const hasCityTags = article.tags?.some((tag: string) =>
+      const hasCityTags = (article as any).tags?.some((tag: string) =>
         tag.toLowerCase().includes(city.toLowerCase())
       )
-      // Only include articles that are specifically related to the city
       return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags
     })
+    return excludeOtherCityArticles(filtered, city.toLowerCase())
   } catch (error) {
     console.error(`❌ Failed to load ${city} articles from fallback:`, error)
     return []

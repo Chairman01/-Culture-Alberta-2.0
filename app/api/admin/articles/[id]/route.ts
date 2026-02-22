@@ -263,7 +263,12 @@ export async function PUT(
     try {
       revalidatePath('/', 'layout')
       revalidatePath('/articles')
-      console.log('✅ Pages revalidated')
+      revalidatePath('/alberta')
+      revalidatePath('/red-deer')
+      revalidatePath('/lethbridge')
+      revalidatePath('/edmonton')
+      revalidatePath('/calgary')
+      console.log('✅ Pages revalidated (including Alberta/city pages)')
     } catch (revalidateError) {
       console.error('❌ Revalidation failed:', revalidateError)
     }

@@ -7,14 +7,7 @@ import { SearchBar } from '@/components/search-bar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { getTrendingByViews } from '@/lib/trending-articles'
-import {
-  getAllAlbertaArticles,
-  getRedDeerArticles,
-  getLethbridgeArticles,
-  getMedicineHatArticles,
-  getGrandePrairieArticles,
-  getOtherCommunitiesArticles,
-} from '@/lib/alberta-cities'
+import { getAlbertaPageData } from '@/lib/alberta-cities'
 import { Article } from '@/lib/types/article'
 import { Metadata } from 'next'
 import { Suspense } from 'react'
@@ -48,21 +41,17 @@ const TIER1_CITIES = [
 
 async function getAlbertaData() {
   try {
-    const [
+    // Single fetch instead of 7 - major speed improvement
+    const pageData = await getAlbertaPageData()
+    const {
       allArticles,
+      albertaProvinceWideArticles,
       redDeerArticles,
       lethbridgeArticles,
       medicineHatArticles,
       grandePrairieArticles,
       otherArticles,
-    ] = await Promise.all([
-      getAllAlbertaArticles(),
-      getRedDeerArticles(),
-      getLethbridgeArticles(),
-      getMedicineHatArticles(),
-      getGrandePrairieArticles(),
-      getOtherCommunitiesArticles(),
-    ])
+    } = pageData
 
     // Filter out events
     const filterEvents = (arr: Article[]) =>
@@ -86,6 +75,9 @@ async function getAlbertaData() {
       featuredArticle,
       trendingArticles,
       topStories,
+      albertaProvinceWideArticles: filterEvents(albertaProvinceWideArticles).sort((a, b) =>
+        new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
+      ),
       redDeerArticles: filterEvents(redDeerArticles).sort((a, b) =>
         new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
       ),
@@ -109,6 +101,7 @@ async function getAlbertaData() {
       featuredArticle: null,
       trendingArticles: [],
       topStories: [],
+      albertaProvinceWideArticles: [],
       redDeerArticles: [],
       lethbridgeArticles: [],
       medicineHatArticles: [],
@@ -200,6 +193,7 @@ export default async function AlbertaPage() {
     featuredArticle,
     trendingArticles,
     topStories,
+    albertaProvinceWideArticles,
     redDeerArticles,
     lethbridgeArticles,
     medicineHatArticles,
@@ -323,7 +317,24 @@ export default async function AlbertaPage() {
             </div>
           </section>
 
-          {/* Tier 1 - City Sections */}
+          {/* Alberta Province-Wide Section */}
+          <section className="w-full py-8 bg-amber-50/50 border-y border-amber-100">
+            <div className="container mx-auto px-4 md:px-6">
+              <CitySection
+                title="Alberta"
+                slug="alberta/all-articles?filter=alberta"
+                desc="Province-wide news, culture, and stories from across Alberta."
+                articles={
+                  albertaProvinceWideArticles.length > 0
+                    ? albertaProvinceWideArticles
+                    : allArticles.slice(0, 4)
+                }
+                formatDate={formatDate}
+              />
+            </div>
+          </section>
+
+          {/* Tier 1 - City Sections (Red Deer, Lethbridge, etc.) */}
           <section className="w-full py-6 bg-gray-50">
             <div className="container mx-auto px-4 md:px-6">
               {TIER1_CITIES.map((city) => {

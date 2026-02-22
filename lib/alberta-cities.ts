@@ -3,19 +3,37 @@ import { getAllArticles } from './supabase-articles'
 import { loadOptimizedFallback } from './optimized-fallback'
 
 /**
- * Helper function to filter articles by location
- * Checks location, title, content, and tags for city mentions
+ * Helper function to filter articles by location/category
+ * Checks location, category, categories, title, content, and tags - admin can set any of these
  */
+/** Normalize categories to array (handles string/JSON from DB or fallback) */
+function toCategoriesArray(val: unknown): string[] {
+    if (Array.isArray(val)) return val.map((c) => String(c || '').trim()).filter(Boolean)
+    if (typeof val === 'string') {
+        try {
+            const parsed = JSON.parse(val)
+            return Array.isArray(parsed) ? parsed.map((c: unknown) => String(c || '').trim()).filter(Boolean) : [val.trim()].filter(Boolean)
+        } catch {
+            return val.trim() ? [val.trim()] : []
+        }
+    }
+    return []
+}
+
 function filterByLocation(articles: Article[], cityName: string): Article[] {
-    const cityLower = cityName.toLowerCase()
+    const cityLower = cityName.toLowerCase().replace(/-/g, ' ') // "red-deer" -> "red deer"
 
     return articles.filter(article => {
-        const location = article.location?.toLowerCase() || ''
-        const title = article.title?.toLowerCase() || ''
-        const content = article.content?.toLowerCase() || ''
-        const tags = article.tags?.map(t => t.toLowerCase()).join(' ') || ''
+        const location = (article.location || '').toLowerCase().trim()
+        const category = (article.category || '').toLowerCase().trim()
+        const categories = toCategoriesArray(article.categories).map((c) => c.toLowerCase().trim())
+        const title = (article.title || '').toLowerCase()
+        const content = (article.content || '').toLowerCase()
+        const tags = (article.tags || []).map((t: string) => (t || '').toLowerCase()).join(' ')
 
         return location.includes(cityLower) ||
+            category.includes(cityLower) ||
+            categories.some(c => c.includes(cityLower)) ||
             title.includes(cityLower) ||
             content.includes(cityLower) ||
             tags.includes(cityLower)
@@ -23,38 +41,116 @@ function filterByLocation(articles: Article[], cityName: string): Article[] {
 }
 
 /**
- * Helper function to exclude Calgary and Edmonton articles
- * Uses location as primary filter - if location is an Alberta community (Red Deer, Lethbridge, etc), include it.
- * Only exclude when location is explicitly Calgary/Edmonton, or when no Alberta location but content is Calgary/Edmonton-focused.
+ * Helper function to exclude Calgary and Edmonton articles from Alberta page.
+ * Alberta page shows: Red Deer, Lethbridge, Medicine Hat, Grande Prairie, Alberta-wide, and other communities.
+ * LOCATION is primary - if location is Red Deer/Lethbridge/etc, include regardless of category (handles mis-tagged).
  */
 function excludeCalgaryEdmonton(articles: Article[]): Article[] {
-    const ALBERTA_LOCATIONS = [
+    const ALBERTA_COMMUNITIES = [
         'red deer', 'lethbridge', 'medicine hat', 'grande prairie',
         'fort mcmurray', 'airdrie', 'st. albert', 'spruce grove', 'stony plain', 'leduc',
         'cochrane', 'okotoks', 'canmore', 'banff', 'brooks', 'edson', 'camrose',
-        'lloydminster', 'drumheller', 'jasper', 'sylvan lake', 'alberta'
+        'lloydminster', 'drumheller', 'jasper', 'sylvan lake'
     ]
 
     return articles.filter(article => {
         const location = (article.location || '').toLowerCase().trim()
+        const category = (article.category || '').toLowerCase().trim()
+        const categories = toCategoriesArray(article.categories).map((c) => c.toLowerCase())
+
+        // HIGHEST PRIORITY: If article is explicitly tagged as Alberta location or category, always include it.
+        // This ensures category updates in the admin (e.g. changing to Alberta) are always respected.
+        if (location === 'alberta' || location.includes('alberta') ||
+            category === 'alberta' || category.includes('alberta') ||
+            categories.some((c: string) => c === 'alberta' || c.includes('alberta'))) {
+            return true
+        }
+
+        // SECOND: Location wins for city-level. If location is an Alberta community, INCLUDE
+        const hasAlbertaCommunityLocation = ALBERTA_COMMUNITIES.some(loc => location.includes(loc))
+        if (hasAlbertaCommunityLocation) return true
+
+        // Exclude if location is Edmonton or Calgary - belong on city pages only
+        if (location.includes('edmonton') || location.includes('calgary')) return false
+
+        // Exclude if category is Edmonton or Calgary
+        if (category.includes('edmonton') || category.includes('calgary')) return false
+        if (categories.some((c: string) => c.includes('edmonton') || c.includes('calgary'))) return false
+
+        // Exclude if title/content/tags are primarily Edmonton or Calgary focused
         const title = article.title?.toLowerCase() || ''
         const content = article.content?.toLowerCase() || ''
-        const tags = article.tags?.map(t => t.toLowerCase()).join(' ') || ''
-
-        // Include if location is an Alberta community (outside Calgary/Edmonton)
-        const hasAlbertaLocation = ALBERTA_LOCATIONS.some(loc => location.includes(loc))
-        if (hasAlbertaLocation) return true
-
-        // Exclude if location is explicitly Calgary or Edmonton
-        if (location.includes('calgary') || location.includes('edmonton')) return false
-
-        // Exclude if title/content/tags are Calgary or Edmonton focused (and no Alberta location)
-        const isCalgary = title.includes('calgary') || content.includes('calgary') || tags.includes('calgary')
-        const isEdmonton = title.includes('edmonton') || content.includes('edmonton') || tags.includes('edmonton')
-        if (isCalgary || isEdmonton) return false
+        const tags = (article.tags || []).map((t: string) => t.toLowerCase())
+        const tagsStr = tags.join(' ')
+        const isCalgaryFocused = title.includes('calgary') || content.includes('calgary') || tagsStr.includes('calgary')
+        const isEdmontonFocused = title.includes('edmonton') || content.includes('edmonton') || tagsStr.includes('edmonton')
+        if (isCalgaryFocused || isEdmontonFocused) return false
 
         return true
     })
+}
+
+/**
+ * PERFORMANCE: Fetch Alberta page data with a SINGLE Supabase request.
+ * Use this for the Alberta page instead of 7 separate fetches.
+ */
+export async function getAlbertaPageData(): Promise<{
+    allArticles: Article[]
+    albertaProvinceWideArticles: Article[]
+    redDeerArticles: Article[]
+    lethbridgeArticles: Article[]
+    medicineHatArticles: Article[]
+    grandePrairieArticles: Article[]
+    otherArticles: Article[]
+}> {
+    try {
+        console.log('🔄 [FAST] Loading Alberta page data (single fetch)...')
+        const albertaArticles = await getAllAlbertaArticles()
+
+        const majorCities = ['red deer', 'lethbridge', 'medicine hat', 'grande prairie']
+
+        // Alberta section: articles with Alberta in location, category, or categories
+        // Include any article tagged Alberta (even if also tagged for a city)
+        const albertaProvinceWideArticles = albertaArticles.filter(article => {
+            const location = (article.location || '').toLowerCase().trim()
+            const category = (article.category || '').toLowerCase().trim()
+            const categories = toCategoriesArray(article.categories).map((c) => c.toLowerCase())
+            return location === 'alberta' || location.includes('alberta') ||
+                category === 'alberta' || category.includes('alberta') ||
+                categories.some((c) => c === 'alberta' || c.includes('alberta'))
+        })
+
+        const otherArticles = albertaArticles.filter(article => {
+            const location = article.location?.toLowerCase() || ''
+            const title = article.title?.toLowerCase() || ''
+            const content = article.content?.toLowerCase() || ''
+            const mentionsMajorCity = majorCities.some(city =>
+                location.includes(city) || title.includes(city) || content.includes(city)
+            )
+            return !mentionsMajorCity
+        })
+
+        return {
+            allArticles: albertaArticles,
+            albertaProvinceWideArticles,
+            redDeerArticles: filterByLocation(albertaArticles, 'red deer'),
+            lethbridgeArticles: filterByLocation(albertaArticles, 'lethbridge'),
+            medicineHatArticles: filterByLocation(albertaArticles, 'medicine hat'),
+            grandePrairieArticles: filterByLocation(albertaArticles, 'grande prairie'),
+            otherArticles,
+        }
+    } catch (error) {
+        console.error('❌ Failed to load Alberta page data:', error)
+        return {
+            allArticles: [],
+            albertaProvinceWideArticles: [],
+            redDeerArticles: [],
+            lethbridgeArticles: [],
+            medicineHatArticles: [],
+            grandePrairieArticles: [],
+            otherArticles: [],
+        }
+    }
 }
 
 /**
@@ -79,6 +175,31 @@ export async function getAllAlbertaArticles(): Promise<Article[]> {
 
         console.log(`⚡ FALLBACK: Loaded ${albertaArticles.length} Alberta articles`)
         return albertaArticles
+    }
+}
+
+/**
+ * Get Alberta category articles - any article with Alberta in location, category, or categories
+ */
+export async function getAlbertaProvinceWideArticles(): Promise<Article[]> {
+    try {
+        console.log('🔄 Loading Alberta category articles...')
+        const albertaArticles = await getAllAlbertaArticles()
+
+        const provinceWide = albertaArticles.filter(article => {
+            const location = (article.location || '').toLowerCase().trim()
+            const category = (article.category || '').toLowerCase().trim()
+            const categories = toCategoriesArray(article.categories).map((c) => c.toLowerCase())
+            return location === 'alberta' || location.includes('alberta') ||
+                category === 'alberta' || category.includes('alberta') ||
+                categories.some((c) => c === 'alberta' || c.includes('alberta'))
+        })
+
+        console.log(`✅ Found ${provinceWide.length} Alberta category articles`)
+        return provinceWide
+    } catch (error) {
+        console.error('❌ Failed to load province-wide Alberta articles:', error)
+        return []
     }
 }
 

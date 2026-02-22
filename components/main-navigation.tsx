@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Menu, X, LogIn, UserPlus, LogOut } from "lucide-react"
+import { Menu, X, User, LogOut } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
 
@@ -29,19 +29,17 @@ export function MainNavigation() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <div className="flex items-center">
-          <Link href="/" className="flex items-center">
-            <span
-              className={`text-2xl font-bold ${isEdmonton ? "text-blue-600" : isCalgary ? "text-red-600" : isAlberta ? "text-amber-700" : "text-primary"}`}
-            >
-              Culture Alberta
-            </span>
-          </Link>
-        </div>
+      <div className="container mx-auto flex h-14 sm:h-16 items-center px-3 sm:px-4 gap-4">
+        <Link href="/" className="flex items-center shrink-0">
+          <span
+            className={`text-lg sm:text-2xl font-bold whitespace-nowrap ${isEdmonton ? "text-blue-600" : isCalgary ? "text-red-600" : isAlberta ? "text-amber-700" : "text-primary"}`}
+          >
+            Culture Alberta
+          </span>
+        </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center justify-center gap-8">
+        {/* Desktop Navigation - centered */}
+        <nav className="hidden md:flex flex-1 items-center justify-center gap-6 lg:gap-8">
           <Link
             href="/edmonton"
             className={`text-sm font-medium transition-colors ${isEdmonton
@@ -86,63 +84,62 @@ export function MainNavigation() {
           </Link>
         </nav>
 
-        <div className="flex items-center gap-4">
-          {/* Auth links - Desktop */}
-          <div className="hidden md:flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Auth - single user icon links to sign-in (or account when logged in) */}
+          <div className="flex items-center gap-2">
             {loading ? (
-              <span className="text-sm text-gray-500">...</span>
+              <div className="w-9 h-9 rounded-full bg-gray-200 animate-pulse" aria-hidden />
             ) : user ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 truncate max-w-[120px]" title={user.email}>
-                  {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Account'}
-                </span>
+              <div className="flex items-center gap-1">
+                <div
+                  className="flex items-center justify-center min-w-[44px] min-h-[44px] w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-gray-200 bg-gray-50"
+                  title={user.user_metadata?.full_name || user.email}
+                  aria-label="Account"
+                >
+                  <User className="w-5 h-5 sm:w-4 sm:h-4 text-gray-600" />
+                </div>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={() => signOut()}
-                  className="text-gray-600 hover:text-gray-900"
+                  className="text-gray-600 hover:text-gray-900 min-w-[44px] min-h-[44px] w-10 h-10 sm:w-9 sm:h-9 touch-manipulation"
+                  aria-label="Sign out"
                 >
                   <LogOut className="w-4 h-4" />
                 </Button>
               </div>
             ) : (
-              <>
-                <Link href="/auth/signin">
-                  <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
-                    <LogIn className="w-4 h-4 mr-1" />
-                    Sign In
-                  </Button>
-                </Link>
-                <Link href="/auth/signup">
-                  <Button size="sm" className="bg-gray-900 hover:bg-black">
-                    <UserPlus className="w-4 h-4 mr-1" />
-                    Sign Up
-                  </Button>
-                </Link>
-              </>
+              <Link
+                href="/auth/signin"
+                className="flex items-center justify-center min-w-[44px] min-h-[44px] w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+                aria-label="Sign in"
+              >
+                <User className="w-5 h-5 sm:w-4 sm:h-4 text-gray-600" />
+              </Link>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Button - 44px touch target */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="md:hidden min-w-[44px] min-h-[44px] touch-manipulation"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - touch-friendly link heights */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t bg-background">
-          <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
+        <div className="md:hidden border-t bg-background max-h-[calc(100vh-3.5rem)] overflow-y-auto">
+          <nav className="container mx-auto px-4 py-4 flex flex-col gap-0">
             <Link
               href="/edmonton"
               onClick={closeMobileMenu}
-              className={`text-base font-medium transition-colors py-2 ${isEdmonton
+              className={`text-base font-medium transition-colors py-3.5 min-h-[44px] flex items-center touch-manipulation ${isEdmonton
                 ? "text-blue-600"
                 : "text-gray-600"
                 }`}
@@ -152,7 +149,7 @@ export function MainNavigation() {
             <Link
               href="/calgary"
               onClick={closeMobileMenu}
-              className={`text-base font-medium transition-colors py-2 ${isCalgary
+              className={`text-base font-medium transition-colors py-3.5 min-h-[44px] flex items-center touch-manipulation ${isCalgary
                 ? "text-red-600"
                 : "text-gray-600"
                 }`}
@@ -162,7 +159,7 @@ export function MainNavigation() {
             <Link
               href="/alberta"
               onClick={closeMobileMenu}
-              className={`text-base font-medium transition-colors py-2 ${isAlberta
+              className={`text-base font-medium transition-colors py-3.5 min-h-[44px] flex items-center touch-manipulation ${isAlberta
                 ? "text-amber-700"
                 : "text-gray-600"
                 }`}
@@ -172,63 +169,58 @@ export function MainNavigation() {
             <Link
               href="/food-drink"
               onClick={closeMobileMenu}
-              className="text-base font-medium text-gray-600 py-2"
+              className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
             >
               Food & Drink
             </Link>
             <Link
               href="/events"
               onClick={closeMobileMenu}
-              className="text-base font-medium text-gray-600 py-2"
+              className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
             >
               Events
             </Link>
             <Link
               href="/culture"
               onClick={closeMobileMenu}
-              className="text-base font-medium text-gray-600 py-2"
+              className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
             >
               Culture
             </Link>
             <Link
               href="/best-of"
               onClick={closeMobileMenu}
-              className="text-base font-medium text-gray-600 py-2"
+              className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
             >
               Best of Alberta
             </Link>
             <Link
               href="/partner"
               onClick={closeMobileMenu}
-              className="text-base font-medium text-gray-600 py-2"
+              className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
             >
               Partner with Us
             </Link>
 
-            {/* Mobile Auth links */}
-            <div className="flex flex-col gap-2 pt-4 border-t mt-4">
+            {/* Mobile Auth - compact */}
+            <div className="flex items-center gap-2 pt-4 border-t mt-4">
               {loading ? (
-                <span className="text-sm text-gray-500">...</span>
+                <div className="w-9 h-9 rounded-full bg-gray-200 animate-pulse" aria-hidden />
               ) : user ? (
-                <Button variant="ghost" onClick={() => { signOut(); closeMobileMenu(); }}>
-                  <LogOut className="w-4 h-4 mr-2" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { signOut(); closeMobileMenu(); }}
+                  className="gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
                   Sign Out
                 </Button>
               ) : (
-                <>
-                  <Link href="/auth/signin" onClick={closeMobileMenu}>
-                    <Button variant="ghost" className="w-full justify-start">
-                      <LogIn className="w-4 h-4 mr-2" />
-                      Sign In
-                    </Button>
-                  </Link>
-                  <Link href="/auth/signup" onClick={closeMobileMenu}>
-                    <Button className="w-full bg-gray-900 hover:bg-black">
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Sign Up
-                    </Button>
-                  </Link>
-                </>
+                <Link href="/auth/signin" onClick={closeMobileMenu} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium">
+                  <User className="w-4 h-4" />
+                  Sign In
+                </Link>
               )}
             </div>
           </nav>

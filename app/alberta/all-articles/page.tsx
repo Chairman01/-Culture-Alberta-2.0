@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Suspense } from 'react'
 import { AlbertaLocationFilter } from '@/components/alberta-location-filter'
 import { getArticleUrl } from '@/lib/utils/article-url'
-import { getAllAlbertaArticles, getOtherCommunitiesArticles } from '@/lib/alberta-cities'
+import { getAlbertaPageData } from '@/lib/alberta-cities'
 import { Article } from '@/lib/types/article'
 import { Metadata } from 'next'
 
@@ -40,16 +40,16 @@ export default async function AlbertaAllArticlesPage({
     redirect('/alberta/all-articles?filter=other')
   }
 
-  const [allArticles, otherArticles] = await Promise.all([
-    getAllAlbertaArticles(),
-    getOtherCommunitiesArticles(),
-  ])
+  const pageData = await getAlbertaPageData()
+  const { allArticles, albertaProvinceWideArticles, otherArticles } = pageData
 
   const excludeEvents = (arr: Article[]) =>
     arr.filter((a) => (a as AlbertaArticle).type !== 'event' && (a as AlbertaArticle).type !== 'Event')
 
   let articles: Article[]
-  if (filter === 'other') {
+  if (filter === 'alberta') {
+    articles = excludeEvents(albertaProvinceWideArticles)
+  } else if (filter === 'other') {
     articles = excludeEvents(otherArticles)
   } else {
     articles = excludeEvents(allArticles)
@@ -77,7 +77,7 @@ export default async function AlbertaAllArticlesPage({
     }
   }
 
-  const pageTitle = filter === 'other' ? 'Other Communities' : 'All Alberta Articles'
+  const pageTitle = filter === 'alberta' ? 'Alberta' : filter === 'other' ? 'Other Communities' : 'All Alberta Articles'
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -102,7 +102,9 @@ export default async function AlbertaAllArticlesPage({
                   {pageTitle}
                 </h1>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  {articles.length} article{articles.length !== 1 ? 's' : ''} from communities across Alberta
+                  {filter === 'alberta'
+                    ? `${articles.length} province-wide article${articles.length !== 1 ? 's' : ''}`
+                    : `${articles.length} article${articles.length !== 1 ? 's' : ''} from communities across Alberta`}
                 </p>
               </div>
             </div>

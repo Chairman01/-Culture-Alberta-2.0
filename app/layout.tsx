@@ -14,6 +14,12 @@ import { WebsiteStructuredData, OrganizationStructuredData, LocalBusinessStructu
 import { SitelinksData, DEFAULT_NAVIGATION_LINKS } from '@/components/seo/sitelinks-data'
 import { PageTracker } from '@/components/analytics/page-tracker'
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+}
+
 export const metadata: Metadata = {
   title: 'Culture Alberta | Best Culture, Events & Food in Calgary & Edmonton',
   description: 'Your guide to Alberta\'s culture: events, restaurants, festivals & local experiences in Calgary, Edmonton & beyond.',

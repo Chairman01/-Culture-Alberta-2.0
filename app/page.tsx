@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { getHomepageArticles } from '@/lib/articles'
+import { getAllAlbertaArticles } from '@/lib/alberta-cities'
 import { getAllEvents } from '@/lib/events'
 import { ArrowRight } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
@@ -114,7 +115,7 @@ async function getHomePageData() {
         status: 'published',
         tags: ['Alberta', 'Culture', 'Welcome']
       }]
-      return { posts: fallbackPosts, events: [] }
+      return { posts: fallbackPosts, events: [], albertaArticles: [] }
     }
 
     // Debug: Check what status values we have
@@ -126,9 +127,20 @@ async function getHomePageData() {
     )
     console.log('🔍 DEBUG: Published posts after filtering:', publishedPosts.length)
 
+    // Fetch all Alberta articles separately (Red Deer, Lethbridge, Medicine Hat, Grande Prairie, Alberta-wide, other)
+    // This uses a separate full fetch so we never miss city-specific articles
+    let albertaArticles: Article[] = []
+    try {
+      albertaArticles = await getAllAlbertaArticles()
+      console.log('🔍 DEBUG: Alberta articles loaded:', albertaArticles.length)
+    } catch (err) {
+      console.warn('⚠️ Failed to load Alberta articles for homepage:', err)
+    }
+
     return {
       posts: publishedPosts,
-      events: [] // We'll filter events by category later
+      events: [], // We'll filter events by category later
+      albertaArticles,
     }
   } catch (error) {
     console.error("Error loading posts:", error)
@@ -155,13 +167,13 @@ async function getHomePageData() {
       status: 'published',
       tags: ['Alberta', 'Culture', 'Welcome']
     }]
-    return { posts: fallbackPosts, events: [] }
+    return { posts: fallbackPosts, events: [], albertaArticles: [] }
   }
 }
 
 export default async function HomeStatic() {
   // Load data for static generation
-  const { posts, events } = await getHomePageData()
+  const { posts, events, albertaArticles } = await getHomePageData()
 
   const formatDate = (dateString: string) => {
     try {
@@ -285,10 +297,12 @@ export default async function HomeStatic() {
   // Other Alberta cities - exclude these from Edmonton/Calgary spotlights (fixes mis-tagged articles)
   const OTHER_ALBERTA_CITIES = ['red deer', 'lethbridge', 'medicine hat', 'grande prairie', 'fort mcmurray', 'airdrie', 'st. albert', 'okotoks', 'canmore', 'banff', 'brooks', 'edson', 'camrose', 'lloydminster', 'drumheller', 'jasper']
   const isFromOtherAlbertaCity = (post: Article) => {
-    const loc = (post.location || '').toLowerCase()
+    const loc = (post.location || '').toLowerCase().trim()
     const cats = (post.categories || []).map((c: string) => c.toLowerCase())
     const tags = ((post as any).tags || []).map((t: string) => t.toLowerCase())
     const combined = [loc, ...cats, ...tags].join(' ')
+    // Location "Alberta" = province-wide, not city-specific
+    if (loc === 'alberta') return true
     return OTHER_ALBERTA_CITIES.some(city => combined.includes(city))
   }
 
@@ -316,12 +330,14 @@ export default async function HomeStatic() {
     return !!hasCalgary
   }).slice(0, 3)
 
-  // More From Alberta: Red Deer, Lethbridge, Medicine Hat, etc. (excludes Edmonton & Calgary)
-  const moreFromAlbertaPosts = sortedPosts.filter(post => {
-    if (post.type === 'event') return false
-    if (isFromOtherAlbertaCity(post)) return true
-    return false
-  }).slice(0, 3)
+  // More From Alberta: Alberta-wide, Red Deer, Lethbridge, Medicine Hat, Grande Prairie, other communities
+  // Uses dedicated Alberta article fetch (not limited homepage pool) so all regions appear
+  const albertaSorted = albertaArticles
+    .filter(post => post.type !== 'event')
+    .sort((a, b) =>
+      new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
+    )
+  const moreFromAlbertaPosts = albertaSorted.slice(0, 6)
   // SIMPLE CATEGORY-BASED FILTERING for Food & Drink
   const foodDrinkPosts = sortedPosts.filter(post => {
     // First filter out events - events should not appear in Food & Drink section
