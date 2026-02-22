@@ -300,9 +300,11 @@ body {
 
 .article-content-wrapper img {
   max-width: 100%;
-  height: auto;
+  height: auto !important;
+  aspect-ratio: auto !important;
   border-radius: 0.5rem;
-  margin: 1.5rem 0;
+  margin: 1.5rem auto;
+  display: block;
 }
 
 .article-content-wrapper a {

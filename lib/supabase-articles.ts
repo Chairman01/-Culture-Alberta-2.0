@@ -240,7 +240,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
           .from('articles')
           .select(fields)
           .order('created_at', { ascending: false })
-          .limit(30) // Fetch more articles
+          .limit(100) // Fetch more articles to ensure categories like Food & Drink are populated
 
         const result = await Promise.race([
           supabasePromise,

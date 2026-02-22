@@ -348,42 +348,16 @@ export default async function HomeStatic() {
     const categories = post.categories || [];
     const title = post.title?.toLowerCase() || '';
 
-    // Check for exact match or contains food/drink
-    const hasFoodCategory = category.includes('food & drink') ||
-      category.includes('food') ||
-      category.includes('drink');
+    // Check for "food" or "drink" in category or categories array
+    // We match substrings for robustness but ONLY in the category fields (no title check)
+    const hasFoodCategory = category.includes('food') || category.includes('drink');
 
     const hasFoodInCategories = categories.some((cat: string) => {
       const catLower = cat.toLowerCase();
-      return catLower.includes('food & drink') ||
-        catLower.includes('food') ||
-        catLower.includes('drink');
+      return catLower.includes('food') || catLower.includes('drink');
     });
 
-    // Also check title for food-related keywords (fallback for missing categories)
-    // Be more specific to avoid false positives like "showcases" containing "eat"
-    const hasFoodInTitle = title.includes('restaurant') ||
-      title.includes('sushi') ||
-      title.includes('food') ||
-      title.includes('romantic') ||
-      title.includes('dining') ||
-      title.includes('cafe') ||
-      title.includes('bar') ||
-      title.includes('drink') ||
-      title.includes('coffee') ||
-      title.includes('bite') ||
-      title.includes('cuisine') ||
-      title.includes('chef') ||
-      title.includes('menu') ||
-      title.includes('meal') ||
-      title.includes('taste') ||
-      title.includes('flavor') ||
-      title.includes('cook') ||
-      title.includes('recipe');
-
-    const isFoodDrink = hasFoodCategory || hasFoodInCategories || hasFoodInTitle;
-
-    return isFoodDrink;
+    return hasFoodCategory || hasFoodInCategories;
   }).slice(0, 3) // Take the first 3 (which should be the newest since sortedPosts is already sorted by date)
 
 
