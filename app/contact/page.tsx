@@ -67,10 +67,10 @@ export default function ContactPage() {
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Phone</h3>
                     <a
-                      href="tel:+12262361828"
+                      href="tel:+15878979347"
                       className="text-green-600 hover:text-green-700 transition-colors text-lg"
                     >
-                      (226) 236-1828
+                      587-897-9347
                     </a>
                     <p className="text-gray-600 mt-1">
                       Available Monday to Friday, 9 AM - 5 PM MST
@@ -147,7 +147,7 @@ export default function ContactPage() {
                 <div className="bg-blue-50 rounded-lg p-6">
                   <h4 className="font-semibold text-blue-900 mb-2">Need immediate help?</h4>
                   <p className="text-blue-700 text-sm">
-                    Call us at <a href="tel:+12262361828" className="font-semibold hover:underline">(226) 236-1828</a> or email us at{' '}
+                    Call us at <a href="tel:+15878979347" className="font-semibold hover:underline">587-897-9347</a> or email us at{' '}
                     <a href="mailto:culturealberta101@gmail.com" className="font-semibold hover:underline">culturealberta101@gmail.com</a>
                   </p>
                 </div>
@@ -176,7 +176,7 @@ export default function ContactPage() {
                   Send us an email
                 </a>
                 <a
-                  href="tel:+12262361828"
+                  href="tel:+15878979347"
                   className="inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
                 >
                   <Phone className="w-5 h-5 mr-2" />

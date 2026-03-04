@@ -138,14 +138,14 @@ export default function AboutPage() {
                 </a>
 
                 <a
-                  href="tel:+12262361828"
+                  href="tel:+15878979347"
                   className="group p-8 bg-gradient-to-br from-green-50 to-green-100 rounded-2xl border-2 border-green-200 hover:border-green-400 transition-all hover:shadow-lg"
                 >
                   <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <Phone className="w-7 h-7 text-white" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">Call Us</h3>
-                  <p className="text-green-600 font-medium">(226) 236-1828</p>
+                  <p className="text-green-600 font-medium">587-897-9347</p>
                 </a>
 
                 <div className="p-8 bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl border-2 border-purple-200">
