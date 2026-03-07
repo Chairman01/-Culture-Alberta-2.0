@@ -79,6 +79,13 @@ export async function PUT(
     // Get Supabase client
     const supabase = getSupabaseClient()
 
+    // Fetch current title before update so we can detect slug changes
+    const { data: existingArticle } = await supabase
+      .from('articles')
+      .select('title')
+      .eq('id', articleId)
+      .single()
+
     // Update the article in Supabase
     const { data, error } = await supabase
       .from('articles')
@@ -111,6 +118,23 @@ export async function PUT(
     }
 
     console.log('✅ Article updated successfully in Supabase:', data.id)
+
+    // Auto-save slug redirect if title changed
+    if (existingArticle && existingArticle.title !== articleData.title) {
+      try {
+        const { createSlug } = await import('@/lib/utils/slug')
+        const oldSlug = createSlug(existingArticle.title)
+        const newSlug = createSlug(articleData.title)
+        if (oldSlug !== newSlug) {
+          await supabase
+            .from('slug_redirects')
+            .upsert({ old_slug: oldSlug, new_slug: newSlug }, { onConflict: 'old_slug' })
+          console.log(`✅ Slug redirect saved: ${oldSlug} → ${newSlug}`)
+        }
+      } catch (redirectError) {
+        console.warn('⚠️ Failed to save slug redirect (non-fatal):', redirectError)
+      }
+    }
 
     // Auto-sync the updated article
     try {

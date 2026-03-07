@@ -59,6 +59,12 @@ const nextConfig = {
         destination: '/articles/:id',
         permanent: true,
       },
+      // Article slug change: removed "Again" from Gracie Ann Gale title
+      {
+        source: '/articles/grande-prairie-rcmp-asking-for-help-finding-15-year-old-gracie-ann-gale-again',
+        destination: '/articles/grande-prairie-rcmp-asking-for-help-finding-15-year-old-gracie-ann-gale',
+        permanent: true,
+      },
       // Redirect common misspellings
       {
         source: '/calagry',
