@@ -254,9 +254,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           return true
         }
 
-        // Try partial match (in case of URL encoding issues)
-        const partialMatch = articleSlug.toLowerCase().includes(slug.toLowerCase()) ||
-          slug.toLowerCase().includes(articleSlug.toLowerCase())
+        // Try partial match - only if requested slug contains the article slug (not reverse)
+        // Prevents "...-gale-again" from matching when looking for "...-gale"
+        const partialMatch = slug.toLowerCase().includes(articleSlug.toLowerCase())
         if (partialMatch) {
           console.log('Found partial matching article:', article.title)
           return true

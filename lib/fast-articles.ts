@@ -60,8 +60,9 @@ export async function getFastArticleBySlug(slug: string): Promise<any | null> {
     const exactMatch = articleSlug.toLowerCase() === slug.toLowerCase()
     if (exactMatch) return true
     
-    const partialMatch = articleSlug.toLowerCase().includes(slug.toLowerCase()) || 
-                       slug.toLowerCase().includes(articleSlug.toLowerCase())
+    // Only match if the requested slug contains the article's slug (not the reverse)
+    // Prevents "...-gale-again" from matching when looking for "...-gale"
+    const partialMatch = slug.toLowerCase().includes(articleSlug.toLowerCase())
     if (partialMatch) return true
     
     const titleMatch = article.title.toLowerCase()
