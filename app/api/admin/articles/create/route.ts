@@ -4,6 +4,7 @@ import { quickSyncArticle } from '@/lib/auto-sync'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
+import { createSlug } from '@/lib/utils/slug'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
 
     // Auto-notify search engines about the new article (non-blocking)
     if (data.status === 'published') {
-      const articleSlug = data.id // slug is based on id or title
+      const articleSlug = createSlug(data.title)
       notifySearchEngines(`/articles/${articleSlug}`).catch(err =>
         console.warn('⚠️ Search engine notification failed (non-fatal):', err)
       )
