@@ -621,11 +621,18 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       </div>
                     )}
 
-                    {/* Newsletter - Inline only (AdSense-friendly: no overlap with ads) */}
+                    {/* Newsletter - Inline at end of article */}
                     <ArticleNewsletterSignup
                       articleTitle={loadedArticle.title}
                       articleCategory={loadedArticle.category}
                       variant="inline"
+                    />
+
+                    {/* Newsletter - Scroll-triggered popup (appears at 50% read) */}
+                    <ArticleNewsletterSignup
+                      articleTitle={loadedArticle.title}
+                      articleCategory={loadedArticle.category}
+                      variant="fixed"
                     />
 
                     {/* Comments Section */}
