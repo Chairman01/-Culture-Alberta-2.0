@@ -22,7 +22,7 @@ export default function ArticleNewsletterSignup({
   className = "",
   variant = 'inline'
 }: ArticleNewsletterSignupProps) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   const [email, setEmail] = useState("")
   const [city, setCity] = useState("")
@@ -34,6 +34,8 @@ export default function ArticleNewsletterSignup({
   const [isAnimating, setIsAnimating] = useState(false)
 
   useEffect(() => {
+    // Wait for auth to resolve before deciding — prevents flash for signed-in users
+    if (authLoading) return
     // If already signed in, never show anything
     if (user) return
 
@@ -70,7 +72,7 @@ export default function ArticleNewsletterSignup({
 
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [variant, user])
+  }, [variant, user, authLoading])
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
