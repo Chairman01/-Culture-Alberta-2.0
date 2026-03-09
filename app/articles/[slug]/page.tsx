@@ -625,13 +625,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     <ArticleNewsletterSignup
                       articleTitle={loadedArticle.title}
                       articleCategory={loadedArticle.category}
+                      articleImageUrl={loadedArticle.imageUrl}
                       variant="inline"
                     />
 
-                    {/* Newsletter - Scroll-triggered popup (appears at 50% read) */}
+                    {/* Newsletter - Scroll-triggered split-image popup (appears at 50% read) */}
                     <ArticleNewsletterSignup
                       articleTitle={loadedArticle.title}
                       articleCategory={loadedArticle.category}
+                      articleImageUrl={loadedArticle.imageUrl}
                       variant="fixed"
                     />
 
