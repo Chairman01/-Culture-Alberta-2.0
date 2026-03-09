@@ -216,39 +216,94 @@ export default function ArticleNewsletterSignup({
     )
   }
 
+  // Fixed: centered modal popup with backdrop (highest converting format)
   return (
-    <>
-      {/* Desktop version - Fixed sidebar */}
-      <div className={`fixed right-4 top-1/2 transform -translate-y-1/2 z-40 w-80 max-w-[calc(100vw-2rem)] hidden lg:block transition-all duration-500 ease-out ${isAnimating ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'} ${className}`}>
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 backdrop-blur-sm bg-white/95">
-          {formContent}
-        </div>
-      </div>
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ease-out ${isAnimating ? 'opacity-100' : 'opacity-0 pointer-events-none'} ${className}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Newsletter signup"
+    >
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={handleDismiss}
+      />
 
-      {/* Mobile version - Fixed bottom */}
-      <div className={`fixed bottom-4 left-4 right-4 z-40 lg:hidden transition-all duration-500 ease-out ${isAnimating ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full'} ${className}`}>
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 backdrop-blur-sm bg-white/95">
-          <div className="text-center mb-3">
-            <h3 className="text-base font-bold text-gray-900 mb-1">Enjoying {articleTitle}?</h3>
-            <p className="text-gray-600 text-xs leading-relaxed">Get more Alberta culture stories delivered to your inbox.</p>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <select value={city} onChange={(e) => setCity(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
-                {NEWSLETTER_CITIES.map(({ value, label }) => (
-                  <option key={value || 'placeholder'} value={value}>{label}</option>
-                ))}
-              </select>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter email" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
-            </div>
-            <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 text-white py-2 px-3 rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              {isSubmitting ? "Subscribing..." : "Subscribe"}
-            </button>
-          </form>
-          {message && (<div className={`mt-2 p-2 rounded-lg text-xs ${messageType === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>{message}</div>)}
-          <div className="mt-2 text-center"><button onClick={handleDismiss} type="button" className="text-xs text-gray-400 hover:text-gray-600 underline">Not interested</button></div>
+      {/* Modal card */}
+      <div className={`relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto p-7 transition-all duration-300 ease-out ${isAnimating ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors rounded-full p-1 hover:bg-gray-100"
+          aria-label="Close"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        {/* Alberta flag accent bar */}
+        <div className="flex gap-1 mb-5">
+          <div className="h-1 w-8 rounded-full bg-blue-600" />
+          <div className="h-1 w-3 rounded-full bg-blue-300" />
         </div>
+
+        <div className="flex items-start gap-4 mb-5">
+          <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <Mail className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 leading-snug">
+              Enjoying this article?
+            </h3>
+            <p className="text-gray-500 text-sm mt-1 leading-relaxed">
+              Get the best Alberta stories delivered to your inbox — free, no spam.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <select
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all"
+            required
+          >
+            {NEWSLETTER_CITIES.map(({ value, label }) => (
+              <option key={value || 'placeholder'} value={value}>{label}</option>
+            ))}
+          </select>
+
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+            required
+          />
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-blue-600 text-white py-3.5 px-4 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+          >
+            {isSubmitting ? "Subscribing..." : "Subscribe — it's free"}
+          </button>
+        </form>
+
+        {message && (
+          <div className={`mt-3 p-3 rounded-xl text-sm ${messageType === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+            {message}
+          </div>
+        )}
+
+        <p className="mt-4 text-center text-xs text-gray-400">
+          No spam, ever. Unsubscribe anytime.
+        </p>
       </div>
-    </>
+    </div>
   )
 }
