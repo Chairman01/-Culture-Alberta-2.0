@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { NEWSLETTER_CITIES } from "@/lib/newsletter-cities"
+import { useAuth } from "@/components/auth-provider"
 
 interface ArticleNewsletterSignupProps {
   articleTitle?: string
@@ -20,31 +22,37 @@ export default function ArticleNewsletterSignup({
   className = "",
   variant = 'inline'
 }: ArticleNewsletterSignupProps) {
+  const { user, loading: authLoading } = useAuth()
+
   const [email, setEmail] = useState("")
   const [city, setCity] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [message, setMessage] = useState("")
-  const [messageType, setMessageType] = useState<"success" | "error" | "">("")
-  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [error, setError] = useState("")
+  // 'newsletter' | 'account' — which step to show
+  const [step, setStep] = useState<'newsletter' | 'account'>('newsletter')
   const [isVisible, setIsVisible] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
 
-  // Inline: always show. Fixed: show after scrolling 50% through the article
   useEffect(() => {
-    const subscribed = localStorage.getItem('newsletter_subscribed')
-    if (subscribed === 'true') {
-      setIsSubscribed(true)
-      setIsVisible(false)
-      return
-    }
+    // Wait for auth to resolve before deciding — prevents flash for signed-in users
+    if (authLoading) return
+    // If already signed in, never show anything
+    if (user) return
 
     if (variant === 'inline') {
+      // Inline: check if they've already subscribed to newsletter
+      const subscribed = localStorage.getItem('newsletter_subscribed')
+      if (subscribed === 'true') {
+        // They subscribed but haven't made an account — show account CTA inline
+        setStep('account')
+      }
       setIsVisible(true)
       setIsAnimating(true)
       return
     }
 
-    // Scroll-triggered: appear when reader reaches 50% of article content
+    // Fixed popup: show on every article visit at 50% scroll
+    // (dismiss only hides for this page — never persisted to localStorage)
     const handleScroll = () => {
       const article = document.querySelector('.article-content') as HTMLElement | null
       if (!article) return
@@ -53,6 +61,9 @@ export default function ArticleNewsletterSignup({
       const scrolled = window.scrollY + window.innerHeight
       const progress = (scrolled - articleTop) / articleHeight
       if (progress >= 0.5) {
+        // Check what step to show
+        const subscribed = localStorage.getItem('newsletter_subscribed')
+        setStep(subscribed === 'true' ? 'account' : 'newsletter')
         setIsVisible(true)
         setIsAnimating(true)
         window.removeEventListener('scroll', handleScroll)
@@ -61,67 +72,136 @@ export default function ArticleNewsletterSignup({
 
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [variant])
+  }, [variant, user, authLoading])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
 
-    if (!email || !city) {
-      setMessage("Please fill in all fields")
-      setMessageType("error")
-      return
-    }
-
-    if (!email.includes("@")) {
-      setMessage("Please enter a valid email address")
-      setMessageType("error")
-      return
-    }
+    if (!email || !city) { setError("Please fill in all fields"); return }
+    if (!email.includes("@")) { setError("Please enter a valid email address"); return }
 
     setIsSubmitting(true)
-    setMessage("")
-
     try {
       const response = await fetch('/api/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, city, optIn: true, source: 'article' })
       })
-
       const result = await response.json()
 
       if (response.ok && result.success) {
-        setMessage("You're in! Check your inbox for Alberta stories.")
-        setMessageType("success")
-        setEmail("")
-        setCity("")
         localStorage.setItem('newsletter_subscribed', 'true')
-        setIsSubscribed(true)
-        setTimeout(() => {
-          setIsAnimating(false)
-          setTimeout(() => setIsVisible(false), 400)
-        }, 2500)
+        // Transition to account creation CTA
+        setStep('account')
       } else {
-        setMessage(result.error || "Failed to subscribe. Please try again.")
-        setMessageType("error")
+        setError(result.error || "Failed to subscribe. Please try again.")
       }
     } catch {
-      setMessage("An error occurred. Please try again.")
-      setMessageType("error")
+      setError("An error occurred. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleDismiss = () => {
+    // Dismiss only hides for this page — no localStorage — so it shows again next article
     setIsAnimating(false)
     setTimeout(() => setIsVisible(false), 400)
   }
 
-  if (isSubscribed || !isVisible) return null
+  // Signed-in users never see this
+  if (user) return null
+  if (!isVisible) return null
+
+  const hasImage = articleImageUrl && !articleImageUrl.startsWith('data:')
+
+  // ── Account CTA panel (shown after subscribing, or if already subscribed) ──
+  const accountCTA = (
+    <div className="text-center py-2">
+      <div className="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center mx-auto mb-4">
+        <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-bold text-gray-900 mb-1">You're subscribed!</h3>
+      <p className="text-gray-500 text-sm mb-5">
+        Create a free account to comment on articles, save your favourites, and get content personalised to your city.
+      </p>
+      <Link
+        href="/auth/signup"
+        className="block w-full bg-gray-900 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-black transition-all text-center"
+        onClick={handleDismiss}
+      >
+        Create a Free Account
+      </Link>
+      <button
+        type="button"
+        onClick={handleDismiss}
+        className="mt-3 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        Maybe later
+      </button>
+    </div>
+  )
+
+  // ── Newsletter form panel ────────────────────────────────────────────────────
+  const newsletterForm = (
+    <>
+      <p className="text-xs font-semibold tracking-widest text-blue-600 uppercase mb-3">Culture Alberta</p>
+      <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight mb-2">
+        More Alberta.<br />In Your Inbox.
+      </h2>
+      <p className="text-gray-500 text-sm mb-1">
+        Stories about culture, food, and events — delivered free.
+      </p>
+      <p className="text-gray-400 text-xs mb-6">
+        Events &middot; Food &amp; Drink &middot; Culture &middot; Hidden Gems
+      </p>
+
+      <form onSubmit={handleSubscribe} className="space-y-3">
+        <select
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+          required
+        >
+          {NEWSLETTER_CITIES.map(({ value, label }) => (
+            <option key={value || 'placeholder'} value={value}>{label}</option>
+          ))}
+        </select>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email Address"
+          className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+          required
+        />
+        {error && (
+          <p className="text-red-600 text-xs">{error}</p>
+        )}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full bg-gray-900 text-white py-4 px-4 rounded-xl text-sm font-bold hover:bg-black transition-all disabled:opacity-50 tracking-wide"
+        >
+          {isSubmitting ? "Subscribing..." : "Subscribe Free"}
+        </button>
+      </form>
+      <p className="mt-4 text-xs text-gray-400">No spam, ever. Unsubscribe anytime.</p>
+    </>
+  )
 
   // ── Inline variant ─────────────────────────────────────────────────────────
   if (variant === 'inline') {
+    if (step === 'account') {
+      return (
+        <div className={`bg-gradient-to-br from-green-50 to-blue-50/50 border border-green-200/80 rounded-2xl p-6 md:p-8 mt-12 shadow-sm ${className}`}>
+          {accountCTA}
+        </div>
+      )
+    }
     return (
       <div className={`bg-gradient-to-br from-slate-50 to-blue-50/50 border border-slate-200/80 rounded-2xl p-6 md:p-8 mt-12 shadow-sm ${className}`}>
         <div className="flex items-center gap-3 mb-4">
@@ -135,22 +215,18 @@ export default function ArticleNewsletterSignup({
             <p className="text-gray-600 text-sm mt-0.5">Get more Alberta stories delivered to your inbox.</p>
           </div>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubscribe} className="space-y-3">
           <select value={city} onChange={(e) => setCity(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" required>
             {NEWSLETTER_CITIES.map(({ value, label }) => (
               <option key={value || 'placeholder'} value={value}>{label}</option>
             ))}
           </select>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+          {error && <p className="text-red-600 text-xs">{error}</p>}
           <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all disabled:opacity-50">
             {isSubmitting ? "Subscribing..." : "Subscribe — it's free"}
           </button>
         </form>
-        {message && (
-          <div className={`mt-3 p-3 rounded-xl text-sm ${messageType === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-            {message}
-          </div>
-        )}
         <div className="mt-3 text-center">
           <button onClick={handleDismiss} type="button" className="text-xs text-gray-400 hover:text-gray-600">Not interested</button>
         </div>
@@ -159,8 +235,6 @@ export default function ArticleNewsletterSignup({
   }
 
   // ── Fixed: Patagonia-style split-image modal ────────────────────────────────
-  const hasImage = articleImageUrl && !articleImageUrl.startsWith('data:')
-
   return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-300 ease-out ${isAnimating ? 'opacity-100' : 'opacity-0 pointer-events-none'} ${className}`}
@@ -170,30 +244,22 @@ export default function ArticleNewsletterSignup({
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60" onClick={handleDismiss} />
 
-      {/* Modal — split layout */}
+      {/* Modal */}
       <div className={`relative flex w-full max-w-3xl mx-4 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ease-out ${isAnimating ? 'scale-100 translate-y-0' : 'scale-95 translate-y-6'}`} style={{ maxHeight: '90vh' }}>
 
-        {/* Left panel — article image (desktop only) */}
-        {hasImage && (
+        {/* Left panel — article image (desktop, newsletter step only) */}
+        {hasImage && step === 'newsletter' && (
           <div className="hidden md:block w-[45%] relative flex-shrink-0">
-            <Image
-              src={articleImageUrl!}
-              alt={articleTitle}
-              fill
-              className="object-cover"
-              sizes="40vw"
-            />
-            {/* Dark gradient overlay at bottom for readability */}
+            <Image src={articleImageUrl!} alt={articleTitle} fill className="object-cover" sizes="40vw" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/20" />
-            {/* Brand tag bottom-left */}
             <div className="absolute bottom-5 left-5">
               <span className="text-white font-bold text-sm tracking-wide drop-shadow">Culture Alberta</span>
             </div>
           </div>
         )}
 
-        {/* Right panel — form */}
-        <div className={`flex-1 bg-white flex flex-col justify-center px-8 py-10 ${!hasImage ? 'md:px-12' : ''}`}>
+        {/* Right panel */}
+        <div className={`flex-1 bg-white flex flex-col justify-center px-8 py-10 ${step === 'account' ? 'md:px-12' : ''}`}>
           {/* Close button */}
           <button
             type="button"
@@ -206,59 +272,7 @@ export default function ArticleNewsletterSignup({
             </svg>
           </button>
 
-          {/* Branding */}
-          <p className="text-xs font-semibold tracking-widest text-blue-600 uppercase mb-3">Culture Alberta</p>
-
-          {/* Headline */}
-          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight mb-2">
-            More Alberta.<br />In Your Inbox.
-          </h2>
-          <p className="text-gray-500 text-sm mb-1">
-            Stories about culture, food, and events from across Alberta — delivered free.
-          </p>
-          <p className="text-gray-400 text-xs mb-6">
-            Events &middot; Food &amp; Drink &middot; Culture &middot; Hidden Gems
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <select
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              required
-            >
-              {NEWSLETTER_CITIES.map(({ value, label }) => (
-                <option key={value || 'placeholder'} value={value}>{label}</option>
-              ))}
-            </select>
-
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email Address"
-              className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              required
-            />
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-gray-900 text-white py-4 px-4 rounded-xl text-sm font-bold hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed tracking-wide"
-            >
-              {isSubmitting ? "Subscribing..." : "Subscribe Free"}
-            </button>
-          </form>
-
-          {message && (
-            <div className={`mt-3 p-3 rounded-xl text-sm ${messageType === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-              {message}
-            </div>
-          )}
-
-          <p className="mt-4 text-xs text-gray-400 leading-relaxed">
-            No spam, ever. Unsubscribe at any time.
-          </p>
+          {step === 'newsletter' ? newsletterForm : accountCTA}
         </div>
       </div>
     </div>
