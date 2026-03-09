@@ -20,8 +20,9 @@ export async function getTrendingByViews<T extends Article>(
   try {
     const viewCounts = await getMostViewedArticlePaths(days, 20)
 
+    // No analytics data at all — return empty so the caller can use trending flags instead
     if (viewCounts.length === 0) {
-      return articles.slice(0, limit)
+      return []
     }
 
     const pathToCount = new Map(
@@ -35,6 +36,12 @@ export async function getTrendingByViews<T extends Article>(
       return { article, count, date }
     })
 
+    // Only use analytics-based trending if at least one article has a real view count
+    const hasRealViewData = withCounts.some((x) => x.count > 0)
+    if (!hasRealViewData) {
+      return []
+    }
+
     const sorted = withCounts
       .sort((a, b) => {
         if (b.count !== a.count) return b.count - a.count
@@ -44,6 +51,6 @@ export async function getTrendingByViews<T extends Article>(
 
     return sorted.slice(0, limit)
   } catch {
-    return articles.slice(0, limit)
+    return []
   }
 }

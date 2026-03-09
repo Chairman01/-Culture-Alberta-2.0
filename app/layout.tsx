@@ -64,6 +64,9 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: 'https://www.culturealberta.com',
+    types: {
+      'application/rss+xml': 'https://www.culturealberta.com/feed.xml',
+    },
   },
   icons: {
     icon: [

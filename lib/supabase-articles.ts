@@ -642,7 +642,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     console.log(`Attempting to fetch ${city} articles from Supabase...`)
 
     // Optimized query for city pages - only essential fields for display
-    const fields = ensureImageFields('id, title,  excerpt, category, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    const fields = ensureImageFields('id, title, excerpt, category, categories, tags, type, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
 
     const supabasePromise = supabase
       .from('articles')

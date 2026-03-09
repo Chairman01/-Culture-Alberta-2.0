@@ -120,14 +120,26 @@ export async function getAlbertaPageData(): Promise<{
                 categories.some((c) => c === 'alberta' || c.includes('alberta'))
         })
 
+        // "Other Communities" = articles that explicitly mention a smaller Alberta community.
+        // Must actively reference one of the small towns — NOT just "any article that isn't a major city".
+        const SMALL_ALBERTA_COMMUNITIES = [
+            'fort mcmurray', 'airdrie', 'st. albert', 'spruce grove', 'stony plain', 'leduc',
+            'cochrane', 'okotoks', 'canmore', 'banff', 'brooks', 'edson', 'camrose',
+            'lloydminster', 'drumheller', 'jasper', 'sylvan lake', 'fort saskatchewan',
+            'wetaskiwin', 'high river', 'strathmore', 'beaumont', 'hinton', 'cold lake',
+            'lacombe', 'bonnyville', 'taber', 'olds', 'innisfail', 'rocky mountain house',
+            'slave lake', 'peace river', 'athabasca', 'vegreville', 'ponoka',
+        ]
         const otherArticles = albertaArticles.filter(article => {
             const location = article.location?.toLowerCase() || ''
             const title = article.title?.toLowerCase() || ''
-            const content = article.content?.toLowerCase() || ''
-            const mentionsMajorCity = majorCities.some(city =>
-                location.includes(city) || title.includes(city) || content.includes(city)
-            )
-            return !mentionsMajorCity
+            const tags = (article.tags || []).map((t: string) => t.toLowerCase()).join(' ')
+            const categories = toCategoriesArray(article.categories).map((c) => c.toLowerCase()).join(' ')
+            const combined = `${location} ${title} ${tags} ${categories}`
+            // Must mention a small community AND must not be primarily a major-city article
+            const mentionsMajorCity = majorCities.some(city => location.includes(city) || title.includes(city))
+            const mentionsSmallCommunity = SMALL_ALBERTA_COMMUNITIES.some(c => combined.includes(c))
+            return mentionsSmallCommunity && !mentionsMajorCity
         })
 
         return {
@@ -280,19 +292,24 @@ export async function getOtherCommunitiesArticles(): Promise<Article[]> {
         console.log('🔄 Loading Other Communities articles...')
         const albertaArticles = await getAllAlbertaArticles()
 
-        // Exclude the 4 major cities
         const majorCities = ['red deer', 'lethbridge', 'medicine hat', 'grande prairie']
+        const SMALL_ALBERTA_COMMUNITIES = [
+            'fort mcmurray', 'airdrie', 'st. albert', 'spruce grove', 'stony plain', 'leduc',
+            'cochrane', 'okotoks', 'canmore', 'banff', 'brooks', 'edson', 'camrose',
+            'lloydminster', 'drumheller', 'jasper', 'sylvan lake', 'fort saskatchewan',
+            'wetaskiwin', 'high river', 'strathmore', 'beaumont', 'hinton', 'cold lake',
+            'lacombe', 'bonnyville', 'taber', 'olds', 'innisfail', 'rocky mountain house',
+            'slave lake', 'peace river', 'athabasca', 'vegreville', 'ponoka',
+        ]
         const otherArticles = albertaArticles.filter(article => {
             const location = article.location?.toLowerCase() || ''
             const title = article.title?.toLowerCase() || ''
-            const content = article.content?.toLowerCase() || ''
-
-            // Check if article mentions any major city
-            const mentionsMajorCity = majorCities.some(city =>
-                location.includes(city) || title.includes(city) || content.includes(city)
-            )
-
-            return !mentionsMajorCity
+            const tags = (article.tags || []).map((t: string) => t.toLowerCase()).join(' ')
+            const categories = toCategoriesArray(article.categories).map((c) => c.toLowerCase()).join(' ')
+            const combined = `${location} ${title} ${tags} ${categories}`
+            const mentionsMajorCity = majorCities.some(city => location.includes(city) || title.includes(city))
+            const mentionsSmallCommunity = SMALL_ALBERTA_COMMUNITIES.some(c => combined.includes(c))
+            return mentionsSmallCommunity && !mentionsMajorCity
         })
 
         console.log(`✅ Found ${otherArticles.length} Other Communities articles`)

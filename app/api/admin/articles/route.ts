@@ -25,12 +25,11 @@ export async function GET(request: Request) {
     try {
       const supabase = getSupabaseClient()
 
-      // Fetch recent articles with essential fields only (EXCLUDE image data for performance)
+      // Fetch all articles with essential fields only (EXCLUDE image data for performance)
       const { data: liveArticles, error } = await supabase
         .from('articles')
         .select('id,title,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary')
         .order('created_at', { ascending: false })
-        .limit(100)
 
       if (!error && liveArticles && liveArticles.length > 0) {
         console.log(`✅ Admin Articles API: Loaded ${liveArticles.length} live articles from Supabase`)
