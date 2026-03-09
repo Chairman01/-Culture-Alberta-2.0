@@ -240,7 +240,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
           .from('articles')
           .select(fields)
           .order('created_at', { ascending: false })
-          .limit(100) // Fetch more articles to ensure categories like Food & Drink are populated
+          .limit(500) // Fetch up to 500 articles to ensure all categories are populated
 
         const result = await Promise.race([
           supabasePromise,
@@ -351,7 +351,7 @@ export async function getAdminArticles(forceRefresh: boolean = false): Promise<A
       .from('articles')
       .select('id, title, category, location, author, created_at, updated_at, status, type, featured_home, featured_edmonton, featured_calgary, date')
       .order('created_at', { ascending: false })
-      .limit(100) // Limit to 100 most recent for admin
+      .limit(500) // Fetch up to 500 most recent for admin
 
     const { data, error } = await Promise.race([
       supabasePromise,

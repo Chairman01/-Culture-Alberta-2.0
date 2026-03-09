@@ -28,7 +28,7 @@ export default function SignUpPage() {
         options: { data: { full_name: name } }
       })
       if (error) throw error
-      setSuccess('Account created! Check your email to confirm, or sign in to get started.')
+      setSuccess(`Almost there! We've sent a confirmation link to ${email}. Click it to activate your account, then sign in.`)
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to sign up')

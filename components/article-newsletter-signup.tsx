@@ -27,22 +27,38 @@ export default function ArticleNewsletterSignup({
   const [isVisible, setIsVisible] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
 
-  // Inline: always show. Fixed: show after delay
+  // Inline: always show. Fixed: show after scrolling 50% through the article
   useEffect(() => {
     const subscribed = localStorage.getItem('newsletter_subscribed')
     if (subscribed === 'true') {
       setIsSubscribed(true)
       setIsVisible(false)
-    } else if (variant === 'inline') {
+      return
+    }
+
+    if (variant === 'inline') {
       setIsVisible(true)
       setIsAnimating(true)
-    } else {
-      const timer = setTimeout(() => {
+      return
+    }
+
+    // Scroll-triggered: appear when reader reaches 50% of article content
+    const handleScroll = () => {
+      const article = document.querySelector('.article-content') as HTMLElement | null
+      if (!article) return
+      const articleTop = article.getBoundingClientRect().top + window.scrollY
+      const articleHeight = article.offsetHeight
+      const scrolled = window.scrollY + window.innerHeight
+      const progress = (scrolled - articleTop) / articleHeight
+      if (progress >= 0.5) {
         setIsVisible(true)
         setIsAnimating(true)
-      }, 5000)
-      return () => clearTimeout(timer)
+        window.removeEventListener('scroll', handleScroll)
+      }
     }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [variant])
 
   const handleSubmit = async (e: React.FormEvent) => {
