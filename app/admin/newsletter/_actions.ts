@@ -1,6 +1,6 @@
 'use server'
 
-import { sendCityNewsletter, sendAllNewsletters, type SendResult } from '@/lib/newsletter/send-newsletter'
+import { sendCityNewsletter, sendAllNewsletters, sendCityNewsletterToEmail, type SendResult } from '@/lib/newsletter/send-newsletter'
 import type { NewsletterCity } from '@/lib/newsletter/template'
 
 export async function triggerCityNewsletter(city: NewsletterCity): Promise<SendResult> {
@@ -9,4 +9,8 @@ export async function triggerCityNewsletter(city: NewsletterCity): Promise<SendR
 
 export async function triggerAllNewsletters(): Promise<SendResult[]> {
   return sendAllNewsletters()
+}
+
+export async function sendTestNewsletter(city: NewsletterCity, toEmail: string): Promise<SendResult> {
+  return sendCityNewsletterToEmail(city, toEmail)
 }

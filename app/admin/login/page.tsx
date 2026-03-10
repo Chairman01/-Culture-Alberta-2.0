@@ -16,29 +16,26 @@ export default function AdminLogin() {
     e.preventDefault()
     setIsLoading(true)
     setError("")
-    
+
     try {
-      const response = await fetch('/api/admin/login-minimal', {
+      const response = await fetch('/api/admin/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       })
 
       if (response.ok) {
         const data = await response.json()
+        // Store auth state for client-side UI checks (token also set as httpOnly cookie)
         localStorage.setItem("admin_authenticated", "true")
         localStorage.setItem("admin_user", data.username)
         localStorage.setItem("admin_login_time", Date.now().toString())
         localStorage.setItem("admin_token", data.token)
-        
         router.push("/admin")
       } else {
-        const errorData = await response.json()
-        setError(errorData.message || "Invalid credentials")
+        setError("Invalid username or password")
       }
-    } catch (error) {
+    } catch {
       setError("An error occurred. Please try again.")
     } finally {
       setIsLoading(false)
@@ -56,16 +53,16 @@ export default function AdminLogin() {
             Enter your credentials to access the admin panel
           </p>
         </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="space-y-4 rounded-md shadow-sm">
             <div>
-              <label htmlFor="username" className="sr-only">
-                Username
-              </label>
+              <label htmlFor="username" className="sr-only">Username</label>
               <Input
                 id="username"
                 name="username"
                 type="text"
+                autoComplete="username"
                 required
                 placeholder="Username"
                 value={username}
@@ -74,13 +71,12 @@ export default function AdminLogin() {
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
+              <label htmlFor="password" className="sr-only">Password</label>
               <Input
                 id="password"
                 name="password"
-                type="text"
+                type="password"
+                autoComplete="current-password"
                 required
                 placeholder="Password"
                 value={password}
@@ -96,29 +92,14 @@ export default function AdminLogin() {
             </div>
           )}
 
-          {/* Debug info - remove this later */}
-          <div className="text-center text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">
-            <div>Debug: Current password: <strong>{password}</strong></div>
-            <div>Debug: Password length: {password.length}</div>
-          </div>
-
-          <div>
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isLoading}
-            >
-              {isLoading ? "Signing in..." : "Sign in"}
-            </Button>
-          </div>
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Sign in"}
+          </Button>
         </form>
-        
+
         <div className="text-center">
-          <a 
-            href="/" 
-            className="text-sm text-blue-600 hover:text-blue-500 transition-colors"
-          >
-            ← Back to website
+          <a href="/" className="text-sm text-blue-600 hover:text-blue-500 transition-colors">
+            Back to website
           </a>
         </div>
       </div>

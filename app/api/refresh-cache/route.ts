@@ -1,13 +1,17 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { clearArticlesCache } from '@/lib/supabase-articles'
+import { requireAdmin } from '@/lib/admin-auth'
 
 // Force dynamic rendering - no caching
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 // Simple API endpoint to refresh cache and show newest articles
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     console.log('🔄 Refreshing cache for all pages...')
     
@@ -40,8 +44,7 @@ export async function POST() {
   }
 }
 
-// Also support GET for easy browser testing
-export async function GET() {
-  return POST()
+export async function GET(request: NextRequest) {
+  return POST(request)
 }
 
