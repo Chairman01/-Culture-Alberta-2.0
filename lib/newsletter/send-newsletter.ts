@@ -136,3 +136,51 @@ export async function sendAllNewsletters(): Promise<SendResult[]> {
 
   return results
 }
+
+// ── Test send to a single address ─────────────────────────────────────────────
+export async function sendCityNewsletterToEmail(
+  city: NewsletterCity,
+  toEmail: string,
+): Promise<SendResult> {
+  const result: SendResult = { city, sent: 0, failed: 0, skipped: 0, errors: [] }
+
+  let content
+  try {
+    content = await fetchNewsletterContent(city)
+  } catch (err) {
+    result.errors.push(`Content fetch failed: ${err instanceof Error ? err.message : 'Unknown'}`)
+    result.failed = 1
+    return result
+  }
+
+  if (content.cityArticles.length === 0) {
+    result.skipped = 1
+    result.errors.push('No content available for this city — skipped sending')
+    return result
+  }
+
+  const subject = `[TEST] ${getSubjectLine(city)}`
+  const unsubscribeUrl = `https://www.culturealberta.com/unsubscribe`
+  const html = generateNewsletterHtml(city, content, unsubscribeUrl)
+
+  try {
+    const { error: sendError } = await resend.emails.send({
+      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+      to: toEmail,
+      subject,
+      html,
+    })
+
+    if (sendError) {
+      result.failed = 1
+      result.errors.push(sendError.message)
+    } else {
+      result.sent = 1
+    }
+  } catch (err) {
+    result.failed = 1
+    result.errors.push(err instanceof Error ? err.message : 'Unknown error')
+  }
+
+  return result
+}

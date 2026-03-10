@@ -197,16 +197,29 @@ export async function getNewsletterStats() {
 
     console.log('Raw newsletter data:', data)
 
+    const activeData = data?.filter(sub => sub.status === 'active') || []
+
+    // All known city values (matches NEWSLETTER_CITIES in lib/newsletter-cities.ts)
+    const KNOWN_CITIES = [
+      'edmonton', 'calgary', 'lethbridge',
+      'red-deer', 'grande-prairie', 'medicine-hat',
+      'other-alberta', 'outside-alberta', 'other',
+    ]
+
+    const byCity: Record<string, number> = {}
+    for (const c of KNOWN_CITIES) {
+      byCity[c] = activeData.filter(sub => sub.city === c).length
+    }
+
+    // Catch any city value not in the list above
+    const unknownCount = activeData.filter(sub => !KNOWN_CITIES.includes(sub.city)).length
+    if (unknownCount > 0) byCity['unknown'] = unknownCount
+
     const stats = {
       total: data?.length || 0,
-      active: data?.filter(sub => sub.status === 'active').length || 0,
+      active: activeData.length,
       unsubscribed: data?.filter(sub => sub.status === 'unsubscribed').length || 0,
-      byCity: {
-        calgary: data?.filter(sub => sub.city === 'calgary' && sub.status === 'active').length || 0,
-        edmonton: data?.filter(sub => sub.city === 'edmonton' && sub.status === 'active').length || 0,
-        'other-alberta': data?.filter(sub => sub.city === 'other-alberta' && sub.status === 'active').length || 0,
-        'outside-alberta': data?.filter(sub => sub.city === 'outside-alberta' && sub.status === 'active').length || 0,
-      }
+      byCity,
     }
 
     console.log('Processed newsletter stats:', stats)
