@@ -7,7 +7,7 @@ import { triggerCityNewsletter, triggerAllNewsletters } from "./_actions"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Mail, Users, MapPin, Calendar, Send, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
+import { ArrowLeft, Mail, Users, MapPin, Calendar, Send, CheckCircle, AlertCircle, Loader2, Eye, X } from "lucide-react"
 import Link from "next/link"
 import type { SendResult } from "@/lib/newsletter/send-newsletter"
 
@@ -41,6 +41,10 @@ export default function NewsletterAdmin() {
   const [stats, setStats] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Preview modal
+  const [previewCity, setPreviewCity] = useState<CityKey | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   // Send state per city
   const [sendStates, setSendStates] = useState<Record<CityKey, SendState>>({
@@ -136,6 +140,7 @@ export default function NewsletterAdmin() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-background">
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
@@ -180,17 +185,26 @@ export default function NewsletterAdmin() {
                       )}
                     </div>
 
-                    <Button
-                      className={`w-full ${cfg.accent} hover:opacity-90 text-white`}
-                      onClick={() => handleSendCity(city)}
-                      disabled={state.status === 'sending' || isPending}
-                    >
-                      {state.status === 'sending' ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…</>
-                      ) : (
-                        <><Send className="mr-2 h-4 w-4" /> Send {cfg.label}</>
-                      )}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setPreviewCity(city)}
+                      >
+                        <Eye className="mr-2 h-4 w-4" /> Preview
+                      </Button>
+                      <Button
+                        className={`flex-1 ${cfg.accent} hover:opacity-90 text-white`}
+                        onClick={() => handleSendCity(city)}
+                        disabled={state.status === 'sending' || isPending}
+                      >
+                        {state.status === 'sending' ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…</>
+                        ) : (
+                          <><Send className="mr-2 h-4 w-4" /> Send</>
+                        )}
+                      </Button>
+                    </div>
 
                     {state.status === 'success' && state.result && (
                       <div className="flex items-start gap-2 text-sm text-green-700 bg-green-50 rounded-lg p-3">
@@ -391,5 +405,53 @@ export default function NewsletterAdmin() {
         </Card>
       </div>
     </div>
+
+    {/* ── PREVIEW MODAL ───────────────────────────────────────────── */}
+    {previewCity && (
+      <div className="fixed inset-0 z-50 flex flex-col bg-black/60" onClick={() => setPreviewCity(null)}>
+        <div
+          className="flex flex-col w-full h-full max-w-3xl mx-auto my-6 bg-white rounded-xl overflow-hidden shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Modal header */}
+          <div className="flex items-center justify-between px-5 py-3 border-b bg-gray-50 shrink-0">
+            <div>
+              <span className="font-semibold text-gray-900">
+                {CITY_CONFIG[previewCity].newsletter} Preview
+              </span>
+              <span className="ml-2 text-sm text-gray-400">— {CITY_CONFIG[previewCity].label}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <a
+                href={`/api/newsletter/preview?city=${previewCity}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Open in new tab ↗
+              </a>
+              <button
+                onClick={() => setPreviewCity(null)}
+                className="p-1 rounded hover:bg-gray-200 transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+          </div>
+          {/* iframe */}
+          <div className="flex-1 overflow-hidden bg-gray-100">
+            <iframe
+              key={previewCity}
+              src={`/api/newsletter/preview?city=${previewCity}`}
+              className="w-full h-full border-0"
+              title={`${CITY_CONFIG[previewCity].newsletter} newsletter preview`}
+              onLoad={() => setPreviewLoading(false)}
+              onLoadStart={() => setPreviewLoading(true)}
+            />
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
