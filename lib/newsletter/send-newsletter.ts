@@ -11,7 +11,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM_EMAIL = 'news@culturemedia.ca'
 const FROM_NAME = 'Culture Alberta'
 const SITE_URL = 'https://www.culturealberta.com'
-const BATCH_SIZE = 10
+const BATCH_SIZE = 50 // Resend batch API supports up to 100 per request
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 function makeUnsubscribeToken(id: string, email: string): string {
@@ -80,44 +80,42 @@ export async function sendCityNewsletter(city: NewsletterCity): Promise<SendResu
 
   const subject = getSubjectLine(city)
 
-  // 3. Send in batches
+  // 3. Send in batches using Resend's batch API (one API call per batch, no rate limit issues)
   for (let i = 0; i < subscribers.length; i += BATCH_SIZE) {
     const batch = subscribers.slice(i, i + BATCH_SIZE)
 
-    await Promise.all(
-      batch.map(async (sub) => {
-        try {
-          const token = makeUnsubscribeToken(sub.id, sub.email)
-          const unsubscribeUrl = `${SITE_URL}/api/newsletter/unsubscribe?token=${encodeURIComponent(token)}`
-          const html = generateNewsletterHtml(city, content, unsubscribeUrl)
+    const emailPayloads = batch.map((sub) => {
+      const token = makeUnsubscribeToken(sub.id, sub.email)
+      const unsubscribeUrl = `${SITE_URL}/api/newsletter/unsubscribe?token=${encodeURIComponent(token)}`
+      const html = generateNewsletterHtml(city, content, unsubscribeUrl)
+      return {
+        from: `${FROM_NAME} <${FROM_EMAIL}>`,
+        to: sub.email,
+        subject,
+        html,
+        headers: {
+          'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:${FROM_EMAIL}?subject=unsubscribe>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      }
+    })
 
-          const { error: sendError } = await resend.emails.send({
-            from: `${FROM_NAME} <${FROM_EMAIL}>`,
-            to: sub.email,
-            subject,
-            html,
-            headers: {
-              'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:${FROM_EMAIL}?subject=unsubscribe>`,
-              'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-            },
-          })
+    try {
+      const { data: batchData, error: batchError } = await resend.batch.send(emailPayloads)
+      if (batchError) {
+        result.failed += batch.length
+        result.errors.push(`Batch error: ${batchError.message}`)
+      } else {
+        result.sent += batch.length
+      }
+    } catch (err) {
+      result.failed += batch.length
+      result.errors.push(`Batch failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
 
-          if (sendError) {
-            result.failed++
-            result.errors.push(`${sub.email}: ${sendError.message}`)
-          } else {
-            result.sent++
-          }
-        } catch (err) {
-          result.failed++
-          result.errors.push(`${sub.email}: ${err instanceof Error ? err.message : 'Unknown error'}`)
-        }
-      })
-    )
-
-    // Rate-limit: small pause between batches
+    // Small pause between batches if sending more than 50 subscribers
     if (i + BATCH_SIZE < subscribers.length) {
-      await new Promise((resolve) => setTimeout(resolve, 250))
+      await new Promise((resolve) => setTimeout(resolve, 500))
     }
   }
 
