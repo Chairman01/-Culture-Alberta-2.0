@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { fetchNewsletterContent } from '@/lib/newsletter/fetch-articles'
 import { generateNewsletterHtml, type NewsletterCity } from '@/lib/newsletter/template'
 
+export const dynamic = 'force-dynamic'
+
 const VALID_CITIES: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge']
 
 /**
@@ -30,7 +32,10 @@ export async function GET(req: NextRequest) {
       '#unsubscribe' // dummy unsubscribe link for preview
     )
     return new NextResponse(html, {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
     })
   } catch (err) {
     return new NextResponse(

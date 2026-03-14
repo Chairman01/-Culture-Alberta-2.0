@@ -536,8 +536,8 @@ export default function NewsletterAdmin() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button variant="outline" className="flex-1" onClick={() => { setPreviewTimestamp(Date.now()); setPreviewCity(city) }}>
-                        <Eye className="mr-2 h-4 w-4" /> Preview
+                      <Button variant="outline" className="flex-1" onClick={() => handleSaveConfig(city)} disabled={saving}>
+                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />} Preview
                       </Button>
                       <Button
                         className={`flex-1 ${cfg.accent} hover:opacity-90 text-white`}
