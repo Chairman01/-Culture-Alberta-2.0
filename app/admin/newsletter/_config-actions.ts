@@ -59,6 +59,7 @@ export async function loadCurrentCityArticles(city: NewsletterCity): Promise<Art
     title: a.title,
     excerpt: a.excerpt,
     image_url: a.imageUrl,
+    image_source: a.imageSource,
     created_at: a.createdAt,
     location: '',
   }))
@@ -72,6 +73,7 @@ export async function loadCurrentAlbertaArticles(): Promise<ArticlePickerItem[]>
     title: a.title,
     excerpt: a.excerpt,
     image_url: a.imageUrl,
+    image_source: a.imageSource,
     created_at: a.createdAt,
     location: '',
   }))

@@ -15,6 +15,7 @@ export interface ArticlePickerItem {
   title: string
   excerpt: string
   image_url: string | null
+  image_source: string | null
   created_at: string
   location: string
 }
@@ -73,7 +74,7 @@ export async function saveNewsletterConfig(
 export async function searchArticlesForPicker(query: string): Promise<ArticlePickerItem[]> {
   let q = supabase
     .from('articles')
-    .select('id, title, excerpt, image_url, created_at, location')
+    .select('id, title, excerpt, image_url, image_source, created_at, location')
     .eq('status', 'published')
     .neq('type', 'event')
     .order('created_at', { ascending: false })
@@ -92,7 +93,7 @@ export async function getArticlesByIds(ids: string[]): Promise<ArticlePickerItem
 
   const { data } = await supabase
     .from('articles')
-    .select('id, title, excerpt, image_url, created_at, location')
+    .select('id, title, excerpt, image_url, image_source, created_at, location')
     .in('id', ids)
     .eq('status', 'published')
 
