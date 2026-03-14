@@ -4,7 +4,7 @@ import { generateNewsletterHtml, type NewsletterCity } from '@/lib/newsletter/te
 
 export const dynamic = 'force-dynamic'
 
-const VALID_CITIES: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge']
+const VALID_CITIES: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
 
 /**
  * GET /api/newsletter/preview?city=edmonton
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(
       `<html><body style="font-family:sans-serif;padding:40px;color:#333">
         <h2>Newsletter Preview</h2>
-        <p>Add <code>?city=edmonton</code>, <code>?city=calgary</code>, or <code>?city=lethbridge</code> to the URL.</p>
+        <p>Add <code>?city=edmonton</code>, <code>?city=calgary</code>, <code>?city=lethbridge</code>, or <code>?city=medicine-hat</code> to the URL.</p>
        </body></html>`,
       { headers: { 'Content-Type': 'text/html' } }
     )

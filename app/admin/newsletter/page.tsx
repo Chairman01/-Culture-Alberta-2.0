@@ -131,6 +131,10 @@ export default function NewsletterAdmin() {
     lethbridge:     { status: 'idle' },
     'medicine-hat': { status: 'idle' },
   })
+  // Confirmation gate — true means "waiting for user to confirm before actual send"
+  const [confirmSend, setConfirmSend] = useState<Record<CityKey, boolean>>({
+    edmonton: false, calgary: false, lethbridge: false, 'medicine-hat': false,
+  })
   const [testStates, setTestStates] = useState<Record<CityKey, TestState>>({
     edmonton:       { open: false, email: '', status: 'idle' },
     calgary:        { open: false, email: '', status: 'idle' },
@@ -256,6 +260,8 @@ export default function NewsletterAdmin() {
   // ── Send handlers ───────────────────────────────────────────────────────────
 
   function handleSendCity(city: CityKey) {
+    // Clear confirmation flag and start sending
+    setConfirmSend(prev => ({ ...prev, [city]: false }))
     setSendStates(prev => ({ ...prev, [city]: { status: 'sending' } }))
     startTransition(async () => {
       try {
@@ -672,17 +678,39 @@ export default function NewsletterAdmin() {
                       <Button variant="outline" className="flex-1" onClick={() => handleSaveConfig(city)} disabled={saving}>
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />} Preview
                       </Button>
-                      <Button
-                        className={`flex-1 ${wasSentToday(city) ? 'bg-gray-400 hover:bg-gray-500' : cfg.accent + ' hover:opacity-90'} text-white`}
-                        onClick={() => handleSendCity(city)}
-                        disabled={state.status === 'sending' || isPending}
-                      >
-                        {state.status === 'sending'
-                          ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…</>
-                          : wasSentToday(city)
-                          ? <><Send className="mr-2 h-4 w-4" /> Send Again</>
-                          : <><Send className="mr-2 h-4 w-4" /> Send</>}
-                      </Button>
+                      {/* First click → show confirmation; second click → actually send */}
+                      {!confirmSend[city] ? (
+                        <Button
+                          className={`flex-1 ${wasSentToday(city) ? 'bg-gray-400 hover:bg-gray-500' : cfg.accent + ' hover:opacity-90'} text-white`}
+                          onClick={() => setConfirmSend(prev => ({ ...prev, [city]: true }))}
+                          disabled={state.status === 'sending' || isPending}
+                        >
+                          {state.status === 'sending'
+                            ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…</>
+                            : wasSentToday(city)
+                            ? <><Send className="mr-2 h-4 w-4" /> Send Again</>
+                            : <><Send className="mr-2 h-4 w-4" /> Send</>}
+                        </Button>
+                      ) : (
+                        <div className="flex-1 flex gap-1">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs"
+                            onClick={() => handleSendCity(city)}
+                            disabled={state.status === 'sending' || isPending}
+                          >
+                            {state.status === 'sending'
+                              ? <Loader2 className="h-3 w-3 animate-spin" />
+                              : <>✓ Confirm Send to {stats?.byCity?.[city] ?? '?'}</>}
+                          </Button>
+                          <Button
+                            size="sm" variant="outline" className="shrink-0 text-xs"
+                            onClick={() => setConfirmSend(prev => ({ ...prev, [city]: false }))}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     <div>
