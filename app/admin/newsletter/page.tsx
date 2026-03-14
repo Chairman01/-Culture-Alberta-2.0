@@ -200,7 +200,14 @@ export default function NewsletterAdmin() {
         // Hydrate city drafts + extract last_sent_at
         const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
         const sentAt: Record<CityKey, string | null> = { edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null }
-        for (const city of cities) sentAt[city] = configData[city]?.last_sent_at ?? null
+        for (const city of cities) {
+          // DB value wins; fall back to localStorage (works before SQL migration is run)
+          const dbTime = configData[city]?.last_sent_at ?? null
+          const lsTime = typeof window !== 'undefined' ? localStorage.getItem(`newsletter_last_sent_${city}`) : null
+          // Use whichever is more recent
+          if (dbTime && lsTime) sentAt[city] = dbTime > lsTime ? dbTime : lsTime
+          else sentAt[city] = dbTime || lsTime || null
+        }
         setLastSentAt(sentAt)
         const newDrafts: Record<CityKey, CityConfigDraft> = {
           edmonton: emptyDraft(), calgary: emptyDraft(), lethbridge: emptyDraft(), 'medicine-hat': emptyDraft(),
@@ -255,7 +262,9 @@ export default function NewsletterAdmin() {
         const result = await triggerCityNewsletter(city)
         setSendStates(prev => ({ ...prev, [city]: { status: 'success', result } }))
         if (result.sent > 0) {
-          setLastSentAt(prev => ({ ...prev, [city]: new Date().toISOString() }))
+          const now = new Date().toISOString()
+          setLastSentAt(prev => ({ ...prev, [city]: now }))
+          localStorage.setItem(`newsletter_last_sent_${city}`, now)
         }
       } catch (err) {
         setSendStates(prev => ({
@@ -272,6 +281,14 @@ export default function NewsletterAdmin() {
       try {
         const results = await triggerAllNewsletters()
         setSendAllState({ status: 'success', results })
+        // Mark every city that actually sent as "sent today"
+        const now = new Date().toISOString()
+        results.forEach(r => {
+          if (r.sent > 0) {
+            setLastSentAt(prev => ({ ...prev, [r.city as CityKey]: now }))
+            localStorage.setItem(`newsletter_last_sent_${r.city}`, now)
+          }
+        })
       } catch (err) {
         setSendAllState({ status: 'error', error: err instanceof Error ? err.message : 'Unknown error' })
       }
@@ -1115,53 +1132,32 @@ export default function NewsletterAdmin() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <MapPin className="h-4 w-4" /> Edmonton
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">{stats.byCity?.edmonton ?? 0}</div>
-                  <p className="text-xs text-muted-foreground mt-1">The Capital</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <MapPin className="h-4 w-4" /> Calgary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-600">{stats.byCity?.calgary ?? 0}</div>
-                  <p className="text-xs text-muted-foreground mt-1">The Chinook</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <MapPin className="h-4 w-4" /> Lethbridge
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-amber-600">{stats.byCity?.lethbridge ?? 0}</div>
-                  <p className="text-xs text-muted-foreground mt-1">The Westerly</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <MapPin className="h-4 w-4" /> Medicine Hat
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-orange-700">{stats.byCity?.['medicine-hat'] ?? 0}</div>
-                  <p className="text-xs text-muted-foreground mt-1">The Hat</p>
-                </CardContent>
-              </Card>
+              {(Object.entries(CITY_CONFIG) as [CityKey, typeof CITY_CONFIG[CityKey]][]).map(([city, cfg]) => (
+                <Card key={city} className={wasSentToday(city) ? 'border-green-300 bg-green-50/20' : ''}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className={`text-sm font-medium flex items-center gap-2 ${cfg.color}`}>
+                      <MapPin className="h-4 w-4" /> {cfg.label}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${cfg.color}`}>{stats.byCity?.[city] ?? 0}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{cfg.newsletter}</p>
+                    {lastSentAt[city] ? (
+                      <p className={`text-xs mt-1.5 flex items-center gap-1 ${wasSentToday(city) ? 'text-green-600 font-medium' : 'text-gray-400'}`}>
+                        <CheckCircle className="h-3 w-3 shrink-0" />
+                        {wasSentToday(city)
+                          ? `Sent today ${sentTimeLabel(city)}`
+                          : `Last sent ${new Date(lastSentAt[city]!).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', timeZone: 'America/Edmonton' })}`
+                        }
+                      </p>
+                    ) : (
+                      <p className="text-xs mt-1.5 text-gray-300 flex items-center gap-1">
+                        <Calendar className="h-3 w-3 shrink-0" /> Never sent
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
             {otherCityTotal > 0 && (
