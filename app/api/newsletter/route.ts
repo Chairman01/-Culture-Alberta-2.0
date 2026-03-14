@@ -102,6 +102,40 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  try {
+    const { email, status } = await request.json()
+
+    if (!email || !status || !['active', 'unsubscribed'].includes(status)) {
+      return NextResponse.json(
+        { error: 'Missing or invalid fields. Provide email and status (active|unsubscribed)' },
+        { status: 400 }
+      )
+    }
+
+    const { error } = await supabase
+      .from('newsletter_subscriptions')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('email', email)
+
+    if (error) {
+      console.error('Newsletter update error:', error)
+      return NextResponse.json(
+        { error: 'Failed to update subscription' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true, message: `Subscription updated to ${status}` })
+  } catch (error) {
+    console.error('Newsletter PATCH error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function GET() {
   try {
     const { data, error } = await supabase
