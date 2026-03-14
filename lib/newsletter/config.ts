@@ -7,6 +7,7 @@ export interface NewsletterConfig {
   featured_article_id: string | null
   article_order: string[] | null
   alberta_article_ids: string[] | null
+  last_sent_at?: string | null
   updated_at: string
 }
 
@@ -25,6 +26,7 @@ const empty = (city: NewsletterCity): NewsletterConfig => ({
   featured_article_id: null,
   article_order: null,
   alberta_article_ids: null,
+  last_sent_at: null,
   updated_at: '',
 })
 
@@ -33,7 +35,7 @@ const empty = (city: NewsletterCity): NewsletterConfig => ({
 export async function getNewsletterConfig(city: NewsletterCity): Promise<NewsletterConfig> {
   const { data, error } = await supabase
     .from('newsletter_config')
-    .select('city, featured_article_id, article_order, alberta_article_ids, updated_at')
+    .select('city, featured_article_id, article_order, alberta_article_ids, last_sent_at, updated_at')
     .eq('city', city)
     .single()
 
@@ -44,7 +46,7 @@ export async function getNewsletterConfig(city: NewsletterCity): Promise<Newslet
 export async function getAllNewsletterConfigs(): Promise<Record<NewsletterCity, NewsletterConfig>> {
   const { data } = await supabase
     .from('newsletter_config')
-    .select('city, featured_article_id, article_order, alberta_article_ids, updated_at')
+    .select('city, featured_article_id, article_order, alberta_article_ids, last_sent_at, updated_at')
 
   const result: Record<NewsletterCity, NewsletterConfig> = {
     edmonton: empty('edmonton'),
@@ -68,6 +70,17 @@ export async function saveNewsletterConfig(
     .from('newsletter_config')
     .upsert({ city, ...patch, updated_at: new Date().toISOString() })
   return { error: error?.message ?? null }
+}
+
+// Record that a city newsletter was just sent — sets last_sent_at to now
+export async function recordCitySent(city: NewsletterCity): Promise<void> {
+  await supabase
+    .from('newsletter_config')
+    .upsert({
+      city,
+      last_sent_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
 }
 
 // ── Article search / fetch ────────────────────────────────────────────────────

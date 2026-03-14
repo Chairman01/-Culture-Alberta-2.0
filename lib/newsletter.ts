@@ -273,6 +273,22 @@ export async function getNewsletterStats() {
 
 // ── Engagement tracking functions ─────────────────────────────────────────────
 
+// Returns true if newsletter_email_events table exists, false if not yet created
+export async function checkEmailEventsTable(): Promise<boolean> {
+  try {
+    if (!supabase) return false
+    const { error } = await supabase
+      .from('newsletter_email_events')
+      .select('id')
+      .limit(1)
+    // 42P01 = table does not exist (PostgreSQL error code via PostgREST)
+    if (error && (error.code === '42P01' || error.message?.includes('does not exist'))) return false
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export async function getEmailEvents(): Promise<EmailEvent[]> {
   try {
     if (!supabase) return []

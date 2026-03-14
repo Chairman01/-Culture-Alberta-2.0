@@ -1,6 +1,7 @@
 import { Resend } from 'resend'
 import { supabase } from '@/lib/supabase'
 import { fetchNewsletterContent } from './fetch-articles'
+import { recordCitySent } from './config'
 import {
   generateNewsletterHtml,
   getSubjectLine,
@@ -117,6 +118,11 @@ export async function sendCityNewsletter(city: NewsletterCity): Promise<SendResu
     if (i + BATCH_SIZE < subscribers.length) {
       await new Promise((resolve) => setTimeout(resolve, 500))
     }
+  }
+
+  // Record the send time so the admin panel can show "Sent today"
+  if (result.sent > 0) {
+    await recordCitySent(city)
   }
 
   return result

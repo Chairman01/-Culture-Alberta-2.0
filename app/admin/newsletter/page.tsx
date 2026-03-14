@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
   getAllNewsletterSubscriptions, getNewsletterStats,
-  getEmailEvents, computeCampaignStats, computeSubscriberEngagement,
+  getEmailEvents, checkEmailEventsTable, computeCampaignStats, computeSubscriberEngagement,
   type CampaignStat, type SubscriberEngagement,
 } from "@/lib/newsletter"
 import { triggerCityNewsletter, triggerAllNewsletters, sendTestNewsletter } from "./_actions"
@@ -170,6 +170,10 @@ export default function NewsletterAdmin() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'subscribers' | 'campaigns'>('subscribers')
+  const [emailEventsTableMissing, setEmailEventsTableMissing] = useState(false)
+  const [lastSentAt, setLastSentAt] = useState<Record<CityKey, string | null>>({
+    edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null,
+  })
 
   // ── Load on mount ───────────────────────────────────────────────────────────
 
@@ -180,16 +184,24 @@ export default function NewsletterAdmin() {
 
     const loadData = async () => {
       try {
-        const [subscriptionsData, statsData, configData, eventsData] = await Promise.all([
+        const [subscriptionsData, statsData, configData, eventsData, tableExists] = await Promise.all([
           getAllNewsletterSubscriptions(),
           getNewsletterStats(),
           loadAllConfigs(),
           getEmailEvents(),
+          checkEmailEventsTable(),
         ])
         setSubscriptions(subscriptionsData)
         setStats(statsData)
         setCampaigns(computeCampaignStats(eventsData))
         setEngagement(computeSubscriberEngagement(eventsData))
+        setEmailEventsTableMissing(!tableExists)
+
+        // Extract last_sent_at for each city
+        const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
+        const sentAt: Record<CityKey, string | null> = { edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null }
+        for (const city of cities) sentAt[city] = configData[city]?.last_sent_at ?? null
+        setLastSentAt(sentAt)
 
         // Hydrate city drafts from saved config
         const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
@@ -245,6 +257,9 @@ export default function NewsletterAdmin() {
       try {
         const result = await triggerCityNewsletter(city)
         setSendStates(prev => ({ ...prev, [city]: { status: 'success', result } }))
+        if (result.sent > 0) {
+          setLastSentAt(prev => ({ ...prev, [city]: new Date().toISOString() }))
+        }
       } catch (err) {
         setSendStates(prev => ({
           ...prev,
@@ -545,6 +560,25 @@ export default function NewsletterAdmin() {
     CITY_CONFIG[city as CityKey]?.label ??
     city.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
+  // Returns true if the city was sent within the current calendar day (Mountain Time)
+  const wasSentToday = (city: CityKey): boolean => {
+    const t = lastSentAt[city]
+    if (!t) return false
+    const sent = new Date(t)
+    const now = new Date()
+    const todayMT = now.toLocaleDateString('en-CA', { timeZone: 'America/Edmonton' })
+    const sentMT  = sent.toLocaleDateString('en-CA', { timeZone: 'America/Edmonton' })
+    return todayMT === sentMT
+  }
+
+  const sentTimeLabel = (city: CityKey): string => {
+    const t = lastSentAt[city]
+    if (!t) return ''
+    return new Date(t).toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Edmonton',
+    })
+  }
+
   const otherCities = Object.entries(OTHER_CITY_LABELS).filter(
     ([key]) => (stats?.byCity?.[key] ?? 0) > 0
   )
@@ -590,9 +624,16 @@ export default function NewsletterAdmin() {
                 const state = sendStates[city]
                 const test  = testStates[city]
                 return (
-                  <div key={city} className="border rounded-xl p-5 bg-white space-y-3">
+                  <div key={city} className={`border rounded-xl p-5 bg-white space-y-3 ${wasSentToday(city) ? 'border-green-300 bg-green-50/30' : ''}`}>
                     <div>
-                      <div className={`text-sm font-bold uppercase tracking-wide ${cfg.color}`}>{cfg.newsletter}</div>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className={`text-sm font-bold uppercase tracking-wide ${cfg.color}`}>{cfg.newsletter}</div>
+                        {wasSentToday(city) && (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-100 border border-green-300 rounded-full px-2 py-0.5">
+                            <CheckCircle className="h-3 w-3" /> Sent today {sentTimeLabel(city)}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-lg font-semibold text-gray-900">{cfg.label}</div>
                       {stats && (
                         <div className="text-sm text-muted-foreground">
@@ -601,17 +642,26 @@ export default function NewsletterAdmin() {
                       )}
                     </div>
 
+                    {wasSentToday(city) && state.status === 'idle' && (
+                      <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                        Already sent today — sending again will duplicate for subscribers
+                      </div>
+                    )}
+
                     <div className="flex gap-2">
                       <Button variant="outline" className="flex-1" onClick={() => handleSaveConfig(city)} disabled={saving}>
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />} Preview
                       </Button>
                       <Button
-                        className={`flex-1 ${cfg.accent} hover:opacity-90 text-white`}
+                        className={`flex-1 ${wasSentToday(city) ? 'bg-gray-400 hover:bg-gray-500' : cfg.accent + ' hover:opacity-90'} text-white`}
                         onClick={() => handleSendCity(city)}
                         disabled={state.status === 'sending' || isPending}
                       >
                         {state.status === 'sending'
                           ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…</>
+                          : wasSentToday(city)
+                          ? <><Send className="mr-2 h-4 w-4" /> Send Again</>
                           : <><Send className="mr-2 h-4 w-4" /> Send</>}
                       </Button>
                     </div>
@@ -1283,6 +1333,35 @@ export default function NewsletterAdmin() {
               <CardDescription>Open and click rates per send — powered by Resend webhook</CardDescription>
             </CardHeader>
             <CardContent>
+              {emailEventsTableMissing && (
+                <div className="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-semibold text-amber-800 mb-1">One-time setup required: create the tracking table</div>
+                      <p className="text-sm text-amber-700 mb-3">
+                        The <code className="bg-amber-100 px-1 rounded">newsletter_email_events</code> table doesn't exist in Supabase yet.
+                        Campaign open/click data cannot be stored until you run this SQL in the Supabase SQL editor.
+                      </p>
+                      <div className="bg-white border border-amber-200 rounded-lg p-3 font-mono text-xs text-gray-700 mb-3 overflow-auto">
+                        <div>CREATE TABLE IF NOT EXISTS newsletter_email_events (</div>
+                        <div>&nbsp;&nbsp;id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UUID DEFAULT gen_random_uuid() PRIMARY KEY,</div>
+                        <div>&nbsp;&nbsp;email&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;VARCHAR(255) NOT NULL,</div>
+                        <div>&nbsp;&nbsp;event_type&nbsp;VARCHAR(50) NOT NULL,</div>
+                        <div>&nbsp;&nbsp;email_id&nbsp;&nbsp;&nbsp;VARCHAR(255),</div>
+                        <div>&nbsp;&nbsp;subject&nbsp;&nbsp;&nbsp;&nbsp;VARCHAR(500),</div>
+                        <div>&nbsp;&nbsp;clicked_url TEXT,</div>
+                        <div>&nbsp;&nbsp;created_at&nbsp;TIMESTAMP WITH TIME ZONE DEFAULT NOW()</div>
+                        <div>);</div>
+                      </div>
+                      <p className="text-xs text-amber-600">
+                        Full SQL is in <strong>supabase-email-events-table.sql</strong> in your project root.
+                        After creating the table, the next newsletter send will start recording data here automatically.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               {campaigns.length > 0 ? (
                 <div className="space-y-3">
                   {campaigns.map((c, i) => (
@@ -1313,8 +1392,14 @@ export default function NewsletterAdmin() {
               ) : (
                 <div className="text-center text-muted-foreground py-12">
                   <BarChart2 className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium mb-1">No campaign data yet</p>
-                  <p className="text-sm max-w-sm mx-auto">Data will appear here after the next newsletter send once the Resend webhook is active.</p>
+                  <p className="font-medium mb-1">
+                    {emailEventsTableMissing ? 'Tracking table not set up yet' : 'No campaign data yet'}
+                  </p>
+                  <p className="text-sm max-w-sm mx-auto">
+                    {emailEventsTableMissing
+                      ? 'Create the tracking table using the SQL above, then send a newsletter to start seeing data here.'
+                      : 'Data will appear here automatically after the next newsletter send — the Resend webhook is active and ready.'}
+                  </p>
                 </div>
               )}
             </CardContent>
