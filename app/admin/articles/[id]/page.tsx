@@ -60,6 +60,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [author, setAuthor] = useState("")
   const [tags, setTags] = useState("")
   const [imageUrl, setImageUrl] = useState("")
+  const [imageSource, setImageSource] = useState("")
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -114,6 +115,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setAuthor(articleData.author || "")
       setTags(articleData.tags ? articleData.tags.join(', ') : "")
       setImageUrl(articleData.imageUrl || "")
+      setImageSource(articleData.imageSource || articleData.image_source || "")
       // Load trending flags
       setTrendingHome(articleData.trendingHome || false)
       setTrendingEdmonton(articleData.trendingEdmonton || false)
@@ -203,6 +205,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         excerpt,
         content,
         imageUrl: imageUrl,
+        imageSource: imageSource,
         author: author || "Admin",
         tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
         type: "article",
@@ -438,6 +441,19 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                 </Button>
               )}
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="imageSource">Image Credit / Source</Label>
+            <Input
+              id="imageSource"
+              value={imageSource}
+              onChange={(e) => setImageSource(e.target.value)}
+              placeholder="e.g. CBC, City of Edmonton, Photo: Jane Smith"
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Optional. Shown as a small 📷 credit beneath the image in the newsletter.
+            </p>
           </div>
         </div>
       </div>

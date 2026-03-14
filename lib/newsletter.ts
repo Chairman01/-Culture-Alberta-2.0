@@ -1,5 +1,7 @@
 import { supabase } from './supabase'
 
+// ── Engagement tracking interfaces ────────────────────────────────────────────
+
 export interface EmailEvent {
   id?: string
   email: string
@@ -31,6 +33,8 @@ export interface SubscriberEngagement {
   bounced: boolean
   complained: boolean
 }
+
+// ── Subscription interfaces ────────────────────────────────────────────────────
 
 export interface NewsletterSubscription {
   id?: string
@@ -229,20 +233,29 @@ export async function getNewsletterStats() {
 
     console.log('Raw newsletter data:', data)
 
+    const activeData = data?.filter(sub => sub.status === 'active') || []
+
+    // All known city values (matches NEWSLETTER_CITIES in lib/newsletter-cities.ts)
+    const KNOWN_CITIES = [
+      'edmonton', 'calgary', 'lethbridge',
+      'red-deer', 'grande-prairie', 'medicine-hat',
+      'other-alberta', 'outside-alberta', 'other',
+    ]
+
+    const byCity: Record<string, number> = {}
+    for (const c of KNOWN_CITIES) {
+      byCity[c] = activeData.filter(sub => sub.city === c).length
+    }
+
+    // Catch any city value not in the list above
+    const unknownCount = activeData.filter(sub => !KNOWN_CITIES.includes(sub.city)).length
+    if (unknownCount > 0) byCity['unknown'] = unknownCount
+
     const stats = {
       total: data?.length || 0,
-      active: data?.filter(sub => sub.status === 'active').length || 0,
+      active: activeData.length,
       unsubscribed: data?.filter(sub => sub.status === 'unsubscribed').length || 0,
-      byCity: {
-        calgary: data?.filter(sub => sub.city === 'calgary' && sub.status === 'active').length || 0,
-        edmonton: data?.filter(sub => sub.city === 'edmonton' && sub.status === 'active').length || 0,
-        'medicine-hat': data?.filter(sub => sub.city === 'medicine-hat' && sub.status === 'active').length || 0,
-        lethbridge: data?.filter(sub => sub.city === 'lethbridge' && sub.status === 'active').length || 0,
-        'red-deer': data?.filter(sub => sub.city === 'red-deer' && sub.status === 'active').length || 0,
-        'grande-prairie': data?.filter(sub => sub.city === 'grande-prairie' && sub.status === 'active').length || 0,
-        'other-alberta': data?.filter(sub => sub.city === 'other-alberta' && sub.status === 'active').length || 0,
-        'outside-alberta': data?.filter(sub => sub.city === 'outside-alberta' && sub.status === 'active').length || 0,
-      }
+      byCity,
     }
 
     console.log('Processed newsletter stats:', stats)
@@ -258,7 +271,8 @@ export async function getNewsletterStats() {
   }
 }
 
-// Get all email engagement events
+// ── Engagement tracking functions ─────────────────────────────────────────────
+
 export async function getEmailEvents(): Promise<EmailEvent[]> {
   try {
     if (!supabase) return []
@@ -275,7 +289,6 @@ export async function getEmailEvents(): Promise<EmailEvent[]> {
   }
 }
 
-// Aggregate events into per-campaign stats
 export function computeCampaignStats(events: EmailEvent[]): CampaignStat[] {
   const campaigns: Record<string, { delivered: Set<string>; opened: Set<string>; clicked: Set<string>; bounced: Set<string>; complained: Set<string>; first_at: string }> = {}
 
@@ -283,37 +296,29 @@ export function computeCampaignStats(events: EmailEvent[]): CampaignStat[] {
     if (!ev.subject) continue
     if (!campaigns[ev.subject]) {
       campaigns[ev.subject] = {
-        delivered: new Set(),
-        opened: new Set(),
-        clicked: new Set(),
-        bounced: new Set(),
-        complained: new Set(),
+        delivered: new Set(), opened: new Set(), clicked: new Set(),
+        bounced: new Set(), complained: new Set(),
         first_at: ev.created_at || '',
       }
     }
     const c = campaigns[ev.subject]
     if (ev.event_type === 'delivered') c.delivered.add(ev.email)
-    if (ev.event_type === 'opened') c.opened.add(ev.email)
-    if (ev.event_type === 'clicked') c.clicked.add(ev.email)
-    if (ev.event_type === 'bounced') c.bounced.add(ev.email)
+    if (ev.event_type === 'opened')    c.opened.add(ev.email)
+    if (ev.event_type === 'clicked')   c.clicked.add(ev.email)
+    if (ev.event_type === 'bounced')   c.bounced.add(ev.email)
     if (ev.event_type === 'complained') c.complained.add(ev.email)
-    // track earliest event date as sent_at
     if (ev.created_at && ev.created_at < c.first_at) c.first_at = ev.created_at
   }
 
   return Object.entries(campaigns)
     .map(([subject, c]) => {
       const delivered = c.delivered.size
-      const opened = c.opened.size
-      const clicked = c.clicked.size
+      const opened    = c.opened.size
+      const clicked   = c.clicked.size
       return {
-        subject,
-        delivered,
-        opened,
-        clicked,
-        bounced: c.bounced.size,
-        complained: c.complained.size,
-        open_rate: delivered > 0 ? Math.round((opened / delivered) * 100) : 0,
+        subject, delivered, opened, clicked,
+        bounced: c.bounced.size, complained: c.complained.size,
+        open_rate:  delivered > 0 ? Math.round((opened  / delivered) * 100) : 0,
         click_rate: delivered > 0 ? Math.round((clicked / delivered) * 100) : 0,
         sent_at: c.first_at,
       }
@@ -321,36 +326,23 @@ export function computeCampaignStats(events: EmailEvent[]): CampaignStat[] {
     .sort((a, b) => b.sent_at.localeCompare(a.sent_at))
 }
 
-// Aggregate events into per-subscriber engagement
 export function computeSubscriberEngagement(events: EmailEvent[]): Record<string, SubscriberEngagement> {
   const engagement: Record<string, SubscriberEngagement> = {}
-
   for (const ev of events) {
     if (!engagement[ev.email]) {
-      engagement[ev.email] = {
-        email: ev.email,
-        total_opens: 0,
-        total_clicks: 0,
-        bounced: false,
-        complained: false,
-      }
+      engagement[ev.email] = { email: ev.email, total_opens: 0, total_clicks: 0, bounced: false, complained: false }
     }
     const e = engagement[ev.email]
     if (ev.event_type === 'opened') {
       e.total_opens++
-      if (!e.last_opened || (ev.created_at && ev.created_at > e.last_opened)) {
-        e.last_opened = ev.created_at
-      }
+      if (!e.last_opened || (ev.created_at && ev.created_at > e.last_opened)) e.last_opened = ev.created_at
     }
     if (ev.event_type === 'clicked') {
       e.total_clicks++
-      if (!e.last_clicked || (ev.created_at && ev.created_at > e.last_clicked)) {
-        e.last_clicked = ev.created_at
-      }
+      if (!e.last_clicked || (ev.created_at && ev.created_at > e.last_clicked)) e.last_clicked = ev.created_at
     }
-    if (ev.event_type === 'bounced') e.bounced = true
+    if (ev.event_type === 'bounced')    e.bounced = true
     if (ev.event_type === 'complained') e.complained = true
   }
-
   return engagement
 }

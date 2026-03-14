@@ -59,6 +59,12 @@ const nextConfig = {
         destination: '/articles/:id',
         permanent: true,
       },
+      // Article slug change: removed "Again" from Gracie Ann Gale title
+      {
+        source: '/articles/grande-prairie-rcmp-asking-for-help-finding-15-year-old-gracie-ann-gale-again',
+        destination: '/articles/grande-prairie-rcmp-asking-for-help-finding-15-year-old-gracie-ann-gale',
+        permanent: true,
+      },
       // Redirect common misspellings
       {
         source: '/calagry',
@@ -123,30 +129,23 @@ const nextConfig = {
       },
     ]
   },
-  // Production-specific headers
+  // Security + cache headers (applied in all environments)
   async headers() {
+    const securityHeaders = [
+      { key: 'X-Content-Type-Options',  value: 'nosniff' },
+      { key: 'X-Frame-Options',         value: 'SAMEORIGIN' },
+      { key: 'X-XSS-Protection',        value: '1; mode=block' },
+      { key: 'Referrer-Policy',         value: 'strict-origin-when-cross-origin' },
+      { key: 'Permissions-Policy',      value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+      // HSTS: trust HTTPS for 1 year, include subdomains
+      { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+    ]
+
     if (process.env.NODE_ENV === 'production') {
       return [
         {
           source: '/(.*)',
-          headers: [
-            {
-              key: 'X-Content-Type-Options',
-              value: 'nosniff',
-            },
-            {
-              key: 'X-Frame-Options',
-              value: 'SAMEORIGIN',
-            },
-            {
-              key: 'X-XSS-Protection',
-              value: '1; mode=block',
-            },
-            {
-              key: 'Referrer-Policy',
-              value: 'origin-when-cross-origin',
-            },
-          ],
+          headers: securityHeaders,
         },
         {
           source: '/api/(.*)',

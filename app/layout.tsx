@@ -64,6 +64,9 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: 'https://www.culturealberta.com',
+    types: {
+      'application/rss+xml': 'https://www.culturealberta.com/feed.xml',
+    },
   },
   icons: {
     icon: [
@@ -121,6 +124,10 @@ export default function RootLayout({
             gtag('js', new Date());
             gtag('config', 'G-48EV1DX840');
           `}
+        </Script>
+        {/* Mediavine Grow */}
+        <Script id="mediavine-grow" strategy="afterInteractive">
+          {`!(function(){window.growMe||((window.growMe=function(e){window.growMe._.push(e);}),(window.growMe._=[]));var e=document.createElement("script");(e.type="text/javascript"),(e.src="https://faves.grow.me/main.js"),(e.defer=!0),e.setAttribute("data-grow-faves-site-id","U2l0ZTpkMjNmYTliOS0wYTRiLTQ4NmItYmE4My05NmJlZjFhZGFkODM=");var t=document.getElementsByTagName("script")[0];t.parentNode.insertBefore(e,t);})();`}
         </Script>
         <AuthProvider>
           <PageTracker />

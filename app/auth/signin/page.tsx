@@ -11,22 +11,44 @@ export default function SignInPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [needsConfirmation, setNeedsConfirmation] = useState(false)
+  const [resendSent, setResendSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setNeedsConfirmation(false)
     setLoading(true)
     try {
       const { error } = await supabaseBrowser.auth.signInWithPassword({ email, password })
-      if (error) throw error
+      if (error) {
+        if (error.message.toLowerCase().includes('email not confirmed')) {
+          setNeedsConfirmation(true)
+        } else if (error.message.toLowerCase().includes('invalid login credentials') || error.message.toLowerCase().includes('invalid email or password')) {
+          setError('Incorrect email or password. Please try again.')
+        } else {
+          setError(error.message)
+        }
+        return
+      }
       router.push('/')
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to sign in')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResendConfirmation = async () => {
+    setResendSent(false)
+    try {
+      await supabaseBrowser.auth.resend({ type: 'signup', email })
+      setResendSent(true)
+    } catch {
+      setError('Failed to resend confirmation email. Please try again.')
     }
   }
 
@@ -65,6 +87,23 @@ export default function SignInPage() {
           />
         </div>
         <SocialAuthButtons />
+        {needsConfirmation && (
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm space-y-2">
+            <p className="font-semibold">Please confirm your email first.</p>
+            <p>We sent a confirmation link to <strong>{email}</strong>. Check your inbox (and spam folder).</p>
+            {resendSent ? (
+              <p className="text-green-700 font-medium">✓ Confirmation email resent!</p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                className="underline font-medium hover:text-amber-900"
+              >
+                Resend confirmation email
+              </button>
+            )}
+          </div>
+        )}
         {error && (
           <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm">
             {error}

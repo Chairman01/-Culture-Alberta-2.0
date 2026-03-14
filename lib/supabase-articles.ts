@@ -240,7 +240,7 @@ export async function getHomepageArticles(): Promise<Article[]> {
           .from('articles')
           .select(fields)
           .order('created_at', { ascending: false })
-          .limit(100) // Fetch more articles to ensure categories like Food & Drink are populated
+          .limit(500) // Fetch up to 500 articles to ensure all categories are populated
 
         const result = await Promise.race([
           supabasePromise,
@@ -351,7 +351,7 @@ export async function getAdminArticles(forceRefresh: boolean = false): Promise<A
       .from('articles')
       .select('id, title, category, location, author, created_at, updated_at, status, type, featured_home, featured_edmonton, featured_calgary, date')
       .order('created_at', { ascending: false })
-      .limit(100) // Limit to 100 most recent for admin
+      .limit(500) // Fetch up to 500 most recent for admin
 
     const { data, error } = await Promise.race([
       supabasePromise,
@@ -642,7 +642,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     console.log(`Attempting to fetch ${city} articles from Supabase...`)
 
     // Optimized query for city pages - only essential fields for display
-    const fields = ensureImageFields('id, title,  excerpt, category, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+    const fields = ensureImageFields('id, title, excerpt, category, categories, tags, type, location, created_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
 
     const supabasePromise = supabase
       .from('articles')
@@ -1084,24 +1084,25 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
         return isMatch
       })
 
-      // If no exact match, try partial matching for better compatibility
+      // If no exact match, try slug-based partial matching for better compatibility
       if (!exactMatch) {
         console.log(`⚠️ SUPABASE: No exact match found, trying partial matching for slug: "${slug}"`)
         const partialMatch = data.find((article: any) => {
-          const articleTitle = article.title.toLowerCase()
-          const slugWords = slug.toLowerCase().split('-')
+          const articleGeneratedSlug = article.title
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .substring(0, 100)
 
-          // Check if most words from the slug appear in the title
-          const matchingWords = slugWords.filter(word =>
-            articleTitle.includes(word) ||
-            articleTitle.includes(word.replace(/s$/, '')) // Handle plurals
-          )
-
-          const matchPercentage = matchingWords.length / slugWords.length
-          const isPartialMatch = matchPercentage >= 0.7 // 70% word match
+          // Only match if the requested slug contains the article's slug (not the reverse)
+          // This prevents "...-gale-again" from matching when looking for "...-gale"
+          const isPartialMatch = slug.toLowerCase().includes(articleGeneratedSlug.toLowerCase()) &&
+            articleGeneratedSlug.length >= slug.length * 0.8
 
           if (isPartialMatch) {
-            console.log(`✅ SUPABASE: Found partial match (${Math.round(matchPercentage * 100)}%) for slug "${slug}": "${article.title}"`)
+            console.log(`✅ SUPABASE: Found partial match for slug "${slug}": "${article.title}"`)
           }
 
           return isPartialMatch

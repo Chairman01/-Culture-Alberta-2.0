@@ -80,45 +80,39 @@ export default async function AllGuidesPage({ searchParams }: PageProps) {
           </div>
         </section>
 
-        {/* Guide Cards */}
+        {/* Guide Cards — same layout as Neighborhoods */}
         <section className="w-full py-12 bg-gray-50">
           <div className="container mx-auto px-4 md:px-6">
             <p className="text-sm text-gray-500 mb-6">
               Showing {articles.length} guide{articles.length !== 1 ? 's' : ''} {activeLabel !== 'All' ? `in ${activeLabel}` : 'across Alberta'}
             </p>
             {articles.length > 0 ? (
-              <div className="space-y-4 max-w-3xl">
-                {articles.map((article, index) => (
+              <div className="grid gap-8 md:grid-cols-2">
+                {articles.map((article) => (
                   <Link key={article.id} href={getArticleUrl(article)} className="group block">
-                    <div className="flex gap-4 md:gap-6 p-4 md:p-5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-md transition-all duration-200">
-                      <div className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-lg group-hover:bg-slate-200 transition-colors">
-                        {index + 1}
+                    <article className="bg-white overflow-hidden rounded-lg border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                      <div className="aspect-[16/10] w-full bg-gray-100 relative overflow-hidden">
+                        <Image
+                          src={article.imageUrl || "/placeholder.svg"}
+                          alt={article.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          priority={false}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg text-slate-900 group-hover:text-blue-600 transition-colors">
-                              {article.title}
-                            </h3>
-                            <p className="text-slate-600 text-sm mt-1 line-clamp-2">{article.excerpt}</p>
-                            <div className="flex items-center gap-2 text-xs text-slate-500 mt-2">
-                              <span>{getArticleLocationLabel(article)}</span>
-                            </div>
-                          </div>
-                          {article.imageUrl && (
-                            <div className="flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-lg overflow-hidden bg-slate-100">
-                              <Image
-                                src={article.imageUrl}
-                                alt=""
-                                width={112}
-                                height={112}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          )}
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-3">
+                          {article.title}
+                        </h3>
+                        <p className="text-gray-600 leading-relaxed line-clamp-3 mb-4">{article.excerpt}</p>
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <BookOpen className="w-4 h-4 flex-shrink-0" />
+                          <span>{getArticleLocationLabel(article)}</span>
                         </div>
                       </div>
-                    </div>
+                    </article>
                   </Link>
                 ))}
               </div>
@@ -131,7 +125,7 @@ export default async function AllGuidesPage({ searchParams }: PageProps) {
                   {activeLabel !== 'All' ? `No Guide Articles in ${activeLabel}` : 'No Guide Articles Yet'}
                 </h3>
                 <p className="text-gray-600 max-w-md mx-auto mb-8">
-                  Create articles with the <strong>Guide</strong> category, tag, or type to see them here.
+                  Create articles with the <strong>Guide</strong> category to see them here.
                 </p>
                 <Link
                   href="/guides"

@@ -1,11 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { loadOptimizedFallback } from '@/lib/optimized-fallback'
 import { quickSyncArticle } from '@/lib/auto-sync'
+import { requireAdmin } from '@/lib/admin-auth'
 
 function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Supabase environment variables are not configured')
@@ -14,7 +15,9 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseKey)
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
   try {
     const { searchParams } = new URL(request.url)
     const forceRefresh = searchParams.get('refresh') === 'true'
@@ -25,12 +28,11 @@ export async function GET(request: Request) {
     try {
       const supabase = getSupabaseClient()
 
-      // Fetch recent articles with essential fields only (EXCLUDE image data for performance)
+      // Fetch all articles with essential fields only (EXCLUDE image data for performance)
       const { data: liveArticles, error } = await supabase
         .from('articles')
         .select('id,title,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary')
         .order('created_at', { ascending: false })
-        .limit(100)
 
       if (!error && liveArticles && liveArticles.length > 0) {
         console.log(`✅ Admin Articles API: Loaded ${liveArticles.length} live articles from Supabase`)
@@ -88,7 +90,10 @@ export async function GET(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const { id } = await request.json()
     console.log(`🔧 Admin Articles API: Delete article request for ID: ${id}`)

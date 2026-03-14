@@ -87,7 +87,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     // Reddit shows ~300 chars, Twitter ~200, Facebook ~300
     const description = loadedArticle.excerpt || loadedArticle.description || `Read about ${loadedArticle.title} on Culture Alberta`
 
-    const fullUrl = `https://www.culturealberta.com/articles/${slug}`
+    // Always use canonical slug (from title) not the incoming slug (which could be a numeric ID)
+    const canonicalSlug = createSlug(loadedArticle.title)
+    const fullUrl = `https://www.culturealberta.com/articles/${canonicalSlug}`
 
     // Handle image URL properly - use article image if available, otherwise use default
     let articleImage = loadedArticle.imageUrl || '/images/culture-alberta-og.jpg'
@@ -254,9 +256,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           return true
         }
 
-        // Try partial match (in case of URL encoding issues)
-        const partialMatch = articleSlug.toLowerCase().includes(slug.toLowerCase()) ||
-          slug.toLowerCase().includes(articleSlug.toLowerCase())
+        // Try partial match - only if requested slug contains the article slug (not reverse)
+        // Prevents "...-gale-again" from matching when looking for "...-gale"
+        const partialMatch = slug.toLowerCase().includes(articleSlug.toLowerCase())
         if (partialMatch) {
           console.log('Found partial matching article:', article.title)
           return true
@@ -302,6 +304,14 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     }
 
     console.log('✅ Article loaded successfully:', loadedArticle.title)
+
+    // Redirect numeric ID URLs (e.g. /articles/article-1766206001328-0yq0zr5g5)
+    // to the canonical title-based slug (e.g. /articles/attention-edmonton-...)
+    const canonicalSlug = createSlug(loadedArticle.title)
+    if (slug !== canonicalSlug) {
+      console.log(`🔀 Redirecting ${slug} → ${canonicalSlug}`)
+      redirect(`/articles/${canonicalSlug}`)
+    }
 
     // If content is missing or too short, lazily fetch full content from Supabase
     try {
@@ -437,9 +447,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     Back to Home
                   </Link>
                   <div className="hidden md:block">
-                    <h1 className="text-lg font-semibold text-gray-900 truncate max-w-2xl">
+                    <p className="text-lg font-semibold text-gray-900 truncate max-w-2xl">
                       {loadedArticle.title}
-                    </h1>
+                    </p>
                   </div>
                 </div>
                 <ArticleActions
@@ -611,11 +621,20 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       </div>
                     )}
 
-                    {/* Newsletter - Inline only (AdSense-friendly: no overlap with ads) */}
+                    {/* Newsletter - Inline at end of article */}
                     <ArticleNewsletterSignup
                       articleTitle={loadedArticle.title}
                       articleCategory={loadedArticle.category}
+                      articleImageUrl={loadedArticle.imageUrl}
                       variant="inline"
+                    />
+
+                    {/* Newsletter - Scroll-triggered split-image popup (appears at 50% read) */}
+                    <ArticleNewsletterSignup
+                      articleTitle={loadedArticle.title}
+                      articleCategory={loadedArticle.category}
+                      articleImageUrl={loadedArticle.imageUrl}
+                      variant="fixed"
                     />
 
                     {/* Comments Section */}

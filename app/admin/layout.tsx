@@ -68,15 +68,17 @@ export default function AdminLayout({
     setIsLoading(false)
   }, [router, pathname, isClient])
 
-  const handleLogout = () => {
-    console.log("Logging out...")
+  const handleLogout = async () => {
+
     // Clear all admin authentication data
+    // Clear the httpOnly session cookie server-side
+    await fetch('/api/admin/logout', { method: 'POST' }).catch(() => {})
     localStorage.removeItem('admin_authenticated')
     localStorage.removeItem('admin_token')
     localStorage.removeItem('admin_user')
     localStorage.removeItem('admin_login_time')
 
-    // Redirect to login page
+
     router.push('/admin/login')
   }
 
