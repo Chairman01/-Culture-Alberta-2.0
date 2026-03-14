@@ -45,7 +45,7 @@ interface NewsletterSubscription {
   status?: 'active' | 'unsubscribed'
 }
 
-type CityKey = 'edmonton' | 'calgary' | 'lethbridge'
+type CityKey = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat'
 
 interface SendState {
   status: 'idle' | 'sending' | 'success' | 'error'
@@ -86,15 +86,15 @@ interface PickerState {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const CITY_CONFIG: Record<CityKey, { label: string; newsletter: string; color: string; accent: string; border: string }> = {
-  edmonton:   { label: 'Edmonton',   newsletter: 'The Capital',  color: 'text-blue-600',  accent: 'bg-blue-600',  border: 'border-blue-200'  },
-  calgary:    { label: 'Calgary',    newsletter: 'The Chinook',  color: 'text-red-600',   accent: 'bg-red-600',   border: 'border-red-200'   },
-  lethbridge: { label: 'Lethbridge', newsletter: 'The Westerly', color: 'text-amber-600', accent: 'bg-amber-600', border: 'border-amber-200' },
+  edmonton:       { label: 'Edmonton',     newsletter: 'The Capital',  color: 'text-blue-600',   accent: 'bg-blue-600',   border: 'border-blue-200'   },
+  calgary:        { label: 'Calgary',      newsletter: 'The Chinook',  color: 'text-red-600',    accent: 'bg-red-600',    border: 'border-red-200'    },
+  lethbridge:     { label: 'Lethbridge',   newsletter: 'The Westerly', color: 'text-amber-600',  accent: 'bg-amber-600',  border: 'border-amber-200'  },
+  'medicine-hat': { label: 'Medicine Hat', newsletter: 'The Hat',      color: 'text-orange-700', accent: 'bg-orange-700', border: 'border-orange-200' },
 }
 
 const OTHER_CITY_LABELS: Record<string, string> = {
   'red-deer':       'Red Deer',
   'grande-prairie': 'Grande Prairie',
-  'medicine-hat':   'Medicine Hat',
   'other-alberta':  'Other Alberta',
   'outside-alberta':'Outside Alberta',
   'other':          'Other',
@@ -121,19 +121,21 @@ export default function NewsletterAdmin() {
   const [previewCity, setPreviewCity] = useState<CityKey | null>(null)
   const [previewTimestamp, setPreviewTimestamp] = useState(0)
   const [loadingCurrent, setLoadingCurrent] = useState<Record<CityKey | 'alberta', boolean>>({
-    edmonton: false, calgary: false, lethbridge: false, alberta: false,
+    edmonton: false, calgary: false, lethbridge: false, 'medicine-hat': false, alberta: false,
   })
 
   // Send states
   const [sendStates, setSendStates] = useState<Record<CityKey, SendState>>({
-    edmonton:   { status: 'idle' },
-    calgary:    { status: 'idle' },
-    lethbridge: { status: 'idle' },
+    edmonton:       { status: 'idle' },
+    calgary:        { status: 'idle' },
+    lethbridge:     { status: 'idle' },
+    'medicine-hat': { status: 'idle' },
   })
   const [testStates, setTestStates] = useState<Record<CityKey, TestState>>({
-    edmonton:   { open: false, email: '', status: 'idle' },
-    calgary:    { open: false, email: '', status: 'idle' },
-    lethbridge: { open: false, email: '', status: 'idle' },
+    edmonton:       { open: false, email: '', status: 'idle' },
+    calgary:        { open: false, email: '', status: 'idle' },
+    lethbridge:     { open: false, email: '', status: 'idle' },
+    'medicine-hat': { open: false, email: '', status: 'idle' },
   })
   const [sendAllState, setSendAllState] = useState<{
     status: 'idle' | 'sending' | 'success' | 'error'
@@ -145,9 +147,10 @@ export default function NewsletterAdmin() {
   // Configure states
   const [configCollapsed, setConfigCollapsed] = useState(false)
   const [cityDrafts, setCityDrafts] = useState<Record<CityKey, CityConfigDraft>>({
-    edmonton:   emptyDraft(),
-    calgary:    emptyDraft(),
-    lethbridge: emptyDraft(),
+    edmonton:       emptyDraft(),
+    calgary:        emptyDraft(),
+    lethbridge:     emptyDraft(),
+    'medicine-hat': emptyDraft(),
   })
   const [albertaDraft, setAlbertaDraft] = useState<AlbertaDraft>({ ids: null, items: [], isDirty: false })
   const [saving, setSaving] = useState(false)
@@ -189,9 +192,9 @@ export default function NewsletterAdmin() {
         setEngagement(computeSubscriberEngagement(eventsData))
 
         // Hydrate city drafts from saved config
-        const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge']
+        const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
         const newDrafts: Record<CityKey, CityConfigDraft> = {
-          edmonton: emptyDraft(), calgary: emptyDraft(), lethbridge: emptyDraft(),
+          edmonton: emptyDraft(), calgary: emptyDraft(), lethbridge: emptyDraft(), 'medicine-hat': emptyDraft(),
         }
         const allArticleIds = new Set<string>()
 
@@ -422,7 +425,7 @@ export default function NewsletterAdmin() {
     setSaveSuccess(false)
     setSaveError(null)
 
-    const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge']
+    const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
     const errors: string[] = []
 
     for (const city of cities) {
@@ -545,7 +548,7 @@ export default function NewsletterAdmin() {
   const otherCities = Object.entries(OTHER_CITY_LABELS).filter(
     ([key]) => (stats?.byCity?.[key] ?? 0) > 0
   )
-  const newsletterCityTotal = (['edmonton', 'calgary', 'lethbridge'] as CityKey[])
+  const newsletterCityTotal = (['edmonton', 'calgary', 'lethbridge', 'medicine-hat'] as CityKey[])
     .reduce((s, c) => s + (stats?.byCity?.[c] ?? 0), 0)
   const otherCityTotal = otherCities.reduce((s, [key]) => s + (stats?.byCity?.[key] ?? 0), 0)
 
@@ -582,7 +585,7 @@ export default function NewsletterAdmin() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-3 mb-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
               {(Object.entries(CITY_CONFIG) as [CityKey, typeof CITY_CONFIG[CityKey]][]).map(([city, cfg]) => {
                 const state = sendStates[city]
                 const test  = testStates[city]
@@ -740,7 +743,7 @@ export default function NewsletterAdmin() {
             <CardContent className="space-y-6">
 
               {/* Per-city config columns */}
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {(Object.entries(CITY_CONFIG) as [CityKey, typeof CITY_CONFIG[CityKey]][]).map(([city, cfg]) => {
                   const draft = cityDrafts[city]
                   return (
@@ -1040,7 +1043,7 @@ export default function NewsletterAdmin() {
         {/* ── STATS ─────────────────────────────────────────────────────────── */}
         {stats && (
           <div className="mb-6 space-y-3">
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -1100,6 +1103,18 @@ export default function NewsletterAdmin() {
                   <p className="text-xs text-muted-foreground mt-1">The Westerly</p>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <MapPin className="h-4 w-4" /> Medicine Hat
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-700">{stats.byCity?.['medicine-hat'] ?? 0}</div>
+                  <p className="text-xs text-muted-foreground mt-1">The Hat</p>
+                </CardContent>
+              </Card>
             </div>
 
             {otherCityTotal > 0 && (
@@ -1109,7 +1124,7 @@ export default function NewsletterAdmin() {
                     Other cities — {otherCityTotal} active subscriber{otherCityTotal !== 1 ? 's' : ''}
                     {' '}
                     <span className="font-normal text-xs">
-                      (not yet on a newsletter route — total across all cities: {newsletterCityTotal + otherCityTotal} = {stats.active} active ✓)
+                      (no newsletter yet — total across all cities: {newsletterCityTotal + otherCityTotal} = {stats.active} active ✓)
                     </span>
                   </CardTitle>
                 </CardHeader>

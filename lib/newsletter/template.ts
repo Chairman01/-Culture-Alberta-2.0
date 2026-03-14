@@ -1,7 +1,7 @@
 import type { NewsletterArticle, NewsletterContent, NewsletterEvent } from './fetch-articles'
 
 // ── City configuration ────────────────────────────────────────────────────────
-export type NewsletterCity = 'edmonton' | 'calgary' | 'lethbridge'
+export type NewsletterCity = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat'
 
 interface CityConfig {
   newsletterName: string
@@ -40,6 +40,15 @@ const CITY_CONFIG: Record<NewsletterCity, CityConfig> = {
     accentColorDark: '#a66f08',
     greeting: 'Good morning, Lethbridge',
     emoji: '🌾',
+  },
+  'medicine-hat': {
+    newsletterName: 'The Hat',
+    tagline: "Medicine Hat's Daily Brief",
+    cityLabel: 'Medicine Hat',
+    accentColor: '#b45309',
+    accentColorDark: '#92400e',
+    greeting: 'Good morning, Medicine Hat',
+    emoji: '🎩',
   },
 }
 

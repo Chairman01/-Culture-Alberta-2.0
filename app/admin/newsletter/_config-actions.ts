@@ -31,11 +31,11 @@ export async function saveArticleOrder(
   return saveNewsletterConfig(city, { article_order: articleIds })
 }
 
-// Alberta is shared — saves to all three city rows
+// Alberta is shared — saves to all city rows
 export async function saveAlbertaArticles(
   articleIds: string[] | null,
 ): Promise<{ error: string | null }> {
-  const cities: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge']
+  const cities: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
   for (const city of cities) {
     const result = await saveNewsletterConfig(city, { alberta_article_ids: articleIds })
     if (result.error) return result

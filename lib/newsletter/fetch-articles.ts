@@ -44,8 +44,16 @@ function toNewsletterArticle(article: any): NewsletterArticle {
   }
 }
 
+// Map city slug to the search term used in article location/category fields
+const CITY_SEARCH_TERM: Record<string, string> = {
+  edmonton: 'edmonton',
+  calgary: 'calgary',
+  lethbridge: 'lethbridge',
+  'medicine-hat': 'medicine hat',
+}
+
 export async function fetchNewsletterContent(
-  city: 'edmonton' | 'calgary' | 'lethbridge'
+  city: 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat'
 ): Promise<NewsletterContent> {
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
@@ -55,6 +63,8 @@ export async function fetchNewsletterContent(
   const twoWeeksOut = new Date()
   twoWeeksOut.setDate(twoWeeksOut.getDate() + 14)
 
+  const cityTerm = CITY_SEARCH_TERM[city] ?? city
+
   // Load config and events in parallel
   const [config, eventsResult] = await Promise.all([
     getNewsletterConfig(city),
@@ -62,7 +72,7 @@ export async function fetchNewsletterContent(
       .from('events')
       .select('id, title, venue, location, event_date, website_url')
       .eq('status', 'published')
-      .ilike('location', `%${city}%`)
+      .ilike('location', `%${cityTerm}%`)
       .gte('event_date', now)
       .lte('event_date', twoWeeksOut.toISOString())
       .order('event_date', { ascending: true })
@@ -100,7 +110,7 @@ export async function fetchNewsletterContent(
       .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
       .eq('status', 'published')
       .neq('type', 'event')
-      .or(`location.ilike.%${city}%,category.ilike.%${city}%,title.ilike.%${city}%`)
+      .or(`location.ilike.%${cityTerm}%,category.ilike.%${cityTerm}%,title.ilike.%${cityTerm}%`)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -111,7 +121,7 @@ export async function fetchNewsletterContent(
         .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
         .eq('status', 'published')
         .neq('type', 'event')
-        .or(`location.ilike.%${city}%,category.ilike.%${city}%,title.ilike.%${city}%`)
+        .or(`location.ilike.%${cityTerm}%,category.ilike.%${cityTerm}%,title.ilike.%${cityTerm}%`)
         .order('created_at', { ascending: false })
         .limit(10)
       const existing = new Set((cityData || []).map((a: any) => a.id))
