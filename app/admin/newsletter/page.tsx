@@ -197,14 +197,11 @@ export default function NewsletterAdmin() {
         setEngagement(computeSubscriberEngagement(eventsData))
         setEmailEventsTableMissing(!tableExists)
 
-        // Extract last_sent_at for each city
+        // Hydrate city drafts + extract last_sent_at
         const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
         const sentAt: Record<CityKey, string | null> = { edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null }
         for (const city of cities) sentAt[city] = configData[city]?.last_sent_at ?? null
         setLastSentAt(sentAt)
-
-        // Hydrate city drafts from saved config
-        const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
         const newDrafts: Record<CityKey, CityConfigDraft> = {
           edmonton: emptyDraft(), calgary: emptyDraft(), lethbridge: emptyDraft(), 'medicine-hat': emptyDraft(),
         }
