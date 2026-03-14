@@ -259,8 +259,11 @@ export default function NewsletterAdmin() {
 
   // ── Configure handlers ──────────────────────────────────────────────────────
 
-  function openPicker(target: PickerState['target'], city?: CityKey) {
-    setPicker({ open: true, target, city, query: '', results: [], searching: false })
+  async function openPicker(target: PickerState['target'], city?: CityKey) {
+    // Open immediately and auto-load recent articles
+    setPicker({ open: true, target, city, query: '', results: [], searching: true })
+    const results = await searchArticles('')
+    setPicker(p => ({ ...p, searching: false, results }))
   }
 
   async function handlePickerSearch() {
@@ -654,11 +657,12 @@ export default function NewsletterAdmin() {
 
                       {/* Hero / Top Story */}
                       <div>
-                        <div className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-2">
-                          <Star className="h-3 w-3" /> Top Story
+                        <div className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase mb-1">
+                          <Star className="h-3 w-3" /> Hero Story
                         </div>
+                        <p className="text-[11px] text-gray-400 mb-2">The big article shown at the top of the email.</p>
                         {draft.featured_article ? (
-                          <div className="bg-gray-50 rounded-lg p-2 mb-2">
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-2">
                             <div className="text-xs font-medium text-gray-800 line-clamp-2 mb-1">
                               {draft.featured_article.title}
                             </div>
@@ -667,33 +671,34 @@ export default function NewsletterAdmin() {
                             </div>
                           </div>
                         ) : (
-                          <div className="text-xs text-gray-400 italic mb-2">Auto — most recent article</div>
+                          <div className="text-xs text-gray-400 italic mb-2">Using most recent article automatically</div>
                         )}
                         <div className="flex gap-2">
                           <Button
                             size="sm" variant="outline" className="text-xs h-7 px-2"
                             onClick={() => openPicker('featured', city)}
                           >
-                            {draft.featured_article ? 'Change' : 'Pick top story'}
+                            {draft.featured_article ? 'Change hero story' : '+ Pick hero story'}
                           </Button>
                           {draft.featured_article && (
                             <Button
                               size="sm" variant="ghost" className="text-xs h-7 px-2 text-red-500 hover:text-red-700"
                               onClick={() => clearFeatured(city)}
                             >
-                              <X className="h-3 w-3 mr-1" /> Remove
+                              <X className="h-3 w-3 mr-1" /> Clear
                             </Button>
                           )}
                         </div>
                       </div>
 
-                      {/* Article Order */}
+                      {/* Article List */}
                       <div>
-                        <div className="text-xs font-semibold text-gray-500 uppercase mb-2">Article Order</div>
-                        {draft.article_order === null ? (
-                          <div className="text-xs text-gray-400 italic mb-2">Auto — ordered by date</div>
-                        ) : draft.article_order_items.length === 0 ? (
-                          <div className="text-xs text-gray-400 italic mb-2">No articles added yet</div>
+                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Articles in Email</div>
+                        <p className="text-[11px] text-gray-400 mb-2">
+                          Choose which articles appear below the hero story, in the order you set. Leave empty to use the latest articles automatically.
+                        </p>
+                        {draft.article_order === null || draft.article_order_items.length === 0 ? (
+                          <div className="text-xs text-gray-400 italic mb-2">Using latest articles automatically</div>
                         ) : (
                           <div className="space-y-1 mb-2">
                             {draft.article_order_items.map((art, idx) => (
@@ -704,15 +709,18 @@ export default function NewsletterAdmin() {
                                   className="p-0.5 hover:bg-gray-200 rounded disabled:opacity-30"
                                   onClick={() => moveArticle(city, idx, -1)}
                                   disabled={idx === 0}
+                                  title="Move up"
                                 ><ArrowUp className="h-3 w-3" /></button>
                                 <button
                                   className="p-0.5 hover:bg-gray-200 rounded disabled:opacity-30"
                                   onClick={() => moveArticle(city, idx, 1)}
                                   disabled={idx === draft.article_order_items.length - 1}
+                                  title="Move down"
                                 ><ArrowDown className="h-3 w-3" /></button>
                                 <button
                                   className="p-0.5 hover:bg-red-100 rounded text-red-400"
                                   onClick={() => removeArticle(city, idx)}
+                                  title="Remove"
                                 ><X className="h-3 w-3" /></button>
                               </div>
                             ))}
@@ -725,12 +733,12 @@ export default function NewsletterAdmin() {
                           >
                             + Add article
                           </Button>
-                          {draft.article_order !== null && (
+                          {draft.article_order !== null && draft.article_order_items.length > 0 && (
                             <Button
                               size="sm" variant="ghost" className="text-xs h-7 px-2 text-gray-500"
                               onClick={() => resetOrder(city)}
                             >
-                              Reset to auto
+                              Clear all (use auto)
                             </Button>
                           )}
                         </div>
@@ -748,13 +756,11 @@ export default function NewsletterAdmin() {
                   <Badge variant="secondary" className="text-[10px] bg-green-100 text-green-600">Shared across all newsletters</Badge>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  Appears in every city newsletter. Auto-fetches recent Alberta provincial articles — add specific ones below to always include them first.
+                  This section appears in <strong>all three city newsletters</strong>. It automatically pulls recent Alberta-wide news. Pin specific articles below and they will always appear first, with auto-fetched articles filling in after.
                 </p>
 
-                {albertaDraft.ids === null ? (
-                  <div className="text-xs text-gray-400 italic mb-3">Auto — most recent Alberta articles</div>
-                ) : albertaDraft.items.length === 0 ? (
-                  <div className="text-xs text-gray-400 italic mb-3">No articles pinned yet</div>
+                {albertaDraft.ids === null || albertaDraft.items.length === 0 ? (
+                  <div className="text-xs text-gray-400 italic mb-3">Using latest Alberta articles automatically — pin specific ones below to always include them</div>
                 ) : (
                   <div className="space-y-1 mb-3">
                     {albertaDraft.items.map((art, idx) => (
@@ -802,14 +808,30 @@ export default function NewsletterAdmin() {
               {/* Article picker panel */}
               {picker.open && (
                 <div className="border-2 border-blue-200 rounded-xl p-4 bg-blue-50/20">
-                  <div className="text-xs font-semibold text-blue-700 uppercase mb-3">
-                    {picker.target === 'featured' ? `Pick Top Story — ${CITY_CONFIG[picker.city!]?.label}` :
-                     picker.target === 'order'    ? `Add Article — ${CITY_CONFIG[picker.city!]?.label}` :
-                     'Add Alberta Article'}
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-sm font-semibold text-blue-800">
+                        {picker.target === 'featured' ? `Choose Hero Story — ${CITY_CONFIG[picker.city!]?.label}` :
+                         picker.target === 'order'    ? `Add Article — ${CITY_CONFIG[picker.city!]?.label}` :
+                         'Add Alberta Article'}
+                      </div>
+                      <div className="text-xs text-blue-600 mt-0.5">
+                        {picker.searching && picker.results.length === 0
+                          ? 'Loading recent articles…'
+                          : `${picker.results.length} articles shown — search to filter`}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm" variant="ghost" className="h-8 text-gray-500"
+                      onClick={() => setPicker(p => ({ ...p, open: false, query: '', results: [] }))}
+                    >
+                      <X className="h-4 w-4 mr-1" /> Close
+                    </Button>
                   </div>
+
                   <div className="flex gap-2 mb-3">
                     <Input
-                      placeholder="Search by title…"
+                      placeholder="Filter by title…"
                       value={picker.query}
                       onChange={e => setPicker(p => ({ ...p, query: e.target.value }))}
                       onKeyDown={e => e.key === 'Enter' && handlePickerSearch()}
@@ -819,17 +841,16 @@ export default function NewsletterAdmin() {
                     <Button size="sm" onClick={handlePickerSearch} disabled={picker.searching} className="h-9">
                       {picker.searching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
                     </Button>
-                    <Button
-                      size="sm" variant="ghost" className="h-9"
-                      onClick={() => setPicker(p => ({ ...p, open: false, query: '', results: [] }))}
-                    >
-                      Cancel
-                    </Button>
                   </div>
 
-                  <div className="space-y-1 max-h-64 overflow-y-auto">
-                    {picker.results.length > 0 ? picker.results.map(art => (
-                      <div key={art.id} className="flex items-center justify-between p-2 hover:bg-white rounded-lg border border-transparent hover:border-gray-200 transition-colors">
+                  <div className="space-y-1 max-h-72 overflow-y-auto">
+                    {picker.searching && picker.results.length === 0 ? (
+                      <div className="text-center text-sm text-gray-400 py-8">
+                        <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-blue-400" />
+                        Loading articles…
+                      </div>
+                    ) : picker.results.length > 0 ? picker.results.map(art => (
+                      <div key={art.id} className="flex items-center justify-between p-2.5 hover:bg-white rounded-lg border border-transparent hover:border-gray-200 transition-colors cursor-pointer group">
                         <div className="flex-1 min-w-0 mr-3">
                           <div className="text-sm font-medium text-gray-900 line-clamp-1">{art.title}</div>
                           <div className="text-xs text-gray-400">
@@ -837,19 +858,15 @@ export default function NewsletterAdmin() {
                           </div>
                         </div>
                         <Button
-                          size="sm" variant="outline" className="text-xs h-7 px-3 shrink-0"
+                          size="sm" variant="outline" className="text-xs h-7 px-3 shrink-0 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-colors"
                           onClick={() => handlePickerSelect(art)}
                         >
-                          Select
+                          Add
                         </Button>
                       </div>
                     )) : (
                       <div className="text-center text-sm text-gray-400 py-6">
-                        {picker.searching
-                          ? 'Searching…'
-                          : picker.query
-                          ? 'No articles found. Try a different search.'
-                          : 'Type a title and press Search, or press Search to see recent articles.'}
+                        No articles found. Try a different search term.
                       </div>
                     )}
                   </div>
@@ -857,22 +874,33 @@ export default function NewsletterAdmin() {
               )}
 
               {/* Save row */}
-              <div className="flex items-center justify-end gap-3 pt-2 border-t">
-                {saveSuccess && (
-                  <span className="text-sm text-green-600 flex items-center gap-1">
-                    <CheckCircle className="h-4 w-4" /> Saved successfully
-                  </span>
-                )}
-                {saveError && (
-                  <span className="text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="h-4 w-4" /> {saveError}
-                  </span>
-                )}
-                <Button onClick={handleSaveConfig} disabled={saving || !anyDirty}>
-                  {saving
-                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
-                    : 'Save All Changes'}
-                </Button>
+              <div className="flex items-center justify-between gap-3 pt-4 border-t bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-xl">
+                <p className="text-xs text-gray-500">
+                  {anyDirty
+                    ? '⚠️ You have unsaved changes — click Save to apply them to the next newsletter send.'
+                    : 'All changes saved. Newsletter will use this configuration on the next send.'}
+                </p>
+                <div className="flex items-center gap-3 shrink-0">
+                  {saveSuccess && (
+                    <span className="text-sm text-green-600 flex items-center gap-1">
+                      <CheckCircle className="h-4 w-4" /> Saved!
+                    </span>
+                  )}
+                  {saveError && (
+                    <span className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" /> {saveError}
+                    </span>
+                  )}
+                  <Button
+                    onClick={handleSaveConfig}
+                    disabled={saving || !anyDirty}
+                    className={anyDirty ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+                  >
+                    {saving
+                      ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
+                      : 'Save All Changes'}
+                  </Button>
+                </div>
               </div>
 
             </CardContent>
