@@ -410,7 +410,9 @@ export default function NewsletterAdmin() {
 
     for (const city of cities) {
       const draft = cityDrafts[city]
-      if (!draft.isDirty) continue
+      // Always force-save the city being previewed, even when not marked dirty.
+      // This ensures "Save & Preview Edmonton" always writes the current draft to DB.
+      if (!draft.isDirty && city !== thenPreviewCity) continue
 
       const r1 = await saveFeaturedArticle(city, draft.featured_article_id)
       if (r1.error) errors.push(`${city} featured: ${r1.error}`)
@@ -436,11 +438,13 @@ export default function NewsletterAdmin() {
       })
       setAlbertaDraft(prev => ({ ...prev, isDirty: false }))
       setTimeout(() => setSaveSuccess(false), 3000)
-      // Open preview if requested — always use a fresh timestamp to bust iframe cache
-      if (thenPreviewCity) {
-        setPreviewTimestamp(Date.now())
-        setPreviewCity(thenPreviewCity)
-      }
+    }
+
+    // Always open preview when requested — even if there were save errors,
+    // show what the newsletter looks like with current DB state.
+    if (thenPreviewCity) {
+      setPreviewTimestamp(Date.now())
+      setPreviewCity(thenPreviewCity)
     }
   }
 
@@ -536,8 +540,8 @@ export default function NewsletterAdmin() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button variant="outline" className="flex-1" onClick={() => { setPreviewTimestamp(Date.now()); setPreviewCity(city) }}>
-                        <Eye className="mr-2 h-4 w-4" /> Preview
+                      <Button variant="outline" className="flex-1" onClick={() => handleSaveConfig(city)} disabled={saving}>
+                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />} Preview
                       </Button>
                       <Button
                         className={`flex-1 ${cfg.accent} hover:opacity-90 text-white`}
