@@ -140,7 +140,7 @@ export default async function MedicineHatPage() {
                     <div className="container mx-auto px-4 md:px-6 max-w-xl">
                         <NewsletterSignup
                             defaultCity="medicine-hat"
-                            title="The Westerly — Medicine Hat Newsletter"
+                            title="The Hat — Medicine Hat Newsletter"
                             description="Get the latest culture, food, and events from Medicine Hat and Southeastern Alberta delivered to your inbox."
                         />
                     </div>
