@@ -606,35 +606,42 @@ export default async function CalgaryPage() {
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {guideArticles.slice(0, 3).map((article) => (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {guideArticles.slice(0, 4).map((article) => (
                   <Link key={article.id} href={getArticleUrl(article)} className="group block">
-                    <div className="flex gap-4 p-5 rounded-xl border border-gray-200 bg-white hover:border-red-200 hover:shadow-md transition-all duration-200 h-full">
-                      {article.imageUrl ? (
-                        <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-100">
-                          <Image src={article.imageUrl} alt="" width={80} height={80} className="w-full h-full object-cover" />
+                    <div className="rounded-2xl overflow-hidden border border-gray-100 bg-white shadow-sm hover:shadow-lg transition-all duration-300">
+                      <div className="aspect-[4/3] relative overflow-hidden">
+                        <Image
+                          src={article.imageUrl || "/placeholder.svg"}
+                          alt={article.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 p-4">
+                          <h3 className="font-semibold text-lg text-white drop-shadow-md line-clamp-2">{article.title}</h3>
                         </div>
-                      ) : (
-                        <div className="flex-shrink-0 w-20 h-20 rounded-lg bg-red-50 flex items-center justify-center">
-                          <span className="text-2xl">📖</span>
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-base text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2">{article.title}</h3>
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{article.excerpt}</p>
+                      </div>
+                      <div className="p-4">
+                        <p className="text-gray-600 text-sm line-clamp-2">{article.excerpt}</p>
+                        <span className="inline-flex items-center gap-1 mt-2 text-red-600 font-medium text-sm group-hover:gap-2 transition-all">
+                          Read Guide <ArrowRight className="w-4 h-4" />
+                        </span>
                       </div>
                     </div>
                   </Link>
                 ))}
                 {guideArticles.length === 0 && (
-                    <div className="col-span-full text-center py-12">
-                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <span className="text-2xl">📖</span>
-                      </div>
-                      <h3 className="font-semibold text-lg mb-2">No Guide Articles Yet</h3>
-                      <p className="text-gray-600 text-sm">Create articles with "Guide" category or type to see them here.</p>
+                  <div className="col-span-full text-center py-12">
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-2xl">📖</span>
                     </div>
-                  )}
+                    <h3 className="font-semibold text-lg mb-2">No Guide Articles Yet</h3>
+                    <p className="text-gray-600 text-sm">Create articles with "Guide" category to see them here.</p>
+                  </div>
+                )}
               </div>
             </div>
           </section>

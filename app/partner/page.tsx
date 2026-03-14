@@ -436,7 +436,7 @@ export default function PartnerPage() {
                     <div className="p-2 bg-gray-200 rounded-lg">
                       <Phone className="h-4 w-4" />
                     </div>
-                    <span>226 236 1828</span>
+                    <span>587-897-9347</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-gray-200 rounded-lg">
