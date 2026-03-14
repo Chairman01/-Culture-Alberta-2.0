@@ -11,6 +11,8 @@ import {
   saveAlbertaArticles,
   searchArticles,
   getArticleDetails,
+  loadCurrentCityArticles,
+  loadCurrentAlbertaArticles,
   type NewsletterConfig,
   type ArticlePickerItem,
 } from "./_config-actions"
@@ -112,6 +114,10 @@ export default function NewsletterAdmin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const [previewCity, setPreviewCity] = useState<CityKey | null>(null)
+  const [previewTimestamp, setPreviewTimestamp] = useState(0)
+  const [loadingCurrent, setLoadingCurrent] = useState<Record<CityKey | 'alberta', boolean>>({
+    edmonton: false, calgary: false, lethbridge: false, alberta: false,
+  })
 
   // Send states
   const [sendStates, setSendStates] = useState<Record<CityKey, SendState>>({
@@ -372,6 +378,28 @@ export default function NewsletterAdmin() {
     setAlbertaDraft({ ids: null, items: [], isDirty: true })
   }
 
+  async function loadCurrentArticlesForCity(city: CityKey) {
+    setLoadingCurrent(prev => ({ ...prev, [city]: true }))
+    const articles = await loadCurrentCityArticles(city)
+    setCityDrafts(prev => ({
+      ...prev,
+      [city]: {
+        ...prev[city],
+        article_order: articles.map(a => a.id),
+        article_order_items: articles,
+        isDirty: true,
+      },
+    }))
+    setLoadingCurrent(prev => ({ ...prev, [city]: false }))
+  }
+
+  async function loadCurrentAlberta() {
+    setLoadingCurrent(prev => ({ ...prev, alberta: true }))
+    const articles = await loadCurrentAlbertaArticles()
+    setAlbertaDraft({ ids: articles.map(a => a.id), items: articles, isDirty: true })
+    setLoadingCurrent(prev => ({ ...prev, alberta: false }))
+  }
+
   async function handleSaveConfig(thenPreviewCity?: CityKey) {
     setSaving(true)
     setSaveSuccess(false)
@@ -408,8 +436,11 @@ export default function NewsletterAdmin() {
       })
       setAlbertaDraft(prev => ({ ...prev, isDirty: false }))
       setTimeout(() => setSaveSuccess(false), 3000)
-      // Open preview if requested
-      if (thenPreviewCity) setPreviewCity(thenPreviewCity)
+      // Open preview if requested — always use a fresh timestamp to bust iframe cache
+      if (thenPreviewCity) {
+        setPreviewTimestamp(Date.now())
+        setPreviewCity(thenPreviewCity)
+      }
     }
   }
 
@@ -505,7 +536,7 @@ export default function NewsletterAdmin() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button variant="outline" className="flex-1" onClick={() => setPreviewCity(city)}>
+                      <Button variant="outline" className="flex-1" onClick={() => { setPreviewTimestamp(Date.now()); setPreviewCity(city) }}>
                         <Eye className="mr-2 h-4 w-4" /> Preview
                       </Button>
                       <Button
@@ -699,7 +730,18 @@ export default function NewsletterAdmin() {
                           Choose which articles appear below the hero story, in the order you set. Leave empty to use the latest articles automatically.
                         </p>
                         {draft.article_order === null || draft.article_order_items.length === 0 ? (
-                          <div className="text-xs text-gray-400 italic mb-2">Using latest articles automatically</div>
+                          <div className="mb-2">
+                            <div className="text-xs text-gray-400 italic mb-2">Using latest articles automatically</div>
+                            <Button
+                              size="sm" variant="outline" className="text-xs h-7 px-2 w-full border-dashed"
+                              onClick={() => loadCurrentArticlesForCity(city)}
+                              disabled={loadingCurrent[city]}
+                            >
+                              {loadingCurrent[city]
+                                ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Loading…</>
+                                : '📋 Load current articles to edit & reorder'}
+                            </Button>
+                          </div>
                         ) : (
                           <div className="space-y-1 mb-2">
                             {draft.article_order_items.map((art, idx) => (
@@ -761,7 +803,18 @@ export default function NewsletterAdmin() {
                 </p>
 
                 {albertaDraft.ids === null || albertaDraft.items.length === 0 ? (
-                  <div className="text-xs text-gray-400 italic mb-3">Using latest Alberta articles automatically — pin specific ones below to always include them</div>
+                  <div className="mb-3">
+                    <div className="text-xs text-gray-400 italic mb-2">Using latest Alberta articles automatically (3 articles)</div>
+                    <Button
+                      size="sm" variant="outline" className="text-xs h-7 px-2 w-full border-dashed border-green-300 text-green-700 hover:bg-green-50"
+                      onClick={loadCurrentAlberta}
+                      disabled={loadingCurrent.alberta}
+                    >
+                      {loadingCurrent.alberta
+                        ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Loading…</>
+                        : '📋 Load current Alberta articles to edit & remove'}
+                    </Button>
+                  </div>
                 ) : (
                   <div className="space-y-1 mb-3">
                     {albertaDraft.items.map((art, idx) => (
@@ -1100,8 +1153,8 @@ export default function NewsletterAdmin() {
           </div>
           <div className="flex-1 overflow-hidden bg-gray-100">
             <iframe
-              key={previewCity}
-              src={`/api/newsletter/preview?city=${previewCity}`}
+              key={`${previewCity}-${previewTimestamp}`}
+              src={`/api/newsletter/preview?city=${previewCity}&t=${previewTimestamp}`}
               className="w-full h-full border-0"
               title={`${CITY_CONFIG[previewCity].newsletter} newsletter preview`}
             />

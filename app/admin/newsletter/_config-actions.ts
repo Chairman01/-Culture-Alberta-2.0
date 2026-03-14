@@ -9,6 +9,7 @@ import {
   type NewsletterConfig,
   type ArticlePickerItem,
 } from '@/lib/newsletter/config'
+import { fetchNewsletterContent } from '@/lib/newsletter/fetch-articles'
 
 export type { NewsletterConfig, ArticlePickerItem }
 
@@ -48,4 +49,32 @@ export async function searchArticles(query: string): Promise<ArticlePickerItem[]
 
 export async function getArticleDetails(ids: string[]): Promise<ArticlePickerItem[]> {
   return getArticlesByIds(ids)
+}
+
+// Load what articles are currently auto-selected for a city (so user can edit them)
+export async function loadCurrentCityArticles(city: NewsletterCity): Promise<ArticlePickerItem[]> {
+  const content = await fetchNewsletterContent(city)
+  return content.cityArticles.map(a => ({
+    id: a.id,
+    title: a.title,
+    excerpt: a.excerpt,
+    image_url: a.imageUrl,
+    image_source: a.imageSource,
+    created_at: a.createdAt,
+    location: '',
+  }))
+}
+
+// Load what Alberta articles are currently auto-selected (so user can edit them)
+export async function loadCurrentAlbertaArticles(): Promise<ArticlePickerItem[]> {
+  const content = await fetchNewsletterContent('edmonton')
+  return content.albertaArticles.map(a => ({
+    id: a.id,
+    title: a.title,
+    excerpt: a.excerpt,
+    image_url: a.imageUrl,
+    image_source: a.imageSource,
+    created_at: a.createdAt,
+    location: '',
+  }))
 }

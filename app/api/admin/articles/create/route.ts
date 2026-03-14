@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
         type: articleData.type || 'article',
         status: articleData.status || 'published',
         image_url: articleData.imageUrl,
+        image_source: articleData.imageSource || null,
         trending_home: articleData.trendingHome || false,
         trending_edmonton: articleData.trendingEdmonton || false,
         trending_calgary: articleData.trendingCalgary || false,

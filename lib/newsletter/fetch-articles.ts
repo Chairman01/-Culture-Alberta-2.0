@@ -7,6 +7,7 @@ export interface NewsletterArticle {
   title: string
   excerpt: string
   imageUrl: string | null
+  imageSource: string | null
   url: string
   category: string
   author: string
@@ -35,6 +36,7 @@ function toNewsletterArticle(article: any): NewsletterArticle {
     title: article.title || '',
     excerpt: article.excerpt || '',
     imageUrl: article.image_url && article.image_url.startsWith('http') ? article.image_url : null,
+    imageSource: article.image_source || null,
     url: `https://www.culturealberta.com/articles/${slug}`,
     category: article.category || '',
     author: article.author || 'Culture Alberta',
@@ -95,7 +97,7 @@ export async function fetchNewsletterContent(
     // Auto fetch (last 7 days, with all-time fallback)
     let { data: cityData } = await supabase
       .from('articles')
-      .select('id, title, excerpt, image_url, category, location, author, created_at')
+      .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
       .eq('status', 'published')
       .neq('type', 'event')
       .or(`location.ilike.%${city}%,category.ilike.%${city}%,title.ilike.%${city}%`)
@@ -106,7 +108,7 @@ export async function fetchNewsletterContent(
     if (!cityData || cityData.length < 3) {
       const { data: fallback } = await supabase
         .from('articles')
-        .select('id, title, excerpt, image_url, category, location, author, created_at')
+        .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
         .eq('status', 'published')
         .neq('type', 'event')
         .or(`location.ilike.%${city}%,category.ilike.%${city}%,title.ilike.%${city}%`)
@@ -137,7 +139,7 @@ export async function fetchNewsletterContent(
   // Always fetch auto base
   const { data: albertaAutoData } = await supabase
     .from('articles')
-    .select('id, title, excerpt, image_url, category, location, author, created_at')
+    .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
     .eq('status', 'published')
     .neq('type', 'event')
     .or('location.ilike.%alberta%,category.ilike.%alberta%')
@@ -146,7 +148,7 @@ export async function fetchNewsletterContent(
     .not('location', 'ilike', '%lethbridge%')
     .gte('created_at', since)
     .order('created_at', { ascending: false })
-    .limit(8)
+    .limit(3)
 
   const autoAlberta = (albertaAutoData || []).map(toNewsletterArticle)
 
