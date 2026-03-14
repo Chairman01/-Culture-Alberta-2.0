@@ -13,6 +13,7 @@ const VALID_CITIES: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'me
  */
 export async function GET(req: NextRequest) {
   const city = req.nextUrl.searchParams.get('city') as NewsletterCity | null
+  const customNote = req.nextUrl.searchParams.get('note') ?? undefined
 
   if (!city || !VALID_CITIES.includes(city)) {
     return new NextResponse(
@@ -29,7 +30,8 @@ export async function GET(req: NextRequest) {
     const html = generateNewsletterHtml(
       city,
       content,
-      '#unsubscribe' // dummy unsubscribe link for preview
+      '#unsubscribe', // dummy unsubscribe link for preview
+      { customNote },
     )
     return new NextResponse(html, {
       headers: {

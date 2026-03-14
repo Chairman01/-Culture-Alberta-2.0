@@ -141,6 +141,10 @@ export default function NewsletterAdmin() {
     lethbridge:     { open: false, email: '', status: 'idle' },
     'medicine-hat': { open: false, email: '', status: 'idle' },
   })
+  // Optional custom opening note per city — typed before sending, shown in preview
+  const [customNotes, setCustomNotes] = useState<Record<CityKey, string>>({
+    edmonton: '', calgary: '', lethbridge: '', 'medicine-hat': '',
+  })
   const [sendAllState, setSendAllState] = useState<{
     status: 'idle' | 'sending' | 'success' | 'error'
     results?: SendResult[]
@@ -263,9 +267,10 @@ export default function NewsletterAdmin() {
     // Clear confirmation flag and start sending
     setConfirmSend(prev => ({ ...prev, [city]: false }))
     setSendStates(prev => ({ ...prev, [city]: { status: 'sending' } }))
+    const note = customNotes[city].trim() || undefined
     startTransition(async () => {
       try {
-        const result = await triggerCityNewsletter(city)
+        const result = await triggerCityNewsletter(city, note)
         setSendStates(prev => ({ ...prev, [city]: { status: 'success', result } }))
         if (result.sent > 0) {
           const now = new Date().toISOString()
@@ -304,10 +309,11 @@ export default function NewsletterAdmin() {
   function handleTestSend(city: CityKey) {
     const email = testStates[city].email.trim()
     if (!email) return
+    const note = customNotes[city].trim() || undefined
     setTestStates(prev => ({ ...prev, [city]: { ...prev[city], status: 'sending' } }))
     startTransition(async () => {
       try {
-        await sendTestNewsletter(city, email)
+        await sendTestNewsletter(city, email, note)
         setTestStates(prev => ({ ...prev, [city]: { ...prev[city], status: 'success' } }))
       } catch (err) {
         setTestStates(prev => ({
@@ -710,6 +716,23 @@ export default function NewsletterAdmin() {
                             Cancel
                           </Button>
                         </div>
+                      )}
+                    </div>
+
+                    {/* Custom opening note — optional, replaces the default tagline */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-500">Opening note <span className="font-normal text-gray-400">(optional — replaces the default tagline)</span></label>
+                      <textarea
+                        rows={2}
+                        placeholder={`e.g. "Happy Friday, ${cfg.label}! Hope you're enjoying the sunshine."`}
+                        value={customNotes[city]}
+                        onChange={e => setCustomNotes(prev => ({ ...prev, [city]: e.target.value }))}
+                        className="w-full text-xs rounded-md border border-gray-200 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-gray-300 placeholder:text-gray-300"
+                      />
+                      {customNotes[city].trim() && (
+                        <p className="text-xs text-blue-600 flex items-center gap-1">
+                          ✏️ Custom note active — preview will show your text
+                        </p>
                       )}
                     </div>
 
@@ -1487,7 +1510,7 @@ export default function NewsletterAdmin() {
           <div className="flex-1 overflow-hidden bg-gray-100">
             <iframe
               key={`${previewCity}-${previewTimestamp}`}
-              src={`/api/newsletter/preview?city=${previewCity}&t=${previewTimestamp}`}
+              src={`/api/newsletter/preview?city=${previewCity}&t=${previewTimestamp}${customNotes[previewCity]?.trim() ? `&note=${encodeURIComponent(customNotes[previewCity])}` : ''}`}
               className="w-full h-full border-0"
               title={`${CITY_CONFIG[previewCity].newsletter} newsletter preview`}
             />

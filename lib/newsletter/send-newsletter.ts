@@ -51,8 +51,12 @@ export interface SendResult {
   errors: string[]
 }
 
+export interface SendOptions {
+  customNote?: string
+}
+
 // ── Core send function ────────────────────────────────────────────────────────
-export async function sendCityNewsletter(city: NewsletterCity): Promise<SendResult> {
+export async function sendCityNewsletter(city: NewsletterCity, options?: SendOptions): Promise<SendResult> {
   const result: SendResult = { city, sent: 0, failed: 0, skipped: 0, errors: [] }
 
   // 1. Get subscribers
@@ -88,7 +92,7 @@ export async function sendCityNewsletter(city: NewsletterCity): Promise<SendResu
     const emailPayloads = batch.map((sub) => {
       const token = makeUnsubscribeToken(sub.id, sub.email)
       const unsubscribeUrl = `${SITE_URL}/api/newsletter/unsubscribe?token=${encodeURIComponent(token)}`
-      const html = generateNewsletterHtml(city, content, unsubscribeUrl)
+      const html = generateNewsletterHtml(city, content, unsubscribeUrl, options)
       return {
         from: `${FROM_NAME} <${FROM_EMAIL}>`,
         to: sub.email,
@@ -145,6 +149,7 @@ export async function sendAllNewsletters(): Promise<SendResult[]> {
 export async function sendCityNewsletterToEmail(
   city: NewsletterCity,
   toEmail: string,
+  options?: SendOptions,
 ): Promise<SendResult> {
   const result: SendResult = { city, sent: 0, failed: 0, skipped: 0, errors: [] }
 
@@ -165,7 +170,7 @@ export async function sendCityNewsletterToEmail(
 
   const subject = `[TEST] ${getSubjectLine(city)}`
   const unsubscribeUrl = `https://www.culturealberta.com/unsubscribe`
-  const html = generateNewsletterHtml(city, content, unsubscribeUrl)
+  const html = generateNewsletterHtml(city, content, unsubscribeUrl, options)
 
   try {
     const { error: sendError } = await resend.emails.send({

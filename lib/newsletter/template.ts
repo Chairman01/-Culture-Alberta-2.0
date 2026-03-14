@@ -52,6 +52,25 @@ const CITY_CONFIG: Record<NewsletterCity, CityConfig> = {
   },
 }
 
+// ── Time-based greeting ───────────────────────────────────────────────────────
+// Returns "Good morning/afternoon/evening/night" based on Mountain Time
+function getTimeGreeting(cityLabel: string): string {
+  const hour = parseInt(
+    new Date().toLocaleString('en-CA', {
+      hour: 'numeric',
+      hour12: false,
+      timeZone: 'America/Edmonton',
+    }),
+    10,
+  )
+  if (hour >= 5 && hour < 12) return `Good morning, ${cityLabel}`
+  if (hour >= 12 && hour < 17) return `Good afternoon, ${cityLabel}`
+  if (hour >= 17 && hour < 21) return `Good evening, ${cityLabel}`
+  return `Hello, ${cityLabel}` // late night / very early
+}
+
+const DEFAULT_TAGLINE = "Here's what's happening in your city — the stories worth knowing, in 5 minutes or less."
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function escapeHtml(str: string): string {
   return str
@@ -277,13 +296,17 @@ function footerSection(city: NewsletterCity, unsubscribeUrl: string): string {
 export function generateNewsletterHtml(
   city: NewsletterCity,
   content: NewsletterContent,
-  unsubscribeUrl: string
+  unsubscribeUrl: string,
+  options?: { customNote?: string },
 ): string {
   const cfg = CITY_CONFIG[city]
   const today = formatDate(new Date().toISOString())
   const [hero, ...rest] = content.cityArticles
 
   const subject = getSubjectLine(city)
+  // Use auto time-based greeting; custom note replaces the default tagline if provided
+  const greeting = getTimeGreeting(cfg.cityLabel)
+  const tagline = options?.customNote?.trim() || DEFAULT_TAGLINE
 
   const body = `
   <!DOCTYPE html>
@@ -338,8 +361,8 @@ export function generateNewsletterHtml(
           <!-- GREETING -->
           <tr><td style="padding:20px 32px 22px 32px;background-color:#fafafa;border-bottom:1px solid #efefef;">
             <p style="margin:0;font-size:15px;line-height:1.7;color:#444;">
-              <strong style="color:#0a0a0a;">${escapeHtml(cfg.greeting)} ${cfg.emoji}</strong><br />
-              Here's what's happening in your city — the stories worth knowing, in 5 minutes or less.
+              <strong style="color:#0a0a0a;">${escapeHtml(greeting)} ${cfg.emoji}</strong><br />
+              ${escapeHtml(tagline)}
             </p>
           </td></tr>
 
