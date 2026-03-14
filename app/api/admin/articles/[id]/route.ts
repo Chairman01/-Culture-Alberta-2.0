@@ -47,6 +47,7 @@ export async function GET(
     const mapped = {
       ...data,
       imageUrl: data.image_url || data.image || '',
+      imageSource: data.image_source || '',
       date: data.created_at,
       trendingHome: data.trending_home || false,
       trendingEdmonton: data.trending_edmonton || false,
@@ -101,6 +102,7 @@ export async function PUT(
         type: articleData.type || 'article',
         status: articleData.status || 'published',
         image_url: articleData.imageUrl,
+        image_source: articleData.imageSource || null,
         trending_home: articleData.trendingHome || false,
         trending_edmonton: articleData.trendingEdmonton || false,
         trending_calgary: articleData.trendingCalgary || false,

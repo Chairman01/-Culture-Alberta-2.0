@@ -28,6 +28,7 @@ export default function NewArticlePage() {
   const [author, setAuthor] = useState("")
   const [tags, setTags] = useState("")
   const [imageUrl, setImageUrl] = useState("")
+  const [imageSource, setImageSource] = useState("")
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -107,6 +108,7 @@ export default function NewArticlePage() {
           excerpt,
           content,
           imageUrl: imageUrl,
+          imageSource: imageSource,
           author: author || "Admin",
           tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
           type: "article",
@@ -310,6 +312,19 @@ export default function NewArticlePage() {
                 </Button>
               )}
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="imageSource">Image Credit / Source</Label>
+            <Input
+              id="imageSource"
+              value={imageSource}
+              onChange={(e) => setImageSource(e.target.value)}
+              placeholder="e.g. CBC, City of Edmonton, Photo: Jane Smith"
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Optional. Shown as a small 📷 credit beneath the image in the newsletter.
+            </p>
           </div>
         </div>
       </div>
