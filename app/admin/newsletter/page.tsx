@@ -630,6 +630,11 @@ export default function NewsletterAdmin() {
             </CardTitle>
             <CardDescription>
               Manually trigger a newsletter send for any city. Auto-sends daily at 7 AM Mountain Time.
+              {Object.keys(lastSentAt).every(c => !lastSentAt[c as CityKey]) && (
+                <span className="block mt-1 text-xs text-amber-600">
+                  ⓘ "Sent today" badges will appear on these cards the first time you click Send below.
+                </span>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1383,17 +1388,42 @@ export default function NewsletterAdmin() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center text-muted-foreground py-12">
-                  <BarChart2 className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium mb-1">
-                    {emailEventsTableMissing ? 'Tracking table not set up yet' : 'No campaign data yet'}
-                  </p>
-                  <p className="text-sm max-w-sm mx-auto">
-                    {emailEventsTableMissing
-                      ? 'Create the tracking table using the SQL above, then send a newsletter to start seeing data here.'
-                      : 'Data will appear here automatically after the next newsletter send — the Resend webhook is active and ready.'}
-                  </p>
-                </div>
+                !emailEventsTableMissing && (
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                      <BarChart2 className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-blue-800 mb-1">Tracking table is ready — no sends recorded yet</p>
+                        <p className="text-sm text-blue-700">Campaign data (opens, clicks, bounces) will appear here automatically after your next send. Check the 3 steps below to make sure everything is wired up.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-3 p-3 border rounded-lg bg-green-50 border-green-200">
+                        <CheckCircle className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-green-800">Step 1 — Supabase table ✓ Done</p>
+                          <p className="text-xs text-green-700 mt-0.5">The <code className="bg-green-100 px-1 rounded">newsletter_email_events</code> table exists and is ready to receive events.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 border rounded-lg bg-amber-50 border-amber-200">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-amber-800">Step 2 — Verify Resend webhook URL</p>
+                          <p className="text-xs text-amber-700 mt-0.5 mb-2">Go to <strong>resend.com → Webhooks</strong> and confirm the endpoint is set to exactly:</p>
+                          <code className="block bg-white border border-amber-200 rounded px-2 py-1 text-xs text-gray-800 font-mono">https://www.culturealberta.com/api/webhooks/resend</code>
+                          <p className="text-xs text-amber-700 mt-2">Events to enable: <strong>email.delivered · email.opened · email.clicked · email.bounced · email.complained</strong></p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 border rounded-lg bg-gray-50 border-gray-200">
+                        <Send className="h-4 w-4 text-gray-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700">Step 3 — Send a newsletter</p>
+                          <p className="text-xs text-gray-500 mt-0.5">After steps 1 &amp; 2 are confirmed, send any city newsletter above. Within a few minutes, campaign data will appear here as subscribers open and click.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
               )}
             </CardContent>
           </Card>
