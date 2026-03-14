@@ -146,7 +146,7 @@ export async function fetchNewsletterContent(
     .not('location', 'ilike', '%lethbridge%')
     .gte('created_at', since)
     .order('created_at', { ascending: false })
-    .limit(8)
+    .limit(3)
 
   const autoAlberta = (albertaAutoData || []).map(toNewsletterArticle)
 
