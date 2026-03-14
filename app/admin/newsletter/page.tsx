@@ -372,7 +372,7 @@ export default function NewsletterAdmin() {
     setAlbertaDraft({ ids: null, items: [], isDirty: true })
   }
 
-  async function handleSaveConfig() {
+  async function handleSaveConfig(thenPreviewCity?: CityKey) {
     setSaving(true)
     setSaveSuccess(false)
     setSaveError(null)
@@ -401,7 +401,6 @@ export default function NewsletterAdmin() {
       setSaveError(errors.join(' · '))
     } else {
       setSaveSuccess(true)
-      // Mark all as clean
       setCityDrafts(prev => {
         const updated = { ...prev }
         for (const city of cities) updated[city] = { ...updated[city], isDirty: false }
@@ -409,6 +408,8 @@ export default function NewsletterAdmin() {
       })
       setAlbertaDraft(prev => ({ ...prev, isDirty: false }))
       setTimeout(() => setSaveSuccess(false), 3000)
+      // Open preview if requested
+      if (thenPreviewCity) setPreviewCity(thenPreviewCity)
     }
   }
 
@@ -877,10 +878,10 @@ export default function NewsletterAdmin() {
               <div className="flex items-center justify-between gap-3 pt-4 border-t bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-xl">
                 <p className="text-xs text-gray-500">
                   {anyDirty
-                    ? '⚠️ You have unsaved changes — click Save to apply them to the next newsletter send.'
-                    : 'All changes saved. Newsletter will use this configuration on the next send.'}
+                    ? '⚠️ You have unsaved changes — save to apply them, then preview to see how the email looks.'
+                    : 'All changes saved. Use Preview buttons above to check how each newsletter looks.'}
                 </p>
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
                   {saveSuccess && (
                     <span className="text-sm text-green-600 flex items-center gap-1">
                       <CheckCircle className="h-4 w-4" /> Saved!
@@ -891,8 +892,21 @@ export default function NewsletterAdmin() {
                       <AlertCircle className="h-4 w-4" /> {saveError}
                     </span>
                   )}
+                  {/* Save & Preview per city */}
+                  {(Object.keys(CITY_CONFIG) as CityKey[]).map(city => (
+                    <Button
+                      key={city}
+                      variant="outline"
+                      onClick={() => handleSaveConfig(city)}
+                      disabled={saving}
+                      className="text-xs h-8 px-3"
+                    >
+                      {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                      Save & Preview {CITY_CONFIG[city].label}
+                    </Button>
+                  ))}
                   <Button
-                    onClick={handleSaveConfig}
+                    onClick={() => handleSaveConfig()}
                     disabled={saving || !anyDirty}
                     className={anyDirty ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
                   >

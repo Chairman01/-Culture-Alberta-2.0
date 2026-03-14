@@ -129,7 +129,7 @@ function heroSection(article: NewsletterArticle, accentColor: string, accentColo
 function cityStoriesSection(articles: NewsletterArticle[], cityLabel: string, accentColor: string): string {
   if (articles.length === 0) return ''
 
-  const stories = articles.slice(0, 3).map((a, i) => `
+  const stories = articles.map((a, i) => `
     <tr>
       <td>
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -150,7 +150,7 @@ function cityStoriesSection(articles: NewsletterArticle[], cityLabel: string, ac
             </td>
           </tr>
         </table>
-        ${i < articles.slice(0, 3).length - 1
+        ${i < articles.length - 1
           ? `<table width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:0 32px;"><div style="border-top:1px solid #f2f2f2;"></div></td></tr></table>`
           : ''}
       </td>
@@ -168,7 +168,7 @@ function cityStoriesSection(articles: NewsletterArticle[], cityLabel: string, ac
 function albertaBriefSection(articles: NewsletterArticle[]): string {
   if (articles.length === 0) return ''
 
-  const items = articles.slice(0, 3).map(a => `
+  const items = articles.map(a => `
     <tr>
       <td style="padding:10px 24px;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
