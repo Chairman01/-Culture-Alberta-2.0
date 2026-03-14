@@ -101,7 +101,7 @@ export async function fetchNewsletterContent(
       .or(`location.ilike.%${city}%,category.ilike.%${city}%,title.ilike.%${city}%`)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
-      .limit(5)
+      .limit(10)
 
     if (!cityData || cityData.length < 3) {
       const { data: fallback } = await supabase
@@ -111,10 +111,10 @@ export async function fetchNewsletterContent(
         .neq('type', 'event')
         .or(`location.ilike.%${city}%,category.ilike.%${city}%,title.ilike.%${city}%`)
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(10)
       const existing = new Set((cityData || []).map((a: any) => a.id))
       const merged = [...(cityData || []), ...(fallback || []).filter((a: any) => !existing.has(a.id))]
-      cityData = merged.slice(0, 5)
+      cityData = merged.slice(0, 10)
     }
 
     cityArticles = (cityData || []).map(toNewsletterArticle)
@@ -146,7 +146,7 @@ export async function fetchNewsletterContent(
     .not('location', 'ilike', '%lethbridge%')
     .gte('created_at', since)
     .order('created_at', { ascending: false })
-    .limit(3)
+    .limit(8)
 
   const autoAlberta = (albertaAutoData || []).map(toNewsletterArticle)
 
@@ -158,7 +158,7 @@ export async function fetchNewsletterContent(
     const manual = manualRaw.map(toNewsletterArticle)
     const seen = new Set(manual.map(a => a.id))
     const extra = autoAlberta.filter(a => !seen.has(a.id))
-    albertaArticles = [...manual, ...extra].slice(0, 3)
+    albertaArticles = [...manual, ...extra].slice(0, 8)
   } else {
     albertaArticles = autoAlberta
   }

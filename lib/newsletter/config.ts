@@ -77,7 +77,7 @@ export async function searchArticlesForPicker(query: string): Promise<ArticlePic
     .eq('status', 'published')
     .neq('type', 'event')
     .order('created_at', { ascending: false })
-    .limit(20)
+    .limit(50)
 
   if (query.trim()) {
     q = q.ilike('title', `%${query.trim()}%`)
