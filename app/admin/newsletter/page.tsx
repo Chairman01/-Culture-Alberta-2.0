@@ -2,7 +2,11 @@
 
 import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { getAllNewsletterSubscriptions, getNewsletterStats } from "@/lib/newsletter"
+import {
+  getAllNewsletterSubscriptions, getNewsletterStats,
+  getEmailEvents, computeCampaignStats, computeSubscriberEngagement,
+  type CampaignStat, type SubscriberEngagement,
+} from "@/lib/newsletter"
 import { triggerCityNewsletter, triggerAllNewsletters, sendTestNewsletter } from "./_actions"
 import {
   loadAllConfigs,
@@ -24,6 +28,7 @@ import {
   ArrowLeft, Mail, Users, MapPin, Calendar,
   Send, CheckCircle, AlertCircle, Loader2, Eye, X, FlaskConical,
   ChevronDown, ChevronUp, Settings, Star, ArrowUp, ArrowDown, Leaf,
+  BarChart2, MousePointerClick, Copy, Check, Filter, AlertTriangle,
 } from "lucide-react"
 import Link from "next/link"
 import type { SendResult } from "@/lib/newsletter/send-newsletter"
@@ -154,6 +159,15 @@ export default function NewsletterAdmin() {
     open: false, target: 'featured', query: '', results: [], searching: false,
   })
 
+  // Engagement & subscriber filter state
+  const [campaigns, setCampaigns] = useState<CampaignStat[]>([])
+  const [engagement, setEngagement] = useState<Record<string, SubscriberEngagement>>({})
+  const [cityFilter, setCityFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'unsubscribed'>('active')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'subscribers' | 'campaigns'>('subscribers')
+
   // ── Load on mount ───────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -163,13 +177,16 @@ export default function NewsletterAdmin() {
 
     const loadData = async () => {
       try {
-        const [subscriptionsData, statsData, configData] = await Promise.all([
+        const [subscriptionsData, statsData, configData, eventsData] = await Promise.all([
           getAllNewsletterSubscriptions(),
           getNewsletterStats(),
           loadAllConfigs(),
+          getEmailEvents(),
         ])
         setSubscriptions(subscriptionsData)
         setStats(statsData)
+        setCampaigns(computeCampaignStats(eventsData))
+        setEngagement(computeSubscriberEngagement(eventsData))
 
         // Hydrate city drafts from saved config
         const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge']
@@ -450,6 +467,48 @@ export default function NewsletterAdmin() {
 
   const anyDirty =
     Object.values(cityDrafts).some(d => d.isDirty) || albertaDraft.isDirty
+
+  // ── Subscriber management helpers ────────────────────────────────────────────
+
+  async function toggleStatus(sub: NewsletterSubscription) {
+    const newStatus = sub.status === 'active' ? 'unsubscribed' : 'active'
+    setUpdatingEmail(sub.email)
+    try {
+      const res = await fetch('/api/newsletter', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sub.email, status: newStatus }),
+      })
+      if (res.ok) {
+        setSubscriptions(prev => prev.map(s => s.email === sub.email ? { ...s, status: newStatus } : s))
+        const newStats = await getNewsletterStats()
+        setStats(newStats)
+      }
+    } catch (err) {
+      console.error('Failed to update subscription:', err)
+    } finally {
+      setUpdatingEmail(null)
+    }
+  }
+
+  async function copyToClipboard(text: string, id: string) {
+    await navigator.clipboard.writeText(text)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const CITY_FILTERS = [
+    { value: 'all', label: 'All Cities' },
+    { value: 'edmonton', label: 'Edmonton' },
+    { value: 'calgary', label: 'Calgary' },
+    { value: 'medicine-hat', label: 'Medicine Hat' },
+    { value: 'lethbridge', label: 'Lethbridge' },
+    { value: 'red-deer', label: 'Red Deer' },
+    { value: 'grande-prairie', label: 'Grande Prairie' },
+    { value: 'other-alberta', label: 'Other Alberta' },
+    { value: 'outside-alberta', label: 'Outside Alberta' },
+    { value: 'other', label: 'Other' },
+  ]
 
   // ── Render guards ───────────────────────────────────────────────────────────
 
@@ -1070,63 +1129,182 @@ export default function NewsletterAdmin() {
           </div>
         )}
 
-        {/* ── SUBSCRIBER LIST ───────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Subscriptions</CardTitle>
-            <CardDescription>{subscriptions.length} total subscriptions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {subscriptions.length > 0 ? (
-                <>
-                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="font-medium mb-3">Active subscribers (Email | City)</h3>
-                    <div className="space-y-2">
-                      {subscriptions
-                        .filter(sub => sub.status === 'active')
-                        .map((sub) => (
-                          <div key={sub.id} className="font-mono text-sm bg-white p-2 rounded border">
-                            {sub.email} | {getCityLabel(sub.city)}
-                          </div>
-                        ))}
+        {/* ── SUBSCRIBERS / CAMPAIGNS TABS ─────────────────────────────────── */}
+        <div className="flex gap-1 mb-4 border-b">
+          <button
+            onClick={() => setActiveTab('subscribers')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'subscribers' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          >
+            <Users className="inline h-4 w-4 mr-1.5" />Subscribers
+          </button>
+          <button
+            onClick={() => setActiveTab('campaigns')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'campaigns' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          >
+            <BarChart2 className="inline h-4 w-4 mr-1.5" />Campaigns
+            {campaigns.length > 0 && <span className="ml-1.5 bg-muted text-muted-foreground text-xs rounded-full px-1.5 py-0.5">{campaigns.length}</span>}
+          </button>
+        </div>
+
+        {activeTab === 'subscribers' && (
+          <>
+            {/* City + Status filters */}
+            <Card className="mb-4">
+              <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><Filter className="h-4 w-4" />Filters</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">City</label>
+                    <div className="flex flex-wrap gap-1">
+                      {CITY_FILTERS.map(c => (
+                        <button key={c.value} onClick={() => setCityFilter(c.value)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${cityFilter === c.value ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}>
+                          {c.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    {subscriptions.map((sub) => (
-                      <div key={sub.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium">{sub.email}</span>
-                            <Badge variant={sub.status === 'active' ? 'default' : 'secondary'}>
-                              {sub.status}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {getCityLabel(sub.city)}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {sub.created_at ? formatDate(sub.created_at) : 'Unknown date'}
-                            </span>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+                    <div className="flex gap-1">
+                      {(['all', 'active', 'unsubscribed'] as const).map(s => (
+                        <button key={s} onClick={() => setStatusFilter(s)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}>
+                          {s.charAt(0).toUpperCase() + s.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Subscriber list */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>{cityFilter === 'all' ? 'All Subscriptions' : `${CITY_FILTERS.find(c=>c.value===cityFilter)?.label} Subscriptions`}</CardTitle>
+                    <CardDescription>
+                      {subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && (statusFilter==='all'||s.status===statusFilter)).length} matching
+                    </CardDescription>
+                  </div>
+                  {(() => {
+                    const activeFiltered = subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && s.status==='active')
+                    const copyText = activeFiltered.map(s => `${s.email} | ${getCityLabel(s.city)}`).join('\n')
+                    return activeFiltered.length > 0 ? (
+                      <Button variant="outline" size="sm" onClick={() => copyToClipboard(copyText, 'bulk')} className="flex items-center gap-2">
+                        {copiedId === 'bulk' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        Copy {activeFiltered.length} emails
+                      </Button>
+                    ) : null
+                  })()}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const filtered = subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && (statusFilter==='all'||s.status===statusFilter))
+                  const activeFiltered = filtered.filter(s => s.status==='active')
+                  return filtered.length > 0 ? (
+                    <>
+                      {activeFiltered.length > 0 && (
+                        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                          <h3 className="font-medium mb-2 text-sm">Active — {cityFilter==='all'?'All Cities':CITY_FILTERS.find(c=>c.value===cityFilter)?.label} (Email | City)</h3>
+                          <div className="space-y-1 max-h-40 overflow-y-auto">
+                            {activeFiltered.map(sub => (
+                              <div key={sub.id} onClick={() => copyToClipboard(`${sub.email} | ${getCityLabel(sub.city)}`, sub.id||sub.email)}
+                                className="font-mono text-xs bg-white p-2 rounded border flex items-center justify-between gap-2 cursor-pointer hover:bg-blue-50 transition-colors">
+                                <span>{sub.email} | {getCityLabel(sub.city)}</span>
+                                {copiedId===(sub.id||sub.email) ? <Check className="h-3 w-3 text-green-500 flex-shrink-0" /> : <Copy className="h-3 w-3 text-gray-400 flex-shrink-0" />}
+                              </div>
+                            ))}
                           </div>
                         </div>
+                      )}
+                      <div className="space-y-2">
+                        {filtered.map(sub => {
+                          const eng = engagement[sub.email]
+                          return (
+                            <div key={sub.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                                  <span className="font-medium text-sm truncate">{sub.email}</span>
+                                  <Badge variant={sub.status==='active'?'default':'secondary'} className="text-xs">{sub.status}</Badge>
+                                  {eng?.total_opens > 0 && <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 rounded-full px-2 py-0.5"><Eye className="h-3 w-3" />{eng.total_opens}</span>}
+                                  {eng?.total_clicks > 0 && <span className="inline-flex items-center gap-1 text-xs text-purple-600 bg-purple-50 rounded-full px-2 py-0.5"><MousePointerClick className="h-3 w-3" />{eng.total_clicks}</span>}
+                                  {eng?.bounced && <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 rounded-full px-2 py-0.5"><AlertTriangle className="h-3 w-3" />bounced</span>}
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{getCityLabel(sub.city)}</span>
+                                  {sub.created_at && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(sub.created_at)}</span>}
+                                  {eng?.last_opened && <span className="text-blue-500">opened {shortDate(eng.last_opened)}</span>}
+                                </div>
+                              </div>
+                              <Button variant="outline" size="sm" className="text-xs h-7 ml-2 flex-shrink-0"
+                                disabled={updatingEmail===sub.email} onClick={() => toggleStatus(sub)}>
+                                {updatingEmail===sub.email ? '…' : sub.status==='active' ? 'Unsubscribe' : 'Resubscribe'}
+                              </Button>
+                            </div>
+                          )
+                        })}
                       </div>
-                    ))}
-                  </div>
-                </>
+                    </>
+                  ) : (
+                    <div className="text-center text-muted-foreground py-8">
+                      <Mail className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                      <p>No subscribers match this filter</p>
+                    </div>
+                  )
+                })()}
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {activeTab === 'campaigns' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Campaign Performance</CardTitle>
+              <CardDescription>Open and click rates per send — powered by Resend webhook</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {campaigns.length > 0 ? (
+                <div className="space-y-3">
+                  {campaigns.map((c, i) => (
+                    <div key={i} className="p-4 border rounded-lg">
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div>
+                          <div className="font-medium text-sm">{c.subject}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">Sent {shortDate(c.sent_at)}</div>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0">
+                          {c.bounced > 0 && <span className="text-xs text-red-600 bg-red-50 rounded-full px-2 py-0.5">{c.bounced} bounced</span>}
+                          {c.complained > 0 && <span className="text-xs text-orange-600 bg-orange-50 rounded-full px-2 py-0.5">{c.complained} spam</span>}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-4 gap-3 mb-3">
+                        <div className="text-center"><div className="text-lg font-bold text-gray-700">{c.delivered}</div><div className="text-xs text-muted-foreground">Delivered</div></div>
+                        <div className="text-center"><div className="text-lg font-bold text-blue-600">{c.opened}</div><div className="text-xs text-muted-foreground">Opened</div></div>
+                        <div className="text-center"><div className="text-lg font-bold text-blue-700">{c.open_rate}%</div><div className="text-xs text-muted-foreground">Open Rate</div></div>
+                        <div className="text-center"><div className="text-lg font-bold text-purple-600">{c.click_rate}%</div><div className="text-xs text-muted-foreground">Click Rate</div></div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{width:`${Math.min(c.open_rate,100)}%`}} /></div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-purple-500 rounded-full" style={{width:`${Math.min(c.click_rate,100)}%`}} /></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  <Mail className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p>No newsletter subscriptions yet</p>
-                  <p className="text-sm">Subscriptions will appear here once users sign up</p>
+                <div className="text-center text-muted-foreground py-12">
+                  <BarChart2 className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <p className="font-medium mb-1">No campaign data yet</p>
+                  <p className="text-sm max-w-sm mx-auto">Data will appear here after the next newsletter send once the Resend webhook is active.</p>
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
 

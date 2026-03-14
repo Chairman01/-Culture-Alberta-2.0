@@ -6,6 +6,7 @@ import { getArticleUrl } from '@/lib/utils/article-url'
 import { getMedicineHatArticles } from '@/lib/alberta-cities'
 import { Article } from "@/lib/types/article"
 import { Metadata } from 'next'
+import NewsletterSignup from "@/components/newsletter-signup"
 
 export const metadata: Metadata = {
     title: 'Medicine Hat - Culture Alberta',
@@ -133,6 +134,17 @@ export default async function MedicineHatPage() {
                         </div>
                     </section>
                 )}
+
+                {/* Newsletter Signup */}
+                <section className="w-full py-8 bg-amber-50/60">
+                    <div className="container mx-auto px-4 md:px-6 max-w-xl">
+                        <NewsletterSignup
+                            defaultCity="medicine-hat"
+                            title="The Westerly — Medicine Hat Newsletter"
+                            description="Get the latest culture, food, and events from Medicine Hat and Southeastern Alberta delivered to your inbox."
+                        />
+                    </div>
+                </section>
 
                 <section className="w-full py-12">
                     <div className="container mx-auto px-4 md:px-6">

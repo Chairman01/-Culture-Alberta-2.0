@@ -1,5 +1,41 @@
 import { supabase } from './supabase'
 
+// ── Engagement tracking interfaces ────────────────────────────────────────────
+
+export interface EmailEvent {
+  id?: string
+  email: string
+  event_type: 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained'
+  email_id?: string
+  subject?: string
+  clicked_url?: string
+  created_at?: string
+}
+
+export interface CampaignStat {
+  subject: string
+  delivered: number
+  opened: number
+  clicked: number
+  bounced: number
+  complained: number
+  open_rate: number
+  click_rate: number
+  sent_at: string
+}
+
+export interface SubscriberEngagement {
+  email: string
+  total_opens: number
+  total_clicks: number
+  last_opened?: string
+  last_clicked?: string
+  bounced: boolean
+  complained: boolean
+}
+
+// ── Subscription interfaces ────────────────────────────────────────────────────
+
 export interface NewsletterSubscription {
   id?: string
   email: string
@@ -233,4 +269,80 @@ export async function getNewsletterStats() {
     })
     return null
   }
+}
+
+// ── Engagement tracking functions ─────────────────────────────────────────────
+
+export async function getEmailEvents(): Promise<EmailEvent[]> {
+  try {
+    if (!supabase) return []
+    const { data, error } = await supabase
+      .from('newsletter_email_events')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5000)
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Error fetching email events:', error)
+    return []
+  }
+}
+
+export function computeCampaignStats(events: EmailEvent[]): CampaignStat[] {
+  const campaigns: Record<string, { delivered: Set<string>; opened: Set<string>; clicked: Set<string>; bounced: Set<string>; complained: Set<string>; first_at: string }> = {}
+
+  for (const ev of events) {
+    if (!ev.subject) continue
+    if (!campaigns[ev.subject]) {
+      campaigns[ev.subject] = {
+        delivered: new Set(), opened: new Set(), clicked: new Set(),
+        bounced: new Set(), complained: new Set(),
+        first_at: ev.created_at || '',
+      }
+    }
+    const c = campaigns[ev.subject]
+    if (ev.event_type === 'delivered') c.delivered.add(ev.email)
+    if (ev.event_type === 'opened')    c.opened.add(ev.email)
+    if (ev.event_type === 'clicked')   c.clicked.add(ev.email)
+    if (ev.event_type === 'bounced')   c.bounced.add(ev.email)
+    if (ev.event_type === 'complained') c.complained.add(ev.email)
+    if (ev.created_at && ev.created_at < c.first_at) c.first_at = ev.created_at
+  }
+
+  return Object.entries(campaigns)
+    .map(([subject, c]) => {
+      const delivered = c.delivered.size
+      const opened    = c.opened.size
+      const clicked   = c.clicked.size
+      return {
+        subject, delivered, opened, clicked,
+        bounced: c.bounced.size, complained: c.complained.size,
+        open_rate:  delivered > 0 ? Math.round((opened  / delivered) * 100) : 0,
+        click_rate: delivered > 0 ? Math.round((clicked / delivered) * 100) : 0,
+        sent_at: c.first_at,
+      }
+    })
+    .sort((a, b) => b.sent_at.localeCompare(a.sent_at))
+}
+
+export function computeSubscriberEngagement(events: EmailEvent[]): Record<string, SubscriberEngagement> {
+  const engagement: Record<string, SubscriberEngagement> = {}
+  for (const ev of events) {
+    if (!engagement[ev.email]) {
+      engagement[ev.email] = { email: ev.email, total_opens: 0, total_clicks: 0, bounced: false, complained: false }
+    }
+    const e = engagement[ev.email]
+    if (ev.event_type === 'opened') {
+      e.total_opens++
+      if (!e.last_opened || (ev.created_at && ev.created_at > e.last_opened)) e.last_opened = ev.created_at
+    }
+    if (ev.event_type === 'clicked') {
+      e.total_clicks++
+      if (!e.last_clicked || (ev.created_at && ev.created_at > e.last_clicked)) e.last_clicked = ev.created_at
+    }
+    if (ev.event_type === 'bounced')    e.bounced = true
+    if (ev.event_type === 'complained') e.complained = true
+  }
+  return engagement
 }
