@@ -79,6 +79,9 @@ export function MainNavigation() {
           <Link href="/best-of" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Best of Alberta
           </Link>
+          <Link href="/shop" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+            Shop
+          </Link>
           <Link href="/partner" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Partner with Us
           </Link>
@@ -193,6 +196,13 @@ export function MainNavigation() {
               className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
             >
               Best of Alberta
+            </Link>
+            <Link
+              href="/shop"
+              onClick={closeMobileMenu}
+              className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
+            >
+              Shop
             </Link>
             <Link
               href="/partner"
