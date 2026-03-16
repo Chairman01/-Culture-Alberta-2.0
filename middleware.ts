@@ -57,7 +57,18 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/articles/')) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    const slug = pathname.slice('/articles/'.length).replace(/\/$/, '')
+    const rawSlug = pathname.slice('/articles/'.length).replace(/\/$/, '')
+
+    // Normalize slugs with trailing hyphens (e.g. "...phone-" → "...phone")
+    if (rawSlug && rawSlug.endsWith('-')) {
+      const cleanSlug = rawSlug.replace(/-+$/, '')
+      return NextResponse.redirect(
+        new URL(`/articles/${cleanSlug}`, request.url),
+        { status: 301 }
+      )
+    }
+
+    const slug = rawSlug
 
     if (slug && !slug.includes('.') && supabaseUrl && supabaseKey) {
       try {
