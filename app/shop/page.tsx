@@ -1,429 +1,133 @@
 'use client'
 
-import { useState } from 'react'
-import { ShoppingBag, Check, Star, Truck, RotateCcw, Shield, X, Mail } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { ShoppingBag, Mail, Search, X } from 'lucide-react'
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Data ────────────────────────────────────────────────────────────────────
 
-type Collection = 'all' | 'forever' | 'alberta-life' | 'city-pride'
-
-interface ColorOption {
-  name: string
-  hex: string
-  text: string
-}
-
-interface Product {
-  id: number
-  name: string
-  type: 'Hoodie' | 'T-Shirt' | 'Crewneck'
-  collection: string
-  price: number
-  description: string
-  colors: ColorOption[]
-  sizes: string[]
-  badge?: string
-  design: string
-  tag?: string
-  serif?: boolean
-  smallText?: boolean
-}
-
-// ─── Products ───────────────────────────────────────────────────────────────
-
-const PRODUCTS: Product[] = [
-  // ── Forever Series ──────────────────────────────────────────────────────
-  {
-    id: 1,
-    name: 'Edmonton Forever',
-    type: 'Hoodie',
-    collection: 'forever',
-    price: 65,
-    description: 'Premium heavyweight hoodie for the city that never stops.',
-    colors: [
-      { name: 'Forest Green', hex: '#2d5a3d', text: '#c8e6c9' },
-      { name: 'Navy', hex: '#1b2a4a', text: '#cfd8e8' },
-      { name: 'Black', hex: '#111111', text: '#e5e5e5' },
-    ],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    badge: 'New',
-    design: 'EDMONTON\nFOREVER',
-    tag: 'YEG',
-    serif: true,
-  },
-  {
-    id: 2,
-    name: 'Calgary Forever',
-    type: 'Hoodie',
-    collection: 'forever',
-    price: 65,
-    description: 'For the city that hustles harder than the Stampede.',
-    colors: [
-      { name: 'Stampede Red', hex: '#b91c1c', text: '#fde8e8' },
-      { name: 'Black', hex: '#111111', text: '#e5e5e5' },
-      { name: 'Forest Green', hex: '#2d5a3d', text: '#c8e6c9' },
-    ],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    badge: 'New',
-    design: 'CALGARY\nFOREVER',
-    tag: 'YYC',
-    serif: true,
-  },
-  {
-    id: 3,
-    name: 'Red Deer Forever',
-    type: 'Hoodie',
-    collection: 'forever',
-    price: 65,
-    description: 'The heart of Alberta — right on your chest.',
-    colors: [
-      { name: 'Midnight Blue', hex: '#1e3a5f', text: '#cce0f5' },
-      { name: 'Burgundy', hex: '#7c2d3e', text: '#f7d4da' },
-      { name: 'Forest Green', hex: '#2d5a3d', text: '#c8e6c9' },
-    ],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    design: 'RED DEER\nFOREVER',
-    tag: 'YQF',
-    serif: true,
-  },
-  {
-    id: 4,
-    name: 'Lethbridge Forever',
-    type: 'Hoodie',
-    collection: 'forever',
-    price: 65,
-    description: 'Where the wind always has something to say.',
-    colors: [
-      { name: 'Prairie Sand', hex: '#9a7a50', text: '#fdf4e7' },
-      { name: 'Navy', hex: '#1b2a4a', text: '#cfd8e8' },
-      { name: 'Black', hex: '#111111', text: '#e5e5e5' },
-    ],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    design: 'LETHBRIDGE\nFOREVER',
-    tag: 'YQL',
-    serif: true,
-  },
-  {
-    id: 5,
-    name: 'Medicine Hat Forever',
-    type: 'Hoodie',
-    collection: 'forever',
-    price: 65,
-    description: "Sunniest city in Alberta — now in hoodie form.",
-    colors: [
-      { name: 'Terracotta', hex: '#b84a20', text: '#fde8dc' },
-      { name: 'Deep Teal', hex: '#1a6666', text: '#cceaea' },
-      { name: 'Black', hex: '#111111', text: '#e5e5e5' },
-    ],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    design: 'MEDICINE HAT\nFOREVER',
-    tag: 'YXH',
-    serif: true,
-  },
-  {
-    id: 6,
-    name: 'Grande Prairie Forever',
-    type: 'Hoodie',
-    collection: 'forever',
-    price: 65,
-    description: 'Born north of the 55th. Proud of it.',
-    colors: [
-      { name: 'Deep Teal', hex: '#1a6666', text: '#cceaea' },
-      { name: 'Forest Green', hex: '#2d5a3d', text: '#c8e6c9' },
-      { name: 'Black', hex: '#111111', text: '#e5e5e5' },
-    ],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    design: 'GRANDE PRAIRIE\nFOREVER',
-    tag: 'YQU',
-    serif: true,
-  },
-
-  // ── Alberta Life ─────────────────────────────────────────────────────────
-  {
-    id: 7,
-    name: 'Chinook Season',
-    type: 'T-Shirt',
-    collection: 'alberta-life',
-    price: 40,
-    description: "The unofficial Alberta season everyone actually prefers.",
-    colors: [
-      { name: 'Charcoal', hex: '#2d2d2d', text: '#e0e0e0' },
-      { name: 'Cream', hex: '#e8e0d0', text: '#2a2a2a' },
-      { name: 'Navy', hex: '#1b2a4a', text: '#cfd8e8' },
-    ],
-    sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-    badge: 'Fan Fav',
-    design: 'chinook season\nis my favourite\nseason',
-    smallText: true,
-  },
-  {
-    id: 8,
-    name: 'Born Prairie',
-    type: 'T-Shirt',
-    collection: 'alberta-life',
-    price: 40,
-    description: 'For those equally at home in wheat fields and mountains.',
-    colors: [
-      { name: 'Sage', hex: '#6a8f6e', text: '#e8f5e9' },
-      { name: 'Prairie Tan', hex: '#b8956a', text: '#fdf4e7' },
-      { name: 'Charcoal', hex: '#2d2d2d', text: '#e0e0e0' },
-    ],
-    sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-    design: 'born on the\nprairies,\nraised by\nmountains',
-    smallText: true,
-  },
-  {
-    id: 9,
-    name: "Canada's Best Neighbour",
-    type: 'T-Shirt',
-    collection: 'alberta-life',
-    price: 40,
-    description: 'Just doing our thing out here on the prairies.',
-    colors: [
-      { name: 'White', hex: '#f5f5f5', text: '#1a1a1a' },
-      { name: 'Black', hex: '#111111', text: '#e5e5e5' },
-      { name: 'Stampede Red', hex: '#b91c1c', text: '#fde8e8' },
-    ],
-    sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-    design: "just trying to be\ncanada's best\nneighbour",
-    smallText: true,
-  },
-
-  // ── City Pride ────────────────────────────────────────────────────────────
-  {
-    id: 10,
-    name: 'YEG or YYC',
-    type: 'Crewneck',
-    collection: 'city-pride',
-    price: 55,
-    description: "Pick a side. (Or don't. We don't judge.)",
-    colors: [
-      { name: 'Heather Grey', hex: '#787878', text: '#f0f0f0' },
-      { name: 'Navy', hex: '#1b2a4a', text: '#cfd8e8' },
-      { name: 'Forest Green', hex: '#2d5a3d', text: '#c8e6c9' },
-    ],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    badge: 'Limited',
-    design: 'YEG\nor\nYYC',
-    serif: true,
-  },
-  {
-    id: 11,
-    name: 'Alberta Wild',
-    type: 'Crewneck',
-    collection: 'city-pride',
-    price: 55,
-    description: "For those who'd rather be in Banff right now.",
-    colors: [
-      { name: 'Forest Green', hex: '#2d5a3d', text: '#c8e6c9' },
-      { name: 'Burgundy', hex: '#7c2d3e', text: '#f7d4da' },
-      { name: 'Black', hex: '#111111', text: '#e5e5e5' },
-    ],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    design: 'ALBERTA\nWILD',
-    tag: 'AB',
-    serif: true,
-  },
-  {
-    id: 12,
-    name: 'Culture Alberta',
-    type: 'Hoodie',
-    collection: 'city-pride',
-    price: 70,
-    description: 'The original. Support local culture.',
-    colors: [
-      { name: 'Black', hex: '#111111', text: '#e5e5e5' },
-      { name: 'White', hex: '#f5f5f5', text: '#1a1a1a' },
-      { name: 'Forest Green', hex: '#2d5a3d', text: '#c8e6c9' },
-    ],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    badge: 'Signature',
-    design: 'CULTURE\nALBERTA',
-    serif: true,
-  },
+const ALBERTA_CITIES = [
+  'Edmonton', 'Calgary', 'Red Deer', 'Lethbridge', 'Medicine Hat',
+  'Grande Prairie', 'Airdrie', 'St. Albert', 'Leduc', 'Spruce Grove',
+  'Fort McMurray', 'Chestermere', 'Cold Lake', 'Lloydminster', 'Canmore',
+  'Camrose', 'Fort Saskatchewan', 'Brooks', 'Sylvan Lake', 'Okotoks',
+  'Wetaskiwin', 'Cochrane', 'Strathmore', 'High River', 'Beaumont',
+  'Lacombe', 'Banff', 'Jasper', 'Olds', 'Whitecourt', 'Stony Plain',
+  'Edson', 'Innisfail', 'Taber', 'Drumheller', 'Wainwright', 'Bonnyville',
+  'Hinton', 'Ponoka', 'Vegreville', 'Slave Lake', 'Peace River',
+  'Westlock', 'Barrhead', 'Didsbury', 'Three Hills', 'Fairview',
+  'Manning', 'Pincher Creek', 'Crowsnest Pass',
 ]
 
-// ─── Clothing Visual ─────────────────────────────────────────────────────────
+const COLORS = [
+  { id: 'black',    name: 'Black',        hex: '#111111', text: '#e8e8e8' },
+  { id: 'forest',   name: 'Forest Green', hex: '#1c4a28', text: '#cde8d4' },
+  { id: 'bone',     name: 'Bone',         hex: '#ede8dc', text: '#1a1a1a' },
+  { id: 'burgundy', name: 'Burgundy',     hex: '#581727', text: '#f7d4da' },
+  { id: 'navy',     name: 'Navy',         hex: '#0c1a3a', text: '#ccd8f0' },
+]
 
-function ClothingVisual({ product, color }: { product: Product; color: ColorOption }) {
-  const lines = product.design.split('\n')
-  const isSmall = product.smallText || lines.length > 3
+const STYLES = [
+  { id: 'hoodie',   name: 'Hoodie',   price: 65 },
+  { id: 'tee',      name: 'T-Shirt',  price: 40 },
+  { id: 'crewneck', name: 'Crewneck', price: 55 },
+]
+
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+
+// ─── Display font helper ──────────────────────────────────────────────────────
+
+const displayFont = "var(--font-display, 'Georgia', serif)"
+
+// ─── Product Visual ───────────────────────────────────────────────────────────
+
+function ProductVisual({
+  city,
+  color,
+  style,
+}: {
+  city: string
+  color: (typeof COLORS)[0]
+  style: (typeof STYLES)[0]
+}) {
+  const isLong = city.length > 11
 
   return (
     <div
-      className="relative w-full aspect-square flex flex-col items-center justify-center overflow-hidden transition-colors duration-500"
+      className="relative w-full aspect-[3/4] flex flex-col items-center justify-center overflow-hidden transition-colors duration-700 select-none"
       style={{ backgroundColor: color.hex }}
     >
-      {/* Depth gradients */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/40 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/10 pointer-events-none" />
-
-      {/* Badge */}
-      {product.badge && (
-        <span className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white text-gray-900 shadow-sm tracking-wide">
-          {product.badge}
-        </span>
-      )}
-
-      {/* Type label */}
-      <span
-        className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded-full text-[11px] font-medium border border-current"
-        style={{ color: `${color.text}99` }}
-      >
-        {product.type}
-      </span>
+      {/* Top vignette */}
+      <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/30 to-transparent pointer-events-none" />
+      {/* Bottom vignette */}
+      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
 
       {/* Design */}
-      <div className="relative z-10 text-center px-6 py-4 select-none">
-        {product.tag && (
-          <p
-            className="text-[11px] tracking-[0.35em] mb-2 font-medium uppercase"
-            style={{ color: `${color.text}80` }}
-          >
-            {product.tag}
-          </p>
-        )}
-
-        <div className="space-y-0.5">
-          {lines.map((line, i) => (
-            <p
-              key={i}
-              className={[
-                'leading-none font-bold tracking-tight',
-                product.serif ? 'font-serif' : 'font-sans',
-                isSmall ? 'text-lg' : lines.length === 2 ? 'text-4xl' : 'text-3xl',
-              ].join(' ')}
-              style={{ color: color.text }}
-            >
-              {line}
-            </p>
-          ))}
-        </div>
-
+      <div className="relative z-10 text-center px-8" style={{ color: color.text }}>
+        {/* Top micro label */}
         <p
-          className="text-[9px] tracking-[0.4em] mt-4 uppercase font-medium"
-          style={{ color: `${color.text}40` }}
+          className="text-[9px] tracking-[0.55em] uppercase mb-7 font-medium"
+          style={{ opacity: 0.35 }}
+        >
+          Culture Alberta
+        </p>
+
+        {/* City name */}
+        <p
+          className={`font-black leading-none tracking-tight ${isLong ? 'text-3xl' : 'text-5xl md:text-6xl'}`}
+          style={{ fontFamily: displayFont }}
+        >
+          {city.toUpperCase()}
+        </p>
+
+        {/* Forever */}
+        <p
+          className="text-4xl md:text-5xl font-black leading-tight tracking-[0.12em] mt-1"
+          style={{ fontFamily: displayFont }}
+        >
+          FOREVER
+        </p>
+
+        {/* Infinity */}
+        <p
+          className="text-6xl md:text-7xl mt-3 leading-none"
+          style={{ fontFamily: displayFont, opacity: 0.92 }}
+        >
+          ∞
+        </p>
+
+        {/* Bottom micro label */}
+        <p
+          className="text-[9px] tracking-[0.55em] uppercase mt-7 font-medium"
+          style={{ opacity: 0.35 }}
         >
           Culture Alberta
         </p>
       </div>
+
+      {/* Style watermark */}
+      <p
+        className="absolute bottom-4 left-4 text-[10px] tracking-[0.25em] uppercase font-medium"
+        style={{ color: color.text, opacity: 0.3 }}
+      >
+        {style.name}
+      </p>
     </div>
   )
 }
 
-// ─── Product Card ─────────────────────────────────────────────────────────────
-
-function ProductCard({
-  product,
-  onPreorder,
-}: {
-  product: Product
-  onPreorder: (p: Product, color: string, size: string) => void
-}) {
-  const [colorIdx, setColorIdx] = useState(0)
-  const [sizeIdx, setSizeIdx] = useState<number | null>(null)
-  const [added, setAdded] = useState(false)
-
-  const selectedColor = product.colors[colorIdx]
-
-  const handleAdd = () => {
-    if (sizeIdx === null) return
-    setAdded(true)
-    onPreorder(product, selectedColor.name, product.sizes[sizeIdx])
-    setTimeout(() => setAdded(false), 2500)
-  }
-
-  return (
-    <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 flex flex-col">
-      <ClothingVisual product={product} color={selectedColor} />
-
-      <div className="p-4 flex flex-col flex-1">
-        {/* Title + price */}
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-semibold text-gray-900 text-sm leading-snug">{product.name}</h3>
-          <span className="text-sm font-bold text-gray-900 shrink-0">${product.price}</span>
-        </div>
-
-        <p className="text-xs text-gray-500 mb-4 leading-relaxed flex-1">{product.description}</p>
-
-        {/* Color swatches */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[11px] text-gray-400 truncate flex-1">{selectedColor.name}</span>
-          <div className="flex gap-1.5">
-            {product.colors.map((c, i) => (
-              <button
-                key={i}
-                onClick={() => setColorIdx(i)}
-                title={c.name}
-                className={[
-                  'w-5 h-5 rounded-full transition-all duration-200',
-                  colorIdx === i
-                    ? 'ring-2 ring-offset-1 ring-gray-800 scale-110'
-                    : 'ring-1 ring-transparent hover:ring-gray-300',
-                ].join(' ')}
-                style={{ backgroundColor: c.hex }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Sizes */}
-        <div className="flex flex-wrap gap-1 mb-4">
-          {product.sizes.map((size, i) => (
-            <button
-              key={i}
-              onClick={() => setSizeIdx(i)}
-              className={[
-                'px-2 py-1 text-[11px] font-medium rounded-md border transition-all',
-                sizeIdx === i
-                  ? 'bg-gray-900 text-white border-gray-900'
-                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400',
-              ].join(' ')}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
-
-        {/* CTA */}
-        <button
-          onClick={handleAdd}
-          disabled={sizeIdx === null}
-          className={[
-            'w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2',
-            added
-              ? 'bg-green-600 text-white'
-              : sizeIdx !== null
-              ? 'bg-gray-900 text-white hover:bg-gray-700 active:scale-[0.98]'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed',
-          ].join(' ')}
-        >
-          {added ? (
-            <>
-              <Check className="w-4 h-4" />
-              Added to Waitlist
-            </>
-          ) : sizeIdx === null ? (
-            'Select a Size'
-          ) : (
-            <>
-              <ShoppingBag className="w-4 h-4" />
-              Pre-order Now
-            </>
-          )}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ─── Waitlist Modal ──────────────────────────────────────────────────────────
+// ─── Waitlist Modal ───────────────────────────────────────────────────────────
 
 function WaitlistModal({
-  item,
+  city,
+  color,
+  style,
+  size,
   onClose,
 }: {
-  item: { product: Product; color: string; size: string }
+  city: string
+  color: (typeof COLORS)[0]
+  style: (typeof STYLES)[0]
+  size: string
   onClose: () => void
 }) {
   const [email, setEmail] = useState('')
@@ -433,55 +137,62 @@ function WaitlistModal({
     e.preventDefault()
     if (!email.trim()) return
     setSubmitted(true)
-    // TODO: POST to /api/shop/waitlist
-    setTimeout(() => {
-      onClose()
-    }, 3000)
+    // TODO: POST /api/shop/waitlist
+    setTimeout(() => onClose(), 3500)
   }
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
+      className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-        {/* Header strip in selected color */}
-        <div
-          className="h-2"
-          style={{ backgroundColor: item.product.colors.find(c => c.name === item.color)?.hex ?? '#111' }}
-        />
+      <div className="bg-white w-full max-w-sm">
+        <div className="h-1" style={{ backgroundColor: color.hex }} />
 
         <div className="p-6">
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start justify-between mb-5">
             <div>
-              <h3 className="font-bold text-gray-900 text-lg leading-tight">{item.product.name}</h3>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {item.product.type} · {item.color} · Size {item.size}
+              <p className="text-[10px] tracking-[0.35em] uppercase text-gray-400 mb-0.5">
+                Culturealberta
+              </p>
+              <h3
+                className="text-2xl font-black text-gray-900 leading-tight"
+                style={{ fontFamily: displayFont }}
+              >
+                {city} Forever
+              </h3>
+              <p className="text-sm text-gray-400 mt-1">
+                {style.name} · {color.name} · Size {size}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-700 transition-colors p-1 -mr-1"
+              className="text-gray-300 hover:text-gray-700 transition-colors p-1 -mr-1"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {submitted ? (
-            <div className="text-center py-6">
-              <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Check className="w-7 h-7 text-green-600" />
-              </div>
-              <p className="font-bold text-gray-900 text-lg">You&apos;re on the list!</p>
-              <p className="text-sm text-gray-500 mt-1">
-                We&apos;ll email you when your item is ready to ship.
+            <div className="text-center py-8">
+              <p
+                className="text-5xl mb-4 text-gray-900"
+                style={{ fontFamily: displayFont }}
+              >
+                ∞
+              </p>
+              <p className="font-black text-gray-900 text-lg tracking-tight">
+                You&apos;re on the list.
+              </p>
+              <p className="text-sm text-gray-400 mt-2">
+                We&apos;ll email you the moment it&apos;s ready to ship.
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
-              <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-                We&apos;re taking pre-orders now. Drop your email and we&apos;ll notify you the
-                moment it&apos;s ready to ship.
+              <p className="text-sm text-gray-500 mb-4 leading-relaxed">
+                We&apos;re taking pre-orders. Leave your email and we&apos;ll
+                notify you the moment your item ships.
               </p>
 
               <div className="relative mb-3">
@@ -492,19 +203,19 @@ function WaitlistModal({
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
-                  className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  className="w-full pl-9 pr-4 py-3 border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-700 active:scale-[0.98] transition-all text-sm"
+                className="w-full bg-black text-white py-3.5 text-xs font-bold tracking-[0.2em] uppercase hover:bg-gray-800 active:scale-[0.99] transition-all"
               >
                 Notify Me When Ready
               </button>
 
               <p className="text-[11px] text-gray-400 text-center mt-3">
-                No spam. Just one email when your item ships.
+                No spam. One email when it ships.
               </p>
             </form>
           )}
@@ -514,184 +225,281 @@ function WaitlistModal({
   )
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
-
-const COLLECTIONS = [
-  { key: 'all', label: 'All' },
-  { key: 'forever', label: '🏙 Forever Series' },
-  { key: 'alberta-life', label: '🌾 Alberta Life' },
-  { key: 'city-pride', label: '❤️ City Pride' },
-]
-
-const COLLECTION_INFO: Record<string, { title: string; desc: string }> = {
-  forever: {
-    title: 'Forever Series',
-    desc: 'Bold city pride hoodies. Because your city deserves to be remembered forever.',
-  },
-  'alberta-life': {
-    title: 'Alberta Life',
-    desc: 'Witty, wearable truths about life in the best province in Canada.',
-  },
-  'city-pride': {
-    title: 'City Pride',
-    desc: 'Crewnecks, hoodies and tees for people who rep Alberta 365 days a year.',
-  },
-}
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ShopPage() {
-  const [activeCollection, setActiveCollection] = useState<Collection>('all')
-  const [waitlistItem, setWaitlistItem] = useState<{
-    product: Product
-    color: string
-    size: string
-  } | null>(null)
+  const [city, setCity]           = useState('Edmonton')
+  const [color, setColor]         = useState(COLORS[0])
+  const [style, setStyle]         = useState(STYLES[0])
+  const [size, setSize]           = useState<string | null>(null)
+  const [search, setSearch]       = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
 
-  const filtered =
-    activeCollection === 'all'
-      ? PRODUCTS
-      : PRODUCTS.filter((p) => p.collection === activeCollection)
-
-  const collectionInfo =
-    activeCollection !== 'all' ? COLLECTION_INFO[activeCollection] : null
+  const filteredCities = useMemo(
+    () =>
+      search
+        ? ALBERTA_CITIES.filter((c) => c.toLowerCase().includes(search.toLowerCase()))
+        : ALBERTA_CITIES,
+    [search],
+  )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="relative bg-gray-950 text-white overflow-hidden">
-        {/* Subtle radial glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,_#2d5a3d55,_transparent)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_80%_80%,_#1e2d4a44,_transparent)]" />
+    <div className="min-h-screen bg-white">
 
-        <div className="relative z-10 max-w-4xl mx-auto px-4 py-20 md:py-28 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-3.5 py-1.5 text-xs font-medium mb-6 tracking-wide border border-white/10">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            Pre-orders now open
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-5">
-            Culture Alberta
-            <br />
-            <span className="text-gray-500">Shop</span>
-          </h1>
-
-          <p className="text-gray-400 text-lg md:text-xl max-w-xl mx-auto leading-relaxed">
-            Premium locally-inspired clothing. Rep your city.
-            <br className="hidden sm:block" />
-            Built for Alberta winters — and the summers worth bragging about.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-4 mt-10">
-            {[
-              { city: 'Edmonton', color: 'bg-blue-600' },
-              { city: 'Calgary', color: 'bg-red-600' },
-              { city: 'Red Deer', color: 'bg-indigo-600' },
-              { city: 'Lethbridge', color: 'bg-amber-600' },
-              { city: 'Medicine Hat', color: 'bg-orange-600' },
-              { city: 'Grande Prairie', color: 'bg-teal-600' },
-            ].map(({ city, color }) => (
-              <span
-                key={city}
-                className={`${color} text-white text-xs font-semibold px-3 py-1.5 rounded-full`}
-              >
-                {city}
-              </span>
-            ))}
-          </div>
+      {/* ── Brand header ────────────────────────────────────────────────── */}
+      <div className="bg-black text-white py-7 px-4 text-center">
+        <div className="flex items-center justify-center gap-3">
+          <span
+            className="text-2xl md:text-3xl font-black tracking-[0.08em]"
+            style={{ fontFamily: displayFont }}
+          >
+            Culturealberta
+          </span>
+          <span
+            className="text-3xl leading-none opacity-70"
+            style={{ fontFamily: displayFont }}
+          >
+            ∞
+          </span>
         </div>
-      </section>
-
-      {/* ── Trust bar ─────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-center gap-6 lg:gap-10 flex-wrap">
-          {[
-            { icon: Truck, label: 'Free shipping over $80' },
-            { icon: RotateCcw, label: 'Easy returns' },
-            { icon: Shield, label: 'Ethically made' },
-            { icon: Star, label: '100% Alberta-owned' },
-          ].map(({ icon: Icon, label }) => (
-            <div key={label} className="flex items-center gap-1.5 text-xs text-gray-500">
-              <Icon className="w-3.5 h-3.5 text-gray-400" />
-              {label}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Collection tabs ────────────────────────────────────────────────── */}
-      <div className="bg-white sticky top-[56px] z-30 border-b border-gray-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex overflow-x-auto scrollbar-hide">
-            {COLLECTIONS.map((c) => (
-              <button
-                key={c.key}
-                onClick={() => setActiveCollection(c.key as Collection)}
-                className={[
-                  'px-5 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-all',
-                  activeCollection === c.key
-                    ? 'border-gray-900 text-gray-900'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                ].join(' ')}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Products ──────────────────────────────────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-4 py-10">
-        {/* Collection header */}
-        {collectionInfo && (
-          <div className="mb-8 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <h2 className="font-bold text-gray-900 text-lg">{collectionInfo.title}</h2>
-            <p className="text-sm text-gray-500 mt-1">{collectionInfo.desc}</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filtered.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onPreorder={(p, color, size) => setWaitlistItem({ product: p, color, size })}
-            />
-          ))}
-        </div>
-
-        {/* Size guide note */}
-        <p className="text-center text-xs text-gray-400 mt-8">
-          All garments are unisex and true to size. Hoodies are 400 gsm heavyweight fleece.
-          T-shirts are 180 gsm combed cotton.
+        <p className="text-white/35 text-[9px] tracking-[0.55em] uppercase mt-1.5 font-medium">
+          Alberta Forever
         </p>
       </div>
 
-      {/* ── City request CTA ──────────────────────────────────────────────── */}
-      <section className="bg-gray-950 text-white py-16 px-4 text-center">
-        <div className="max-w-lg mx-auto">
-          <p className="text-gray-400 text-sm tracking-widest uppercase mb-3 font-medium">
-            Missing your city?
-          </p>
-          <h2 className="text-3xl md:text-4xl font-bold mb-3">
-            We&apos;re adding more cities.
-          </h2>
-          <p className="text-gray-400 mb-8 leading-relaxed">
-            Airdrie? Fort McMurray? Canmore? St. Albert? Tell us which city you want next and
-            we&apos;ll make it happen.
-          </p>
-          <a
-            href="mailto:hello@culturealberta.com?subject=Shop%20-%20City%20Request"
-            className="inline-flex items-center gap-2 bg-white text-gray-900 px-7 py-3.5 rounded-full font-semibold hover:bg-gray-100 active:scale-[0.98] transition-all"
-          >
-            <Mail className="w-4 h-4" />
-            Request a City
-          </a>
-        </div>
-      </section>
+      {/* ── Announcement bar ────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-gray-100 py-2.5 px-4 text-center">
+        <p className="text-[11px] text-gray-500 tracking-[0.15em] uppercase font-medium">
+          Pre-orders open · Ships in 6–8 weeks · Free shipping over $80
+        </p>
+      </div>
 
-      {/* ── Waitlist modal ────────────────────────────────────────────────── */}
-      {waitlistItem && (
-        <WaitlistModal item={waitlistItem} onClose={() => setWaitlistItem(null)} />
+      {/* ── Configurator ────────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-4 py-10 md:py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-10 lg:gap-16 items-start">
+
+          {/* LEFT — sticky product visual */}
+          <div className="lg:sticky lg:top-24 order-1 lg:order-none">
+            <ProductVisual city={city} color={color} style={style} />
+            <p className="text-center text-[10px] text-gray-300 mt-3 tracking-widest uppercase">
+              Design preview — photography coming soon
+            </p>
+          </div>
+
+          {/* RIGHT — options panel */}
+          <div className="order-2 lg:order-none space-y-9">
+
+            {/* Title */}
+            <div>
+              <p className="text-[10px] tracking-[0.4em] uppercase text-gray-400 mb-1 font-medium">
+                Culturealberta
+              </p>
+              <h1
+                className="text-3xl md:text-4xl font-black text-gray-900 leading-tight"
+                style={{ fontFamily: displayFont }}
+              >
+                {city} Forever
+              </h1>
+              <p className="text-xl font-bold text-gray-900 mt-1.5">
+                ${style.price}
+                <span className="text-sm font-normal text-gray-400 ml-2">CAD</span>
+              </p>
+            </div>
+
+            {/* ── City ── */}
+            <div>
+              <h2 className="text-[10px] font-bold tracking-[0.3em] uppercase text-gray-900 mb-3">
+                Choose Your City
+              </h2>
+
+              {/* Search */}
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search Alberta cities…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 text-xs border border-gray-200 focus:outline-none focus:border-gray-900 bg-gray-50 transition-colors rounded-none"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* City grid */}
+              <div className="max-h-48 overflow-y-auto">
+                <div className="flex flex-wrap gap-2 pr-1">
+                  {filteredCities.length > 0 ? (
+                    filteredCities.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => { setCity(c); setSearch('') }}
+                        className={[
+                          'px-3 py-1.5 text-[11px] font-semibold border transition-all tracking-wide',
+                          city === c
+                            ? 'bg-black text-white border-black'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-800 hover:text-gray-900',
+                        ].join(' ')}
+                      >
+                        {c}
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-xs text-gray-400 py-2">
+                      No results.{' '}
+                      <button
+                        onClick={() => setSearch('')}
+                        className="underline hover:text-gray-700"
+                      >
+                        Clear
+                      </button>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Style ── */}
+            <div>
+              <h2 className="text-[10px] font-bold tracking-[0.3em] uppercase text-gray-900 mb-3">
+                Style
+              </h2>
+              <div className="flex gap-2">
+                {STYLES.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setStyle(s)}
+                    className={[
+                      'flex-1 py-3 px-2 border text-center transition-all',
+                      style.id === s.id
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-800',
+                    ].join(' ')}
+                  >
+                    <span className="block text-xs font-bold">{s.name}</span>
+                    <span className="block text-[11px] opacity-60 mt-0.5">${s.price}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Colour ── */}
+            <div>
+              <h2 className="text-[10px] font-bold tracking-[0.3em] uppercase text-gray-900 mb-3">
+                Colour —{' '}
+                <span className="font-normal normal-case text-gray-500">{color.name}</span>
+              </h2>
+              <div className="flex gap-3">
+                {COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setColor(c)}
+                    title={c.name}
+                    className={[
+                      'w-9 h-9 transition-all duration-200',
+                      color.id === c.id
+                        ? 'ring-2 ring-offset-2 ring-black scale-110'
+                        : 'ring-1 ring-gray-200 hover:ring-gray-600',
+                    ].join(' ')}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* ── Size ── */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[10px] font-bold tracking-[0.3em] uppercase text-gray-900">
+                  Size{size && <span className="font-normal normal-case text-gray-500 ml-1">— {size}</span>}
+                </h2>
+                <button className="text-[11px] text-gray-400 hover:text-gray-700 underline transition-colors">
+                  Size guide
+                </button>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {SIZES.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setSize(s)}
+                    className={[
+                      'w-12 h-12 text-xs font-bold border transition-all',
+                      size === s
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-800',
+                    ].join(' ')}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── CTA ── */}
+            <div className="pt-1 space-y-3">
+              <button
+                onClick={() => size && setModalOpen(true)}
+                disabled={!size}
+                className={[
+                  'w-full py-4 text-xs font-black tracking-[0.25em] uppercase transition-all flex items-center justify-center gap-2.5',
+                  size
+                    ? 'bg-black text-white hover:bg-gray-800 active:scale-[0.99]'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed',
+                ].join(' ')}
+              >
+                <ShoppingBag className="w-4 h-4" />
+                {size ? `Pre-order — $${style.price} CAD` : 'Select a Size to Continue'}
+              </button>
+
+              <p className="text-[11px] text-gray-400 text-center leading-relaxed">
+                Ships in 6–8 weeks · Free over $80 · Easy returns · Ethically made
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── City request footer ──────────────────────────────────────────── */}
+      <div className="border-t border-gray-100 bg-black text-white py-14 px-4 text-center">
+        <p
+          className="text-4xl mb-3"
+          style={{ fontFamily: displayFont }}
+        >
+          ∞
+        </p>
+        <p className="text-[10px] tracking-[0.45em] uppercase text-white/40 mb-2 font-medium">
+          Missing your city?
+        </p>
+        <h3
+          className="text-2xl font-black mb-5"
+          style={{ fontFamily: displayFont }}
+        >
+          We&apos;re always adding more.
+        </h3>
+        <a
+          href="mailto:hello@culturealberta.com?subject=Shop%20-%20City%20Request"
+          className="inline-flex items-center gap-2 border border-white/30 text-white px-6 py-3 text-xs font-bold tracking-[0.2em] uppercase hover:bg-white hover:text-black transition-all"
+        >
+          <Mail className="w-4 h-4" />
+          Request Your City
+        </a>
+      </div>
+
+      {/* ── Modal ───────────────────────────────────────────────────────── */}
+      {modalOpen && size && (
+        <WaitlistModal
+          city={city}
+          color={color}
+          style={style}
+          size={size}
+          onClose={() => setModalOpen(false)}
+        />
       )}
     </div>
   )
