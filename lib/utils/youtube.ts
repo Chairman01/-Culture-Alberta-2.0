@@ -104,17 +104,119 @@ function fixImageDimensions(html: string): string {
 
 
 /**
- * Main function to process all YouTube content and fix images for CLS
+ * Processes anchor tags containing Twitter/X URLs and converts them to embedded tweets
+ */
+export function processTwitterAnchors(content: string): string {
+  if (!content) return content
+
+  const anchorPattern = /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/[^/\s"']+\/status\/(\d+)[^"']*?)["'][^>]*>.*?<\/a>/gi
+
+  return content.replace(anchorPattern, (_match, url, _tweetId) => {
+    return `
+      <blockquote class="twitter-tweet" data-dnt="true" data-theme="light">
+        <a href="${url}"></a>
+      </blockquote>
+    `
+  })
+}
+
+/**
+ * Processes standalone Twitter/X URLs and converts them to embedded tweets
+ */
+export function processTwitterLinks(content: string): string {
+  if (!content) return content
+
+  // Match standalone Twitter/X URLs not already inside HTML attributes
+  const twitterUrlPattern = /(?<![="'\/])(https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/[^/\s<"']+\/status\/(\d+)(?:[^\s<"']*)?)/gi
+
+  return content.replace(twitterUrlPattern, (match, url, _tweetId) => {
+    return `
+      <blockquote class="twitter-tweet" data-dnt="true" data-theme="light">
+        <a href="${url}"></a>
+      </blockquote>
+    `
+  })
+}
+
+/**
+ * Processes anchor tags containing Instagram URLs and converts them to embedded posts
+ */
+export function processInstagramAnchors(content: string): string {
+  if (!content) return content
+
+  const anchorPattern = /<a[^>]*href=["'](https?:\/\/(?:www\.)?instagram\.com\/(p|reel|tv)\/([A-Za-z0-9_-]+)\/?[^"']*?)["'][^>]*>.*?<\/a>/gi
+
+  return content.replace(anchorPattern, (_match, _url, type, postCode) => {
+    const isReel = type === 'reel' || type === 'tv'
+    const height = isReel ? '740' : '600'
+    const embedUrl = `https://www.instagram.com/${type}/${postCode}/embed/`
+
+    return `
+      <div class="instagram-embed my-6" style="max-width: 540px; margin: 0 auto;">
+        <iframe
+          src="${embedUrl}"
+          width="540"
+          height="${height}"
+          scrolling="no"
+          frameborder="0"
+          allowtransparency="true"
+          allowfullscreen="true"
+          class="rounded-xl shadow-lg"
+          style="border: 1px solid #dbdbdb; border-radius: 12px; max-width: 100%;"
+        ></iframe>
+      </div>
+    `
+  })
+}
+
+/**
+ * Processes standalone Instagram URLs and converts them to embedded posts
+ */
+export function processInstagramLinks(content: string): string {
+  if (!content) return content
+
+  // Match standalone Instagram URLs not already inside HTML attributes
+  const instagramUrlPattern = /(?<![="'\/])(https?:\/\/(?:www\.)?instagram\.com\/(p|reel|tv)\/([A-Za-z0-9_-]+)(?:\/[^\s<"']*)?)/gi
+
+  return content.replace(instagramUrlPattern, (_match, _url, type, postCode) => {
+    const isReel = type === 'reel' || type === 'tv'
+    const height = isReel ? '740' : '600'
+    const embedUrl = `https://www.instagram.com/${type}/${postCode}/embed/`
+
+    return `
+      <div class="instagram-embed my-6" style="max-width: 540px; margin: 0 auto;">
+        <iframe
+          src="${embedUrl}"
+          width="540"
+          height="${height}"
+          scrolling="no"
+          frameborder="0"
+          allowtransparency="true"
+          allowfullscreen="true"
+          class="rounded-xl shadow-lg"
+          style="border: 1px solid #dbdbdb; border-radius: 12px; max-width: 100%;"
+        ></iframe>
+      </div>
+    `
+  })
+}
+
+/**
+ * Main function to process all YouTube/Twitter/Instagram content and fix images for CLS
  * This is a pure string manipulation function that works on both server and client
  */
 export function processArticleContent(content: string): string {
   if (!content) return content
 
-  // First process anchor tags with YouTube URLs
+  // First process anchor tags (more specific patterns, must run before standalone URL patterns)
   let processed = processYouTubeAnchors(content)
+  processed = processTwitterAnchors(processed)
+  processed = processInstagramAnchors(processed)
 
-  // Then process any remaining standalone YouTube URLs
+  // Then process any remaining standalone URLs
   processed = processYouTubeLinks(processed)
+  processed = processTwitterLinks(processed)
+  processed = processInstagramLinks(processed)
 
   // Add dimensions to img tags to prevent CLS (Core Web Vitals)
   processed = fixImageDimensions(processed)
