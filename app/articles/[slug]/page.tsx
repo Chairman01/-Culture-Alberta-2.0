@@ -21,6 +21,7 @@ import { Metadata } from 'next'
 // import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
 
 import { processArticleContent } from '@/lib/utils/youtube'
+import Script from 'next/script'
 import { CommentForm } from '@/components/comment-form'
 import { CommentList } from '@/components/comment-list'
 import { CommentsSection } from '@/components/comments-section'
@@ -611,6 +612,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                         )}
                       </div>
                     </div>
+
+                    {/* Twitter widget script - activates twitter-tweet blockquotes */}
+                    <Script src="https://platform.twitter.com/widgets.js" strategy="lazyOnload" />
 
                     {/* Article Footer */}
                     {loadedArticle.date && formatDate(loadedArticle.date) && (
