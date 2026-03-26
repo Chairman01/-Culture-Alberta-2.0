@@ -1,3 +1,15 @@
+// Inline slug utility (mirrors lib/utils/slug.ts) for use in next-sitemap config
+function createSlug(title) {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 100)
+    .replace(/-+$/, '')
+}
+
 /** @type {import('next-sitemap').IConfig} */
 export default {
   siteUrl: 'https://www.culturealberta.com',
@@ -6,18 +18,18 @@ export default {
   changefreq: 'weekly',
   priority: 0.7,
   sitemapSize: 5000,
-  exclude: ['/admin/*', '/api/*', '/test/*', '/test-supabase/*', '/populate/*'],
+  exclude: ['/admin', '/admin/*', '/api/*', '/test/*', '/test-supabase/*', '/populate/*'],
   robotsTxtOptions: {
     policies: [
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin/', '/api/', '/test/', '/test-supabase/', '/populate/'],
+        disallow: ['/admin', '/admin/', '/api/', '/test/', '/test-supabase/', '/populate/'],
       },
       {
         userAgent: 'Googlebot',
         allow: '/',
-        disallow: ['/admin/', '/api/', '/test/', '/test-supabase/', '/populate/'],
+        disallow: ['/admin', '/admin/', '/api/', '/test/', '/test-supabase/', '/populate/'],
         crawlDelay: 0,
       },
     ],
@@ -50,7 +62,7 @@ export default {
           }
 
           result.push({
-            loc: `/articles/${article.slug || article.id}`,
+            loc: `/articles/${createSlug(article.title)}`,
             changefreq: daysOld < 30 ? 'weekly' : 'monthly',
             priority: Math.min(articlePriority, 1.0),
             lastmod: article.updatedAt || article.createdAt || new Date().toISOString(),
