@@ -77,6 +77,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       return {
         title: 'Article Not Found | Culture Alberta',
         description: 'The requested article could not be found.',
+        robots: { index: false, follow: false },
       }
     }
 
@@ -152,6 +153,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description: description,
       keywords: [...(loadedArticle.tags || []), loadedArticle.category, 'Alberta', 'Culture'].filter(Boolean).join(', '),
       authors: [{ name: loadedArticle.author || 'Culture Alberta' }],
+      robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+          'max-snippet': -1,
+          'max-image-preview': 'large',
+          'max-video-preview': -1,
+        },
+      },
       openGraph: {
         type: 'article',
         title: fullTitle,

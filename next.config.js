@@ -116,6 +116,22 @@ const nextConfig = {
         destination: '/articles',
         permanent: true,
       },
+      // Fix additional 404s from Google Search Console
+      {
+        source: '/privacy',
+        destination: '/privacy-policy',
+        permanent: true,
+      },
+      {
+        source: '/neighborhood',
+        destination: '/articles',
+        permanent: true,
+      },
+      {
+        source: '/other-communities',
+        destination: '/articles',
+        permanent: true,
+      },
       // REMOVED: This was causing redirect loop with the rule above
       // www.culturealberta.com should be the primary domain
     ]

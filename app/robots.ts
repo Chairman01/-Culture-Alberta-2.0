@@ -8,10 +8,8 @@ export default function robots(): MetadataRoute.Robots {
       disallow: [
         '/admin/',
         '/api/',
-        // Next.js build artifacts - should never be indexed
-        '/_next/static/css/*',
-        '/_next/static/chunks/*',
-        '/_next/static/*',
+        // Next.js data routes - JSON API data, not content pages
+        // NOTE: Do NOT block /_next/static/ - Google needs CSS/JS to render pages properly
         '/_next/data/*',
         // Utility files
         '/favicon.ico',
