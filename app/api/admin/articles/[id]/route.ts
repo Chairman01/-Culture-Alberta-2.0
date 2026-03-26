@@ -4,6 +4,7 @@ import { updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { quickSyncArticle } from '@/lib/auto-sync'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
+import { createSlug } from '@/lib/utils/slug'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -300,8 +301,10 @@ export async function PUT(
     }
 
     // Auto-notify search engines about the updated article (non-blocking)
+    // Use the slug derived from the title (same as public URL), not the raw DB id
     if (data.status === 'published') {
-      notifySearchEngines(`/articles/${articleId}`).catch(err =>
+      const articleSlug = createSlug(data.title)
+      notifySearchEngines(`/articles/${articleSlug}`).catch(err =>
         console.warn('⚠️ Search engine notification failed (non-fatal):', err)
       )
     }
