@@ -99,6 +99,25 @@ export default function RootLayout({
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6902227267422426"
           crossOrigin="anonymous"
         />
+        {/* Speculation Rules API - prefetches pages before user clicks for instant navigation */}
+        <script
+          type="speculationrules"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              prefetch: [{
+                where: {
+                  and: [
+                    { href_matches: '/*' },
+                    { not: { href_matches: '/logout' } },
+                    { not: { href_matches: '/admin/*' } },
+                    { not: { href_matches: '/api/*' } },
+                  ]
+                },
+                eagerness: 'moderate'
+              }]
+            })
+          }}
+        />
       </head>
       <body suppressHydrationWarning={true}>
         {/* Structured Data for Rich Snippets - Required for Google sitelinks like blogTO */}
