@@ -3,6 +3,8 @@ import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-
 import { supabase } from '@/lib/supabase'
 import { createApiResponse, handleApiError, validateEventData } from '@/lib/cursor-web-utils'
 import { clearEventsCache } from '@/lib/events'
+import { notifySearchEngines } from '@/lib/indexing'
+import { createSlug } from '@/lib/utils/slug'
 
 // Types for better type safety with Cursor web assistance
 interface EventUpdateData {
@@ -206,6 +208,14 @@ export async function PUT(
         }
       } catch (fallbackError) {
         console.warn('⚠️ Failed to update fallback, but Supabase update succeeded:', fallbackError)
+      }
+
+      // Notify search engines about the updated event (non-blocking)
+      if (updateData.status === 'published' || !updateData.status) {
+        const eventSlug = createSlug(updateData.title || supabaseResult.title)
+        notifySearchEngines(`/events/${eventSlug}`).catch(err =>
+          console.warn('⚠️ Search engine notification failed (non-fatal):', err)
+        )
       }
 
       return NextResponse.json(createApiResponse(

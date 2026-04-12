@@ -5,6 +5,7 @@ import { quickSyncArticle } from '@/lib/auto-sync'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
 import { requireAdmin } from '@/lib/admin-auth'
+import { createSlug } from '@/lib/utils/slug'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -125,7 +126,6 @@ export async function PUT(
     // Auto-save slug redirect if title changed
     if (existingArticle && existingArticle.title !== articleData.title) {
       try {
-        const { createSlug } = await import('@/lib/utils/slug')
         const oldSlug = createSlug(existingArticle.title)
         const newSlug = createSlug(articleData.title)
         if (oldSlug !== newSlug) {
@@ -301,8 +301,10 @@ export async function PUT(
     }
 
     // Auto-notify search engines about the updated article (non-blocking)
+    // Use the slug derived from the title (same as public URL), not the raw DB id
     if (data.status === 'published') {
-      notifySearchEngines(`/articles/${articleId}`).catch(err =>
+      const articleSlug = createSlug(data.title)
+      notifySearchEngines(`/articles/${articleSlug}`).catch(err =>
         console.warn('⚠️ Search engine notification failed (non-fatal):', err)
       )
     }
