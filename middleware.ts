@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // ── JWT verification using Web Crypto (Edge-runtime compatible) ───────────────
-async function verifyAdminJWT(token: string, secret: string): Promise<boolean> {
+async function verifyAdminJWT(token: string, secret: string): Promise<{ valid: boolean; role?: string }> {
   try {
     const parts = token.split('.')
-    if (parts.length !== 3) return false
+    if (parts.length !== 3) return { valid: false }
     const [header, payload, sig] = parts
 
     const enc = new TextEncoder()
@@ -28,17 +28,20 @@ async function verifyAdminJWT(token: string, secret: string): Promise<boolean> {
       sigBytes,
       enc.encode(`${header}.${payload}`)
     )
-    if (!valid) return false
+    if (!valid) return { valid: false }
 
-    // Check expiry
+    // Check expiry and extract role
     const decodedPayload = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
-    if (decodedPayload.exp && decodedPayload.exp < Math.floor(Date.now() / 1000)) return false
+    if (decodedPayload.exp && decodedPayload.exp < Math.floor(Date.now() / 1000)) return { valid: false }
 
-    return true
+    return { valid: true, role: decodedPayload.role ?? 'admin' }
   } catch {
-    return false
+    return { valid: false }
   }
 }
+
+// Routes a contributor is allowed to access
+const CONTRIBUTOR_ALLOWED = ['/admin/articles']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -48,8 +51,18 @@ export async function middleware(request: NextRequest) {
     const token  = request.cookies.get('admin_session')?.value
     const secret = process.env.JWT_SECRET
 
-    if (!token || !secret || !(await verifyAdminJWT(token, secret))) {
+    const result = token && secret ? await verifyAdminJWT(token, secret) : { valid: false }
+
+    if (!result.valid) {
       return NextResponse.redirect(new URL('/admin/login', request.url))
+    }
+
+    // Restrict contributor to articles pages only
+    if (result.role === 'contributor') {
+      const allowed = CONTRIBUTOR_ALLOWED.some(p => pathname === p || pathname.startsWith(p + '/'))
+      if (!allowed) {
+        return NextResponse.redirect(new URL('/admin/articles', request.url))
+      }
     }
   }
 

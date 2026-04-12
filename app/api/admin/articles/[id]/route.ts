@@ -4,6 +4,7 @@ import { updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { quickSyncArticle } from '@/lib/auto-sync'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
+import { requireAdmin } from '@/lib/admin-auth'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -329,10 +330,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authCheck = requireAdmin(request)
+  if (!authCheck.ok) return authCheck.response
+
   try {
     const resolvedParams = await params
     const articleId = resolvedParams.id
-    
+
     console.log('🗑️ Deleting article:', articleId)
 
     // Get Supabase client

@@ -31,7 +31,8 @@ export default function AdminLogin() {
         localStorage.setItem("admin_user", data.username)
         localStorage.setItem("admin_login_time", Date.now().toString())
         localStorage.setItem("admin_token", data.token)
-        router.push("/admin")
+        localStorage.setItem("admin_role", data.role ?? "admin")
+        router.push(data.role === "contributor" ? "/admin/articles" : "/admin")
       } else {
         setError("Invalid username or password")
       }
