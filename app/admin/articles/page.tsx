@@ -57,8 +57,13 @@ export default function AdminArticles() {
   const [isLoading, setIsLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState<Date | null>(null)
+  const [isContributor, setIsContributor] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+
+  useEffect(() => {
+    setIsContributor(localStorage.getItem("admin_role") === "contributor")
+  }, [])
 
   useEffect(() => {
     loadAllArticles()
@@ -548,9 +553,11 @@ export default function AdminArticles() {
                             <Edit className="w-4 h-4" />
                           </Button>
                         </Link>
-                        <Button variant="outline" size="sm" onClick={() => handleDelete(article)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {!isContributor && (
+                          <Button variant="outline" size="sm" onClick={() => handleDelete(article)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>

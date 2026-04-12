@@ -4,6 +4,7 @@ import { updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { quickSyncArticle } from '@/lib/auto-sync'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
+import { requireAdmin } from '@/lib/admin-auth'
 import { createSlug } from '@/lib/utils/slug'
 
 // Force dynamic rendering
@@ -125,7 +126,6 @@ export async function PUT(
     // Auto-save slug redirect if title changed
     if (existingArticle && existingArticle.title !== articleData.title) {
       try {
-        const { createSlug } = await import('@/lib/utils/slug')
         const oldSlug = createSlug(existingArticle.title)
         const newSlug = createSlug(articleData.title)
         if (oldSlug !== newSlug) {
@@ -332,10 +332,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authCheck = requireAdmin(request)
+  if (!authCheck.ok) return authCheck.response
+
   try {
     const resolvedParams = await params
     const articleId = resolvedParams.id
-    
+
     console.log('🗑️ Deleting article:', articleId)
 
     // Get Supabase client
