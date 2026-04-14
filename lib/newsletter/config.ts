@@ -68,7 +68,7 @@ export async function saveNewsletterConfig(
 ): Promise<{ error: string | null }> {
   const { error } = await supabase
     .from('newsletter_config')
-    .upsert({ city, ...patch, updated_at: new Date().toISOString() })
+    .upsert({ city, ...patch, updated_at: new Date().toISOString() }, { onConflict: 'city' })
   return { error: error?.message ?? null }
 }
 
@@ -80,7 +80,7 @@ export async function recordCitySent(city: NewsletterCity): Promise<void> {
       city,
       last_sent_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    })
+    }, { onConflict: 'city' })
 }
 
 // ── Article search / fetch ────────────────────────────────────────────────────

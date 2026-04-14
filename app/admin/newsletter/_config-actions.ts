@@ -54,7 +54,7 @@ export async function getArticleDetails(ids: string[]): Promise<ArticlePickerIte
 // Load what articles are currently auto-selected for a city (so user can edit them)
 export async function loadCurrentCityArticles(city: NewsletterCity): Promise<ArticlePickerItem[]> {
   const content = await fetchNewsletterContent(city)
-  return content.cityArticles.map(a => ({
+  return content.cityArticles.slice(0, 3).map(a => ({
     id: a.id,
     title: a.title,
     excerpt: a.excerpt,

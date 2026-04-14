@@ -104,7 +104,7 @@ export async function fetchNewsletterContent(
       }
     }
   } else {
-    // Auto fetch (last 7 days, with all-time fallback)
+    // Auto fetch top 3 newest (last 7 days, with all-time fallback)
     let { data: cityData } = await supabase
       .from('articles')
       .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
@@ -113,7 +113,7 @@ export async function fetchNewsletterContent(
       .or(`location.ilike.%${cityTerm}%,category.ilike.%${cityTerm}%,title.ilike.%${cityTerm}%`)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
-      .limit(10)
+      .limit(3)
 
     if (!cityData || cityData.length < 3) {
       const { data: fallback } = await supabase
@@ -123,10 +123,10 @@ export async function fetchNewsletterContent(
         .neq('type', 'event')
         .or(`location.ilike.%${cityTerm}%,category.ilike.%${cityTerm}%,title.ilike.%${cityTerm}%`)
         .order('created_at', { ascending: false })
-        .limit(10)
+        .limit(3)
       const existing = new Set((cityData || []).map((a: any) => a.id))
       const merged = [...(cityData || []), ...(fallback || []).filter((a: any) => !existing.has(a.id))]
-      cityData = merged.slice(0, 10)
+      cityData = merged.slice(0, 3)
     }
 
     cityArticles = (cityData || []).map(toNewsletterArticle)
