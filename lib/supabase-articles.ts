@@ -970,7 +970,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
           .from('articles')
           .select('id, title, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, image_url, image')
           .order('created_at', { ascending: false })
-          .limit(50)
+          .limit(500)
 
         if (error) {
           console.error('Emergency Supabase query failed:', error)
@@ -1038,7 +1038,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     console.log('Attempting to fetch article by slug from Supabase...')
 
     // SMART FALLBACK: Try Supabase first, fallback to file system if slow
-    const timeoutDuration = 2000 // 2 seconds - fast timeout for better UX
+    const timeoutDuration = 5000 // 5 seconds - allow time to fetch full article list
 
     console.log('🚀 SMART FALLBACK: Trying Supabase first, file system fallback if slow')
 
@@ -1050,7 +1050,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
         .from('articles')
         .select(fields)
         .order('created_at', { ascending: false })
-        .limit(50)
+        .limit(500)
 
       const { data, error } = await Promise.race([
         supabasePromise,

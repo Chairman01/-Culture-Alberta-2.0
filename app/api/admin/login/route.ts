@@ -1,32 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { username, password } = body
 
-    const adminUsername    = process.env.ADMIN_USERNAME
-    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH
-    const jwtSecret        = process.env.JWT_SECRET
+    const adminUsername = process.env.ADMIN_USERNAME?.trim()
+    const adminPassword = process.env.ADMIN_PASSWORD?.trim()
+    const jwtSecret     = process.env.JWT_SECRET?.trim()
 
-    if (!adminUsername || !adminPasswordHash || !jwtSecret) {
+    if (!adminUsername || !adminPassword || !jwtSecret) {
       console.error('[login] Admin credentials not configured in environment variables')
       return NextResponse.json({ message: 'Service unavailable' }, { status: 503 })
     }
 
-    // Check admin credentials first
     let matchedUsername: string | null = null
     let matchedRole: 'admin' | 'contributor' | null = null
 
-    if (username === adminUsername && await bcrypt.compare(password, adminPasswordHash)) {
+    // Admin: plain text password comparison
+    if (username === adminUsername && password === adminPassword) {
       matchedUsername = adminUsername
       matchedRole = 'admin'
     }
 
-    // Check contributor credentials if admin didn't match
-    const contributorUsername    = process.env.CONTRIBUTOR_USERNAME
+    // Contributor: bcrypt password comparison
+    const contributorUsername     = process.env.CONTRIBUTOR_USERNAME
     const contributorPasswordHash = process.env.CONTRIBUTOR_PASSWORD_HASH
     if (!matchedRole && contributorUsername && contributorPasswordHash) {
       if (username === contributorUsername && await bcrypt.compare(password, contributorPasswordHash)) {
@@ -47,12 +47,11 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ message: 'Login successful', username: matchedUsername, role: matchedRole, token })
 
-    // Set httpOnly cookie so middleware can verify server-side
     response.cookies.set('admin_session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24, // 24 hours
+      maxAge: 60 * 60 * 24,
       path: '/',
     })
 

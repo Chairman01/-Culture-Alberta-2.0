@@ -481,7 +481,7 @@ export default async function HomeStatic() {
                             <span className="rounded-full bg-black text-white px-4 py-1.5 font-medium">{getPostCategory(featuredPost)}</span>
                             <span className="font-medium">{formatDate(getPostDate(featuredPost))}</span>
                           </div>
-                          <h2 className="font-display text-4xl font-bold group-hover:text-gray-600 transition-colors duration-300 mb-3 leading-tight">{getPostTitle(featuredPost)}</h2>
+                          <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold group-hover:text-gray-600 transition-colors duration-300 mb-3 leading-tight">{getPostTitle(featuredPost)}</h2>
                           <p className="font-body text-gray-600 text-lg leading-relaxed">{getPostExcerpt(featuredPost)}</p>
                         </div>
                       </div>
@@ -553,7 +553,7 @@ export default async function HomeStatic() {
           <section className="w-full py-8">
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-display text-4xl font-bold text-blue-600">Edmonton Spotlight</h2>
+                <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-blue-600">Edmonton Spotlight</h2>
                 <Link href="/edmonton" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
@@ -578,6 +578,7 @@ export default async function HomeStatic() {
                           <span className="font-medium">{formatDate(getPostDate(post))}</span>
                         </div>
                         <h3 className="font-display font-bold text-xl group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight">{getPostTitle(post)}</h3>
+                        {getPostExcerpt(post) && <p className="font-body text-sm text-gray-500 mt-1 line-clamp-2">{getPostExcerpt(post)}</p>}
                       </div>
                     </div>
                   </Link>
@@ -590,7 +591,7 @@ export default async function HomeStatic() {
           <section className="w-full py-8 bg-gray-50">
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-display text-4xl font-bold text-red-600">Calgary Spotlight</h2>
+                <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-red-600">Calgary Spotlight</h2>
                 <Link href="/calgary" className="text-red-600 hover:text-red-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
@@ -628,7 +629,7 @@ export default async function HomeStatic() {
             <section className="w-full py-8">
               <div className="container mx-auto px-4 md:px-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="font-display text-4xl font-bold text-emerald-700">More From Alberta</h2>
+                  <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-emerald-700">More From Alberta</h2>
                   <Link href="/alberta" className="text-emerald-700 hover:text-emerald-800 flex items-center gap-2 font-body font-medium">
                     View All <ArrowRight className="w-4 h-4" />
                   </Link>
@@ -670,7 +671,7 @@ export default async function HomeStatic() {
           <section className="w-full py-8">
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-display text-4xl font-bold">Upcoming Events</h2>
+                <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold">Upcoming Events</h2>
                 <Link href="/events" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
@@ -743,7 +744,7 @@ export default async function HomeStatic() {
           <section className="w-full py-8 bg-gray-50">
             <div className="container mx-auto px-4 md:px-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-display text-4xl font-bold">Food & Drink</h2>
+                <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold">Food & Drink</h2>
                 <Link href="/food-drink" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>

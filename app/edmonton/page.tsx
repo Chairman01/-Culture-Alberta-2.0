@@ -341,37 +341,32 @@ export default async function EdmontonPage() {
           <section className="w-full py-6 bg-gray-50">
             <div className="container mx-auto px-4 md:px-6">
               <Tabs defaultValue="all" className="w-full">
-                <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
-                  <TabsList className="mx-auto sm:mx-0">
+                <div className="mb-6 overflow-x-auto -mx-4 px-4 pb-1">
+                  <TabsList className="inline-flex min-w-max">
                     <TabsTrigger value="all">All</TabsTrigger>
-                    <TabsTrigger value="food">Food & Drink</TabsTrigger>
                     <TabsTrigger value="top">Top Stories</TabsTrigger>
+                    <TabsTrigger value="food">Food & Drink</TabsTrigger>
                     <TabsTrigger value="arts">Arts & Culture</TabsTrigger>
                     <TabsTrigger value="outdoors">Outdoors</TabsTrigger>
+                    <TabsTrigger value="sports">Sports</TabsTrigger>
+                    <TabsTrigger value="crime">Crime</TabsTrigger>
+                    <TabsTrigger value="politics">Politics</TabsTrigger>
                   </TabsList>
                 </div>
 
+                {/* Helper to render article grid */}
                 <TabsContent value="all" className="mt-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {articles.slice(0, 3).map((article) => (
+                    {articles.slice(0, 6).map((article) => (
                       <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[4/3] w-full bg-gray-200">
-                            <Image
-                              src={article.imageUrl || "/placeholder.svg"}
-                              alt={article.title}
-                              width={400}
-                              height={300}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
+                            <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
                           </div>
                         </div>
                         <div className="mt-2 space-y-1">
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">
-                              {article.category}
-                            </span>
+                            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">{article.category}</span>
                             <span>{formatDate(article.date || '')}</span>
                           </div>
                           <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
@@ -380,56 +375,10 @@ export default async function EdmontonPage() {
                       </Link>
                     ))}
                   </div>
-                  {articles.length > 3 && (
+                  {articles.length > 6 && (
                     <div className="mt-6 text-center">
-                      <Link
-                        href="/edmonton/all-articles"
-                        className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                      >
-                        View All Edmonton Articles ({articles.length})
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="food" className="mt-4">
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {articles.filter((article) => article.category?.toLowerCase().includes('food')).slice(0, 3).map((article) => (
-                      <Link key={article.id} href={getArticleUrl(article)} className="group block">
-                        <div className="overflow-hidden rounded-lg">
-                          <div className="aspect-[4/3] w-full bg-gray-200">
-                            <Image
-                              src={article.imageUrl || "/placeholder.svg"}
-                              alt={article.title}
-                              width={400}
-                              height={300}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          </div>
-                        </div>
-                        <div className="mt-2 space-y-1">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">
-                              {article.category}
-                            </span>
-                            <span>{formatDate(article.date || '')}</span>
-                          </div>
-                          <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
-                          <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                  {articles.filter((article) => article.category?.toLowerCase().includes('food')).length > 3 && (
-                    <div className="mt-6 text-center">
-                      <Link
-                        href="/edmonton/food-drink"
-                        className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                      >
-                        View All Food & Drink Articles ({articles.filter((article) => article.category?.toLowerCase().includes('food')).length})
-                        <ArrowRight className="w-4 h-4" />
+                      <Link href="/edmonton/all-articles" className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                        View All Edmonton Articles ({articles.length}) <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
                   )}
@@ -441,21 +390,12 @@ export default async function EdmontonPage() {
                       <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
                           <div className="aspect-[4/3] w-full bg-gray-200">
-                            <Image
-                              src={article.imageUrl || "/placeholder.svg"}
-                              alt={article.title}
-                              width={400}
-                              height={300}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
+                            <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
                           </div>
                         </div>
                         <div className="mt-2 space-y-1">
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">
-                              {article.location || article.category}
-                            </span>
+                            <span className="rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 text-xs font-semibold">Top Story</span>
                             <span>{formatDate(article.date || '')}</span>
                           </div>
                           <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
@@ -465,92 +405,218 @@ export default async function EdmontonPage() {
                     ))}
                   </div>
                   {topStories.length === 0 && (
-                    <p className="text-center text-muted-foreground py-12">No top stories yet. Mark articles as trending in the admin to feature them here.</p>
+                    <p className="text-center text-muted-foreground py-12">No top stories yet.</p>
                   )}
+                </TabsContent>
+
+                <TabsContent value="food" className="mt-4">
+                  {(() => {
+                    const filtered = articles.filter(a => {
+                      const cat = (a.category || '').toLowerCase()
+                      const cats = (a.categories || []).map((c: string) => c.toLowerCase())
+                      return cat.includes('food') || cat.includes('drink') || cats.some((c: string) => c.includes('food') || c.includes('drink'))
+                    }).slice(0, 6)
+                    return filtered.length > 0 ? (
+                      <>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          {filtered.map((article) => (
+                            <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                              <div className="overflow-hidden rounded-lg">
+                                <div className="aspect-[4/3] w-full bg-gray-200">
+                                  <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                                </div>
+                              </div>
+                              <div className="mt-2 space-y-1">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span className="rounded-full bg-orange-100 text-orange-800 px-2.5 py-0.5 text-xs font-semibold">Food & Drink</span>
+                                  <span>{formatDate(article.date || '')}</span>
+                                </div>
+                                <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
+                                <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                        <div className="mt-6 text-center">
+                          <Link href="/edmonton/food-drink" className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                            View All Food & Drink <ArrowRight className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </>
+                    ) : <p className="text-center text-muted-foreground py-12">No Food & Drink articles yet.</p>
+                  })()}
                 </TabsContent>
 
                 <TabsContent value="arts" className="mt-4">
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {articles.filter((article) => article.category?.toLowerCase().includes('art')).slice(0, 3).map((article) => (
-                      <Link key={article.id} href={getArticleUrl(article)} className="group block">
-                        <div className="overflow-hidden rounded-lg">
-                          <div className="aspect-[4/3] w-full bg-gray-200">
-                            <Image
-                              src={article.imageUrl || "/placeholder.svg"}
-                              alt={article.title}
-                              width={400}
-                              height={300}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          </div>
+                  {(() => {
+                    const filtered = articles.filter(a => {
+                      const cat = (a.category || '').toLowerCase()
+                      const cats = (a.categories || []).map((c: string) => c.toLowerCase())
+                      return cat.includes('art') || cat.includes('culture') || cats.some((c: string) => c.includes('art') || c.includes('culture'))
+                    }).slice(0, 6)
+                    return filtered.length > 0 ? (
+                      <>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          {filtered.map((article) => (
+                            <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                              <div className="overflow-hidden rounded-lg">
+                                <div className="aspect-[4/3] w-full bg-gray-200">
+                                  <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                                </div>
+                              </div>
+                              <div className="mt-2 space-y-1">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span className="rounded-full bg-purple-100 text-purple-800 px-2.5 py-0.5 text-xs font-semibold">Arts & Culture</span>
+                                  <span>{formatDate(article.date || '')}</span>
+                                </div>
+                                <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
+                                <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                              </div>
+                            </Link>
+                          ))}
                         </div>
-                        <div className="mt-2 space-y-1">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">
-                              {article.category}
-                            </span>
-                            <span>{formatDate(article.date || '')}</span>
-                          </div>
-                          <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
-                          <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                        <div className="mt-6 text-center">
+                          <Link href="/edmonton/arts-culture" className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                            View All Arts & Culture <ArrowRight className="w-4 h-4" />
+                          </Link>
                         </div>
-                      </Link>
-                    ))}
-                  </div>
-                  {articles.filter((article) => article.category?.toLowerCase().includes('art')).length > 3 && (
-                    <div className="mt-6 text-center">
-                      <Link
-                        href="/edmonton/arts-culture"
-                        className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                      >
-                        View All Arts & Culture Articles ({articles.filter((article) => article.category?.toLowerCase().includes('art')).length})
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    </div>
-                  )}
+                      </>
+                    ) : <p className="text-center text-muted-foreground py-12">No Arts & Culture articles yet.</p>
+                  })()}
                 </TabsContent>
 
                 <TabsContent value="outdoors" className="mt-4">
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).slice(0, 3).map((article) => (
-                      <Link key={article.id} href={getArticleUrl(article)} className="group block">
-                        <div className="overflow-hidden rounded-lg">
-                          <div className="aspect-[4/3] w-full bg-gray-200">
-                            <Image
-                              src={article.imageUrl || "/placeholder.svg"}
-                              alt={article.title}
-                              width={400}
-                              height={300}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          </div>
+                  {(() => {
+                    const filtered = articles.filter(a => {
+                      const cat = (a.category || '').toLowerCase()
+                      const cats = (a.categories || []).map((c: string) => c.toLowerCase())
+                      return cat.includes('outdoor') || cat.includes('nature') || cats.some((c: string) => c.includes('outdoor') || c.includes('nature'))
+                    }).slice(0, 6)
+                    return filtered.length > 0 ? (
+                      <>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          {filtered.map((article) => (
+                            <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                              <div className="overflow-hidden rounded-lg">
+                                <div className="aspect-[4/3] w-full bg-gray-200">
+                                  <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                                </div>
+                              </div>
+                              <div className="mt-2 space-y-1">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span className="rounded-full bg-green-100 text-green-800 px-2.5 py-0.5 text-xs font-semibold">Outdoors</span>
+                                  <span>{formatDate(article.date || '')}</span>
+                                </div>
+                                <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
+                                <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                              </div>
+                            </Link>
+                          ))}
                         </div>
-                        <div className="mt-2 space-y-1">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">
-                              {article.category}
-                            </span>
-                            <span>{formatDate(article.date || '')}</span>
-                          </div>
-                          <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
-                          <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                        <div className="mt-6 text-center">
+                          <Link href="/edmonton/outdoors" className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                            View All Outdoors <ArrowRight className="w-4 h-4" />
+                          </Link>
                         </div>
-                      </Link>
-                    ))}
-                  </div>
-                  {articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).length > 3 && (
-                    <div className="mt-6 text-center">
-                      <Link
-                        href="/edmonton/outdoors"
-                        className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                      >
-                        View All Outdoors Articles ({articles.filter((article) => article.category?.toLowerCase().includes('outdoor')).length})
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    </div>
-                  )}
+                      </>
+                    ) : <p className="text-center text-muted-foreground py-12">No Outdoors articles yet.</p>
+                  })()}
+                </TabsContent>
+
+                <TabsContent value="sports" className="mt-4">
+                  {(() => {
+                    const filtered = articles.filter(a => {
+                      const cat = (a.category || '').toLowerCase()
+                      const cats = (a.categories || []).map((c: string) => c.toLowerCase())
+                      const tags = ((a as any).tags || []).map((t: string) => t.toLowerCase())
+                      return cat.includes('sport') || cats.some((c: string) => c.includes('sport')) || tags.some((t: string) => t.includes('sport'))
+                    }).slice(0, 6)
+                    return filtered.length > 0 ? (
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {filtered.map((article) => (
+                          <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                            <div className="overflow-hidden rounded-lg">
+                              <div className="aspect-[4/3] w-full bg-gray-200">
+                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                              </div>
+                            </div>
+                            <div className="mt-2 space-y-1">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="rounded-full bg-yellow-100 text-yellow-800 px-2.5 py-0.5 text-xs font-semibold">Sports</span>
+                                <span>{formatDate(article.date || '')}</span>
+                              </div>
+                              <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : <p className="text-center text-muted-foreground py-12">No Sports articles yet.</p>
+                  })()}
+                </TabsContent>
+
+                <TabsContent value="crime" className="mt-4">
+                  {(() => {
+                    const filtered = articles.filter(a => {
+                      const cat = (a.category || '').toLowerCase()
+                      const cats = (a.categories || []).map((c: string) => c.toLowerCase())
+                      const tags = ((a as any).tags || []).map((t: string) => t.toLowerCase())
+                      return cat.includes('crime') || cat.includes('safety') || cats.some((c: string) => c.includes('crime') || c.includes('safety')) || tags.some((t: string) => t.includes('crime'))
+                    }).slice(0, 6)
+                    return filtered.length > 0 ? (
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {filtered.map((article) => (
+                          <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                            <div className="overflow-hidden rounded-lg">
+                              <div className="aspect-[4/3] w-full bg-gray-200">
+                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                              </div>
+                            </div>
+                            <div className="mt-2 space-y-1">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="rounded-full bg-red-100 text-red-800 px-2.5 py-0.5 text-xs font-semibold">Crime</span>
+                                <span>{formatDate(article.date || '')}</span>
+                              </div>
+                              <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : <p className="text-center text-muted-foreground py-12">No Crime articles yet.</p>
+                  })()}
+                </TabsContent>
+
+                <TabsContent value="politics" className="mt-4">
+                  {(() => {
+                    const filtered = articles.filter(a => {
+                      const cat = (a.category || '').toLowerCase()
+                      const cats = (a.categories || []).map((c: string) => c.toLowerCase())
+                      const tags = ((a as any).tags || []).map((t: string) => t.toLowerCase())
+                      return cat.includes('politic') || cat.includes('government') || cats.some((c: string) => c.includes('politic') || c.includes('government')) || tags.some((t: string) => t.includes('politic'))
+                    }).slice(0, 6)
+                    return filtered.length > 0 ? (
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {filtered.map((article) => (
+                          <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                            <div className="overflow-hidden rounded-lg">
+                              <div className="aspect-[4/3] w-full bg-gray-200">
+                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                              </div>
+                            </div>
+                            <div className="mt-2 space-y-1">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="rounded-full bg-gray-100 text-gray-800 px-2.5 py-0.5 text-xs font-semibold">Politics</span>
+                                <span>{formatDate(article.date || '')}</span>
+                              </div>
+                              <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : <p className="text-center text-muted-foreground py-12">No Politics articles yet.</p>
+                  })()}
                 </TabsContent>
               </Tabs>
             </div>

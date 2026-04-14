@@ -25,6 +25,7 @@ import Script from 'next/script'
 import { CommentForm } from '@/components/comment-form'
 import { CommentList } from '@/components/comment-list'
 import { CommentsSection } from '@/components/comments-section'
+import { ArticleViewCount } from '@/components/article-view-count'
 
 // import NewsletterSignup from '@/components/newsletter-signup' // Removed - using ArticleNewsletterSignup instead
 // Removed ArticleContent import to fix hydration issues
@@ -553,6 +554,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                         {loadedArticle.author && (
                           <span className="font-medium">By {loadedArticle.author}</span>
                         )}
+                        <ArticleViewCount slug={slug} articleTitle={loadedArticle.title} />
                       </div>
 
                       <h1 className="text-4xl lg:text-5xl font-bold leading-tight text-gray-900">
@@ -629,13 +631,14 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     <Script src="https://platform.twitter.com/widgets.js" strategy="lazyOnload" />
 
                     {/* Article Footer */}
-                    {loadedArticle.date && formatDate(loadedArticle.date) && (
-                      <div className="flex items-center justify-end pt-8 border-t border-gray-200">
+                    <div className="flex items-center justify-between pt-8 border-t border-gray-200">
+                      {loadedArticle.date && formatDate(loadedArticle.date) && (
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                           <span>Published {formatDate(loadedArticle.date)}</span>
                         </div>
-                      </div>
-                    )}
+                      )}
+                      <ArticleViewCount slug={slug} articleTitle={loadedArticle.title} />
+                    </div>
 
                     {/* Newsletter - Inline at end of article */}
                     <ArticleNewsletterSignup

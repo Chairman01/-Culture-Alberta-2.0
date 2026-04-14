@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { BarChart2, FileText, Calendar, Award, Mail, RefreshCw, LogOut } from "lucide-react"
+import { BarChart2, FileText, Calendar, Award, Mail, RefreshCw, LogOut, Menu, X } from "lucide-react"
 import { Toaster } from "@/components/ui/toaster"
 
 export default function AdminLayout({
@@ -16,6 +16,7 @@ export default function AdminLayout({
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     setIsClient(true)
@@ -120,56 +121,95 @@ export default function AdminLayout({
     )
   }
 
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
+      <div className="flex-1">
+        {/* Logo */}
+        <div className="h-16 flex items-center px-6 border-b">
+          <Link href="/" className="text-xl font-bold" onClick={() => setSidebarOpen(false)}>
+            Culture Alberta
+          </Link>
+        </div>
+
+        {/* Navigation */}
+        <nav className="px-3 mt-6">
+          {navigation.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors mb-1 ${isActive
+                  ? 'bg-black text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+              >
+                <item.icon className="h-5 w-5" />
+                {item.name}
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
+
+      {/* Logout Button */}
+      <div className="p-3 border-t border-gray-200">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full text-gray-700 hover:bg-red-50 hover:text-red-600"
+        >
+          <LogOut className="h-5 w-5" />
+          Logout
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Admin Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50">
-        <div className="flex flex-col h-full">
-          <div className="flex-1">
-            {/* Logo */}
-            <div className="h-16 flex items-center px-6 border-b">
-              <Link href="/" className="text-xl font-bold">
-                Culture Alberta
-              </Link>
-            </div>
+      {/* Mobile top bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 z-50 flex items-center px-4 gap-3">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-2 rounded-lg text-gray-700 hover:bg-gray-100"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <span className="font-bold text-lg">Culture Alberta Admin</span>
+      </div>
 
-            {/* Navigation */}
-            <nav className="px-3 mt-6">
-              {navigation.map((item) => {
-                const isActive = pathname === item.href
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                      ? 'bg-black text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    {item.name}
-                  </Link>
-                )
-              })}
-            </nav>
-          </div>
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/40 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-          {/* Logout Button */}
-          <div className="p-3 border-t border-gray-200">
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full text-gray-700 hover:bg-red-50 hover:text-red-600"
-            >
-              <LogOut className="h-5 w-5" />
-              Logout
-            </button>
-          </div>
+      {/* Mobile sidebar drawer */}
+      <div className={`lg:hidden fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="absolute top-3 right-3">
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"
+            aria-label="Close menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
+        <SidebarContent />
+      </div>
+
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50">
+        <SidebarContent />
       </div>
 
       {/* Main content */}
-      <div className="pl-64">
-        <main className="p-8">
+      <div className="lg:pl-64 pt-14 lg:pt-0">
+        <main className="p-4 md:p-8">
           {children}
         </main>
       </div>
