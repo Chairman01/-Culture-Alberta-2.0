@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { updateOptimizedFallback, loadOptimizedFallback } from '@/lib/optimized-fallback'
 import { revalidatePath } from 'next/cache'
+import { notifySearchEngines } from '@/lib/indexing'
+import { createSlug } from '@/lib/utils/slug'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
@@ -108,9 +110,15 @@ export async function POST(request: Request) {
       } catch (revalidateError) {
         console.error('❌ Revalidation failed:', revalidateError)
       }
-      
-      return NextResponse.json({ 
-        success: true, 
+
+      // Notify search engines about the new event (non-blocking)
+      const eventSlug = createSlug(eventData.title)
+      notifySearchEngines(`/events/${eventSlug}`).catch(err =>
+        console.warn('⚠️ Search engine notification failed (non-fatal):', err)
+      )
+
+      return NextResponse.json({
+        success: true,
         message: 'Event created successfully in Supabase',
         event: supabaseResult
       })

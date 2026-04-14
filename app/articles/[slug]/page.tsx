@@ -21,6 +21,7 @@ import { Metadata } from 'next'
 // import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
 
 import { processArticleContent } from '@/lib/utils/youtube'
+import Script from 'next/script'
 import { CommentForm } from '@/components/comment-form'
 import { CommentList } from '@/components/comment-list'
 import { CommentsSection } from '@/components/comments-section'
@@ -78,6 +79,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       return {
         title: 'Article Not Found | Culture Alberta',
         description: 'The requested article could not be found.',
+        robots: { index: false, follow: false },
       }
     }
 
@@ -153,6 +155,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description: description,
       keywords: [...(loadedArticle.tags || []), loadedArticle.category, 'Alberta', 'Culture'].filter(Boolean).join(', '),
       authors: [{ name: loadedArticle.author || 'Culture Alberta' }],
+      robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+          'max-snippet': -1,
+          'max-image-preview': 'large',
+          'max-video-preview': -1,
+        },
+      },
       openGraph: {
         type: 'article',
         title: fullTitle,
@@ -613,6 +626,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                         )}
                       </div>
                     </div>
+
+                    {/* Twitter widget script - activates twitter-tweet blockquotes */}
+                    <Script src="https://platform.twitter.com/widgets.js" strategy="lazyOnload" />
 
                     {/* Article Footer */}
                     <div className="flex items-center justify-between pt-8 border-t border-gray-200">

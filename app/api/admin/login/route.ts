@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,17 +16,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Service unavailable' }, { status: 503 })
     }
 
-    if (username !== adminUsername || password !== adminPassword) {
+    let matchedUsername: string | null = null
+    let matchedRole: 'admin' | 'contributor' | null = null
+
+    // Admin: plain text password comparison
+    if (username === adminUsername && password === adminPassword) {
+      matchedUsername = adminUsername
+      matchedRole = 'admin'
+    }
+
+    // Contributor: bcrypt password comparison
+    const contributorUsername     = process.env.CONTRIBUTOR_USERNAME
+    const contributorPasswordHash = process.env.CONTRIBUTOR_PASSWORD_HASH
+    if (!matchedRole && contributorUsername && contributorPasswordHash) {
+      if (username === contributorUsername && await bcrypt.compare(password, contributorPasswordHash)) {
+        matchedUsername = contributorUsername
+        matchedRole = 'contributor'
+      }
+    }
+
+    if (!matchedUsername || !matchedRole) {
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 })
     }
 
     const token = jwt.sign(
-      { username: adminUsername, role: 'admin' },
+      { username: matchedUsername, role: matchedRole },
       jwtSecret,
       { expiresIn: '24h' }
     )
 
-    const response = NextResponse.json({ message: 'Login successful', username: adminUsername, token })
+    const response = NextResponse.json({ message: 'Login successful', username: matchedUsername, role: matchedRole, token })
 
     response.cookies.set('admin_session', token, {
       httpOnly: true,
