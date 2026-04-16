@@ -93,11 +93,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Google AdSense - MUST be in head for verification */}
+        {/* Mediavine Ads */}
         <script
+          type="text/javascript"
           async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6902227267422426"
-          crossOrigin="anonymous"
+          data-noptimize="1"
+          data-cfasync="false"
+          src="//scripts.mediavine.com/tags/culturealberta.js"
         />
       </head>
       <body suppressHydrationWarning={true}>
@@ -106,13 +108,6 @@ export default function RootLayout({
         <WebsiteStructuredData />
         <OrganizationStructuredData />
         <LocalBusinessStructuredData />
-        {/* Google AdSense - Duplicate in body as backup */}
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6902227267422426"
-          crossOrigin="anonymous"
-          strategy="beforeInteractive"
-        />
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-48EV1DX840"
           strategy="afterInteractive"
