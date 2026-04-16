@@ -649,7 +649,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
       .select(fields)
       .or(`category.ilike.%${city}%,location.ilike.%${city}%,title.ilike.%${city}%`)
       .order('created_at', { ascending: false })
-      .limit(30) // Reduced limit for faster loading
+      .limit(500) // All articles for city pages
 
     const { data, error } = await Promise.race([
       supabasePromise,

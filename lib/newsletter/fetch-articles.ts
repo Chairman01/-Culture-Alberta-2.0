@@ -146,8 +146,8 @@ export async function fetchNewsletterContent(
   }
 
   // ── 2. Alberta articles ─────────────────────────────────────────────────────
-  // Always fetch auto base
-  const { data: albertaAutoData } = await supabase
+  // Always fetch auto base (last 7 days first, fall back to all-time if < 3)
+  let { data: albertaAutoData } = await supabase
     .from('articles')
     .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
     .eq('status', 'published')
@@ -159,6 +159,23 @@ export async function fetchNewsletterContent(
     .gte('created_at', since)
     .order('created_at', { ascending: false })
     .limit(3)
+
+  if (!albertaAutoData || albertaAutoData.length < 3) {
+    const { data: albertaFallback } = await supabase
+      .from('articles')
+      .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
+      .eq('status', 'published')
+      .neq('type', 'event')
+      .or('location.ilike.%alberta%,category.ilike.%alberta%')
+      .not('location', 'ilike', '%edmonton%')
+      .not('location', 'ilike', '%calgary%')
+      .not('location', 'ilike', '%lethbridge%')
+      .order('created_at', { ascending: false })
+      .limit(3)
+    const existing = new Set((albertaAutoData || []).map((a: any) => a.id))
+    const merged = [...(albertaAutoData || []), ...(albertaFallback || []).filter((a: any) => !existing.has(a.id))]
+    albertaAutoData = merged.slice(0, 3)
+  }
 
   const autoAlberta = (albertaAutoData || []).map(toNewsletterArticle)
 
