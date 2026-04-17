@@ -347,8 +347,8 @@ export default async function EdmontonPage() {
                     <TabsTrigger value="top">Top Stories</TabsTrigger>
                     <TabsTrigger value="food">Food & Drink</TabsTrigger>
                     <TabsTrigger value="arts">Arts & Culture</TabsTrigger>
-                    <TabsTrigger value="outdoors">Outdoors</TabsTrigger>
                     <TabsTrigger value="sports">Sports</TabsTrigger>
+                    <TabsTrigger value="realestate">Real Estate</TabsTrigger>
                     <TabsTrigger value="crime">Crime</TabsTrigger>
                     <TabsTrigger value="politics">Politics</TabsTrigger>
                   </TabsList>
@@ -485,44 +485,6 @@ export default async function EdmontonPage() {
                   })()}
                 </TabsContent>
 
-                <TabsContent value="outdoors" className="mt-4">
-                  {(() => {
-                    const filtered = articles.filter(a => {
-                      const cat = (a.category || '').toLowerCase()
-                      const cats = (a.categories || []).map((c: string) => c.toLowerCase())
-                      return cat.includes('outdoor') || cat.includes('nature') || cats.some((c: string) => c.includes('outdoor') || c.includes('nature'))
-                    }).slice(0, 6)
-                    return filtered.length > 0 ? (
-                      <>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                          {filtered.map((article) => (
-                            <Link key={article.id} href={getArticleUrl(article)} className="group block">
-                              <div className="overflow-hidden rounded-lg">
-                                <div className="aspect-[4/3] w-full bg-gray-200">
-                                  <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
-                                </div>
-                              </div>
-                              <div className="mt-2 space-y-1">
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span className="rounded-full bg-green-100 text-green-800 px-2.5 py-0.5 text-xs font-semibold">Outdoors</span>
-                                  <span>{formatDate(article.date || '')}</span>
-                                </div>
-                                <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
-                                <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
-                              </div>
-                            </Link>
-                          ))}
-                        </div>
-                        <div className="mt-6 text-center">
-                          <Link href="/edmonton/outdoors" className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                            View All Outdoors <ArrowRight className="w-4 h-4" />
-                          </Link>
-                        </div>
-                      </>
-                    ) : <p className="text-center text-muted-foreground py-12">No Outdoors articles yet.</p>
-                  })()}
-                </TabsContent>
-
                 <TabsContent value="sports" className="mt-4">
                   {(() => {
                     const filtered = articles.filter(a => {
@@ -552,6 +514,40 @@ export default async function EdmontonPage() {
                         ))}
                       </div>
                     ) : <p className="text-center text-muted-foreground py-12">No Sports articles yet.</p>
+                  })()}
+                </TabsContent>
+
+                <TabsContent value="realestate" className="mt-4">
+                  {(() => {
+                    const filtered = articles.filter(a => {
+                      const cat = (a.category || '').toLowerCase()
+                      const cats = (a.categories || []).map((c: string) => c.toLowerCase())
+                      const tags = ((a as any).tags || []).map((t: string) => t.toLowerCase())
+                      return cat.includes('real estate') || cat.includes('housing') || cat.includes('property') || cat.includes('mortgage') ||
+                        cats.some((c: string) => c.includes('real estate') || c.includes('housing') || c.includes('property')) ||
+                        tags.some((t: string) => t.includes('real estate') || t.includes('housing') || t.includes('property'))
+                    }).slice(0, 6)
+                    return filtered.length > 0 ? (
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {filtered.map((article) => (
+                          <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                            <div className="overflow-hidden rounded-lg">
+                              <div className="aspect-[4/3] w-full bg-gray-200">
+                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                              </div>
+                            </div>
+                            <div className="mt-2 space-y-1">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="rounded-full bg-teal-100 text-teal-800 px-2.5 py-0.5 text-xs font-semibold">Real Estate</span>
+                                <span>{formatDate(article.date || '')}</span>
+                              </div>
+                              <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : <p className="text-center text-muted-foreground py-12">No Real Estate articles yet.</p>
                   })()}
                 </TabsContent>
 

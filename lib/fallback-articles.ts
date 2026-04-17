@@ -1,5 +1,5 @@
 import { Article } from './types/article'
-import { getAllArticles as getSupabaseArticles } from './supabase-articles'
+import { getAllArticles as getSupabaseArticles, getHomepageArticles } from './supabase-articles'
 import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fallback'
 import fs from 'fs'
 import path from 'path'
@@ -390,4 +390,53 @@ export async function getCultureArticlesWithFallback(): Promise<Article[]> {
 export function clearArticlesJsonCache(): void {
   articlesJsonCache = null
   articlesJsonCacheTimestamp = 0
+}
+
+/**
+ * Load ALL articles for a city's dedicated "all articles" page.
+ * Uses a broad fetch (no city pre-filter in Supabase) + comprehensive client-side
+ * filtering so articles tagged via the categories/tags arrays are not missed.
+ */
+export async function getAllCityArticlesWithFallback(city: string): Promise<Article[]> {
+  const cityLower = city.toLowerCase()
+  console.log(`🔄 Loading ALL ${city} articles for all-articles page...`)
+
+  function matchesCity(article: Article): boolean {
+    const loc = (article.location || '').toLowerCase()
+    const cat = (article.category || '').toLowerCase()
+    const cats = (article.categories || []).map((c: string) => c.toLowerCase())
+    const tags = ((article as any).tags || []).map((t: string) => t.toLowerCase())
+    const title = (article.title || '').toLowerCase()
+    return (
+      loc.includes(cityLower) ||
+      cat.includes(cityLower) ||
+      cats.some(c => c.includes(cityLower)) ||
+      tags.some((t: string) => t.includes(cityLower)) ||
+      title.includes(cityLower)
+    )
+  }
+
+  // Primary: fetch all articles (no city filter in DB) and filter client-side
+  try {
+    const allArticles = await getHomepageArticles()
+    if (allArticles.length > 0) {
+      const cityArticles = allArticles.filter(matchesCity)
+      const result = excludeOtherCityArticles(cityArticles, cityLower)
+      console.log(`✅ All-articles page: ${result.length} ${city} articles (from ${allArticles.length} total)`)
+      updateOptimizedFallback(allArticles).catch(() => {})
+      return result
+    }
+  } catch (error) {
+    console.warn(`⚠️ Broad fetch failed for ${city} all-articles page:`, error)
+  }
+
+  // Fallback: optimized JSON with same comprehensive filter
+  try {
+    const fallback = await loadOptimizedFallback()
+    const cityArticles = fallback.filter(matchesCity)
+    return excludeOtherCityArticles(cityArticles, cityLower)
+  } catch (error) {
+    console.error(`❌ Failed to load all ${city} articles from fallback:`, error)
+    return []
+  }
 }

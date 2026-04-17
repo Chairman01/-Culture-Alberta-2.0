@@ -1,4 +1,4 @@
-import { getCityArticlesWithFallback } from "@/lib/fallback-articles"
+import { getAllCityArticlesWithFallback } from "@/lib/fallback-articles"
 import { Article } from "@/lib/types/article"
 import { isRegularArticle } from "@/lib/utils/article-filters"
 import Link from "next/link"
@@ -24,7 +24,7 @@ interface CalgaryArticle extends Article {
 
 export default async function CalgaryAllArticlesPage() {
   // Get Calgary articles with fallback to articles.json (exclude events)
-  const allCalgaryContent = await getCityArticlesWithFallback('calgary') as CalgaryArticle[]
+  const allCalgaryContent = await getAllCityArticlesWithFallback('calgary') as CalgaryArticle[]
   const articles = allCalgaryContent
     .filter(item => item.type !== 'event' && item.type !== 'Event')
     .filter(isRegularArticle) // Exclude neighborhood & guide (they have dedicated pages)

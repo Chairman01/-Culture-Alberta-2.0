@@ -104,32 +104,65 @@ export async function fetchNewsletterContent(
       }
     }
   } else {
-    // Auto fetch top 3 newest (last 7 days, with all-time fallback)
-    let { data: cityData } = await supabase
+    // Helper: client-side city match — checks all fields including categories/tags arrays
+    const matchesCity = (a: any) => {
+      const loc = (a.location || '').toLowerCase()
+      const cat = (a.category || '').toLowerCase()
+      const cats = (a.categories || []).map((c: string) => c.toLowerCase())
+      const tags = (a.tags || []).map((t: string) => t.toLowerCase())
+      const ttl = (a.title || '').toLowerCase()
+      return loc.includes(cityTerm) || cat.includes(cityTerm) ||
+        cats.some((c: string) => c.includes(cityTerm)) ||
+        tags.some((t: string) => t.includes(cityTerm)) ||
+        ttl.includes(cityTerm)
+    }
+
+    const cityFields = 'id, title, excerpt, image_url, image_source, category, categories, tags, location, author, created_at'
+
+    // Auto fetch top 3 newest — last 7 days first, with broader fallbacks
+    let { data: recentData } = await supabase
       .from('articles')
-      .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
+      .select(cityFields)
       .eq('status', 'published')
       .neq('type', 'event')
       .or(`location.ilike.%${cityTerm}%,category.ilike.%${cityTerm}%,title.ilike.%${cityTerm}%`)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
-      .limit(3)
+      .limit(10)
 
-    if (!cityData || cityData.length < 3) {
-      const { data: fallback } = await supabase
+    let cityData: any[] = (recentData || [])
+
+    if (cityData.length < 3) {
+      // All-time fallback with same DB filter
+      const { data: allTimeSql } = await supabase
         .from('articles')
-        .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
+        .select(cityFields)
         .eq('status', 'published')
         .neq('type', 'event')
         .or(`location.ilike.%${cityTerm}%,category.ilike.%${cityTerm}%,title.ilike.%${cityTerm}%`)
         .order('created_at', { ascending: false })
-        .limit(3)
-      const existing = new Set((cityData || []).map((a: any) => a.id))
-      const merged = [...(cityData || []), ...(fallback || []).filter((a: any) => !existing.has(a.id))]
-      cityData = merged.slice(0, 3)
+        .limit(10)
+      const existing = new Set(cityData.map((a: any) => a.id))
+      cityData = [...cityData, ...(allTimeSql || []).filter((a: any) => !existing.has(a.id))]
     }
 
-    cityArticles = (cityData || []).map(toNewsletterArticle)
+    if (cityData.length < 3) {
+      // Broader fallback: fetch recent articles with no city filter, match client-side
+      // This catches articles tagged via categories/tags arrays
+      const { data: broadData } = await supabase
+        .from('articles')
+        .select(cityFields)
+        .eq('status', 'published')
+        .neq('type', 'event')
+        .order('created_at', { ascending: false })
+        .limit(50)
+      const existing = new Set(cityData.map((a: any) => a.id))
+      const clientMatched = (broadData || []).filter((a: any) => !existing.has(a.id) && matchesCity(a))
+      cityData = [...cityData, ...clientMatched]
+    }
+
+    cityData = cityData.slice(0, 3)
+    cityArticles = cityData.map(toNewsletterArticle)
 
     // Pin featured article to position 0 if set
     if (config.featured_article_id) {

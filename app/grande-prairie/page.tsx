@@ -36,15 +36,62 @@ async function getGrandePrairieData() {
         })
         const featuredArticle = sortedArticles[0] || null
         const trendingArticles = sortedArticles.slice(0, 4)
-        return { articles: sortedArticles, featuredArticle, trendingArticles }
+
+        const topStories = sortedArticles.slice(0, 6)
+
+        const foodDrinkArticles = sortedArticles.filter(a =>
+            a.category?.toLowerCase().includes('food') ||
+            a.category?.toLowerCase().includes('drink') ||
+            a.category?.toLowerCase().includes('restaurant') ||
+            a.categories?.some((c: string) => c.toLowerCase().includes('food') || c.toLowerCase().includes('drink'))
+        )
+
+        const cultureArticles = sortedArticles.filter(a =>
+            a.category?.toLowerCase().includes('culture') ||
+            a.category?.toLowerCase().includes('art') ||
+            a.category?.toLowerCase().includes('music') ||
+            a.category?.toLowerCase().includes('theater') ||
+            a.categories?.some((c: string) => c.toLowerCase().includes('culture') || c.toLowerCase().includes('art'))
+        )
+
+        const sportsArticles = sortedArticles.filter(a =>
+            a.category?.toLowerCase().includes('sport') ||
+            a.categories?.some((c: string) => c.toLowerCase().includes('sport')) ||
+            (a as any).tags?.some((t: string) => t.toLowerCase().includes('sport'))
+        )
+
+        const realEstateArticles = sortedArticles.filter(a =>
+            a.category?.toLowerCase().includes('real estate') ||
+            a.category?.toLowerCase().includes('housing') ||
+            a.category?.toLowerCase().includes('property') ||
+            a.category?.toLowerCase().includes('mortgage') ||
+            a.categories?.some((c: string) => c.toLowerCase().includes('real estate') || c.toLowerCase().includes('housing')) ||
+            (a as any).tags?.some((t: string) => t.toLowerCase().includes('real estate') || t.toLowerCase().includes('housing'))
+        )
+
+        const crimeArticles = sortedArticles.filter(a =>
+            a.category?.toLowerCase().includes('crime') ||
+            a.category?.toLowerCase().includes('safety') ||
+            a.categories?.some((c: string) => c.toLowerCase().includes('crime') || c.toLowerCase().includes('safety')) ||
+            (a as any).tags?.some((t: string) => t.toLowerCase().includes('crime'))
+        )
+
+        const politicsArticles = sortedArticles.filter(a =>
+            a.category?.toLowerCase().includes('politic') ||
+            a.category?.toLowerCase().includes('government') ||
+            a.categories?.some((c: string) => c.toLowerCase().includes('politic') || c.toLowerCase().includes('government')) ||
+            (a as any).tags?.some((t: string) => t.toLowerCase().includes('politic'))
+        )
+
+        return { articles: sortedArticles, featuredArticle, trendingArticles, topStories, foodDrinkArticles, cultureArticles, sportsArticles, realEstateArticles, crimeArticles, politicsArticles }
     } catch (error) {
         console.error('❌ Error loading Grande Prairie data:', error)
-        return { articles: [], featuredArticle: null, trendingArticles: [] }
+        return { articles: [], featuredArticle: null, trendingArticles: [], topStories: [], foodDrinkArticles: [], cultureArticles: [], sportsArticles: [], realEstateArticles: [], crimeArticles: [], politicsArticles: [] }
     }
 }
 
 export default async function GrandePrairiePage() {
-    const { articles, featuredArticle, trendingArticles } = await getGrandePrairieData()
+    const { articles, featuredArticle, trendingArticles, topStories, foodDrinkArticles, cultureArticles, sportsArticles, realEstateArticles, crimeArticles, politicsArticles } = await getGrandePrairieData()
 
     const formatDate = (dateString: string) => {
         try {
@@ -54,16 +101,6 @@ export default async function GrandePrairiePage() {
             return 'Recently'
         }
     }
-
-    const foodDrinkArticles = articles.filter(a =>
-        a.category?.toLowerCase().includes('food') || a.category?.toLowerCase().includes('drink') || a.category?.toLowerCase().includes('restaurant')
-    )
-    const cultureArticles = articles.filter(a =>
-        a.category?.toLowerCase().includes('culture') || a.category?.toLowerCase().includes('art') || a.category?.toLowerCase().includes('music') || a.category?.toLowerCase().includes('theater')
-    )
-    const outdoorsArticles = articles.filter(a =>
-        a.category?.toLowerCase().includes('outdoor') || a.category?.toLowerCase().includes('nature') || a.category?.toLowerCase().includes('park')
-    )
 
     return (
         <div className="flex min-h-screen flex-col">
@@ -134,92 +171,56 @@ export default async function GrandePrairiePage() {
 
                 <section className="w-full py-12">
                     <div className="container mx-auto px-4 md:px-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-display text-2xl font-bold">All Stories</h2>
-                            <Link href="/alberta" className="text-amber-700 hover:text-amber-800 font-medium text-sm flex items-center gap-1">
-                                Back to Around Alberta <span>→</span>
-                            </Link>
-                        </div>
                         <Tabs defaultValue="all" className="w-full">
-                            <TabsList className="grid w-full grid-cols-4 mb-8">
-                                <TabsTrigger value="all">All</TabsTrigger>
-                                <TabsTrigger value="food">Food & Drink</TabsTrigger>
-                                <TabsTrigger value="culture">Arts & Culture</TabsTrigger>
-                                <TabsTrigger value="outdoors">Outdoors</TabsTrigger>
-                            </TabsList>
+                            <div className="mb-6 overflow-x-auto -mx-4 px-4 pb-1">
+                                <TabsList className="inline-flex min-w-max">
+                                    <TabsTrigger value="all">All</TabsTrigger>
+                                    <TabsTrigger value="top">Top Stories</TabsTrigger>
+                                    <TabsTrigger value="food">Food & Drink</TabsTrigger>
+                                    <TabsTrigger value="culture">Arts & Culture</TabsTrigger>
+                                    <TabsTrigger value="sports">Sports</TabsTrigger>
+                                    <TabsTrigger value="realestate">Real Estate</TabsTrigger>
+                                    <TabsTrigger value="crime">Crime</TabsTrigger>
+                                    <TabsTrigger value="politics">Politics</TabsTrigger>
+                                </TabsList>
+                            </div>
 
-                            <TabsContent value="all" className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {articles.map((article) => (
-                                        <Link key={article.id} href={getArticleUrl(article)} className="group">
-                                            <div className="space-y-3">
-                                                <div className="relative aspect-video overflow-hidden rounded-lg">
-                                                    <Image src={article.imageUrl || '/placeholder.svg'} alt={article.title} fill className="object-cover transition-transform group-hover:scale-105" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <h3 className="font-semibold line-clamp-2 group-hover:text-amber-700">{article.title}</h3>
-                                                    <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
-                                                    <div className="text-xs text-muted-foreground">{formatDate(article.date || article.createdAt || '')}</div>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    ))}
-                                </div>
-                            </TabsContent>
-                            <TabsContent value="food" className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {foodDrinkArticles.map((article) => (
-                                        <Link key={article.id} href={getArticleUrl(article)} className="group">
-                                            <div className="space-y-3">
-                                                <div className="relative aspect-video overflow-hidden rounded-lg">
-                                                    <Image src={article.imageUrl || '/placeholder.svg'} alt={article.title} fill className="object-cover transition-transform group-hover:scale-105" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <h3 className="font-semibold line-clamp-2 group-hover:text-amber-700">{article.title}</h3>
-                                                    <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    ))}
-                                </div>
-                                {foodDrinkArticles.length === 0 && <p className="text-center text-muted-foreground py-12">No Food & Drink articles yet.</p>}
-                            </TabsContent>
-                            <TabsContent value="culture" className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {cultureArticles.map((article) => (
-                                        <Link key={article.id} href={getArticleUrl(article)} className="group">
-                                            <div className="space-y-3">
-                                                <div className="relative aspect-video overflow-hidden rounded-lg">
-                                                    <Image src={article.imageUrl || '/placeholder.svg'} alt={article.title} fill className="object-cover transition-transform group-hover:scale-105" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <h3 className="font-semibold line-clamp-2 group-hover:text-amber-700">{article.title}</h3>
-                                                    <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    ))}
-                                </div>
-                                {cultureArticles.length === 0 && <p className="text-center text-muted-foreground py-12">No Arts & Culture articles yet.</p>}
-                            </TabsContent>
-                            <TabsContent value="outdoors" className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {outdoorsArticles.map((article) => (
-                                        <Link key={article.id} href={getArticleUrl(article)} className="group">
-                                            <div className="space-y-3">
-                                                <div className="relative aspect-video overflow-hidden rounded-lg">
-                                                    <Image src={article.imageUrl || '/placeholder.svg'} alt={article.title} fill className="object-cover transition-transform group-hover:scale-105" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <h3 className="font-semibold line-clamp-2 group-hover:text-amber-700">{article.title}</h3>
-                                                    <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    ))}
-                                </div>
-                                {outdoorsArticles.length === 0 && <p className="text-center text-muted-foreground py-12">No Outdoors articles yet.</p>}
-                            </TabsContent>
+                            {[
+                                { value: 'all', label: null, items: articles.slice(0, 6) },
+                                { value: 'top', label: 'Top Story', badge: 'bg-blue-100 text-blue-800', items: topStories },
+                                { value: 'food', label: 'Food & Drink', badge: 'bg-orange-100 text-orange-800', items: foodDrinkArticles.slice(0, 6) },
+                                { value: 'culture', label: 'Arts & Culture', badge: 'bg-purple-100 text-purple-800', items: cultureArticles.slice(0, 6) },
+                                { value: 'sports', label: 'Sports', badge: 'bg-yellow-100 text-yellow-800', items: sportsArticles.slice(0, 6) },
+                                { value: 'realestate', label: 'Real Estate', badge: 'bg-teal-100 text-teal-800', items: realEstateArticles.slice(0, 6) },
+                                { value: 'crime', label: 'Crime', badge: 'bg-red-100 text-red-800', items: crimeArticles.slice(0, 6) },
+                                { value: 'politics', label: 'Politics', badge: 'bg-gray-100 text-gray-800', items: politicsArticles.slice(0, 6) },
+                            ].map(({ value, label, badge, items }) => (
+                                <TabsContent key={value} value={value} className="mt-4">
+                                    {items.length > 0 ? (
+                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                            {items.map((article) => (
+                                                <Link key={article.id} href={getArticleUrl(article)} className="group block">
+                                                    <div className="overflow-hidden rounded-lg">
+                                                        <div className="aspect-[4/3] w-full bg-gray-200">
+                                                            <Image src={article.imageUrl || '/placeholder.svg'} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-2 space-y-1">
+                                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                            {label && <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge}`}>{label}</span>}
+                                                            <span>{formatDate(article.date || article.createdAt || '')}</span>
+                                                        </div>
+                                                        <h3 className="font-bold group-hover:text-amber-700">{article.title}</h3>
+                                                        <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                                                    </div>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-center text-muted-foreground py-12">No {label || 'articles'} yet. Check back soon!</p>
+                                    )}
+                                </TabsContent>
+                            ))}
                         </Tabs>
                     </div>
                 </section>
