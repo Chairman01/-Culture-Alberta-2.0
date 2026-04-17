@@ -17,6 +17,7 @@ import {
   getArticleDetails,
   loadCurrentCityArticles,
   loadCurrentAlbertaArticles,
+  loadLatestCityArticles,
   type NewsletterConfig,
   type ArticlePickerItem,
 } from "./_config-actions"
@@ -416,6 +417,21 @@ export default function NewsletterAdmin() {
       ...prev,
       [city]: { ...prev[city], article_order: null, article_order_items: [], isDirty: true },
     }))
+  }
+
+  async function resetOrderToLatest(city: CityKey) {
+    setLoadingCurrent(prev => ({ ...prev, [city]: true }))
+    const articles = await loadLatestCityArticles(city)
+    setCityDrafts(prev => ({
+      ...prev,
+      [city]: {
+        ...prev[city],
+        article_order: articles.map(a => a.id),
+        article_order_items: articles,
+        isDirty: true,
+      },
+    }))
+    setLoadingCurrent(prev => ({ ...prev, [city]: false }))
   }
 
   function moveAlbertaArticle(idx: number, dir: -1 | 1) {
@@ -965,9 +981,12 @@ export default function NewsletterAdmin() {
                           {draft.article_order !== null && draft.article_order_items.length > 0 && (
                             <Button
                               size="sm" variant="ghost" className="text-xs h-7 px-2 text-gray-500"
-                              onClick={() => resetOrder(city)}
+                              onClick={() => resetOrderToLatest(city)}
+                              disabled={loadingCurrent[city]}
                             >
-                              Clear all (use auto)
+                              {loadingCurrent[city]
+                                ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Loading…</>
+                                : '↺ Reset to latest'}
                             </Button>
                           )}
                         </div>
@@ -985,7 +1004,7 @@ export default function NewsletterAdmin() {
                   <Badge variant="secondary" className="text-[10px] bg-green-100 text-green-600">Shared across all newsletters</Badge>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  This section appears in <strong>all three city newsletters</strong>. It automatically pulls recent Alberta-wide news. Pin specific articles below and they will always appear first, with auto-fetched articles filling in after.
+                  This section appears in <strong>all three city newsletters</strong>. It automatically pulls recent Alberta-wide news. When you pin articles below, only those articles appear — load the current auto selection to start editing.
                 </p>
 
                 {albertaDraft.ids === null || albertaDraft.items.length === 0 ? (

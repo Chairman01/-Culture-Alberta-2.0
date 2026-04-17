@@ -10,6 +10,14 @@ import {
   type ArticlePickerItem,
 } from '@/lib/newsletter/config'
 import { fetchNewsletterContent } from '@/lib/newsletter/fetch-articles'
+import { supabase } from '@/lib/supabase'
+
+const CITY_SEARCH_TERM: Record<string, string> = {
+  edmonton: 'edmonton',
+  calgary: 'calgary',
+  lethbridge: 'lethbridge',
+  'medicine-hat': 'medicine hat',
+}
 
 export type { NewsletterConfig, ArticlePickerItem }
 
@@ -77,4 +85,18 @@ export async function loadCurrentAlbertaArticles(): Promise<ArticlePickerItem[]>
     created_at: a.createdAt,
     location: '',
   }))
+}
+
+// Fetch the newest published articles for a city — ignores current config, always returns fresh
+export async function loadLatestCityArticles(city: NewsletterCity): Promise<ArticlePickerItem[]> {
+  const cityTerm = CITY_SEARCH_TERM[city] ?? city
+  const { data } = await supabase
+    .from('articles')
+    .select('id, title, excerpt, image_url, image_source, created_at, location')
+    .eq('status', 'published')
+    .neq('type', 'event')
+    .or(`location.ilike.%${cityTerm}%,category.ilike.%${cityTerm}%,title.ilike.%${cityTerm}%`)
+    .order('created_at', { ascending: false })
+    .limit(3)
+  return (data || []) as ArticlePickerItem[]
 }

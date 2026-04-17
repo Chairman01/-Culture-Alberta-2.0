@@ -215,12 +215,9 @@ export async function fetchNewsletterContent(
   let albertaArticles: NewsletterArticle[]
 
   if (config.alberta_article_ids && config.alberta_article_ids.length > 0) {
-    // Manual picks first, then fill with auto (deduplicated), limit 3
+    // Manual picks only — show exactly what the admin pinned, no auto-fill
     const manualRaw = await getArticlesByIds(config.alberta_article_ids)
-    const manual = manualRaw.map(toNewsletterArticle)
-    const seen = new Set(manual.map(a => a.id))
-    const extra = autoAlberta.filter(a => !seen.has(a.id))
-    albertaArticles = [...manual, ...extra].slice(0, 8)
+    albertaArticles = manualRaw.map(toNewsletterArticle)
   } else {
     albertaArticles = autoAlberta
   }
