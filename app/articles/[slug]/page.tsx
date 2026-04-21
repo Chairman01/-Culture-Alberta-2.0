@@ -630,6 +630,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     {/* Twitter widget script - activates twitter-tweet blockquotes */}
                     <Script src="https://platform.twitter.com/widgets.js" strategy="lazyOnload" />
 
+                    {/* Instagram embed script - activates instagram-media blockquotes */}
+                    <Script src="https://www.instagram.com/embed.js" strategy="lazyOnload" />
+
                     {/* Article Footer */}
                     <div className="flex items-center justify-between pt-8 border-t border-gray-200">
                       {loadedArticle.date && formatDate(loadedArticle.date) && (

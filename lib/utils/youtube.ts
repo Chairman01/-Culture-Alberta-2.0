@@ -147,23 +147,17 @@ export function processInstagramAnchors(content: string): string {
   const anchorPattern = /<a[^>]*href=["'](https?:\/\/(?:www\.)?instagram\.com\/(p|reel|tv)\/([A-Za-z0-9_-]+)\/?[^"']*?)["'][^>]*>.*?<\/a>/gi
 
   return content.replace(anchorPattern, (_match, _url, type, postCode) => {
-    const isReel = type === 'reel' || type === 'tv'
-    const height = isReel ? '740' : '600'
-    const embedUrl = `https://www.instagram.com/${type}/${postCode}/embed/`
+    const permalink = `https://www.instagram.com/${type}/${postCode}/`
 
     return `
       <div class="instagram-embed my-6" style="max-width: 540px; margin: 0 auto;">
-        <iframe
-          src="${embedUrl}"
-          width="540"
-          height="${height}"
-          scrolling="no"
-          frameborder="0"
-          allowtransparency="true"
-          allowfullscreen="true"
-          class="rounded-xl shadow-lg"
-          style="border: 1px solid #dbdbdb; border-radius: 12px; max-width: 100%;"
-        ></iframe>
+        <blockquote
+          class="instagram-media"
+          data-instgrm-captioned
+          data-instgrm-permalink="${permalink}"
+          data-instgrm-version="14"
+          style="background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin:1px; max-width:540px; min-width:326px; padding:0; width:calc(100% - 2px);">
+        </blockquote>
       </div>
     `
   })
@@ -179,23 +173,17 @@ export function processInstagramLinks(content: string): string {
   const instagramUrlPattern = /(?<![="'\/])(https?:\/\/(?:www\.)?instagram\.com\/(p|reel|tv)\/([A-Za-z0-9_-]+)(?:\/[^\s<"']*)?)/gi
 
   return content.replace(instagramUrlPattern, (_match, _url, type, postCode) => {
-    const isReel = type === 'reel' || type === 'tv'
-    const height = isReel ? '740' : '600'
-    const embedUrl = `https://www.instagram.com/${type}/${postCode}/embed/`
+    const permalink = `https://www.instagram.com/${type}/${postCode}/`
 
     return `
       <div class="instagram-embed my-6" style="max-width: 540px; margin: 0 auto;">
-        <iframe
-          src="${embedUrl}"
-          width="540"
-          height="${height}"
-          scrolling="no"
-          frameborder="0"
-          allowtransparency="true"
-          allowfullscreen="true"
-          class="rounded-xl shadow-lg"
-          style="border: 1px solid #dbdbdb; border-radius: 12px; max-width: 100%;"
-        ></iframe>
+        <blockquote
+          class="instagram-media"
+          data-instgrm-captioned
+          data-instgrm-permalink="${permalink}"
+          data-instgrm-version="14"
+          style="background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin:1px; max-width:540px; min-width:326px; padding:0; width:calc(100% - 2px);">
+        </blockquote>
       </div>
     `
   })
