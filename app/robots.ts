@@ -72,6 +72,9 @@ export default function robots(): MetadataRoute.Robots {
         // '/best-of/food',      // unblocked - high value SEO page
       ],
     },
-    sitemap: 'https://www.culturealberta.com/sitemap.xml',
+    sitemap: [
+      'https://www.culturealberta.com/sitemap.xml',
+      'https://www.culturealberta.com/api/news-sitemap',
+    ],
   }
 }

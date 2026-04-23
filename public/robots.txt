@@ -1,14 +1,11 @@
 User-Agent: *
 Allow: /
+# NOTE: Do NOT block /_next/static/ — Google needs CSS/JS to render pages properly
 Disallow: /admin/
 Disallow: /api/
-Disallow: /_next/static/css/*
-Disallow: /_next/static/chunks/*
-Disallow: /_next/static/*
 Disallow: /_next/data/*
 Disallow: /favicon.ico
 Disallow: /files/*.pdf
-Disallow: /articles/e
 Disallow: /debug/
 Disallow: /debug-simple/
 Disallow: /test
@@ -43,15 +40,11 @@ Disallow: /articles/article-1755917044327-nw8ghveg1
 Disallow: /articles/article-1765775179976-8ckzfvlun
 Disallow: /articles/article-1765435206227-z3f7y8f1e
 Disallow: /articles/article-2
+Disallow: /articles/article-1766002547858-dem6yogey
 Disallow: /articles/afro-music-fest
 Disallow: /articles/hello-this-is-a-tet
-Disallow: /best-of/shopping
-Disallow: /best-of/dentists
-Disallow: /best-of/accountants
-Disallow: /best-of/restaurants
-Disallow: /best-of/culture
-Disallow: /best-of/attractions
-Disallow: /best-of/lawyers
-Disallow: /best-of/food
+Disallow: /articles/redditors-top-romantic-edmonton-spots
+Disallow: /articles/the-5-best-brunch-spots-in-edmonton-you-need-to-try-at-least-once
 
 Sitemap: https://www.culturealberta.com/sitemap.xml
+Sitemap: https://www.culturealberta.com/api/news-sitemap

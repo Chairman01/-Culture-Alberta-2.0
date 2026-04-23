@@ -28,21 +28,28 @@ function getArticleImageUrl(imageUrl: string | undefined, baseUrl: string): stri
   return `${baseUrl}/${imageUrl}`
 }
 
+// Categories that qualify as news journalism
+const NEWS_CATEGORIES = ['news', 'breaking', 'local news', 'city news', 'current events', 'politics', 'business news', 'crime', 'weather']
+
+function getArticleSchemaType(category?: string): 'NewsArticle' | 'Article' {
+  const cat = (category || '').toLowerCase()
+  return NEWS_CATEGORIES.some(n => cat.includes(n)) ? 'NewsArticle' : 'Article'
+}
+
 export function ArticleStructuredData({ article, baseUrl = 'https://www.culturealberta.com' }: StructuredDataProps) {
   // Generate slug from title for consistent URLs
   const articleSlug = article.slug || createSlug(article.title)
+  const schemaType = getArticleSchemaType(article.category)
 
   const structuredData = {
     "@context": "https://schema.org",
-    "@type": "Article",
+    "@type": schemaType,
     "headline": article.title,
     "description": article.excerpt || article.content?.substring(0, 160) || `Discover ${article.title} in Alberta`,
     "image": getArticleImageUrl(article.imageUrl, baseUrl),
-    "author": {
-      "@type": "Organization",
-      "name": "Culture Alberta",
-      "url": baseUrl
-    },
+    "author": article.author && article.author !== 'Culture Alberta'
+      ? { "@type": "Person", "name": article.author }
+      : { "@type": "Organization", "name": "Culture Alberta", "url": baseUrl },
     "publisher": {
       "@type": "Organization",
       "name": "Culture Alberta",
