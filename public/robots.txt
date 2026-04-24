@@ -1,6 +1,7 @@
 User-Agent: *
 Allow: /
 # NOTE: Do NOT block /_next/static/ — Google needs CSS/JS to render pages properly
+Allow: /api/news-sitemap
 Disallow: /admin/
 Disallow: /api/
 Disallow: /_next/data/*
