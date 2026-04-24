@@ -31,15 +31,18 @@ function getArticleImageUrl(imageUrl: string | undefined, baseUrl: string): stri
 // Categories that qualify as news journalism
 const NEWS_CATEGORIES = ['news', 'breaking', 'local news', 'city news', 'current events', 'politics', 'business news', 'crime', 'weather']
 
-function getArticleSchemaType(category?: string): 'NewsArticle' | 'Article' {
+function getArticleSchemaType(category?: string, tags?: string[]): 'NewsArticle' | 'Article' {
   const cat = (category || '').toLowerCase()
-  return NEWS_CATEGORIES.some(n => cat.includes(n)) ? 'NewsArticle' : 'Article'
+  if (NEWS_CATEGORIES.some(n => cat.includes(n))) return 'NewsArticle'
+  const tagStr = (tags || []).join(' ').toLowerCase()
+  if (NEWS_CATEGORIES.some(n => tagStr.includes(n))) return 'NewsArticle'
+  return 'Article'
 }
 
 export function ArticleStructuredData({ article, baseUrl = 'https://www.culturealberta.com' }: StructuredDataProps) {
   // Generate slug from title for consistent URLs
   const articleSlug = article.slug || createSlug(article.title)
-  const schemaType = getArticleSchemaType(article.category)
+  const schemaType = getArticleSchemaType(article.category, article.tags)
 
   const structuredData = {
     "@context": "https://schema.org",
