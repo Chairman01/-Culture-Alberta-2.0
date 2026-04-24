@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Save, Upload } from "lucide-react"
+import { ArrowLeft, Save, Upload, Newspaper, BookOpen } from "lucide-react"
 import { createSlug } from "@/lib/utils/slug"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,8 +20,18 @@ export default function NewArticlePage() {
   const router = useRouter()
   const { toast } = useToast()
   const [title, setTitle] = useState("")
+  const [articleType, setArticleType] = useState<'story' | 'news'>('story')
   const [category, setCategory] = useState("")
   const [categories, setCategories] = useState<string[]>([])
+
+  const handleArticleTypeChange = (type: 'story' | 'news') => {
+    setArticleType(type)
+    if (type === 'news') {
+      setCategories(prev => prev.includes('News') ? prev : [...prev, 'News'])
+    } else {
+      setCategories(prev => prev.filter(c => c !== 'News'))
+    }
+  }
   const [location, setLocation] = useState("")
   const [excerpt, setExcerpt] = useState("")
   const [content, setContent] = useState("")
@@ -197,6 +207,47 @@ export default function NewArticlePage() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter article title"
             />
+          </div>
+
+          {/* Article Type Selector */}
+          <div>
+            <Label>Article Type *</Label>
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <button
+                type="button"
+                onClick={() => handleArticleTypeChange('story')}
+                className={`flex items-center gap-3 p-4 rounded-lg border-2 text-left transition-all ${
+                  articleType === 'story'
+                    ? 'border-gray-900 bg-gray-900 text-white'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
+                }`}
+              >
+                <BookOpen className="w-5 h-5 flex-shrink-0" />
+                <div>
+                  <div className="font-semibold text-sm">Story / Feature</div>
+                  <div className={`text-xs mt-0.5 ${articleType === 'story' ? 'text-gray-300' : 'text-gray-500'}`}>
+                    Culture, food, history, guides
+                  </div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleArticleTypeChange('news')}
+                className={`flex items-center gap-3 p-4 rounded-lg border-2 text-left transition-all ${
+                  articleType === 'news'
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
+                }`}
+              >
+                <Newspaper className="w-5 h-5 flex-shrink-0" />
+                <div>
+                  <div className="font-semibold text-sm">News Story</div>
+                  <div className={`text-xs mt-0.5 ${articleType === 'news' ? 'text-blue-200' : 'text-gray-500'}`}>
+                    Timely — goes to Google News
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
 
           <div>
