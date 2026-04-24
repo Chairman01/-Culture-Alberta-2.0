@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Plus, Edit, Trash2, Search, RefreshCw, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
+import { Plus, Edit, Trash2, Search, RefreshCw, CheckCircle, AlertCircle, Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -54,6 +54,24 @@ export default function AdminArticles() {
   const [category, setCategory] = useState("all")
   const [location, setLocation] = useState("all")
   const [sortBy, setSortBy] = useState("newest") // newest, oldest, title
+  const [sortCol, setSortCol] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (col: string) => {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
+
+  const SortIcon = ({ col }: { col: string }) => {
+    if (sortCol !== col) return <ChevronsUpDown className="w-3 h-3 ml-1 text-gray-400 inline" />
+    return sortDir === 'asc'
+      ? <ChevronUp className="w-3 h-3 ml-1 text-gray-700 inline" />
+      : <ChevronDown className="w-3 h-3 ml-1 text-gray-700 inline" />
+  }
   const [isLoading, setIsLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState<Date | null>(null)
@@ -313,11 +331,23 @@ export default function AdminArticles() {
     const matchesLocation = location === "all" || article.location === location
     return matchesSearch && matchesCategory && matchesLocation
   }).sort((a, b) => {
+    // Column header click overrides dropdown
+    if (sortCol) {
+      const dir = sortDir === 'asc' ? 1 : -1
+      switch (sortCol) {
+        case 'title': return a.title.localeCompare(b.title) * dir
+        case 'category': return (a.category || '').localeCompare(b.category || '') * dir
+        case 'location': return (a.location || '').localeCompare(b.location || '') * dir
+        case 'author': return ((a as any).author || 'Admin').localeCompare((b as any).author || 'Admin') * dir
+        case 'date': return (new Date((b as any).date || 0).getTime() - new Date((a as any).date || 0).getTime()) * dir * -1
+        case 'type': return ((a as any).type || '').localeCompare((b as any).type || '') * dir
+      }
+    }
     switch (sortBy) {
       case "newest":
-        return new Date(b.date || b.createdAt || b.updatedAt || 0).getTime() - new Date(a.date || a.createdAt || a.updatedAt || 0).getTime()
+        return new Date((b as any).date || (b as any).createdAt || (b as any).updatedAt || 0).getTime() - new Date((a as any).date || (a as any).createdAt || (a as any).updatedAt || 0).getTime()
       case "oldest":
-        return new Date(a.date || a.createdAt || a.updatedAt || 0).getTime() - new Date(b.date || b.createdAt || b.updatedAt || 0).getTime()
+        return new Date((a as any).date || (a as any).createdAt || (a as any).updatedAt || 0).getTime() - new Date((b as any).date || (b as any).createdAt || (b as any).updatedAt || 0).getTime()
       case "title":
         return a.title.localeCompare(b.title)
       default:
@@ -454,14 +484,25 @@ export default function AdminArticles() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b">
-                <th className="text-left p-4">Title</th>
-                <th className="text-left p-4">Category</th>
-                <th className="text-left p-4">Location</th>
-                <th className="text-left p-4">Content Quality</th>
-                <th className="text-left p-4">Date</th>
-                <th className="text-left p-4">Type</th>
-                <th className="text-right p-4">Actions</th>
+              <tr className="border-b bg-gray-50">
+                {[
+                  { key: 'title', label: 'Title', align: 'left' },
+                  { key: 'category', label: 'Category', align: 'left' },
+                  { key: 'location', label: 'Location', align: 'left' },
+                  { key: 'quality', label: 'Content Quality', align: 'left' },
+                  { key: 'author', label: 'Author', align: 'left' },
+                  { key: 'date', label: 'Date', align: 'left' },
+                  { key: 'type', label: 'Type', align: 'left' },
+                ].map(({ key, label }) => (
+                  <th
+                    key={key}
+                    className="text-left p-4 text-sm font-semibold text-gray-700 cursor-pointer select-none hover:bg-gray-100 transition-colors whitespace-nowrap"
+                    onClick={() => handleSort(key)}
+                  >
+                    {label}<SortIcon col={key} />
+                  </th>
+                ))}
+                <th className="text-right p-4 text-sm font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -540,7 +581,18 @@ export default function AdminArticles() {
                         )
                       })()}
                     </td>
-                    <td className="p-4">{formatDate(article.date)}</td>
+                    <td className="p-4">
+                      {(() => {
+                        const author = (article as any).author
+                        const isAdmin = !author || author === 'Admin' || author === 'admin'
+                        return (
+                          <span className={`text-sm ${isAdmin ? 'text-gray-400 italic' : 'text-gray-900 font-medium'}`}>
+                            {isAdmin ? 'Admin' : author}
+                          </span>
+                        )
+                      })()}
+                    </td>
+                    <td className="p-4 whitespace-nowrap">{formatDate(article.date)}</td>
                     <td className="p-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                         {article.type}
