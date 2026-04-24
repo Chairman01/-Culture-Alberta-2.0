@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Calendar, MapPin, Users, Sparkles, Palette, Music, Theater, Landmark, Heart, Globe, Award } from 'lucide-react'
+import { ArrowRight, Calendar, MapPin, Users, Sparkles, Palette, Music, Theater, Landmark, Heart, Globe, Award, TrendingUp } from 'lucide-react'
 import { Article } from '@/lib/types/article'
 import { getArticleUrl } from '@/lib/utils/article-url'
 
@@ -15,6 +15,30 @@ type FilterType = 'all' | 'calgary' | 'edmonton'
 
 export function CultureArticles({ articles }: CultureArticlesProps) {
     const [filter, setFilter] = useState<FilterType>('all')
+    const [topArticles, setTopArticles] = useState<Article[]>(articles.slice(0, 4))
+
+    useEffect(() => {
+        // Fetch view counts for up to 20 articles and sort by most viewed
+        const candidates = articles.slice(0, 20)
+        Promise.all(
+            candidates.map(async (article) => {
+                try {
+                    const slug = article.slug || article.id
+                    const res = await fetch(`/api/articles/views?slug=${encodeURIComponent(slug)}`)
+                    const data = await res.json()
+                    return { article, views: data.count || 0 }
+                } catch {
+                    return { article, views: 0 }
+                }
+            })
+        ).then((results) => {
+            const sorted = results
+                .sort((a, b) => b.views - a.views)
+                .slice(0, 4)
+                .map((r) => r.article)
+            setTopArticles(sorted)
+        })
+    }, [articles])
 
     const formatDate = (dateString: string) => {
         try {
@@ -242,14 +266,14 @@ export function CultureArticles({ articles }: CultureArticlesProps) {
                                 </div>
                             </div>
 
-                            {/* Recent Stories */}
+                            {/* Top Stories */}
                             <div className="bg-white rounded-lg p-6 border border-gray-200">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4 text-gray-600" />
-                                    Recent Stories
+                                    <TrendingUp className="w-4 h-4 text-gray-600" />
+                                    Popular Stories
                                 </h3>
                                 <div className="space-y-4">
-                                    {articles.slice(0, 4).map((article) => {
+                                    {topArticles.map((article) => {
                                         const IconComponent = getCategoryIcon(article.category || '')
                                         return (
                                             <Link
