@@ -34,12 +34,11 @@ export async function GET() {
   try {
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, slug, date, created_at, updated_at, status, category, categories, tags, author')
+      .select('id, title, date, created_at, updated_at, status, category, categories, tags, author')
       .order('created_at', { ascending: false })
       .limit(100)
 
-    const errorMsg = error ? `<!-- Supabase error: ${JSON.stringify(error)} -->` : ''
-    const countMsg = `<!-- articles fetched: ${articles?.length ?? 0} -->`
+    if (error) console.error('News sitemap: Supabase error', error)
 
     const recent = (articles || []).filter(a => !isEvergreen(a.category))
 
@@ -69,8 +68,6 @@ export async function GET() {
     }).join('\n')
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
-${errorMsg}
-${countMsg}
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
 ${urlEntries}
