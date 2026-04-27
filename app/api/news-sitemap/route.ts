@@ -32,15 +32,15 @@ function escapeXml(str: string): string {
 
 export async function GET() {
   try {
-    // 48-hour window for Google News / Bing PubHub
-    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+    // 7-day window - keeps sitemap populated between publishing sessions
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, slug, created_at, updated_at, status, category, categories, tags, author')
+      .select('id, title, slug, date, created_at, updated_at, status, category, categories, tags, author')
       .eq('status', 'published')
-      .gte('created_at', cutoff)
-      .order('created_at', { ascending: false })
+      .gte('date', cutoff)
+      .order('date', { ascending: false })
       .limit(1000)
 
     if (error) {
@@ -52,7 +52,7 @@ export async function GET() {
     const urlEntries = recent.map(article => {
       const slug = getArticleSlug(article)
       const url = `${BASE_URL}/articles/${slug}`
-      const pubDate = new Date(article.created_at).toISOString()
+      const pubDate = new Date(article.date || article.created_at).toISOString()
       const title = escapeXml(article.title || '')
       const keywords = [
         ...(article.tags || []),
