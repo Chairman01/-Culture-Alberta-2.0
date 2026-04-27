@@ -35,7 +35,6 @@ export async function GET() {
     const { data: articles, error } = await supabase
       .from('articles')
       .select('id, title, slug, date, created_at, updated_at, status, category, categories, tags, author')
-      .eq('status', 'published')
       .order('created_at', { ascending: false })
       .limit(100)
 
