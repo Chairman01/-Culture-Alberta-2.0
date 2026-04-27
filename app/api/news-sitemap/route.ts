@@ -38,9 +38,8 @@ export async function GET() {
       .order('created_at', { ascending: false })
       .limit(100)
 
-    if (error) {
-      console.error('News sitemap: Supabase error', error)
-    }
+    const errorMsg = error ? `<!-- Supabase error: ${JSON.stringify(error)} -->` : ''
+    const countMsg = `<!-- articles fetched: ${articles?.length ?? 0} -->`
 
     const recent = (articles || []).filter(a => !isEvergreen(a.category))
 
@@ -70,6 +69,8 @@ export async function GET() {
     }).join('\n')
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
+${errorMsg}
+${countMsg}
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
 ${urlEntries}
