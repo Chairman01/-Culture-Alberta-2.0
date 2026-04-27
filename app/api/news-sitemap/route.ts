@@ -32,16 +32,12 @@ function escapeXml(str: string): string {
 
 export async function GET() {
   try {
-    // 7-day window - use YYYY-MM-DD to match date column format in Supabase
-    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
     const { data: articles, error } = await supabase
       .from('articles')
       .select('id, title, slug, date, created_at, updated_at, status, category, categories, tags, author')
       .eq('status', 'published')
-      .gte('date', cutoff)
-      .order('date', { ascending: false })
-      .limit(1000)
+      .order('created_at', { ascending: false })
+      .limit(100)
 
     if (error) {
       console.error('News sitemap: Supabase error', error)
