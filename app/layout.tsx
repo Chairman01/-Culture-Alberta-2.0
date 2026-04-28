@@ -131,6 +131,21 @@ export default function RootLayout({
         <AuthProvider>
           <PageTracker />
           <LoadingProvider>
+            {/* ── Maintenance banner ── remove this block when the site is back to normal */}
+            <div style={{
+              background: '#f59e0b',
+              color: '#1c1917',
+              textAlign: 'center',
+              padding: '10px 16px',
+              fontSize: '14px',
+              fontWeight: 600,
+              letterSpacing: '0.01em',
+              position: 'relative',
+              zIndex: 9999,
+            }}>
+              🔧 We are currently performing maintenance and some articles may load slowly. We&apos;ll be back to full speed shortly — thank you for your patience!
+            </div>
+            {/* ── End maintenance banner ── */}
             <MainNavigation />
             <main>{children}</main>
             <Footer />
