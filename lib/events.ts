@@ -77,6 +77,13 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
 // Get all events
 export async function getAllEvents(): Promise<Event[]> {
   console.log('🔄 Loading all events with fallback system...')
+  const cacheKey = 'all_events'
+  const now = Date.now()
+  const cacheTime = eventsCacheTimestamp.get(cacheKey) || 0
+
+  if (eventsCache.has(cacheKey) && (now - cacheTime) < getCacheDuration()) {
+    return eventsCache.get(cacheKey) || []
+  }
 
   // Try Supabase first
   try {
@@ -86,11 +93,19 @@ export async function getAllEvents(): Promise<Event[]> {
     }
 
     console.log('🔄 Fetching events from Supabase...')
-    const { data, error } = await supabase
+    const timeoutDuration = process.env.NODE_ENV === 'development' ? 3500 : 3000
+    const supabasePromise = supabase
       .from('events')
       .select('*')
       .eq('status', 'published')
       .order('event_date', { ascending: true })
+
+    const { data, error } = await Promise.race([
+      supabasePromise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Supabase events timeout')), timeoutDuration)
+      )
+    ]) as any
 
     if (error) {
       console.warn('⚠️ Supabase query failed:', error)
@@ -99,10 +114,18 @@ export async function getAllEvents(): Promise<Event[]> {
 
     if (data && data.length > 0) {
       console.log(`✅ Loaded ${data.length} events from Supabase`)
+      eventsCache.set(cacheKey, data)
+      eventsCacheTimestamp.set(cacheKey, now)
       return data
     }
   } catch (error) {
     console.warn('⚠️ Supabase failed, using fallback:', error)
+  }
+
+  // Fallback 1: stale cache if present
+  if (eventsCache.has(cacheKey)) {
+    console.log('⚠️ Returning stale events cache due to source failure')
+    return eventsCache.get(cacheKey) || []
   }
 
   // Fallback to optimized JSON
@@ -115,7 +138,10 @@ export async function getAllEvents(): Promise<Event[]> {
     // Filter for events only
     const events = fallbackArticles.filter(article => article.type === 'event')
     console.log(`✅ Found ${events.length} events in fallback data`)
-    return events as unknown as Event[]
+    const typedEvents = events as unknown as Event[]
+    eventsCache.set(cacheKey, typedEvents)
+    eventsCacheTimestamp.set(cacheKey, now)
+    return typedEvents
   } catch (fallbackError) {
     console.error('❌ Optimized fallback failed:', fallbackError)
     return []

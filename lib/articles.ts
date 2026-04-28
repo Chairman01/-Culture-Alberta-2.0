@@ -15,9 +15,17 @@ import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fall
 
 // SUSTAINABLE FALLBACK SYSTEM - Works with unlimited articles
 // These functions try Supabase first, then fall back to optimized backup
+const useFastDevFallback = process.env.NODE_ENV === 'development' && process.env.USE_SUPABASE_IN_DEV !== '1'
 
 export async function getAllArticles(): Promise<Article[]> {
   console.log('🚀 Loading articles...')
+
+  if (useFastDevFallback) {
+    const fallbackArticles = await loadOptimizedFallback()
+    const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
+    console.log(`⚡ DEV FAST MODE: Returning ${articlesOnly.length} articles from optimized fallback`)
+    return articlesOnly
+  }
 
   try {
     // Try Supabase first for live data (ensures new articles appear immediately)
@@ -53,6 +61,13 @@ export async function getAllArticles(): Promise<Article[]> {
 
 export async function getHomepageArticles(): Promise<Article[]> {
   console.log('🚀 Loading homepage articles...')
+
+  if (useFastDevFallback) {
+    const fallbackArticles = await loadOptimizedFallback()
+    const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
+    console.log(`⚡ DEV FAST MODE: Returning ${articlesOnly.length} homepage articles from optimized fallback`)
+    return articlesOnly
+  }
 
   try {
     // Try Supabase first for live data (ensures new articles appear immediately)

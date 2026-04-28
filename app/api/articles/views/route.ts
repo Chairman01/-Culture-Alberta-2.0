@@ -10,20 +10,38 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const path = `/articles/${slug}`.toLowerCase()
+    const timeoutMs = process.env.NODE_ENV === 'development' ? 1200 : 2500
+    const withTimeout = async <T>(promise: Promise<T>, label: string): Promise<T | null> => {
+      try {
+        return await Promise.race([
+          promise,
+          new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs)
+          )
+        ])
+      } catch {
+        return null
+      }
+    }
 
-    // Count from analytics_page_views
-    const { count: pageViewCount } = await supabase
+    const pageViewsPromise = supabase
       .from('analytics_page_views')
       .select('*', { count: 'exact', head: true })
       .or(`page_path.ilike.%${slug}%`)
 
-    // Count from analytics_content_views
-    const { count: contentViewCount } = await supabase
+    const contentViewsPromise = supabase
       .from('analytics_content_views')
       .select('*', { count: 'exact', head: true })
       .eq('content_type', 'article')
       .or(`content_id.ilike.%${slug}%`)
+
+    const [pageViewsResult, contentViewsResult] = await Promise.all([
+      withTimeout(pageViewsPromise as any, 'analytics_page_views'),
+      withTimeout(contentViewsPromise as any, 'analytics_content_views')
+    ])
+
+    const pageViewCount = (pageViewsResult as any)?.count || 0
+    const contentViewCount = (contentViewsResult as any)?.count || 0
 
     const total = (pageViewCount || 0) + (contentViewCount || 0)
     return NextResponse.json({ count: total })

@@ -18,6 +18,10 @@ export const dynamicParams = true // Generate pages on-demand
 // Server-side data loading for dynamic rendering (NOT static generation)
 async function getHomePageData() {
   try {
+    // Start parallel fetches early so homepage does not block on sequential waits
+    const eventsPromise = getAllEvents()
+    const albertaArticlesPromise = getAllAlbertaArticles()
+
     // Use the sustainable homepage articles function with optimized fallback
     const apiArticles = await getHomepageArticles()
     console.log('🔍 DEBUG: getHomepageArticles returned:', apiArticles?.length || 0, 'articles')
@@ -29,15 +33,26 @@ async function getHomePageData() {
       console.warn('⚠️ DEBUG: No articles found from getHomepageArticlesWithFallback')
     }
 
-    // Get events separately for the "Upcoming Events" section
-    let events: any[] = []
-    try {
-      events = await getAllEvents()
+    // Resolve in-flight parallel fetches
+    const [eventsResult, albertaArticlesResult] = await Promise.allSettled([
+      eventsPromise,
+      albertaArticlesPromise
+    ])
+
+    let events: any[] = eventsResult.status === 'fulfilled' ? eventsResult.value : []
+    if (eventsResult.status === 'fulfilled') {
       console.log('🔍 DEBUG: getAllEvents returned:', events?.length || 0, 'events')
-    } catch (error) {
-      console.error('❌ Error fetching events:', error)
-      events = [] // Fallback to empty array
+    } else {
+      console.error('❌ Error fetching events:', eventsResult.reason)
     }
+
+    const albertaArticles: Article[] = albertaArticlesResult.status === 'fulfilled' ? albertaArticlesResult.value : []
+    if (albertaArticlesResult.status === 'fulfilled') {
+      console.log('🔍 DEBUG: Alberta articles loaded:', albertaArticles.length)
+    } else {
+      console.warn('⚠️ Failed to load Alberta articles for homepage:', albertaArticlesResult.reason)
+    }
+
 
     // Convert events to article format for homepage display only
     const eventAsArticles = events.map(event => ({
@@ -124,16 +139,6 @@ async function getHomePageData() {
       post.status === 'published' || post.status === undefined || post.status === null
     )
     console.log('🔍 DEBUG: Published posts after filtering:', publishedPosts.length)
-
-    // Fetch all Alberta articles separately (Red Deer, Lethbridge, Medicine Hat, Grande Prairie, Alberta-wide, other)
-    // This uses a separate full fetch so we never miss city-specific articles
-    let albertaArticles: Article[] = []
-    try {
-      albertaArticles = await getAllAlbertaArticles()
-      console.log('🔍 DEBUG: Alberta articles loaded:', albertaArticles.length)
-    } catch (err) {
-      console.warn('⚠️ Failed to load Alberta articles for homepage:', err)
-    }
 
     return {
       posts: publishedPosts,
@@ -359,36 +364,9 @@ export default async function HomeStatic() {
   }).slice(0, 3) // Take the first 3 (which should be the newest since sortedPosts is already sorted by date)
 
 
-  // SIMPLE CATEGORY-BASED FILTERING for Events
+  // Upcoming Events must only show real event records
   const eventPosts = sortedPosts.filter(post => {
-    // Only include items that are actually events (type: 'event') or have specific event categories
-    // Exclude news articles that happen to have "Events" in their categories
-    if (post.type === 'event') {
-      return true; // Always include actual events
-    }
-
-    // For articles, only include if they have specific event-related categories
-    // but exclude health alerts, news, etc. that might have "Events" category
-    const hasEventCategory = post.category?.toLowerCase() === 'events' ||
-      post.category?.toLowerCase().includes('art') ||
-      post.category?.toLowerCase().includes('festival');
-    const hasEventInCategories = post.categories?.some((cat: string) =>
-      cat.toLowerCase() === 'events' ||
-      cat.toLowerCase().includes('art') ||
-      cat.toLowerCase().includes('festival')
-    );
-
-    // Additional check: exclude news articles about health alerts, strikes, etc.
-    const isNewsArticle = post.title?.toLowerCase().includes('alert') ||
-      post.title?.toLowerCase().includes('strike') ||
-      post.title?.toLowerCase().includes('exposure') ||
-      post.title?.toLowerCase().includes('rally');
-
-    if (isNewsArticle) {
-      return false; // Don't show news articles as events
-    }
-
-    return hasEventCategory || hasEventInCategories;
+    return post.type === 'event'
   }).slice(0, 3)
 
   // Trending: use actual view data when available, else recent articles

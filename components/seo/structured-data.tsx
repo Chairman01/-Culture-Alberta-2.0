@@ -29,7 +29,7 @@ function getArticleImageUrl(imageUrl: string | undefined, baseUrl: string): stri
 }
 
 // Categories that qualify as news journalism
-const NEWS_CATEGORIES = ['news', 'breaking', 'local news', 'city news', 'current events', 'politics', 'business news', 'crime', 'weather']
+const NEWS_CATEGORIES = ['news', 'breaking', 'local news', 'city news', 'current events', 'politics', 'business news', 'crime', 'weather', 'sports']
 
 function getArticleSchemaType(category?: string, tags?: string[]): 'NewsArticle' | 'Article' {
   const cat = (category || '').toLowerCase()

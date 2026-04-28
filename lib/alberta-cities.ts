@@ -1,5 +1,5 @@
 import { Article } from './types/article'
-import { getAllArticles } from './supabase-articles'
+import { getAllArticles } from './articles'
 import { loadOptimizedFallback } from './optimized-fallback'
 
 /**
@@ -174,6 +174,13 @@ export async function getAllAlbertaArticles(): Promise<Article[]> {
 
         // Try Supabase first
         const allArticles = await getAllArticles()
+        if (!allArticles || allArticles.length === 0) {
+            console.warn('⚠️ No Alberta source articles returned, switching to optimized fallback')
+            const fallbackArticles = await loadOptimizedFallback()
+            const albertaFromFallback = excludeCalgaryEdmonton(fallbackArticles)
+            console.log(`⚡ FALLBACK: Loaded ${albertaFromFallback.length} Alberta articles`)
+            return albertaFromFallback
+        }
         const albertaArticles = excludeCalgaryEdmonton(allArticles)
 
         console.log(`✅ Loaded ${albertaArticles.length} Alberta articles from Supabase`)
