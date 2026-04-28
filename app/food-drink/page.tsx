@@ -8,7 +8,7 @@ import { ArrowRight, Clock, MapPin } from "lucide-react"
 import { getArticleUrl } from '@/lib/utils/article-url'
 
 // Enable ISR for better performance
-export const revalidate = 120 // 2 minutes
+export const revalidate = 30 // 30 seconds
 
 interface ExtendedArticle extends Article {
   description?: string;
@@ -226,24 +226,56 @@ export default async function FoodDrinkPage() {
                 />
               </div>
 
-              {/* Categories - Dynamic from actual articles */}
+              {/* Browse by City */}
               <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Categories</h3>
-                <div className="space-y-3">
-                  {Array.from(new Set(articles.map(a => a.category).filter(Boolean))).slice(0, 5).map((category) => (
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Browse by City</h3>
+                <div className="space-y-1">
+                  {[
+                    { name: 'Calgary', href: '/calgary' },
+                    { name: 'Edmonton', href: '/edmonton' },
+                    { name: 'Lethbridge', href: '/lethbridge' },
+                    { name: 'Grande Prairie', href: '/grande-prairie' },
+                    { name: 'Red Deer', href: '/red-deer' },
+                  ].map((city) => (
                     <Link
-                      key={category}
-                      href={`/food-drink?category=${category?.toLowerCase()}`}
-                      className="block text-gray-600 hover:text-orange-600 transition-colors py-2 border-b border-gray-100 last:border-b-0"
+                      key={city.name}
+                      href={city.href}
+                      className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0 text-gray-700 hover:text-orange-600 font-medium transition-colors"
                     >
-                      {category}
+                      {city.name}
+                      <ArrowRight className="w-4 h-4" />
                     </Link>
                   ))}
-                  {articles.length === 0 && (
-                    <p className="text-gray-500 text-sm">No categories available yet</p>
-                  )}
                 </div>
               </div>
+
+              {/* Popular Stories */}
+              {articles.length > 0 && (
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">Popular Stories</h3>
+                  <div className="space-y-4">
+                    {articles.slice(0, 4).map((article) => (
+                      <Link key={article.id} href={getArticleUrl(article)} className="group flex gap-3">
+                        <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                          <Image
+                            src={article.imageUrl || '/placeholder.svg'}
+                            alt={article.title}
+                            width={64}
+                            height={64}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 group-hover:text-orange-600 transition-colors line-clamp-2 leading-tight">
+                            {article.title}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">{formatDate(article.date || '')}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
