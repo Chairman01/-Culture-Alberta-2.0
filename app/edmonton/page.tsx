@@ -24,10 +24,8 @@ export const metadata: Metadata = {
   },
 }
 
-// Force dynamic rendering - fetch fresh data on EVERY request
-export const revalidate = 0 // No caching - always fetch fresh data
-export const dynamic = 'force-dynamic' // Force dynamic rendering
-export const fetchCache = 'force-no-store' // Don't cache fetch requests
+// ISR: cache for 60s, revalidate in background
+export const revalidate = 60
 
 // Extend Article locally to include 'type' for filtering
 interface EdmontonArticle extends Article {

@@ -11,10 +11,8 @@ import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getTrendingByViews } from '@/lib/trending-articles'
 
-// CRITICAL: Force dynamic rendering - fetch fresh data on EVERY request
-export const revalidate = 0 // No caching - always fetch fresh data
-export const dynamic = 'force-dynamic' // Force dynamic rendering
-export const fetchCache = 'force-no-store' // Don't cache fetch requests
+// ISR: cache for 60s, revalidate in background — stops hammering Supabase on every request
+export const revalidate = 60
 export const dynamicParams = true // Generate pages on-demand
 
 // Server-side data loading for dynamic rendering (NOT static generation)

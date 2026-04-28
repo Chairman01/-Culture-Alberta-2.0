@@ -13,9 +13,9 @@ import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { ArticleStructuredData, BreadcrumbStructuredData } from '@/components/seo/structured-data'
 
-// Force dynamic rendering to use fast fallback system
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+// ISR: cache rendered pages for 60s, revalidate in background
+// Removes the force-dynamic/revalidate=0 that was hitting Supabase on every single request
+export const revalidate = 60
 import { getAllEvents, getEventBySlug } from '@/lib/events'
 import { Metadata } from 'next'
 // import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
