@@ -85,8 +85,12 @@ let cityCacheTimestamp: Map<string, number> = new Map()
 
 // PRODUCTION FIX: Disabled all caching to ensure fresh data
 const getCacheDuration = () => {
-  // DISABLED CACHING - always fetch fresh data for production fix
-  return 0 // No caching at all
+  // Keep production behavior unchanged, but cache briefly in development
+  // to avoid repeated timeout waits on hot reload/navigation.
+  if (process.env.NODE_ENV === 'development') {
+    return 30 * 1000 // 30 seconds
+  }
+  return 0
 }
 
 // CRITICAL FIX: DISABLE FILE SYSTEM FALLBACK - Use Supabase + optimized fallback instead
@@ -219,8 +223,8 @@ export async function getHomepageArticles(): Promise<Article[]> {
       return fileArticlesModule ? await fileArticlesModule.getAllArticlesFromFile() : []
     }
 
-    // SPEED: Shorter timeout to fail fast and use fallback
-    const timeoutDuration = 3000 // 3 seconds - fail fast and use optimized fallback
+    // SPEED: Fail faster in development so fallback renders quickly
+    const timeoutDuration = process.env.NODE_ENV === 'development' ? 1200 : 3000
 
     // SPEED OPTIMIZATION: Only fetch essential fields for homepage (NOT full content!)
     // Full content will be loaded on-demand when user clicks an article
@@ -780,7 +784,7 @@ export async function getAllArticles(): Promise<Article[]> {
 
     console.log('⚡ FAST: Attempting to fetch articles from Supabase (NO CONTENT)...')
 
-    const timeoutDuration = 5000 // 5 seconds - fail fast, use fallback
+    const timeoutDuration = process.env.NODE_ENV === 'development' ? 1500 : 5000
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
     )
@@ -792,7 +796,7 @@ export async function getAllArticles(): Promise<Article[]> {
       .from('articles')
       .select(fields)
       .order('created_at', { ascending: false })
-      .limit(200) // Increased from 50 - admin updates to Red Deer/Lethbridge/etc must be included
+      .limit(500) // Raised cap to accommodate growth beyond 200 articles
 
     const { data, error } = await Promise.race([
       supabasePromise,
@@ -1267,8 +1271,8 @@ export async function getArticleById(id: string): Promise<Article | null> {
 
     console.log('Attempting to fetch article from Supabase...')
 
-    // Use proper timeout duration based on environment - increased for better reliability
-    const timeoutDuration = 2000 // 2 seconds - fast timeout for better UX
+    // Use a longer timeout in development for full-article content fetches.
+    const timeoutDuration = process.env.NODE_ENV === 'development' ? 4500 : 2000
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
     )
