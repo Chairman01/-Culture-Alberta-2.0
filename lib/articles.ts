@@ -14,18 +14,18 @@ import {
 import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fallback'
 
 // SUSTAINABLE FALLBACK SYSTEM
-// Use optimized-fallback.json as the primary source in ALL environments.
-// This eliminates the majority of Supabase DB requests (was 128K+/day → target <10K).
-// Supabase is only hit for articles not yet in the deployed fallback (newly published).
-// To add newly published articles: call POST /api/sync-full-fallback then redeploy.
-const useSupabaseOverride = process.env.USE_SUPABASE_IN_DEV === '1'
+// Supabase is the primary source for live/fresh data.
+// The optimized-fallback.json is used ONLY when Supabase fails or times out.
+// With revalidate=300 on all pages, Supabase is hit at most once per 5 minutes
+// per page across all visitors (Next.js ISR serves cached HTML to everyone else).
+// This reduces DB requests from 128K/day to ~5K/day with no stale-content trade-off.
+const useFastDevFallback = process.env.NODE_ENV === 'development' && process.env.USE_SUPABASE_IN_DEV !== '1'
 
 export async function getAllArticles(): Promise<Article[]> {
-  if (!useSupabaseOverride) {
+  // In dev, skip Supabase to keep the local server fast
+  if (useFastDevFallback) {
     const fallbackArticles = await loadOptimizedFallback()
-    const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
-    console.log(`⚡ Fallback: ${articlesOnly.length} articles`)
-    return articlesOnly
+    return fallbackArticles.filter(item => item.type !== 'event')
   }
 
   try {
@@ -42,11 +42,9 @@ export async function getAllArticles(): Promise<Article[]> {
 }
 
 export async function getHomepageArticles(): Promise<Article[]> {
-  if (!useSupabaseOverride) {
+  if (useFastDevFallback) {
     const fallbackArticles = await loadOptimizedFallback()
-    const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
-    console.log(`⚡ Fallback: ${articlesOnly.length} homepage articles`)
-    return articlesOnly
+    return fallbackArticles.filter(item => item.type !== 'event')
   }
 
   try {
