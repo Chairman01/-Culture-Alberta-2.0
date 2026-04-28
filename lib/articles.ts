@@ -13,91 +13,52 @@ import {
 } from './supabase-articles'
 import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fallback'
 
-// SUSTAINABLE FALLBACK SYSTEM - Works with unlimited articles
-// These functions try Supabase first, then fall back to optimized backup
-const useFastDevFallback = process.env.NODE_ENV === 'development' && process.env.USE_SUPABASE_IN_DEV !== '1'
+// SUSTAINABLE FALLBACK SYSTEM
+// Use optimized-fallback.json as the primary source in ALL environments.
+// This eliminates the majority of Supabase DB requests (was 128K+/day → target <10K).
+// Supabase is only hit for articles not yet in the deployed fallback (newly published).
+// To add newly published articles: call POST /api/sync-full-fallback then redeploy.
+const useSupabaseOverride = process.env.USE_SUPABASE_IN_DEV === '1'
 
 export async function getAllArticles(): Promise<Article[]> {
-  console.log('🚀 Loading articles...')
-
-  if (useFastDevFallback) {
+  if (!useSupabaseOverride) {
     const fallbackArticles = await loadOptimizedFallback()
     const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
-    console.log(`⚡ DEV FAST MODE: Returning ${articlesOnly.length} articles from optimized fallback`)
+    console.log(`⚡ Fallback: ${articlesOnly.length} articles`)
     return articlesOnly
   }
 
   try {
-    // Try Supabase first for live data (ensures new articles appear immediately)
-    console.log('🔄 Fetching articles from Supabase...')
     const supabaseArticles = await getAllArticlesFromSupabase()
-
     if (supabaseArticles && supabaseArticles.length > 0) {
-      console.log(`✅ Loaded ${supabaseArticles.length} articles from Supabase`)
-
-      // Filter out events - only return articles
-      const articlesOnly = supabaseArticles.filter(item => item.type !== 'event')
-      console.log(`📰 Returning ${articlesOnly.length} articles`)
-
-      return articlesOnly
+      return supabaseArticles.filter(item => item.type !== 'event')
     }
-
-    console.warn('⚠️ No articles from Supabase, falling back to optimized fallback')
     throw new Error('No articles from Supabase')
   } catch (supabaseError) {
     console.warn('⚠️ Supabase failed, using optimized fallback:', supabaseError)
-
-    // Fall back to optimized fallback if Supabase fails
     const fallbackArticles = await loadOptimizedFallback()
-    console.log(`⚡ Loaded ${fallbackArticles.length} articles from optimized fallback`)
-
-    // Filter out events - only return articles
-    const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
-    console.log(`📰 Returning ${articlesOnly.length} articles`)
-
-    return articlesOnly
+    return fallbackArticles.filter(item => item.type !== 'event')
   }
 }
 
 export async function getHomepageArticles(): Promise<Article[]> {
-  console.log('🚀 Loading homepage articles...')
-
-  if (useFastDevFallback) {
+  if (!useSupabaseOverride) {
     const fallbackArticles = await loadOptimizedFallback()
     const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
-    console.log(`⚡ DEV FAST MODE: Returning ${articlesOnly.length} homepage articles from optimized fallback`)
+    console.log(`⚡ Fallback: ${articlesOnly.length} homepage articles`)
     return articlesOnly
   }
 
   try {
-    // Try Supabase first for live data (ensures new articles appear immediately)
-    console.log('🔄 Fetching articles from Supabase...')
     const supabaseArticles = await getHomepageArticlesFromSupabase()
-
     if (supabaseArticles && supabaseArticles.length > 0) {
-      console.log(`✅ Loaded ${supabaseArticles.length} articles from Supabase`)
-
-      // Filter out events - only return articles
-      const articlesOnly = supabaseArticles.filter(item => item.type !== 'event')
-      console.log(`📰 Returning ${articlesOnly.length} articles for homepage`)
-
-      return articlesOnly
+      return supabaseArticles.filter(item => item.type !== 'event')
     }
-
-    console.warn('⚠️ No articles from Supabase, falling back to optimized fallback')
     throw new Error('No articles from Supabase')
   } catch (supabaseError) {
     console.warn('⚠️ Supabase failed, using optimized fallback:', supabaseError)
-
-    // Fall back to optimized fallback if Supabase fails
     const fallbackArticles = await loadOptimizedFallback()
-    console.log(`⚡ Loaded ${fallbackArticles.length} articles from optimized fallback`)
-
-    // Filter out events - only return articles
-    const articlesOnly = fallbackArticles.filter(item => item.type !== 'event')
-    console.log(`📰 Returning ${articlesOnly.length} articles for homepage`)
-
-    return articlesOnly
+    return fallbackArticles.filter(item => item.type !== 'event')
   }
 }
 

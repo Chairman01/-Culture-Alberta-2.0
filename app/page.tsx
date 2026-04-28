@@ -12,7 +12,7 @@ import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getTrendingByViews } from '@/lib/trending-articles'
 
 // ISR: cache for 60s, revalidate in background — stops hammering Supabase on every request
-export const revalidate = 60
+export const revalidate = 300
 export const dynamicParams = true // Generate pages on-demand
 
 // Server-side data loading for dynamic rendering (NOT static generation)

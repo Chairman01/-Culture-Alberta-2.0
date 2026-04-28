@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 }
 
 // ISR: cache for 60s, revalidate in background
-export const revalidate = 60
+export const revalidate = 300
 
 // Extend Article locally to include 'type' for filtering
 interface CalgaryArticle extends Article {

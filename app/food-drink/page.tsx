@@ -8,7 +8,7 @@ import { ArrowRight, Clock, MapPin } from "lucide-react"
 import { getArticleUrl } from '@/lib/utils/article-url'
 
 // Enable ISR for better performance
-export const revalidate = 30 // 30 seconds
+export const revalidate = 300 // 30 seconds
 
 interface ExtendedArticle extends Article {
   description?: string;
