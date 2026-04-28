@@ -25,7 +25,8 @@ function formatEventDate(dateString: string): string {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/Edmonton'
     })
   } catch (error) {
     return 'Date TBD'
@@ -42,7 +43,8 @@ function formatEventTime(dateString: string): string {
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
+      timeZone: 'America/Edmonton'
     })
   } catch (error) {
     return 'Time TBD'
@@ -242,7 +244,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                   <div>
                     <h1 className="text-4xl font-bold mb-4">{event.title}</h1>
                     {event.excerpt && (
-                      <p className="text-xl text-gray-600 mb-4">{event.excerpt}</p>
+                      <p className="text-xl text-gray-600 mb-4">{event.excerpt.replace(/<[^>]*>?/g, '').trim()}</p>
                     )}
                   </div>
 
@@ -421,9 +423,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                         >
                           <div className="flex gap-3">
                             <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
-                              {otherEvent.imageUrl ? (
+                              {(otherEvent.imageUrl || otherEvent.image_url) ? (
                                 <Image
-                                  src={otherEvent.imageUrl || ""}
+                                  src={otherEvent.imageUrl || otherEvent.image_url || ""}
                                   alt={otherEvent.title}
                                   width={64}
                                   height={64}

@@ -158,7 +158,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         category: category.charAt(0).toUpperCase() + category.slice(1),
         location,
         description,
-        excerpt: excerpt || description.substring(0, 150) + (description.length > 150 ? '...' : ''), // Use manual excerpt or auto-generate
+        excerpt: excerpt || description.replace(/<[^>]+>/g, '').substring(0, 150) + (description.replace(/<[^>]+>/g, '').length > 150 ? '...' : ''), // Use manual excerpt or auto-generate (strip HTML)
         imageUrl: imageUrl, // Fixed: use imageUrl instead of image_url
         website_url: ticketUrl,
         organizer,
