@@ -84,6 +84,10 @@ export async function middleware(request: NextRequest) {
     const slug = rawSlug
 
     if (slug && !slug.includes('.') && supabaseUrl && supabaseKey) {
+      // Use a short timeout so a slow Supabase response never causes
+      // MIDDLEWARE_INVOCATION_TIMEOUT (Vercel Edge hard limit ~1.5s)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 600)
       try {
         const res = await fetch(
           `${supabaseUrl}/rest/v1/slug_redirects?old_slug=eq.${encodeURIComponent(slug)}&select=new_slug&limit=1`,
@@ -92,8 +96,10 @@ export async function middleware(request: NextRequest) {
               apikey: supabaseKey,
               Authorization: `Bearer ${supabaseKey}`,
             },
+            signal: controller.signal,
           }
         )
+        clearTimeout(timeoutId)
         if (res.ok) {
           const data = await res.json()
           if (data.length > 0) {
@@ -104,7 +110,8 @@ export async function middleware(request: NextRequest) {
           }
         }
       } catch {
-        // Fail silently — don't break the site if redirect lookup fails
+        clearTimeout(timeoutId)
+        // Fail silently — don't break the site if redirect lookup fails or times out
       }
     }
   }
