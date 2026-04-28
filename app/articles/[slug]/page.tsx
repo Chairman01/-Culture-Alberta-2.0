@@ -31,31 +31,10 @@ import { ArticleViewCount } from '@/components/article-view-count'
 // Removed ArticleContent import to fix hydration issues
 // import './article-styles.css' // Removed - file was deleted
 
-// Generate static params for all published articles
+// Don't pre-render articles at build time — let ISR handle on first request.
+// Pre-rendering 200+ articles at build time made deployments take 5+ minutes.
 export async function generateStaticParams() {
-  try {
-    console.log('🔧 Generating static params for articles...')
-    const articles = await getAllArticles()
-
-    // Only generate params for published articles
-    const publishedArticles = articles.filter(article => article.status === 'published')
-
-    const params = publishedArticles.map((article) => {
-      // Use consistent slug generation
-      const slug = createSlug(article.title)
-
-      return {
-        slug: slug,
-      }
-    })
-
-    console.log(`✅ Generated ${params.length} static params for published articles`)
-    return params
-  } catch (error) {
-    console.error('❌ Error generating static params:', error)
-    // Return empty array to prevent build failure
-    return []
-  }
+  return []
 }
 
 // Generate metadata for social media sharing
