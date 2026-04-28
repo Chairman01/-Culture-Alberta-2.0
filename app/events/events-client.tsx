@@ -92,16 +92,18 @@ export default function EventsClient({ events }: EventsClientProps) {
             const date = new Date(dateString)
             if (isNaN(date.getTime())) return 'Date TBA'
 
+            const tz = 'America/Edmonton'
             const datePart = date.toLocaleDateString('en-US', {
                 weekday: 'long',
                 month: 'long',
                 day: 'numeric',
-                year: 'numeric'
+                year: 'numeric',
+                timeZone: tz
             })
-            const timeMatch = dateString.match(/T(\d{1,2}):(\d{2})/)
-            const isMidnight = timeMatch && parseInt(timeMatch[1], 10) === 0 && parseInt(timeMatch[2], 10) === 0
-            const timePart = timeMatch && !isMidnight
-                ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+            const mtTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz })
+            const isMidnight = mtTime === '00:00' || mtTime === '12:00 AM'
+            const timePart = !isMidnight
+                ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: tz })
                 : ''
 
             return timePart ? `${datePart} at ${timePart}` : datePart
@@ -252,7 +254,7 @@ export default function EventsClient({ events }: EventsClientProps) {
                                         </div>
                                         <span className="rounded-full bg-muted px-2 py-1 text-xs">{event.category}</span>
                                     </div>
-                                    <p className="text-muted-foreground">{event.excerpt || event.description}</p>
+                                    <p className="text-muted-foreground">{(event.excerpt || event.description || '').replace(/<[^>]*>?/g, '').trim()}</p>
                                 </div>
                                 <div className="mt-4 flex items-center justify-between">
                                     <Link href={getEventUrl(event as any)}>

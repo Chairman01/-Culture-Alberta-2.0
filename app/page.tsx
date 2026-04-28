@@ -616,6 +616,7 @@ export default async function HomeStatic() {
                           <span className="font-medium">{formatDate(getPostDate(post))}</span>
                         </div>
                         <h3 className="font-display font-bold text-xl group-hover:text-red-600 transition-colors duration-300 line-clamp-2 leading-tight">{getPostTitle(post)}</h3>
+                        {getPostExcerpt(post) && <p className="font-body text-sm text-gray-500 mt-1 line-clamp-2">{getPostExcerpt(post)}</p>}
                       </div>
                     </div>
                   </Link>
