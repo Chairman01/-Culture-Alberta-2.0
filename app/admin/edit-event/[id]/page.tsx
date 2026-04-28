@@ -86,6 +86,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [organizer, setOrganizer] = useState("")
   const [contactEmail, setContactEmail] = useState("")
   const [contactPhone, setContactPhone] = useState("")
+  const [featured, setFeatured] = useState(false)
 
   // Update form fields when event data loads
   useEffect(() => {
@@ -99,7 +100,8 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       setTicketUrl(event.website_url || "")
       setOrganizer(event.organizer || "")
       setContactEmail(event.organizer_contact || "")
-      
+      setFeatured(event.featured || false)
+
       // Parse event dates and times - use LOCAL date/time (DB stores UTC, display in user's timezone)
       if (event.event_date && event.event_date.trim() !== '') {
         const d = new Date(event.event_date)
@@ -163,6 +165,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         website_url: ticketUrl,
         organizer,
         organizer_contact: contactEmail,
+        featured,
         event_date: startDate ? new Date(`${startDate}T${startTime || '00:00'}:00`).toISOString() : "",
         ...(endDate && { event_end_date: new Date(`${endDate}T${endTime || '00:00'}:00`).toISOString() }),
       }
@@ -472,6 +475,19 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                     onChange={(e) => setContactPhone(e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center gap-3 py-2">
+                <input
+                  id="featured"
+                  type="checkbox"
+                  checked={featured}
+                  onChange={(e) => setFeatured(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 accent-black cursor-pointer"
+                />
+                <Label htmlFor="featured" className="cursor-pointer font-medium">
+                  Featured Event <span className="text-gray-500 font-normal text-sm">(pins this event to the top of the listing)</span>
+                </Label>
               </div>
 
                 <div className="pt-4 flex justify-end gap-2">

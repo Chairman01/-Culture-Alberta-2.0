@@ -257,10 +257,48 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                 </div>
 
                 {/* Newsletter Signup */}
-                <ArticleNewsletterSignup 
+                <ArticleNewsletterSignup
                   articleTitle={event.title}
                   articleCategory={event.category}
                 />
+
+                {/* Bottom Event Details CTA */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border p-6">
+                  <h3 className="text-xl font-semibold mb-4">Event Details</h3>
+                  <div className="space-y-3 mb-5">
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                      <span className="font-medium">{formatEventDate(event.event_date)}</span>
+                      <span className="text-gray-500">at {formatEventTime(event.event_date)}</span>
+                    </div>
+                    {event.location && (
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <MapPin className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                        <span>{event.location}</span>
+                      </div>
+                    )}
+                    {event.organizer && (
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <User className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                        <span>{event.organizer}</span>
+                      </div>
+                    )}
+                    {event.organizer_contact && (
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <Mail className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                        <span>{event.organizer_contact}</span>
+                      </div>
+                    )}
+                  </div>
+                  {event.website_url && (
+                    <Button asChild className="w-full" size="lg">
+                      <Link href={event.website_url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="mr-2 h-5 w-5" />
+                        Buy Tickets / More Info
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Sidebar */}

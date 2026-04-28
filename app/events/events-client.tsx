@@ -85,6 +85,14 @@ export default function EventsClient({ events }: EventsClientProps) {
 
     const filteredEvents = events.filter(filterEvents)
 
+    // Sort: featured events pinned first, then newest event date first
+    const sortedEvents = [...filteredEvents].sort((a, b) => {
+        const aFeatured = (a as any).featured ? 1 : 0
+        const bFeatured = (b as any).featured ? 1 : 0
+        if (bFeatured !== aFeatured) return bFeatured - aFeatured
+        return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+    })
+
     const formatEventDate = (dateString: string) => {
         if (!dateString) return 'Date TBA'
 
@@ -112,7 +120,7 @@ export default function EventsClient({ events }: EventsClientProps) {
         }
     }
 
-    if (filteredEvents.length === 0) {
+    if (sortedEvents.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center text-center py-24 w-full min-h-[300px]">
                 <div className="max-w-md mx-auto space-y-4">
@@ -224,7 +232,7 @@ export default function EventsClient({ events }: EventsClientProps) {
             {/* Events Grid */}
             <div className="md:w-3/4 w-full flex flex-col items-center justify-center">
                 <div className="grid gap-8 w-full">
-                    {filteredEvents.map((event) => (
+                    {sortedEvents.map((event) => (
                         <div
                             key={event.id}
                             className="flex flex-col overflow-hidden rounded-lg border bg-background shadow-sm md:flex-row"
