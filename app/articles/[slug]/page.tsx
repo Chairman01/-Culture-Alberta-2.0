@@ -31,6 +31,9 @@ import { ArticleViewCount } from '@/components/article-view-count'
 // Removed ArticleContent import to fix hydration issues
 // import './article-styles.css' // Removed - file was deleted
 
+const LEGACY_ARTICLE_REDIRECTS: Record<string, string> = {}
+const useFastDevMode = process.env.NODE_ENV === 'development' && process.env.USE_SUPABASE_IN_DEV !== '1'
+
 // Don't pre-render articles at build time — let ISR handle on first request.
 // Pre-rendering 200+ articles at build time made deployments take 5+ minutes.
 export async function generateStaticParams() {
@@ -40,7 +43,8 @@ export async function generateStaticParams() {
 // Generate metadata for social media sharing
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const resolvedParams = await params
-  const slug = resolvedParams.slug
+  const originalSlug = resolvedParams.slug
+  const slug = LEGACY_ARTICLE_REDIRECTS[originalSlug] || originalSlug
 
   try {
     // Load article data for metadata
@@ -198,6 +202,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const resolvedParams = await params
   const slug = resolvedParams.slug
 
+  if (LEGACY_ARTICLE_REDIRECTS[slug]) {
+    redirect(`/articles/${LEGACY_ARTICLE_REDIRECTS[slug]}`)
+  }
+
   try {
     console.log('🚀 Loading article:', slug)
     console.log('📄 Individual article page reached - using fast fallback system')
@@ -315,9 +323,23 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       )
       if (!hasUsableContent) {
         console.log('🔎 Article content missing/short, attempting Supabase fetch for full content...')
-        let supabaseArticle = await getArticleBySlug(slug)
-        if (!supabaseArticle) {
-          supabaseArticle = await getArticleById(loadedArticle.id)
+        // Must be > getArticleById's own 4500ms timeout so that function can complete
+        const timeoutMs = process.env.NODE_ENV === 'development' ? 7000 : 5000
+        const withTimeout = async (promise: Promise<any>): Promise<any | null> => {
+          try {
+            return await Promise.race([
+              promise,
+              new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs))
+            ])
+          } catch {
+            return null
+          }
+        }
+
+        // ID lookup is a single-row query and much faster than slug scans.
+        let supabaseArticle = await withTimeout(getArticleById(loadedArticle.id))
+        if (!supabaseArticle && !useFastDevMode) {
+          supabaseArticle = await withTimeout(getArticleBySlug(slug))
         }
         if (supabaseArticle && typeof supabaseArticle.content === 'string' && supabaseArticle.content.trim().length > 0) {
           loadedArticle = { ...loadedArticle, content: supabaseArticle.content }
@@ -325,7 +347,16 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         } else {
           console.log('⚠️ Supabase did not return content; trying admin API as final fallback')
           try {
-            const resp = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/admin/articles/${loadedArticle.id}`, { cache: 'no-store' })
+            const controller = new AbortController()
+            const abortTimer = setTimeout(() => controller.abort(), timeoutMs)
+            const resp = await fetch(
+              `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/admin/articles/${loadedArticle.id}`,
+              {
+                cache: 'no-store',
+                signal: controller.signal
+              }
+            )
+            clearTimeout(abortTimer)
             if (resp.ok) {
               const apiArticle = await resp.json()
               if (apiArticle && typeof apiArticle.content === 'string' && apiArticle.content.trim().length > 0) {
