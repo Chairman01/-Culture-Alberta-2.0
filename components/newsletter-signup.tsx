@@ -11,14 +11,16 @@ interface NewsletterSignupProps {
   description?: string
   className?: string
   compact?: boolean
+  accentColor?: "blue" | "red"
 }
 
-export default function NewsletterSignup({ 
-  defaultCity = "", 
+export default function NewsletterSignup({
+  defaultCity = "",
   title = "Newsletter",
   description = "Stay updated with the latest cultural news and events from across Alberta.",
   className = "",
-  compact = false
+  compact = false,
+  accentColor = "blue"
 }: NewsletterSignupProps) {
   const [email, setEmail] = useState("")
   const [city, setCity] = useState(defaultCity)
@@ -121,7 +123,11 @@ export default function NewsletterSignup({
         <button
           onClick={handleSubmit}
           disabled={isSubmitting || !email}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className={`w-full text-white py-2 px-4 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+            accentColor === "red"
+              ? "bg-red-600 hover:bg-red-700"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
         >
           {isSubmitting ? "Subscribing..." : "Subscribe"}
         </button>

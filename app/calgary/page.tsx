@@ -327,6 +327,7 @@ export default async function CalgaryPage() {
                     <NewsletterSignup
                       defaultCity="calgary"
                       compact={true}
+                      accentColor="red"
                     />
                   </div>
                 </div>
