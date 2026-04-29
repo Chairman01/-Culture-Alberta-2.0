@@ -175,7 +175,7 @@ export default function NewsletterAdmin() {
   const [campaigns, setCampaigns] = useState<CampaignStat[]>([])
   const [engagement, setEngagement] = useState<Record<string, SubscriberEngagement>>({})
   const [cityFilter, setCityFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'unsubscribed'>('active')
+  const [statusFilter, setStatusFilter] = useState<'active' | 'unsubscribed'>('active')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'subscribers' | 'campaigns'>('subscribers')
@@ -1300,7 +1300,7 @@ export default function NewsletterAdmin() {
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
                     <div className="flex gap-1">
-                      {(['all', 'active', 'unsubscribed'] as const).map(s => (
+                      {(['active', 'unsubscribed'] as const).map(s => (
                         <button key={s} onClick={() => setStatusFilter(s)}
                           className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}>
                           {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -1319,7 +1319,7 @@ export default function NewsletterAdmin() {
                   <div>
                     <CardTitle>{cityFilter === 'all' ? 'All Subscriptions' : `${CITY_FILTERS.find(c=>c.value===cityFilter)?.label} Subscriptions`}</CardTitle>
                     <CardDescription>
-                      {subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && (statusFilter==='all'||s.status===statusFilter)).length} matching
+                      {subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && s.status===statusFilter).length} matching
                     </CardDescription>
                   </div>
                   {(() => {
@@ -1336,7 +1336,7 @@ export default function NewsletterAdmin() {
               </CardHeader>
               <CardContent>
                 {(() => {
-                  const filtered = subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && (statusFilter==='all'||s.status===statusFilter))
+                  const filtered = subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && s.status===statusFilter)
                   const activeFiltered = filtered.filter(s => s.status==='active')
                   return filtered.length > 0 ? (
                     <>
