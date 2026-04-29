@@ -91,7 +91,7 @@ export function MainNavigation() {
           {/* Auth - single user icon links to sign-in (or account when logged in) */}
           <div className="flex items-center gap-2">
             {loading ? (
-              <div className="w-9 h-9 rounded-full bg-gray-200 animate-pulse" aria-hidden />
+              <div className="min-w-[44px] min-h-[44px] w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-gray-200 animate-pulse" aria-hidden />
             ) : user ? (
               <div className="flex items-center gap-1">
                 <div

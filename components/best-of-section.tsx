@@ -20,41 +20,41 @@ export function BestOfSection() {
         {/* Navigation Tabs */}
         <div className="flex items-center justify-center mb-6">
           <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-            <button 
-              className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
-                activeBestOfTab === 'dentists' 
-                  ? 'text-black border-b-2 border-black' 
-                  : 'text-gray-600 hover:text-black'
+            <button
+              className={`px-6 py-3 text-sm font-medium font-body transition-colors border-b-2 ${
+                activeBestOfTab === 'dentists'
+                  ? 'text-black border-black'
+                  : 'text-gray-600 hover:text-black border-transparent'
               }`}
               onClick={() => setActiveBestOfTab('dentists')}
             >
               Dentists
             </button>
-            <button 
-              className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
-                activeBestOfTab === 'lawyers' 
-                  ? 'text-black border-b-2 border-black' 
-                  : 'text-gray-600 hover:text-black'
+            <button
+              className={`px-6 py-3 text-sm font-medium font-body transition-colors border-b-2 ${
+                activeBestOfTab === 'lawyers'
+                  ? 'text-black border-black'
+                  : 'text-gray-600 hover:text-black border-transparent'
               }`}
               onClick={() => setActiveBestOfTab('lawyers')}
             >
               Lawyers
             </button>
-            <button 
-              className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
-                activeBestOfTab === 'accountants' 
-                  ? 'text-black border-b-2 border-black' 
-                  : 'text-gray-600 hover:text-black'
+            <button
+              className={`px-6 py-3 text-sm font-medium font-body transition-colors border-b-2 ${
+                activeBestOfTab === 'accountants'
+                  ? 'text-black border-black'
+                  : 'text-gray-600 hover:text-black border-transparent'
               }`}
               onClick={() => setActiveBestOfTab('accountants')}
             >
               Accountants
             </button>
-            <button 
-              className={`px-6 py-3 text-sm font-medium font-body transition-colors ${
-                activeBestOfTab === 'restaurants' 
-                  ? 'text-black border-b-2 border-black' 
-                  : 'text-gray-600 hover:text-black'
+            <button
+              className={`px-6 py-3 text-sm font-medium font-body transition-colors border-b-2 ${
+                activeBestOfTab === 'restaurants'
+                  ? 'text-black border-black'
+                  : 'text-gray-600 hover:text-black border-transparent'
               }`}
               onClick={() => setActiveBestOfTab('restaurants')}
             >

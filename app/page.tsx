@@ -546,6 +546,7 @@ export default async function HomeStatic() {
                           height={225}
                           className="w-full h-full object-cover"
                           loading="lazy"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         />
                       </div>
                       <div className="p-4">
@@ -584,6 +585,7 @@ export default async function HomeStatic() {
                           height={225}
                           className="w-full h-full object-cover"
                           loading="lazy"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         />
                       </div>
                       <div className="p-4">
@@ -626,6 +628,7 @@ export default async function HomeStatic() {
                               height={225}
                               className="w-full h-full object-cover"
                               loading="lazy"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                             />
                           </div>
                           <div className="p-4">
@@ -666,6 +669,7 @@ export default async function HomeStatic() {
                           height={225}
                           className="w-full h-full object-cover"
                           loading="lazy"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         />
                         <div className="absolute top-3 left-3 bg-black text-white px-3 py-1.5 text-sm rounded-lg font-medium">
                           {formatEventDate(getPostDate(event))}
@@ -740,6 +744,7 @@ export default async function HomeStatic() {
                             height={225}
                             className="w-full h-full object-cover"
                             loading="lazy"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                           />
                         </div>
                         <div className="p-4">
