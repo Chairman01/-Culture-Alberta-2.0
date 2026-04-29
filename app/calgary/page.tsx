@@ -182,7 +182,7 @@ export default async function CalgaryPage() {
           </section>
 
           {/* Feature Article + Sidebar Section */}
-          <section className="w-full py-6">
+          <section className="w-full pt-6 pb-3">
             <div className="container mx-auto px-4 md:px-6">
               <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
                 {/* Feature Article (left) */}
@@ -332,7 +332,7 @@ export default async function CalgaryPage() {
           </section>
 
           {/* Articles Section with Tabs */}
-          <section className="w-full py-6 bg-gray-50">
+          <section className="w-full pt-3 pb-6 bg-gray-50">
             <div className="container mx-auto px-4 md:px-6">
               <Tabs defaultValue="all" className="w-full">
                 <div className="mb-6 overflow-x-auto -mx-4 px-4 pb-1">
