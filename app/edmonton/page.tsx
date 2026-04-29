@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Calendar, MapPin } from 'lucide-react'
+import { ArrowRight, Calendar, MapPin, Mail } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { SearchBar } from '@/components/search-bar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -325,9 +325,16 @@ export default async function EdmontonPage() {
                   </div>
 
                   {/* Newsletter */}
-                  <div className="bg-white rounded-xl shadow-sm p-4">
-                    <h2 className="font-display text-lg font-bold mb-1">Newsletter</h2>
-                    <p className="font-body text-sm text-gray-500 mb-3">Stay updated with the latest cultural news and events from Edmonton and across Alberta.</p>
+                  <div className="bg-gradient-to-br from-slate-50 to-blue-50/40 rounded-2xl shadow-sm border border-slate-200/80 p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <Mail className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <h2 className="font-display text-base font-bold text-gray-900 leading-tight">Newsletter</h2>
+                        <p className="font-body text-xs text-gray-500 leading-snug">Stay updated with the latest cultural news and events from Edmonton and across Alberta.</p>
+                      </div>
+                    </div>
                     <NewsletterSignup
                       defaultCity="edmonton"
                       compact={true}
