@@ -149,11 +149,11 @@ export default async function CalgaryPage() {
       const date = new Date(dateString)
       if (isNaN(date.getTime())) return 'Date TBA'
 
-      const datePart = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+      const datePart = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Edmonton' })
       const timeMatch = dateString.match(/T(\d{1,2}):(\d{2})/)
       const isMidnight = timeMatch && parseInt(timeMatch[1], 10) === 0 && parseInt(timeMatch[2], 10) === 0
       const timePart = timeMatch && !isMidnight
-        ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Edmonton' })
         : ''
 
       return timePart ? `${datePart} at ${timePart}` : datePart

@@ -202,16 +202,16 @@ export default async function HomeStatic() {
       const date = new Date(dateString)
       if (isNaN(date.getTime())) return 'Date TBA'
 
-      // Use local timezone - new Date(iso) parses UTC, toLocale* displays in user's local time
       const datePart = date.toLocaleDateString('en-US', {
         month: 'long',
         day: 'numeric',
-        year: 'numeric'
+        year: 'numeric',
+        timeZone: 'America/Edmonton'
       })
       const timeMatch = dateString.match(/T\d{1,2}:\d{2}/)
-      const isMidnight = timeMatch && date.getHours() === 0 && date.getMinutes() === 0
+      const isMidnight = timeMatch && date.getUTCHours() === 0 && date.getUTCMinutes() === 0
       const timePart = timeMatch && !isMidnight
-        ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Edmonton' })
         : ''
 
       return timePart ? `${datePart} at ${timePart}` : datePart
