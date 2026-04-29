@@ -325,11 +325,14 @@ export default async function EdmontonPage() {
                   </div>
 
                   {/* Newsletter */}
-                  <NewsletterSignup
-                    defaultCity="edmonton"
-                    title="Newsletter"
-                    description="Stay updated with the latest cultural news and events from Edmonton and across Alberta."
-                  />
+                  <div className="bg-white rounded-xl shadow-sm p-4">
+                    <h2 className="font-display text-lg font-bold mb-1">Newsletter</h2>
+                    <p className="font-body text-sm text-gray-500 mb-3">Stay updated with the latest cultural news and events from Edmonton and across Alberta.</p>
+                    <NewsletterSignup
+                      defaultCity="edmonton"
+                      compact={true}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

@@ -321,11 +321,14 @@ export default async function CalgaryPage() {
                   </div>
 
                   {/* Newsletter */}
-                  <NewsletterSignup
-                    defaultCity="calgary"
-                    title="Newsletter"
-                    description="Stay updated with the latest cultural news and events from Calgary and across Alberta."
-                  />
+                  <div className="bg-white rounded-xl shadow-sm p-4">
+                    <h2 className="font-display text-lg font-bold mb-1">Newsletter</h2>
+                    <p className="font-body text-sm text-gray-500 mb-3">Stay updated with the latest cultural news and events from Calgary and across Alberta.</p>
+                    <NewsletterSignup
+                      defaultCity="calgary"
+                      compact={true}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
