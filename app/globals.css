@@ -328,3 +328,29 @@ body {
   font-style: italic;
   color: #4b5563;
 }
+
+/*MV iphone 5 fix*/
+
+@media only screen and (max-width: 425px) {
+.prose.article-content-wrapper {
+  word-break:break-all !important;
+}
+}
+
+@media only screen and (max-width: 359px) {
+
+
+
+main > div > div > .container.mx-auto {
+
+padding-left: 10px !important;
+
+padding-right: 10px !important;
+
+}
+
+
+
+}
+
+/*MV iphone 5 fix - END*/
