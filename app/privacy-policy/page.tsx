@@ -232,7 +232,76 @@ export default function PrivacyPolicy() {
           encourage you to review this Privacy Policy periodically for any changes.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">14. Contact Us</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">14. Mediavine Programmatic Advertising (Ver 1.1)</h2>
+        <p className="mb-4">
+          The Website works with Mediavine to manage third-party interest-based advertising appearing
+          on the Website. Mediavine serves content and advertisements when you visit the Website,
+          which may use first and third-party cookies. A cookie is a small text file which is sent to
+          your computer or mobile device (referred to in this policy as a &ldquo;device&rdquo;) by
+          the web server so that a website can remember some information about your browsing activity
+          on the Website.
+        </p>
+        <p className="mb-4">
+          First party cookies are created by the website that you are visiting. A third-party cookie
+          is frequently used in behavioral advertising and analytics and is created by a domain other
+          than the website you are visiting. Third-party cookies, tags, pixels, beacons and other
+          similar technologies (collectively, &ldquo;Tags&rdquo;) may be placed on the Website to
+          monitor interaction with advertising content and to target and optimize advertising. Each
+          internet browser has functionality so that you can block both first and third-party cookies
+          and clear your browser&apos;s cache. The &ldquo;help&rdquo; feature of the menu bar on
+          most browsers will tell you how to stop accepting new cookies, how to receive notification
+          of new cookies, how to disable existing cookies and how to clear your browser&apos;s cache.
+          For more information about cookies and how to disable them, you can consult the information
+          at{' '}
+          <a href="https://www.allaboutcookies.org/manage-cookies/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            All About Cookies
+          </a>.
+        </p>
+        <p className="mb-4">
+          Without cookies you may not be able to take full advantage of the Website content and
+          features. Please be aware that restricting cookies may impact the functionality of the
+          Website.
+        </p>
+        <p className="mb-4">
+          Advertising serving technology may match or associate your devices for interest-based
+          advertising and other purposes. Information about your use of this Website, including
+          advertising that you view, may be matched and combined with other information Mediavine has
+          collected about you (e.g., from other Websites you have visited). This information is used
+          to improve and measure the effectiveness of our advertising. Learn more about Mediavine&apos;s
+          data privacy policies and practices at{' '}
+          <a href="https://www.mediavine.com/privacy-policy/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            Mediavine Privacy Policy
+          </a>.
+        </p>
+        <p className="mb-4">
+          If you would like more information about this practice and to know your choices about not
+          having your information used by these companies for interest-based advertising, please visit:
+        </p>
+        <ul className="list-disc pl-6 mb-4 space-y-2">
+          <li>
+            <a href="https://www.networkadvertising.org/managing/opt_out.asp" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              National Advertising Initiative (NAI) Opt-Out
+            </a>
+          </li>
+          <li>
+            <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              Digital Advertising Alliance (DAA) Opt-Out
+            </a>
+          </li>
+          <li>
+            <a href="https://youradchoices.ca/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              Your Ad Choices (Canada)
+            </a>
+          </li>
+        </ul>
+        <p className="mb-4">
+          To opt out of Mediavine interest-based advertising specifically, visit{' '}
+          <a href="https://www.mediavine.com/privacy-policy/#opt-out" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            Mediavine Opt-Out
+          </a>.
+        </p>
+
+        <h2 className="text-2xl font-semibold mt-8 mb-4">15. Contact Us</h2>
         <p className="mb-4">
           If you have any questions about this Privacy Policy or our privacy practices, please contact us:
         </p>
