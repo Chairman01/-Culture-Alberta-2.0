@@ -12,6 +12,7 @@ import { createSlug } from '@/lib/utils/slug'
 import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { ArticleStructuredData, BreadcrumbStructuredData } from '@/components/seo/structured-data'
+import { ArticleEmbedActivator } from '@/components/article-embed-activator'
 
 // ISR: cache rendered pages for 60s, revalidate in background
 // Removes the force-dynamic/revalidate=0 that was hitting Supabase on every single request
@@ -642,6 +643,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
                     {/* Instagram embed script - activates instagram-media blockquotes */}
                     <Script src="https://www.instagram.com/embed.js" strategy="lazyOnload" />
+
+                    {/* Re-process embeds on every SPA navigation (scripts don't re-run on client-side route changes) */}
+                    <ArticleEmbedActivator />
 
                     {/* Article Footer */}
                     <div className="flex items-center justify-between pt-8 border-t border-gray-200">
