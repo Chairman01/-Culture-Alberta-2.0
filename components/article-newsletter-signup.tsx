@@ -61,12 +61,13 @@ export default function ArticleNewsletterSignup({
       const scrolled = window.scrollY + window.innerHeight
       const progress = (scrolled - articleTop) / articleHeight
       if (progress >= 0.5) {
-        // Check what step to show
+        window.removeEventListener('scroll', handleScroll)
+        if (sessionStorage.getItem('newsletter_shown')) return
+        sessionStorage.setItem('newsletter_shown', 'true')
         const subscribed = localStorage.getItem('newsletter_subscribed')
         setStep(subscribed === 'true' ? 'account' : 'newsletter')
         setIsVisible(true)
         setIsAnimating(true)
-        window.removeEventListener('scroll', handleScroll)
       }
     }
 
