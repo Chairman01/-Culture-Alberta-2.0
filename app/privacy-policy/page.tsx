@@ -74,55 +74,7 @@ export default function PrivacyPolicy() {
           affect your ability to use certain features of our website.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">4. Google AdSense and Advertising</h2>
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
-          <p className="mb-3">
-            <strong>Important:</strong> We use Google AdSense to display advertisements on our website.
-            Google AdSense uses cookies and web beacons to serve ads based on your visits to this
-            site and other sites on the Internet.
-          </p>
-        </div>
-
-        <h3 className="text-xl font-semibold mt-6 mb-3">4.1 How Google AdSense Works</h3>
-        <p className="mb-4">
-          Google uses cookies to:
-        </p>
-        <ul className="list-disc pl-6 mb-4 space-y-2">
-          <li>Serve ads based on your prior visits to our website or other websites</li>
-          <li>Measure ad effectiveness and provide aggregated reports</li>
-          <li>Prevent the same ads from being shown to you repeatedly</li>
-          <li>Detect and prevent click fraud</li>
-        </ul>
-
-        <h3 className="text-xl font-semibold mt-6 mb-3">4.2 Your Advertising Choices</h3>
-        <p className="mb-4">
-          You can opt out of personalized advertising by visiting:
-        </p>
-        <ul className="list-disc pl-6 mb-4 space-y-2">
-          <li>
-            <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-              Google Ads Settings
-            </a>
-          </li>
-          <li>
-            <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-              Digital Advertising Alliance (DAA) Opt-Out
-            </a>
-          </li>
-          <li>
-            <a href="https://youradchoices.ca/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-              Your Ad Choices (Canada)
-            </a>
-          </li>
-        </ul>
-        <p className="mb-4">
-          For more information about how Google uses data when you use our website, please visit{' '}
-          <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-            How Google uses information from sites or apps that use our services
-          </a>.
-        </p>
-
-        <h2 className="text-2xl font-semibold mt-8 mb-4">5. Google Analytics</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">4. Google Analytics</h2>
         <p className="mb-4">
           We use Google Analytics to analyze website traffic and usage patterns. Google Analytics
           uses cookies to collect information such as:
@@ -144,7 +96,7 @@ export default function PrivacyPolicy() {
           </a>.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">6. Third-Party Services</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">5. Third-Party Services</h2>
         <p className="mb-4">
           Our website may contain links to third-party websites and services. We are not responsible
           for the privacy practices or content of these third-party sites. We encourage you to review
@@ -154,13 +106,12 @@ export default function PrivacyPolicy() {
           Third-party services we use include:
         </p>
         <ul className="list-disc pl-6 mb-4 space-y-2">
-          <li><strong>Google AdSense:</strong> For displaying advertisements</li>
           <li><strong>Google Analytics:</strong> For website analytics</li>
           <li><strong>Vercel Analytics:</strong> For performance monitoring</li>
           <li><strong>Supabase:</strong> For data storage and management</li>
         </ul>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">7. Data Security</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">6. Data Security</h2>
         <p className="mb-4">
           We implement appropriate technical and organizational security measures to protect your
           personal information against unauthorized access, alteration, disclosure, or destruction.
@@ -168,7 +119,7 @@ export default function PrivacyPolicy() {
           and we cannot guarantee absolute security.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">8. Your Rights (GDPR Compliance)</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">7. Your Rights (GDPR Compliance)</h2>
         <p className="mb-4">
           If you are a resident of the European Economic Area (EEA), you have certain data protection
           rights under the General Data Protection Regulation (GDPR):
@@ -189,7 +140,7 @@ export default function PrivacyPolicy() {
           </a>.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">9. Canadian Privacy Rights (PIPEDA)</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">8. Canadian Privacy Rights (PIPEDA)</h2>
         <p className="mb-4">
           As a Canadian organization, we comply with the Personal Information Protection and Electronic
           Documents Act (PIPEDA). You have the right to:
@@ -201,14 +152,14 @@ export default function PrivacyPolicy() {
           <li>Withdraw consent for the collection, use, or disclosure of your information</li>
         </ul>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">10. Children's Privacy</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">9. Children's Privacy</h2>
         <p className="mb-4">
           Our website is not intended for children under the age of 13. We do not knowingly collect
           personal information from children under 13. If you believe we have collected information
           from a child under 13, please contact us immediately.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">11. Newsletter and Email Communications</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">10. Newsletter and Email Communications</h2>
         <p className="mb-4">
           If you subscribe to our newsletter, we will use your email address to send you updates
           about Alberta culture, events, and related content. You can unsubscribe at any time by:
@@ -218,21 +169,21 @@ export default function PrivacyPolicy() {
           <li>Contacting us at <a href="mailto:hello@culturemedia.ca" className="text-blue-600 hover:underline">hello@culturemedia.ca</a></li>
         </ul>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">12. Data Retention</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">11. Data Retention</h2>
         <p className="mb-4">
           We retain your personal information only for as long as necessary to fulfill the purposes
           outlined in this Privacy Policy, unless a longer retention period is required or permitted
           by law.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">13. Changes to This Privacy Policy</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">12. Changes to This Privacy Policy</h2>
         <p className="mb-4">
           We may update this Privacy Policy from time to time. We will notify you of any changes by
           posting the new Privacy Policy on this page and updating the "Last updated" date. We
           encourage you to review this Privacy Policy periodically for any changes.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">14. Mediavine Programmatic Advertising (Ver 1.1)</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">13. Mediavine Programmatic Advertising (Ver 1.1)</h2>
         <p className="mb-4">
           The Website works with Mediavine to manage third-party interest-based advertising appearing
           on the Website. Mediavine serves content and advertisements when you visit the Website,
@@ -301,7 +252,7 @@ export default function PrivacyPolicy() {
           </a>.
         </p>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-4">15. Contact Us</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-4">14. Contact Us</h2>
         <p className="mb-4">
           If you have any questions about this Privacy Policy or our privacy practices, please contact us:
         </p>
