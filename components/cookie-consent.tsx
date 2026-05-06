@@ -4,26 +4,26 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 export function CookieConsent() {
-    const [showBanner, setShowBanner] = useState(false)
+    const [hidden, setHidden] = useState(false)
 
     useEffect(() => {
         const consent = localStorage.getItem('cookie-consent')
-        if (!consent) {
-            setShowBanner(true)
+        if (consent) {
+            setHidden(true)
         }
     }, [])
 
     const acceptCookies = () => {
         localStorage.setItem('cookie-consent', 'accepted')
-        setShowBanner(false)
+        setHidden(true)
     }
 
     const declineCookies = () => {
         localStorage.setItem('cookie-consent', 'declined')
-        setShowBanner(false)
+        setHidden(true)
     }
 
-    if (!showBanner) return null
+    if (hidden) return null
 
     return (
         <div className="fixed top-0 left-0 right-0 z-[200] bg-white border-b border-gray-200 shadow-sm">
