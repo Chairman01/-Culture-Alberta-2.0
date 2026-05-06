@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 export function CookieConsent() {
-    const [hidden, setHidden] = useState(false)
+    const [hidden, setHidden] = useState(true)
 
     useEffect(() => {
         const consent = localStorage.getItem('cookie-consent')
-        if (consent) {
-            setHidden(true)
+        if (!consent) {
+            setHidden(false)
         }
     }, [])
 

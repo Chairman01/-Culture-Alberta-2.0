@@ -22,18 +22,19 @@ export function EventImage({ imageUrl, image_url, title }: EventImageProps) {
 
   const [imgSrc, setImgSrc] = useState<string | null>(getValidImageUrl())
 
-  // Don't render anything if there's no valid image URL
+  // Render a placeholder container if no image, to avoid layout shift
   if (!imgSrc) {
     return null
   }
 
   return (
-    <div className="aspect-[16/9] w-full relative rounded-lg overflow-hidden mb-6">
+    <div className="aspect-[16/9] w-full relative rounded-lg overflow-hidden mb-6 bg-gray-100">
       <Image
         src={imgSrc}
         alt={title}
         fill
         className="object-cover"
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 900px"
         onError={() => {
           setImgSrc(null)
         }}

@@ -177,6 +177,7 @@ export function CultureArticles({ articles }: CultureArticlesProps) {
                                                             src={article.imageUrl || "/placeholder.svg"}
                                                             alt={article.title}
                                                             fill
+                                                            sizes="(max-width: 768px) 100vw, 33vw"
                                                             className="object-cover group-hover:scale-105 transition-transform duration-300"
                                                         />
                                                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -287,6 +288,7 @@ export function CultureArticles({ articles }: CultureArticlesProps) {
                                                             src={article.imageUrl || "/placeholder.svg"}
                                                             alt={article.title}
                                                             fill
+                                                            sizes="64px"
                                                             className="object-cover group-hover:scale-105 transition-transform duration-300"
                                                         />
                                                     </div>

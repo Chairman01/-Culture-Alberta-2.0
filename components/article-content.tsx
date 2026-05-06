@@ -276,6 +276,7 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
                   height={600}
                   className="rounded-lg shadow-lg"
                   style={{ objectFit: 'cover' }}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 800px"
                 />
                 {part.alt && (
                   <p className="text-sm text-gray-600 mt-2 italic">
@@ -352,6 +353,7 @@ export function ArticleContentWithHTML({ content, className = "" }: ArticleConte
                   height={600}
                   className="rounded-lg shadow-lg"
                   style={{ objectFit: 'cover' }}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 800px"
                 />
                 {part.alt && (
                   <p className="text-sm text-gray-600 mt-2 italic">
