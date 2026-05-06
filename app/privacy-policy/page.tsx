@@ -227,7 +227,7 @@ export default function PrivacyPolicy() {
           <li>Email (in hashed form)</li>
         </ul>
         <p className="mb-4">
-          Mediavine Partners (companies with whom Mediavine shares data) may also use this data to
+          Mediavine Partners (companies listed below with whom Mediavine shares data) may also use this data to
           link to other end user information the partner has independently collected to deliver
           targeted advertisements. Mediavine Partners may also separately collect data about end
           users from other sources, such as advertising IDs or pixels, and link that data to data
@@ -240,25 +240,25 @@ export default function PrivacyPolicy() {
         </p>
         <p className="mb-4">
           If you would like more information about this practice and to know your choices to opt-in
-          or opt-out of this data collection, please visit the{' '}
-          <a href="https://optout.networkadvertising.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+          or opt-out of this data collection, please visit{' '}
+          <a href="https://thenai.org/opt-out/" target="_blank" rel="noreferrer noopener nofollow" className="text-blue-600 hover:underline">
             National Advertising Initiative opt out page
-          </a>. You may also visit the{' '}
-          <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+          </a>. You may also visit{' '}
+          <a href="http://optout.aboutads.info/#/" target="_blank" rel="noreferrer noopener nofollow" className="text-blue-600 hover:underline">
             Digital Advertising Alliance website
           </a>{' '}and{' '}
-          <a href="https://www.networkadvertising.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+          <a href="http://optout.networkadvertising.org/#" target="_blank" rel="noreferrer noopener nofollow" className="text-blue-600 hover:underline">
             Network Advertising Initiative website
-          </a>{' '}to learn more about interest-based advertising. You may download the{' '}
-          <a href="https://youradchoices.com/appchoices" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-            AppChoices app
+          </a>{' '}to learn more information about interest-based advertising. You may download the AppChoices app at{' '}
+          <a href="https://youradchoices.com/appchoices" target="_blank" rel="noreferrer noopener nofollow" className="text-blue-600 hover:underline">
+            Digital Advertising Alliance&apos;s AppChoices app
           </a>{' '}to opt out in connection with mobile apps, or use the platform controls on your
           mobile device to opt out.
         </p>
         <p className="mb-4">
           For specific information about Mediavine Partners, the data each collects and their data
           collection and privacy policies, please visit{' '}
-          <a href="https://www.mediavine.com/mediavine-partners/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+          <a href="https://www.mediavine.com/ad-partners/" target="_blank" rel="noreferrer noopener nofollow" className="text-blue-600 hover:underline">
             Mediavine Partners
           </a>.
         </p>
