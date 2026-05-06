@@ -26,7 +26,7 @@ export function CookieConsent() {
     if (!showBanner) return null
 
     return (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div className="fixed top-0 left-0 right-0 z-[200] bg-white border-b border-gray-200 shadow-sm">
             <div className="container mx-auto max-w-6xl flex items-center justify-between gap-4 px-4 py-2.5">
                 <div className="flex items-center gap-2.5 min-w-0">
                     <span className="flex-shrink-0 w-5 h-5 rounded-full bg-black flex items-center justify-center">
