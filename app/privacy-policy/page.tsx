@@ -210,45 +210,56 @@ export default function PrivacyPolicy() {
         </p>
         <p className="mb-4">
           Without cookies you may not be able to take full advantage of the Website content and
-          features. Please be aware that restricting cookies may impact the functionality of the
-          Website.
+          features. Please note that rejecting cookies does not mean that you will no longer see ads
+          when you visit our Site. In the event you opt-out, you will still see non-personalized
+          advertisements on the Website.
         </p>
         <p className="mb-4">
-          Advertising serving technology may match or associate your devices for interest-based
-          advertising and other purposes. Information about your use of this Website, including
-          advertising that you view, may be matched and combined with other information Mediavine has
-          collected about you (e.g., from other Websites you have visited). This information is used
-          to improve and measure the effectiveness of our advertising. Learn more about Mediavine&apos;s
-          data privacy policies and practices at{' '}
-          <a href="https://www.mediavine.com/privacy-policy/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-            Mediavine Privacy Policy
-          </a>.
-        </p>
-        <p className="mb-4">
-          If you would like more information about this practice and to know your choices about not
-          having your information used by these companies for interest-based advertising, please visit:
+          The Website collects the following data using a cookie when serving personalized ads:
         </p>
         <ul className="list-disc pl-6 mb-4 space-y-2">
-          <li>
-            <a href="https://www.networkadvertising.org/managing/opt_out.asp" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-              National Advertising Initiative (NAI) Opt-Out
-            </a>
-          </li>
-          <li>
-            <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-              Digital Advertising Alliance (DAA) Opt-Out
-            </a>
-          </li>
-          <li>
-            <a href="https://youradchoices.ca/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-              Your Ad Choices (Canada)
-            </a>
-          </li>
+          <li>IP Address</li>
+          <li>Operating System type</li>
+          <li>Operating System version</li>
+          <li>Device Type</li>
+          <li>Language of the website</li>
+          <li>Web browser type</li>
+          <li>Email (in hashed form)</li>
         </ul>
         <p className="mb-4">
-          To opt out of Mediavine interest-based advertising specifically, visit{' '}
-          <a href="https://www.mediavine.com/privacy-policy/#opt-out" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-            Mediavine Opt-Out
+          Mediavine Partners (companies with whom Mediavine shares data) may also use this data to
+          link to other end user information the partner has independently collected to deliver
+          targeted advertisements. Mediavine Partners may also separately collect data about end
+          users from other sources, such as advertising IDs or pixels, and link that data to data
+          collected from Mediavine publishers in order to provide interest-based advertising across
+          your online experience, including devices, browsers and apps. This data includes usage
+          data, cookie information, device information, information about interactions between users
+          and advertisements and websites, geolocation data, traffic data, and information about a
+          visitor&apos;s referral source to a particular website. Mediavine Partners may also create
+          unique IDs to create audience segments, which are used to provide targeted advertising.
+        </p>
+        <p className="mb-4">
+          If you would like more information about this practice and to know your choices to opt-in
+          or opt-out of this data collection, please visit the{' '}
+          <a href="https://optout.networkadvertising.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            National Advertising Initiative opt out page
+          </a>. You may also visit the{' '}
+          <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            Digital Advertising Alliance website
+          </a>{' '}and{' '}
+          <a href="https://www.networkadvertising.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            Network Advertising Initiative website
+          </a>{' '}to learn more about interest-based advertising. You may download the{' '}
+          <a href="https://youradchoices.com/appchoices" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            AppChoices app
+          </a>{' '}to opt out in connection with mobile apps, or use the platform controls on your
+          mobile device to opt out.
+        </p>
+        <p className="mb-4">
+          For specific information about Mediavine Partners, the data each collects and their data
+          collection and privacy policies, please visit{' '}
+          <a href="https://www.mediavine.com/mediavine-partners/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            Mediavine Partners
           </a>.
         </p>
 
