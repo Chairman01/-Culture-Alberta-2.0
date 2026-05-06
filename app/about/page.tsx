@@ -127,14 +127,14 @@ export default function AboutPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <a
-                  href="mailto:culturealberta101@gmail.com"
+                  href="mailto:hello@culturemedia.ca"
                   className="group p-8 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border-2 border-blue-200 hover:border-blue-400 transition-all hover:shadow-lg"
                 >
                   <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <Mail className="w-7 h-7 text-white" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">Email Us</h3>
-                  <p className="text-blue-600 font-medium break-all">culturealberta101@gmail.com</p>
+                  <p className="text-blue-600 font-medium break-all">hello@culturemedia.ca</p>
                 </a>
 
                 <a

@@ -160,7 +160,7 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
       "@type": "ContactPoint",
       "contactType": "customer service",
       "url": `${baseUrl}/contact`,
-      "email": "culturemedia101@gmail.com",
+      "email": "hello@culturemedia.ca",
       "areaServed": "CA",
       "availableLanguage": "English"
     },
@@ -201,7 +201,7 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
     "parentOrganization": {
       "@type": "Organization",
       "name": "Culture Media",
-      "email": "culturemedia101@gmail.com"
+      "email": "hello@culturemedia.ca"
     }
   }
 

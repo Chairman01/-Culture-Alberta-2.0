@@ -184,8 +184,8 @@ export default function PrivacyPolicy() {
         </ul>
         <p className="mb-4">
           To exercise any of these rights, please contact us at{' '}
-          <a href="mailto:culturealberta101@gmail.com" className="text-blue-600 hover:underline">
-            culturealberta101@gmail.com
+          <a href="mailto:hello@culturemedia.ca" className="text-blue-600 hover:underline">
+            hello@culturemedia.ca
           </a>.
         </p>
 
@@ -215,7 +215,7 @@ export default function PrivacyPolicy() {
         </p>
         <ul className="list-disc pl-6 mb-4 space-y-2">
           <li>Clicking the "unsubscribe" link in any email we send</li>
-          <li>Contacting us at <a href="mailto:culturealberta101@gmail.com" className="text-blue-600 hover:underline">culturealberta101@gmail.com</a></li>
+          <li>Contacting us at <a href="mailto:hello@culturemedia.ca" className="text-blue-600 hover:underline">hello@culturemedia.ca</a></li>
         </ul>
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">12. Data Retention</h2>
@@ -308,8 +308,8 @@ export default function PrivacyPolicy() {
         <div className="bg-gray-50 p-6 rounded-lg mb-6">
           <p className="mb-2">
             <strong>Email:</strong>{' '}
-            <a href="mailto:culturealberta101@gmail.com" className="text-blue-600 hover:underline">
-              culturealberta101@gmail.com
+            <a href="mailto:hello@culturemedia.ca" className="text-blue-600 hover:underline">
+              hello@culturemedia.ca
             </a>
           </p>
           <p className="mb-2">

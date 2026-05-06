@@ -442,7 +442,7 @@ export default function PartnerPage() {
                     <div className="p-2 bg-gray-200 rounded-lg">
                       <Mail className="h-4 w-4" />
                     </div>
-                    <span>culturemedia101@gmail.com</span>
+                    <span>hello@culturemedia.ca</span>
                   </div>
                 </div>
               </div>

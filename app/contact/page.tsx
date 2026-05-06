@@ -46,10 +46,10 @@ export default function ContactPage() {
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Email</h3>
                     <a
-                      href="mailto:culturealberta101@gmail.com"
+                      href="mailto:hello@culturemedia.ca"
                       className="text-blue-600 hover:text-blue-700 transition-colors text-lg"
                     >
-                      culturealberta101@gmail.com
+                      hello@culturemedia.ca
                     </a>
                     <p className="text-gray-600 mt-1">
                       We typically respond within 24 hours
@@ -148,7 +148,7 @@ export default function ContactPage() {
                   <h4 className="font-semibold text-blue-900 mb-2">Need immediate help?</h4>
                   <p className="text-blue-700 text-sm">
                     Call us at <a href="tel:+15878979347" className="font-semibold hover:underline">587-897-9347</a> or email us at{' '}
-                    <a href="mailto:culturealberta101@gmail.com" className="font-semibold hover:underline">culturealberta101@gmail.com</a>
+                    <a href="mailto:hello@culturemedia.ca" className="font-semibold hover:underline">hello@culturemedia.ca</a>
                   </p>
                 </div>
               </div>
@@ -169,7 +169,7 @@ export default function ContactPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a
-                  href="mailto:culturealberta101@gmail.com"
+                  href="mailto:hello@culturemedia.ca"
                   className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <Mail className="w-5 h-5 mr-2" />

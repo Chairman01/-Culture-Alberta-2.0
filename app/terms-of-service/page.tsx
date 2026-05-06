@@ -148,8 +148,8 @@ export default function TermsOfService() {
         <div className="bg-gray-50 p-6 rounded-lg mb-6">
           <p className="mb-2">
             <strong>Email:</strong>{' '}
-            <a href="mailto:culturealberta101@gmail.com" className="text-blue-600 hover:underline">
-              culturealberta101@gmail.com
+            <a href="mailto:hello@culturemedia.ca" className="text-blue-600 hover:underline">
+              hello@culturemedia.ca
             </a>
           </p>
           <p className="mb-2">
