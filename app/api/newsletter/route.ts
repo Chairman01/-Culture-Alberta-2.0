@@ -22,6 +22,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Block permanently bounced emails from subscribing or re-subscribing
+    const { data: bounceEvent } = await supabase
+      .from('newsletter_email_events')
+      .select('id')
+      .eq('email', email)
+      .eq('event_type', 'bounced')
+      .limit(1)
+      .single()
+
+    if (bounceEvent) {
+      // Return a friendly success-like message so the form feels normal,
+      // but do not actually subscribe the address.
+      return NextResponse.json(
+        { success: true, message: 'Successfully subscribed to newsletter' },
+        { status: 200 }
+      )
+    }
+
     // Check if email already exists
     const { data: existingEmail } = await supabase
       .from('newsletter_subscriptions')
