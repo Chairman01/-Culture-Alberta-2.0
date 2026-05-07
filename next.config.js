@@ -155,6 +155,8 @@ const nextConfig = {
       { key: 'Permissions-Policy',      value: 'camera=(), microphone=(), geolocation=(), payment=()' },
       // HSTS: trust HTTPS for 1 year, include subdomains
       { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+      // Force all ad content to load over HTTPS (Mediavine requirement)
+      { key: 'Content-Security-Policy', value: 'block-all-mixed-content' },
     ]
 
     if (process.env.NODE_ENV === 'production') {
