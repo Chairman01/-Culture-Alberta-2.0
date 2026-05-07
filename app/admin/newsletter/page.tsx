@@ -179,6 +179,7 @@ export default function NewsletterAdmin() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'subscribers' | 'campaigns' | 'analytics'>('subscribers')
+  const [expandedBounces, setExpandedBounces] = useState<CityKey | null>(null)
   const [emailEventsTableMissing, setEmailEventsTableMissing] = useState(false)
   const [lastSentAt, setLastSentAt] = useState<Record<CityKey, string | null>>({
     edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null,
@@ -660,11 +661,17 @@ export default function NewsletterAdmin() {
   const overallOpenRate   = overallDelivered > 0 ? Math.round((overallOpened  / overallDelivered) * 100) : 0
   const overallClickRate  = overallDelivered > 0 ? Math.round((overallClicked / overallDelivered) * 100) : 0
 
+  // Returns bounced subscribers for a given city, with their current status
+  const bouncedByCity = (city: CityKey) =>
+    subscriptions
+      .filter(s => s.city === city && engagement[s.email]?.bounced)
+      .map(s => ({ email: s.email, status: s.status ?? 'active' }))
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <>
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <div className="p-6">
 
         {/* Header */}
@@ -1540,6 +1547,12 @@ export default function NewsletterAdmin() {
         {activeTab === 'analytics' && (
           <div className="space-y-6">
 
+            {/* ── Data source note ── */}
+            <div className="flex items-center gap-2 text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+              <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
+              <span>All stats are recorded directly from <strong className="text-gray-600">Resend webhooks</strong> — every open, click, bounce, and delivery is captured in real time and stored in your database. Numbers reflect unique recipients per campaign.</span>
+            </div>
+
             {/* ── What these numbers mean ── */}
             <Card className="border-blue-100 bg-blue-50/30">
               <CardHeader className="pb-3">
@@ -1675,15 +1688,57 @@ export default function NewsletterAdmin() {
                               </div>
                             </div>
 
-                            {/* Bounces */}
-                            {totalBounced > 0 && (
-                              <div className="flex items-center justify-between pt-1 border-t text-xs">
-                                <span className="flex items-center gap-1 text-red-500">
-                                  <AlertTriangle className="h-3 w-3" /> Bounced
-                                </span>
-                                <span className="text-red-600 font-medium">{totalBounced} ({bounceRate}%){bounceRate >= 2 ? ' — clean your list' : ''}</span>
-                              </div>
-                            )}
+                            {/* Bounces — clickable to expand */}
+                            {totalBounced > 0 && (() => {
+                              const bouncedList = bouncedByCity(city)
+                              const isExpanded = expandedBounces === city
+                              return (
+                                <div className="pt-1 border-t">
+                                  <button
+                                    className="w-full flex items-center justify-between text-xs hover:bg-red-50 rounded px-1 py-1 transition-colors"
+                                    onClick={() => setExpandedBounces(isExpanded ? null : city)}
+                                  >
+                                    <span className="flex items-center gap-1 text-red-500 font-medium">
+                                      <AlertTriangle className="h-3 w-3" />
+                                      {totalBounced} bounced ({bounceRate}%)
+                                      {bounceRate >= 2 ? ' — action needed' : ''}
+                                    </span>
+                                    <span className="text-red-400 text-[10px]">{isExpanded ? '▲ hide' : '▼ show who'}</span>
+                                  </button>
+                                  {isExpanded && (
+                                    <div className="mt-2 space-y-1">
+                                      <p className="text-[10px] text-gray-400 mb-1">
+                                        These subscribers had emails bounce. Unsubscribe them to protect your sender reputation.
+                                      </p>
+                                      {bouncedList.length > 0 ? bouncedList.map(b => (
+                                        <div key={b.email} className="flex items-center justify-between bg-red-50 border border-red-100 rounded px-2 py-1 gap-2">
+                                          <span className="text-[11px] font-mono text-gray-700 truncate flex-1">{b.email}</span>
+                                          <span className={`text-[10px] font-semibold shrink-0 ${b.status === 'active' ? 'text-orange-600' : 'text-gray-400'}`}>
+                                            {b.status === 'active' ? 'still active' : 'unsubscribed'}
+                                          </span>
+                                          {b.status === 'active' && (
+                                            <button
+                                              className="text-[10px] text-red-600 underline shrink-0 hover:text-red-800"
+                                              disabled={updatingEmail === b.email}
+                                              onClick={async () => {
+                                                const sub = subscriptions.find(s => s.email === b.email)
+                                                if (sub) await toggleStatus(sub)
+                                              }}
+                                            >
+                                              {updatingEmail === b.email ? '…' : 'Remove'}
+                                            </button>
+                                          )}
+                                        </div>
+                                      )) : (
+                                        <p className="text-[10px] text-gray-400 italic">
+                                          Bounced emails are from outside your subscriber list (test sends, old addresses, etc.)
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })()}
                           </CardContent>
                         </Card>
                       )
