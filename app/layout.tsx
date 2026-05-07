@@ -1,6 +1,5 @@
 import './globals.css'
-import { MainNavigation } from '@/components/main-navigation'
-import { Footer } from '@/components/footer'
+import { ConditionalSiteLayout } from '@/components/conditional-site-layout'
 import { LoadingProvider } from '@/components/loading-context'
 import { AuthProvider } from '@/components/auth-provider'
 import { PerformanceOptimizer } from '@/components/seo/performance-optimizer'
@@ -131,9 +130,9 @@ export default function RootLayout({
         <AuthProvider>
           <PageTracker />
           <LoadingProvider>
-            <MainNavigation />
-            <main>{children}</main>
-            <Footer />
+            <ConditionalSiteLayout>
+              {children}
+            </ConditionalSiteLayout>
           </LoadingProvider>
           <Analytics />
           <SpeedInsights {...optimizeSpeedInsights()} />

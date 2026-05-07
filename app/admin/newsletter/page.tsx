@@ -532,6 +532,8 @@ export default function NewsletterAdmin() {
   // ── Subscriber management helpers ────────────────────────────────────────────
 
   async function toggleStatus(sub: NewsletterSubscription) {
+    // Never reactivate a bounced email — bad for sender reputation
+    if (sub.status === 'unsubscribed' && engagement[sub.email]?.bounced) return
     const newStatus = sub.status === 'active' ? 'unsubscribed' : 'active'
     setUpdatingEmail(sub.email)
     try {
@@ -1418,10 +1420,16 @@ export default function NewsletterAdmin() {
                                   {eng?.last_opened && <span className="text-blue-500">opened {shortDate(eng.last_opened)}</span>}
                                 </div>
                               </div>
-                              <Button variant="outline" size="sm" className="text-xs h-7 ml-2 flex-shrink-0"
-                                disabled={updatingEmail===sub.email} onClick={() => toggleStatus(sub)}>
-                                {updatingEmail===sub.email ? '…' : sub.status==='active' ? 'Unsubscribe' : 'Resubscribe'}
-                              </Button>
+                              {sub.status === 'unsubscribed' && engagement[sub.email]?.bounced ? (
+                                <span className="text-[10px] text-gray-400 ml-2 shrink-0 flex items-center gap-1">
+                                  <AlertTriangle className="h-3 w-3 text-orange-400" /> bounced — cannot re-add
+                                </span>
+                              ) : (
+                                <Button variant="outline" size="sm" className="text-xs h-7 ml-2 flex-shrink-0"
+                                  disabled={updatingEmail===sub.email} onClick={() => toggleStatus(sub)}>
+                                  {updatingEmail===sub.email ? '…' : sub.status==='active' ? 'Unsubscribe' : 'Resubscribe'}
+                                </Button>
+                              )}
                             </div>
                           )
                         })}
@@ -1691,47 +1699,64 @@ export default function NewsletterAdmin() {
                             {/* Bounces — clickable to expand */}
                             {totalBounced > 0 && (() => {
                               const bouncedList = bouncedByCity(city)
+                              const activeCount = bouncedList.filter(b => b.status === 'active').length
+                              const allResolved = bouncedList.length > 0 && activeCount === 0
                               const isExpanded = expandedBounces === city
                               return (
                                 <div className="pt-1 border-t">
                                   <button
-                                    className="w-full flex items-center justify-between text-xs hover:bg-red-50 rounded px-1 py-1 transition-colors"
+                                    className={`w-full flex items-center justify-between text-xs rounded px-1 py-1 transition-colors ${allResolved ? 'hover:bg-green-50' : 'hover:bg-red-50'}`}
                                     onClick={() => setExpandedBounces(isExpanded ? null : city)}
                                   >
-                                    <span className="flex items-center gap-1 text-red-500 font-medium">
-                                      <AlertTriangle className="h-3 w-3" />
-                                      {totalBounced} bounced ({bounceRate}%)
-                                      {bounceRate >= 2 ? ' — action needed' : ''}
+                                    {allResolved ? (
+                                      <span className="flex items-center gap-1 text-green-600 font-medium">
+                                        <CheckCircle className="h-3 w-3" />
+                                        {totalBounced} bounced ({bounceRate}%) — resolved
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center gap-1 text-red-500 font-medium">
+                                        <AlertTriangle className="h-3 w-3" />
+                                        {activeCount} bounced — action needed
+                                      </span>
+                                    )}
+                                    <span className={`text-[10px] ${allResolved ? 'text-green-400' : 'text-red-400'}`}>
+                                      {isExpanded ? '▲ hide' : '▼ show who'}
                                     </span>
-                                    <span className="text-red-400 text-[10px]">{isExpanded ? '▲ hide' : '▼ show who'}</span>
                                   </button>
                                   {isExpanded && (
                                     <div className="mt-2 space-y-1">
-                                      <p className="text-[10px] text-gray-400 mb-1">
-                                        These subscribers had emails bounce. Unsubscribe them to protect your sender reputation.
-                                      </p>
-                                      {bouncedList.length > 0 ? bouncedList.map(b => (
-                                        <div key={b.email} className="flex items-center justify-between bg-red-50 border border-red-100 rounded px-2 py-1 gap-2">
-                                          <span className="text-[11px] font-mono text-gray-700 truncate flex-1">{b.email}</span>
-                                          <span className={`text-[10px] font-semibold shrink-0 ${b.status === 'active' ? 'text-orange-600' : 'text-gray-400'}`}>
-                                            {b.status === 'active' ? 'still active' : 'unsubscribed'}
-                                          </span>
-                                          {b.status === 'active' && (
-                                            <button
-                                              className="text-[10px] text-red-600 underline shrink-0 hover:text-red-800"
-                                              disabled={updatingEmail === b.email}
-                                              onClick={async () => {
-                                                const sub = subscriptions.find(s => s.email === b.email)
-                                                if (sub) await toggleStatus(sub)
-                                              }}
-                                            >
-                                              {updatingEmail === b.email ? '…' : 'Remove'}
-                                            </button>
+                                      {bouncedList.length > 0 ? (
+                                        <>
+                                          {activeCount > 0 && (
+                                            <p className="text-[10px] text-red-500 mb-1 font-medium">
+                                              Remove active bounced subscribers to protect your sender reputation.
+                                            </p>
                                           )}
-                                        </div>
-                                      )) : (
+                                          {bouncedList.map(b => (
+                                            <div key={b.email} className={`flex items-center justify-between rounded px-2 py-1 gap-2 border ${b.status === 'active' ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                                              <span className="text-[11px] font-mono text-gray-700 truncate flex-1">{b.email}</span>
+                                              {b.status === 'active' ? (
+                                                <button
+                                                  className="text-[10px] text-red-600 underline shrink-0 hover:text-red-800 font-medium"
+                                                  disabled={updatingEmail === b.email}
+                                                  onClick={async () => {
+                                                    const sub = subscriptions.find(s => s.email === b.email)
+                                                    if (sub) await toggleStatus(sub)
+                                                  }}
+                                                >
+                                                  {updatingEmail === b.email ? '…' : 'Remove'}
+                                                </button>
+                                              ) : (
+                                                <span className="text-[10px] text-green-600 shrink-0 flex items-center gap-0.5">
+                                                  <CheckCircle className="h-2.5 w-2.5" /> removed
+                                                </span>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </>
+                                      ) : (
                                         <p className="text-[10px] text-gray-400 italic">
-                                          Bounced emails are from outside your subscriber list (test sends, old addresses, etc.)
+                                          These bounced addresses are not in your current subscriber list.
                                         </p>
                                       )}
                                     </div>
