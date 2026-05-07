@@ -29,7 +29,7 @@ import {
   ArrowLeft, Mail, Users, MapPin, Calendar,
   Send, CheckCircle, AlertCircle, Loader2, Eye, X, FlaskConical,
   ChevronDown, ChevronUp, Settings, Star, ArrowUp, ArrowDown, Leaf,
-  BarChart2, MousePointerClick, Copy, Check, Filter, AlertTriangle,
+  BarChart2, MousePointerClick, Copy, Check, Filter, AlertTriangle, TrendingUp, HelpCircle,
 } from "lucide-react"
 import Link from "next/link"
 import type { SendResult } from "@/lib/newsletter/send-newsletter"
@@ -178,7 +178,7 @@ export default function NewsletterAdmin() {
   const [statusFilter, setStatusFilter] = useState<'active' | 'unsubscribed'>('active')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'subscribers' | 'campaigns'>('subscribers')
+  const [activeTab, setActiveTab] = useState<'subscribers' | 'campaigns' | 'analytics'>('subscribers')
   const [emailEventsTableMissing, setEmailEventsTableMissing] = useState(false)
   const [lastSentAt, setLastSentAt] = useState<Record<CityKey, string | null>>({
     edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null,
@@ -627,6 +627,38 @@ export default function NewsletterAdmin() {
   const newsletterCityTotal = (['edmonton', 'calgary', 'lethbridge', 'medicine-hat'] as CityKey[])
     .reduce((s, c) => s + (stats?.byCity?.[c] ?? 0), 0)
   const otherCityTotal = otherCities.reduce((s, [key]) => s + (stats?.byCity?.[key] ?? 0), 0)
+
+  // ── Analytics helpers ───────────────────────────────────────────────────────
+
+  const getCityFromSubject = (subject: string): CityKey | null => {
+    const map: Record<string, CityKey> = {
+      'The Capital': 'edmonton',
+      'The Chinook': 'calgary',
+      'The Westerly': 'lethbridge',
+      'The Hat': 'medicine-hat',
+    }
+    for (const [name, city] of Object.entries(map)) {
+      if (subject.includes(name)) return city
+    }
+    return null
+  }
+
+  const cityAnalytics = (Object.keys(CITY_CONFIG) as CityKey[]).map(city => {
+    const cityCampaigns = campaigns.filter(c => getCityFromSubject(c.subject) === city)
+    const totalDelivered = cityCampaigns.reduce((s, c) => s + c.delivered, 0)
+    const totalOpened   = cityCampaigns.reduce((s, c) => s + c.opened, 0)
+    const totalClicked  = cityCampaigns.reduce((s, c) => s + c.clicked, 0)
+    const totalBounced  = cityCampaigns.reduce((s, c) => s + c.bounced, 0)
+    const avgOpenRate   = totalDelivered > 0 ? Math.round((totalOpened  / totalDelivered) * 100) : 0
+    const avgClickRate  = totalDelivered > 0 ? Math.round((totalClicked / totalDelivered) * 100) : 0
+    return { city, count: cityCampaigns.length, totalDelivered, totalOpened, totalClicked, totalBounced, avgOpenRate, avgClickRate }
+  })
+
+  const overallDelivered  = cityAnalytics.reduce((s, c) => s + c.totalDelivered, 0)
+  const overallOpened     = cityAnalytics.reduce((s, c) => s + c.totalOpened, 0)
+  const overallClicked    = cityAnalytics.reduce((s, c) => s + c.totalClicked, 0)
+  const overallOpenRate   = overallDelivered > 0 ? Math.round((overallOpened  / overallDelivered) * 100) : 0
+  const overallClickRate  = overallDelivered > 0 ? Math.round((overallClicked / overallDelivered) * 100) : 0
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -1277,6 +1309,12 @@ export default function NewsletterAdmin() {
             <BarChart2 className="inline h-4 w-4 mr-1.5" />Campaigns
             {campaigns.length > 0 && <span className="ml-1.5 bg-muted text-muted-foreground text-xs rounded-full px-1.5 py-0.5">{campaigns.length}</span>}
           </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'analytics' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          >
+            <TrendingUp className="inline h-4 w-4 mr-1.5" />Analytics
+          </button>
         </div>
 
         {activeTab === 'subscribers' && (
@@ -1498,6 +1536,173 @@ export default function NewsletterAdmin() {
             </CardContent>
           </Card>
         )}
+
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+
+            {/* ── What these numbers mean ── */}
+            <Card className="border-blue-100 bg-blue-50/30">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2 text-blue-800">
+                  <HelpCircle className="h-4 w-4" /> What these numbers mean
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Eye className="h-4 w-4 text-blue-500" />
+                      <span className="font-semibold text-sm">Open Rate</span>
+                    </div>
+                    <p className="text-xs text-gray-600">The % of delivered emails that someone opened. Media newsletters average <strong>25–40%</strong>. Above 30% is strong for your audience.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <MousePointerClick className="h-4 w-4 text-purple-500" />
+                      <span className="font-semibold text-sm">Click Rate (CTR)</span>
+                    </div>
+                    <p className="text-xs text-gray-600">The % of delivered emails where someone clicked a link to read an article. Industry average is <strong>2–5%</strong>. Above 3% means your content is resonating.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      <span className="font-semibold text-sm">Bounce Rate</span>
+                    </div>
+                    <p className="text-xs text-gray-600">The % of emails that couldn't be delivered (bad address, full inbox). Keep below <strong>2%</strong>. High bounces hurt your sender reputation.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {campaigns.length > 0 ? (
+              <>
+                {/* ── Overall summary ── */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Overall — All Cities</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Card>
+                      <CardContent className="pt-5">
+                        <div className="text-2xl font-bold">{campaigns.length}</div>
+                        <div className="text-xs text-muted-foreground mt-1">Campaigns sent</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-5">
+                        <div className={`text-2xl font-bold ${overallOpenRate >= 30 ? 'text-green-600' : overallOpenRate >= 20 ? 'text-amber-600' : 'text-red-500'}`}>{overallOpenRate}%</div>
+                        <div className="text-xs text-muted-foreground mt-1">Avg open rate</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5">{overallOpenRate >= 30 ? '✓ Above average' : overallOpenRate >= 20 ? '~ At average' : '↓ Below average'}</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-5">
+                        <div className={`text-2xl font-bold ${overallClickRate >= 3 ? 'text-green-600' : overallClickRate >= 1 ? 'text-amber-600' : 'text-gray-500'}`}>{overallClickRate}%</div>
+                        <div className="text-xs text-muted-foreground mt-1">Avg click rate</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5">{overallClickRate >= 3 ? '✓ Above average' : overallClickRate >= 1 ? '~ At average' : '↓ Below average'}</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-5">
+                        <div className="text-2xl font-bold">{overallDelivered.toLocaleString()}</div>
+                        <div className="text-xs text-muted-foreground mt-1">Total delivered</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5">{overallOpened.toLocaleString()} opens · {overallClicked.toLocaleString()} clicks</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* ── Per-city cards ── */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">By City</h3>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {cityAnalytics.map(({ city, count, totalDelivered, totalOpened, totalClicked, totalBounced, avgOpenRate, avgClickRate }) => {
+                      const cfg = CITY_CONFIG[city]
+                      if (count === 0) return (
+                        <Card key={city} className="opacity-40">
+                          <CardContent className="pt-5">
+                            <div className={`text-xs font-bold uppercase tracking-wide ${cfg.color} mb-1`}>{cfg.newsletter}</div>
+                            <div className="font-semibold text-gray-500">{cfg.label}</div>
+                            <div className="text-xs text-gray-400 mt-3">No campaigns yet</div>
+                          </CardContent>
+                        </Card>
+                      )
+                      const bounceRate = totalDelivered > 0 ? Math.round((totalBounced / totalDelivered) * 100) : 0
+                      return (
+                        <Card key={city} className={`border-l-4 ${cfg.border}`}>
+                          <CardContent className="pt-5 space-y-4">
+                            <div>
+                              <div className={`text-xs font-bold uppercase tracking-wide ${cfg.color}`}>{cfg.newsletter}</div>
+                              <div className="font-semibold text-gray-900">{cfg.label}</div>
+                              <div className="text-xs text-gray-400 mt-0.5">{count} campaign{count !== 1 ? 's' : ''} · {totalDelivered.toLocaleString()} delivered</div>
+                            </div>
+
+                            {/* Open rate */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-1.5">
+                                  <Eye className="h-3.5 w-3.5 text-blue-500" />
+                                  <span className="text-xs font-medium text-gray-600">Open rate</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-sm font-bold ${avgOpenRate >= 30 ? 'text-green-600' : avgOpenRate >= 20 ? 'text-amber-600' : 'text-red-500'}`}>{avgOpenRate}%</span>
+                                  <span className="text-[10px] text-gray-400">{totalOpened.toLocaleString()} opens</span>
+                                </div>
+                              </div>
+                              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(avgOpenRate, 100)}%` }} />
+                              </div>
+                              <div className="text-[10px] text-gray-400 mt-0.5">
+                                {avgOpenRate >= 30 ? 'Great — above industry average' : avgOpenRate >= 20 ? 'Good — within industry average' : 'Below average — try stronger subject lines'}
+                              </div>
+                            </div>
+
+                            {/* Click rate */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-1.5">
+                                  <MousePointerClick className="h-3.5 w-3.5 text-purple-500" />
+                                  <span className="text-xs font-medium text-gray-600">Click rate</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-sm font-bold ${avgClickRate >= 3 ? 'text-green-600' : avgClickRate >= 1 ? 'text-amber-600' : 'text-gray-500'}`}>{avgClickRate}%</span>
+                                  <span className="text-[10px] text-gray-400">{totalClicked.toLocaleString()} clicks</span>
+                                </div>
+                              </div>
+                              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-purple-500 rounded-full" style={{ width: `${Math.min(avgClickRate * 5, 100)}%` }} />
+                              </div>
+                              <div className="text-[10px] text-gray-400 mt-0.5">
+                                {avgClickRate >= 3 ? 'Great — above industry average' : avgClickRate >= 1 ? 'Good — within industry average' : 'Low — try more article variety'}
+                              </div>
+                            </div>
+
+                            {/* Bounces */}
+                            {totalBounced > 0 && (
+                              <div className="flex items-center justify-between pt-1 border-t text-xs">
+                                <span className="flex items-center gap-1 text-red-500">
+                                  <AlertTriangle className="h-3 w-3" /> Bounced
+                                </span>
+                                <span className="text-red-600 font-medium">{totalBounced} ({bounceRate}%){bounceRate >= 2 ? ' — clean your list' : ''}</span>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <p className="text-muted-foreground">No campaign data yet</p>
+                  <p className="text-xs text-gray-400 mt-1">Send your next newsletter and analytics will appear here automatically</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
 
