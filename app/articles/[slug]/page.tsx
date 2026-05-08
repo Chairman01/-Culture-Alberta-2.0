@@ -397,7 +397,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             const resp = await fetch(
               `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/admin/articles/${loadedArticle.id}`,
               {
-                cache: 'no-store',
+                cache: 'force-cache',
                 signal: controller.signal
               }
             )
