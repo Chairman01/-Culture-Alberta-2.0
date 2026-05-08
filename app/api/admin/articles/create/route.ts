@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
         status: data.status || 'published',
         location: data.location || 'Alberta',
         tags: data.tags || [],
-        slug: data.id,
+        slug: data.slug || createSlug(data.title),
       }
       allArticles.unshift(mappedArticle)
       await updateOptimizedFallback(allArticles)

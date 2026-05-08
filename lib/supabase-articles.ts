@@ -944,6 +944,43 @@ export function testImageFieldSafeguards() {
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
   try {
     console.log('=== getArticleBySlug called for:', slug)
+
+    // FAST PATH: Direct indexed slug lookup — single row, no scanning
+    if (supabase) {
+      try {
+        const fields = ensureImageFields('id, title, excerpt, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, slug')
+        const { data, error } = await Promise.race([
+          supabase.from('articles').select(fields).eq('slug', slug).single(),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+        ]) as any
+
+        if (!error && data) {
+          console.log('✅ FAST PATH: Found article by slug index:', data.title)
+          return {
+            ...data,
+            imageUrl: validateImageUrl(data.image_url || data.image, data.title),
+            date: data.created_at,
+            trendingHome: data.trending_home || false,
+            trendingEdmonton: data.trending_edmonton || false,
+            trendingCalgary: data.trending_calgary || false,
+            featuredHome: data.featured_home || false,
+            featuredEdmonton: data.featured_edmonton || false,
+            featuredCalgary: data.featured_calgary || false,
+          }
+        }
+        if (error && error.code !== 'PGRST116') {
+          // PGRST116 = no rows found, which is expected — anything else log it
+          console.warn('⚠️ Slug index lookup error:', error.message)
+        }
+        if (!data) {
+          console.log('ℹ️ Article not found by slug index, trying legacy scan...')
+        }
+      } catch (fastErr) {
+        console.warn('⚠️ Fast slug lookup failed, falling back:', fastErr instanceof Error ? fastErr.message : fastErr)
+      }
+    }
+
+    // LEGACY FALLBACK: full-table scan (kept for safety during transition)
     console.log('🔄 CACHE BUST: Forcing fresh lookup for slug:', slug)
     console.log('🌍 Environment:', process.env.NODE_ENV)
     console.log('🔗 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'NOT SET')

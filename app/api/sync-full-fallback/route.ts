@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await Promise.race([
       supabase
         .from('articles')
-        .select('id, title, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, image_url, image')
+        .select('id, title, slug, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, image_url, image')
         .order('created_at', { ascending: false })
         .limit(500),
       timeoutPromise,
@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
         featuredHome: row.featured_home || false,
         featuredEdmonton: row.featured_edmonton || false,
         featuredCalgary: row.featured_calgary || false,
+        slug: row.slug || '',
       }
     })
 
