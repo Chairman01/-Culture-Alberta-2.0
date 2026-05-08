@@ -45,6 +45,13 @@ const CONTRIBUTOR_ALLOWED = ['/admin/articles']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const host = request.headers.get('host')?.toLowerCase()
+
+  if (host === 'culturealberta.com') {
+    const url = request.nextUrl.clone()
+    url.hostname = 'www.culturealberta.com'
+    return NextResponse.redirect(url, { status: 308 })
+  }
 
   // ── Admin route protection ─────────────────────────────────────────────────
   if (pathname.startsWith('/admin') && pathname !== '/admin/login') {

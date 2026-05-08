@@ -35,6 +35,34 @@ import { ArticleViewCount } from '@/components/article-view-count'
 const LEGACY_ARTICLE_REDIRECTS: Record<string, string> = {}
 const useFastDevMode = process.env.NODE_ENV === 'development' && process.env.USE_SUPABASE_IN_DEV !== '1'
 
+function logArticlePage(event: string, data: Record<string, unknown>) {
+  try {
+    console.log(`[article-page:${event}]`, JSON.stringify({
+      ...data,
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV || null,
+      timestamp: new Date().toISOString(),
+    }))
+  } catch {
+    console.log(`[article-page:${event}]`, data)
+  }
+}
+
+function summarizeArticleForLog(article: Article | null | undefined) {
+  if (!article) return null
+  return {
+    id: article.id,
+    title: article.title,
+    slug: article.slug || createSlug(article.title || ''),
+    status: article.status,
+    type: article.type,
+    category: article.category,
+    contentLength: typeof article.content === 'string' ? article.content.length : 0,
+    excerptLength: typeof article.excerpt === 'string' ? article.excerpt.length : 0,
+    imagePresent: !!article.imageUrl,
+  }
+}
+
 function isNextNavigationError(error: unknown): boolean {
   const digest = typeof error === 'object' && error !== null && 'digest' in error
     ? String((error as { digest?: unknown }).digest)
@@ -216,6 +244,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   }
 
   try {
+    logArticlePage('start', { slug })
     console.log('🚀 Loading article:', slug)
     console.log('📄 Individual article page reached - using fast fallback system')
 
@@ -291,6 +320,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     }
 
     if (!loadedArticle) {
+      logArticlePage('not-found', { slug })
       console.log('❌ Article not found, showing 404')
       console.log('Looking for slug:', slug)
       const fastArticles = await getFastArticles()
@@ -319,6 +349,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     }
 
     console.log('✅ Article loaded successfully:', loadedArticle.title)
+    logArticlePage('loaded', { slug, article: summarizeArticleForLog(loadedArticle) })
 
     // Redirect numeric ID URLs (e.g. /articles/article-1766206001328-0yq0zr5g5)
     // to the canonical title-based slug (e.g. /articles/attention-edmonton-...)
@@ -813,6 +844,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       throw error
     }
 
+    logArticlePage('error', {
+      slug,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : null,
+    })
     console.error('Error loading article:', error)
     notFound()
   }

@@ -1,5 +1,18 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
+    "redirects": [
+        {
+            "source": "/(.*)",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "culturealberta.com"
+                }
+            ],
+            "destination": "https://www.culturealberta.com/$1",
+            "permanent": true
+        }
+    ],
     "headers": [
         {
             "source": "/articles/(.*)",
