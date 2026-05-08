@@ -5,13 +5,6 @@ import { getProductionSupabaseSettings, isProduction } from './production-optimi
 const supabaseUrl = 'https://itdmwpbsnviassgqfhxk.supabase.co'
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
 
-// Log configuration for debugging
-console.log('🔧 Supabase Configuration:')
-console.log('- URL:', supabaseUrl)
-console.log('- Key:', supabaseAnonKey ? 'SET' : 'NOT SET')
-console.log('- Environment:', process.env.NODE_ENV)
-console.log('- Vercel:', process.env.VERCEL)
-
 // Get production-optimized settings
 const supabaseSettings = getProductionSupabaseSettings()
 

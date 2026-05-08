@@ -1,10 +1,12 @@
+import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
 import { notFound, redirect } from 'next/navigation'
 import { Calendar, Clock, Bookmark, ArrowLeft, ArrowRight } from 'lucide-react'
 import { ArticleActions } from '@/components/article-actions'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getArticleById, getArticleBySlug } from '@/lib/supabase-articles'
-import { getAllArticles } from '@/lib/articles'
+import { supabase } from '@/lib/supabase'
 import { getFastArticleBySlug, getFastArticles } from '@/lib/fast-articles'
 import { getTitleFromUrl } from '@/lib/utils/article-url'
 import { getArticleUrl } from '@/lib/utils/article-url'
@@ -14,9 +16,9 @@ import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { ArticleStructuredData, BreadcrumbStructuredData } from '@/components/seo/structured-data'
 import { ArticleEmbedActivator } from '@/components/article-embed-activator'
 
-// ISR: cache rendered pages for 60s, revalidate in background
-// Removes the force-dynamic/revalidate=0 that was hitting Supabase on every single request
-export const revalidate = 300
+// ISR: cache rendered pages for 10 min, revalidate in background.
+// Longer window = fewer Supabase revalidations during traffic spikes.
+export const revalidate = 600
 import { getAllEvents, getEventBySlug } from '@/lib/events'
 import { Metadata } from 'next'
 // import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
@@ -34,6 +36,31 @@ import { ArticleViewCount } from '@/components/article-view-count'
 
 const LEGACY_ARTICLE_REDIRECTS: Record<string, string> = {}
 const useFastDevMode = process.env.NODE_ENV === 'development' && process.env.USE_SUPABASE_IN_DEV !== '1'
+
+// unstable_cache: shared across ALL concurrent serverless invocations on Vercel.
+// Prevents the thundering herd — if 50 users trigger ISR revalidation at the same
+// time for the same article, only ONE Supabase call is made; the rest get the cache.
+const getArticleFromDB = unstable_cache(
+  async (slug: string): Promise<Article | null> => {
+    let article: Article | null = null
+    try { article = await getArticleBySlug(slug) } catch {}
+    if (!article) {
+      try { article = await getArticleById(slug) } catch {}
+    }
+    return article
+  },
+  ['article-db'],
+  { revalidate: 600 } // 10 min — matches the increased ISR window below
+)
+
+// React.cache(): deduplicates within a single request (metadata + page component).
+const getCachedArticle = cache(async (slug: string): Promise<Article | null> => {
+  // 1. Try local JSON first — zero DB calls
+  const fast = await getFastArticleBySlug(slug)
+  if (fast) return fast
+  // 2. Fall back to DB, protected by unstable_cache against concurrent spikes
+  return getArticleFromDB(slug)
+})
 
 function logArticlePage(event: string, data: Record<string, unknown>) {
   try {
@@ -63,6 +90,31 @@ function summarizeArticleForLog(article: Article | null | undefined) {
   }
 }
 
+async function getFullArticleContentById(id: string): Promise<string | null> {
+  try {
+    const { data, error } = await Promise.race([
+      supabase
+        .from('articles')
+        .select('content')
+        .eq('id', id)
+        .maybeSingle(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Supabase content timeout')), 5000))
+    ]) as any
+
+    if (error) {
+      console.warn('Supabase content lookup failed:', error.message)
+      return null
+    }
+
+    return typeof data?.content === 'string' && data.content.trim().length > 0
+      ? data.content
+      : null
+  } catch (error) {
+    console.warn('Supabase content lookup failed:', error instanceof Error ? error.message : error)
+    return null
+  }
+}
+
 function isNextNavigationError(error: unknown): boolean {
   const digest = typeof error === 'object' && error !== null && 'digest' in error
     ? String((error as { digest?: unknown }).digest)
@@ -84,16 +136,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const slug = LEGACY_ARTICLE_REDIRECTS[originalSlug] || originalSlug
 
   try {
-    // Load article data for metadata
-    let loadedArticle = await getFastArticleBySlug(slug)
-
-    if (!loadedArticle) {
-      loadedArticle = await getArticleBySlug(slug)
-    }
-
-    if (!loadedArticle) {
-      loadedArticle = await getArticleById(slug)
-    }
+    // Load article data for metadata - uses React.cache() to share result with page component
+    const loadedArticle = await getCachedArticle(slug)
 
     if (!loadedArticle) {
       return {
@@ -219,9 +263,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       // Additional meta tags for article info
       other: {
         'article:author': loadedArticle.author || 'Culture Alberta',
-        'article:section': loadedArticle.category,
-        'article:published_time': loadedArticle.date,
-        'article:modified_time': loadedArticle.updatedAt || loadedArticle.date,
+        'article:section': loadedArticle.category || '',
+        'article:published_time': loadedArticle.date || '',
+        'article:modified_time': loadedArticle.updatedAt || loadedArticle.date || '',
       },
       // Metadata for better Reddit previews
       metadataBase: new URL('https://www.culturealberta.com'),
@@ -244,76 +288,29 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   }
 
   try {
-    logArticlePage('start', { slug })
-    console.log('🚀 Loading article:', slug)
-    console.log('📄 Individual article page reached - using fast fallback system')
+    // Use cached article lookup - shared with generateMetadata to avoid double DB calls
+    let loadedArticle = await getCachedArticle(slug)
 
-    // PERFORMANCE FIX: Use ONLY fast cache for instant loading
-    let loadedArticle = await getFastArticleBySlug(slug)
-    console.log('Fast cache result:', loadedArticle ? 'Found' : 'Not found')
-
-    // If not in fast cache, try Supabase (for newly created articles)
+    // Last resort - complex slug matching in local cache
     if (!loadedArticle) {
-      console.log('Article not in fast cache, trying Supabase...')
-      try {
-        loadedArticle = await getArticleBySlug(slug)
-        if (loadedArticle) {
-          console.log('✅ Found article in Supabase:', loadedArticle.title)
-        }
-      } catch (supabaseError) {
-        console.warn('Supabase lookup failed:', supabaseError)
-      }
-    }
-
-    // If still not found, try by ID
-    if (!loadedArticle) {
-      console.log('Trying to find article by ID...')
-      try {
-        loadedArticle = await getArticleById(slug)
-        if (loadedArticle) {
-          console.log('✅ Found article by ID:', loadedArticle.title)
-        }
-      } catch (idError) {
-        console.warn('ID lookup failed:', idError)
-      }
-    }
-
-    // Last resort - use fast articles instead of expensive getAllArticles()
-    if (!loadedArticle) {
-      console.log('Trying fast articles fallback...')
       const fastArticles = await getFastArticles()
 
       // Try multiple matching strategies
       loadedArticle = fastArticles.find(article => {
         if (article.slug && String(article.slug).toLowerCase() === slug.toLowerCase()) {
-          console.log('Found matching article by stored slug:', article.title)
           return true
         }
 
-        // Use consistent slug generation
         const articleSlug = createSlug(article.title)
 
-        // Try exact match first
-        const exactMatch = articleSlug.toLowerCase() === slug.toLowerCase()
-        if (exactMatch) {
-          console.log('Found exact matching article:', article.title)
-          return true
-        }
+        if (articleSlug.toLowerCase() === slug.toLowerCase()) return true
 
-        // Try partial match - only if requested slug contains the article slug (not reverse)
+        // Only match if the requested slug contains the article slug (not reverse)
         // Prevents "...-gale-again" from matching when looking for "...-gale"
-        const partialMatch = slug.toLowerCase().includes(articleSlug.toLowerCase())
-        if (partialMatch) {
-          console.log('Found partial matching article:', article.title)
-          return true
-        }
+        if (slug.toLowerCase().includes(articleSlug.toLowerCase())) return true
 
-        // Try title match (fallback)
-        const titleMatch = article.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-') === slug.toLowerCase()
-        if (titleMatch) {
-          console.log('Found title matching article:', article.title)
-          return true
-        }
+        // Title-based slug fallback
+        if (article.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-') === slug.toLowerCase()) return true
 
         return false
       }) || null
@@ -321,14 +318,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
     if (!loadedArticle) {
       logArticlePage('not-found', { slug })
-      console.log('❌ Article not found, showing 404')
-      console.log('Looking for slug:', slug)
-      const fastArticles = await getFastArticles()
-      console.log('Available articles:', fastArticles.map(a => a.title))
-      console.log('Available slugs:', fastArticles.map(a => createSlug(a.title)))
 
       // Check if this might be an event instead of an article
-      console.log('🔍 Article not found, checking if it might be an event...')
       try {
         const allEvents = await getAllEvents()
         const eventSlug = createSlug(slug)
@@ -336,8 +327,6 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         for (const event of allEvents) {
           const eventSlugFromTitle = createSlug(event.title)
           if (eventSlugFromTitle === eventSlug) {
-            console.log(`🎯 Found matching event: ${event.title}`)
-            console.log(`🎯 Redirecting to: /events/${eventSlug}`)
             redirect(`/events/${eventSlug}`)
           }
         }
@@ -348,14 +337,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       notFound()
     }
 
-    console.log('✅ Article loaded successfully:', loadedArticle.title)
     logArticlePage('loaded', { slug, article: summarizeArticleForLog(loadedArticle) })
 
     // Redirect numeric ID URLs (e.g. /articles/article-1766206001328-0yq0zr5g5)
     // to the canonical title-based slug (e.g. /articles/attention-edmonton-...)
     const canonicalSlug = loadedArticle.slug || createSlug(loadedArticle.title)
     if (slug !== canonicalSlug) {
-      console.log(`🔀 Redirecting ${slug} → ${canonicalSlug}`)
       redirect(`/articles/${canonicalSlug}`)
     }
 
@@ -368,6 +355,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       )
       if (!hasUsableContent) {
         console.log('🔎 Article content missing/short, attempting Supabase fetch for full content...')
+        const directContent = await getFullArticleContentById(loadedArticle.id)
+        if (directContent) {
+          loadedArticle = { ...loadedArticle, content: directContent }
+          console.log(`Fetched full content directly from Supabase (length: ${directContent.length})`)
+        } else {
         // Must be > getArticleById's own 4500ms timeout so that function can complete
         const timeoutMs = process.env.NODE_ENV === 'development' ? 7000 : 5000
         const withTimeout = async (promise: Promise<any>): Promise<any | null> => {
@@ -395,8 +387,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             const controller = new AbortController()
             const abortTimer = setTimeout(() => controller.abort(), timeoutMs)
             const fallbackArticles = await getFastArticles()
+            const articleId = loadedArticle!.id
             const fallbackArticle = fallbackArticles.find(article =>
-              article.id === loadedArticle.id ||
+              article.id === articleId ||
               (article.slug && String(article.slug).toLowerCase() === slug.toLowerCase()) ||
               createSlug(article.title) === slug.toLowerCase()
             )
@@ -421,6 +414,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             console.log('⚠️ Admin API content fetch failed:', apiErr)
           }
         }
+        }
       }
     } catch (contentFetchError) {
       console.warn('⚠️ Failed to fetch full content from Supabase:', contentFetchError)
@@ -428,50 +422,34 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
     // Article loaded successfully
 
-    // Load related articles more efficiently - use homepage cache if available
+    // Load related articles from local fallback cache - avoids a full Supabase table scan
     let relatedArticles: Article[] = []
     try {
-      // Try to get homepage articles first (they're usually cached and faster)
-      const homepageArticles = await getAllArticles()
-      console.log('🔍 Homepage articles loaded:', homepageArticles.length)
+      const allCachedArticles = (await getFastArticles()).filter(a => a.type !== 'event')
 
-      if (homepageArticles.length > 0) {
-        // Use cached homepage articles for better performance
-        const sameCategory = homepageArticles
+      if (allCachedArticles.length > 0) {
+        const sameCategory = allCachedArticles
           .filter(a => a.id !== loadedArticle.id && a.category === loadedArticle.category)
           .slice(0, 3)
 
-        const otherArticles = homepageArticles
+        const otherArticles = allCachedArticles
           .filter(a => a.id !== loadedArticle.id && a.category !== loadedArticle.category)
           .slice(0, 3)
 
-        console.log('🔍 Same category articles:', sameCategory.length)
-        console.log('🔍 Other category articles:', otherArticles.length)
-
-        // Combine and shuffle to show diverse content
         relatedArticles = [...sameCategory, ...otherArticles]
           .sort(() => Math.random() - 0.5)
           .slice(0, 6)
 
-        console.log('🔍 Final related articles:', relatedArticles.length)
+        // Simple fallback if category matching found nothing
+        if (relatedArticles.length === 0) {
+          relatedArticles = allCachedArticles
+            .filter(a => a.id !== loadedArticle.id)
+            .slice(0, 6)
+        }
       }
     } catch (error) {
-      console.warn('Failed to load related articles, using empty array:', error)
+      console.warn('Failed to load related articles:', error)
       relatedArticles = []
-    }
-
-    // Fallback: if no related articles, load some recent articles
-    if (relatedArticles.length === 0) {
-      try {
-        console.log('🔍 No related articles found, loading fallback articles...')
-        const fallbackArticles = await getAllArticles()
-        relatedArticles = fallbackArticles
-          .filter(a => a.id !== loadedArticle.id && a.status === 'published')
-          .slice(0, 6)
-        console.log('🔍 Fallback articles loaded:', relatedArticles.length)
-      } catch (error) {
-        console.warn('Failed to load fallback articles:', error)
-      }
     }
 
     const formatDate = (dateString: string) => {

@@ -6,7 +6,7 @@ import path from 'path'
 // Fast in-memory cache for articles
 let articlesCache: any[] | null = null
 let cacheTimestamp: number = 0
-const CACHE_DURATION = 1 * 60 * 1000 // 1 minute - shorter cache for testing
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes - matches ISR revalidate interval
 
 export async function getFastArticles(): Promise<any[]> {
   const now = Date.now()
@@ -22,18 +22,6 @@ export async function getFastArticles(): Promise<any[]> {
     if (fallbackArticles && fallbackArticles.length > 0) {
       articlesCache = fallbackArticles
       cacheTimestamp = now
-      console.log(`🚀 FAST CACHE: Loaded ${articlesCache.length} articles from optimized fallback`)
-      
-      // DEBUG: Check content in first few articles
-      const articlesWithContent = fallbackArticles.filter(article => 
-        article.content && article.content.trim().length > 10
-      )
-      console.log(`🚀 FAST CACHE DEBUG: ${articlesWithContent.length} articles have content`)
-      if (articlesWithContent.length > 0) {
-        console.log(`🚀 FAST CACHE DEBUG: First article with content: ${articlesWithContent[0].title}`)
-        console.log(`🚀 FAST CACHE DEBUG: Content length: ${articlesWithContent[0].content.length}`)
-      }
-      
       return articlesCache
     }
   } catch (error) {
@@ -76,16 +64,6 @@ export async function getFastArticleBySlug(slug: string): Promise<any | null> {
     
     return false
   }) || null
-
-  // DEBUG: Log the found article content status
-  if (foundArticle) {
-    console.log('=== FAST ARTICLES DEBUG ===')
-    console.log('Found article:', foundArticle.title)
-    console.log('Content field exists:', 'content' in foundArticle)
-    console.log('Content type:', typeof foundArticle.content)
-    console.log('Content length:', foundArticle.content ? foundArticle.content.length : 'NO CONTENT')
-    console.log('Content preview:', foundArticle.content ? foundArticle.content.substring(0, 100) : 'NO CONTENT')
-  }
 
   return foundArticle
 }

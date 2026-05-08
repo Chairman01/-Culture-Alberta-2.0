@@ -10,26 +10,24 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { data: article, error: selectError } = await supabase
+    if (shouldIncrement) {
+      // Single DB operation: atomically increments and returns new count
+      const { data, error } = await supabase
+        .rpc('increment_view_count', { article_slug: slug })
+
+      if (error) return NextResponse.json({ count: 0 })
+      return NextResponse.json({ count: data || 0 })
+    }
+
+    // Read-only: just fetch current count
+    const { data: article, error } = await supabase
       .from('articles')
       .select('view_count')
       .eq('slug', slug)
-      .single()
+      .maybeSingle()
 
-    if (selectError || !article) {
-      return NextResponse.json({ count: 0 })
-    }
-
-    const currentCount = (article.view_count as number) || 0
-    const nextCount = shouldIncrement ? currentCount + 1 : currentCount
-
-    if (shouldIncrement) {
-      void Promise.resolve(
-        supabase.from('articles').update({ view_count: nextCount }).eq('slug', slug)
-      ).catch(() => {})
-    }
-
-    return NextResponse.json({ count: nextCount })
+    if (error || !article) return NextResponse.json({ count: 0 })
+    return NextResponse.json({ count: (article.view_count as number) || 0 })
   } catch {
     return NextResponse.json({ count: 0 })
   }

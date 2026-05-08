@@ -12,8 +12,8 @@ import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getTrendingByViews } from '@/lib/trending-articles'
 import { loadOptimizedFallback } from '@/lib/optimized-fallback'
 
-// ISR: cache for 60s, revalidate in background — stops hammering Supabase on every request
-export const revalidate = 300
+// ISR: cache for 10 min, revalidate in background — reduces Supabase load during traffic spikes
+export const revalidate = 600
 export const dynamicParams = true // Generate pages on-demand
 
 // Server-side data loading for dynamic rendering (NOT static generation)
@@ -25,14 +25,6 @@ async function getHomePageData() {
 
     // Use the sustainable homepage articles function with optimized fallback
     const apiArticles = await getHomepageArticles()
-    console.log('🔍 DEBUG: getHomepageArticles returned:', apiArticles?.length || 0, 'articles')
-    if (apiArticles && apiArticles.length > 0) {
-      console.log('🔍 DEBUG: First article:', apiArticles[0].title)
-      console.log('🔍 DEBUG: All article titles:', apiArticles.slice(0, 5).map(a => a.title))
-      console.log('🔍 DEBUG: Article dates:', apiArticles.slice(0, 5).map(a => ({ title: a.title, date: a.createdAt })))
-    } else {
-      console.warn('⚠️ DEBUG: No articles found from getHomepageArticlesWithFallback')
-    }
 
     // Resolve in-flight parallel fetches
     const [eventsResult, albertaArticlesResult] = await Promise.allSettled([
@@ -41,16 +33,12 @@ async function getHomePageData() {
     ])
 
     let events: any[] = eventsResult.status === 'fulfilled' ? eventsResult.value : []
-    if (eventsResult.status === 'fulfilled') {
-      console.log('🔍 DEBUG: getAllEvents returned:', events?.length || 0, 'events')
-    } else {
+    if (eventsResult.status === 'rejected') {
       console.error('❌ Error fetching events:', eventsResult.reason)
     }
 
     const albertaArticles: Article[] = albertaArticlesResult.status === 'fulfilled' ? albertaArticlesResult.value : []
-    if (albertaArticlesResult.status === 'fulfilled') {
-      console.log('🔍 DEBUG: Alberta articles loaded:', albertaArticles.length)
-    } else {
+    if (albertaArticlesResult.status === 'rejected') {
       console.warn('⚠️ Failed to load Alberta articles for homepage:', albertaArticlesResult.reason)
     }
 
@@ -82,19 +70,14 @@ async function getHomePageData() {
     // Use articles only for general content (events are filtered out in getHomepageArticles)
     // Events are handled separately for the "Upcoming Events" section
     const combinedPosts = [...apiArticles, ...eventAsArticles]
-    console.log('🔍 DEBUG: Combined posts before deduplication:', combinedPosts.length)
 
     // DEDUPLICATE: Remove any duplicate IDs (can happen if same content is in both sources)
     const seenIds = new Set<string>()
     const allPosts = combinedPosts.filter(post => {
-      if (seenIds.has(post.id)) {
-        console.warn(`⚠️ Duplicate ID found and removed: ${post.id} - ${post.title}`)
-        return false
-      }
+      if (seenIds.has(post.id)) return false
       seenIds.add(post.id)
       return true
     })
-    console.log('🔍 DEBUG: Combined posts (articles + events for homepage):', allPosts.length, '(removed', combinedPosts.length - allPosts.length, 'duplicates)')
 
     // Simple approach: Use all posts for all sections, filter by categories
     const allPostsForFiltering = allPosts
