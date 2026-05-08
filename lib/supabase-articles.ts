@@ -969,10 +969,10 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
 
         console.log('✅ Emergency Supabase client created successfully')
 
-        // Use emergency client to fetch articles
+        // Use emergency client to fetch articles (exclude content to avoid timeout)
         const { data, error } = await emergencySupabase
           .from('articles')
-          .select('id, title, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, image_url, image')
+          .select('id, title, excerpt, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, image_url, image')
           .order('created_at', { ascending: false })
           .limit(500)
 
@@ -1048,7 +1048,8 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
 
     // Try Supabase with timeout
     try {
-      const fields = ensureImageFields('id, title, excerpt, content, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+      // Exclude content column to avoid statement timeout (content is lazily fetched by ID later)
+      const fields = ensureImageFields('id, title, excerpt, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
 
       const supabasePromise = supabase
         .from('articles')
