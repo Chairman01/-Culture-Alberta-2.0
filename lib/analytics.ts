@@ -1,9 +1,8 @@
 // Analytics utility for tracking user interactions
-import { 
-  trackAnalyticsEvent as trackDBEvent,
-  trackPageView as trackDBPageView,
-  trackContentView as trackDBContentView,
-  trackSession as trackDBSession,
+// NOTE: Custom Supabase DB analytics writes are DISABLED to prevent DB overload.
+// Tracking is handled by Vercel Analytics + Google Analytics 4 (both already active).
+// The getAnalyticsData() still reads historical data from Supabase for the admin dashboard.
+import {
   generateSessionId,
   getAnalyticsData as getDBAnalyticsData
 } from './database-analytics'
@@ -45,85 +44,24 @@ const getSessionId = () => {
 // Track page views with enhanced data
 export const trackPageView = async (path: string, title: string) => {
   try {
+    // Send to Google Analytics 4 only (no DB writes)
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('config', 'G-V7DK0G3JFV', {
         page_path: path,
         page_title: title,
       })
     }
-    
-    const sessionId = getSessionId()
-    if (!sessionId) return
-    
-    // Track in database (with error handling)
-    try {
-      await trackDBPageView({
-        session_id: sessionId,
-        page_path: path,
-        page_title: title
-      })
-    } catch (error) {
-      console.warn('Failed to track page view in database:', error)
-    }
-    
-    // Track session (with error handling)
-    try {
-      await trackDBSession({
-        id: sessionId,
-        page_count: 1 // Will be updated by session tracking
-      })
-    } catch (error) {
-      console.warn('Failed to track session in database:', error)
-    }
-    
-    // Track analytics event (with error handling)
-    try {
-      await trackDBEvent({
-        event_type: 'page_view',
-        page_path: path,
-        page_title: title,
-        session_id: sessionId
-      })
-    } catch (error) {
-      console.warn('Failed to track analytics event in database:', error)
-    }
-    
-    // Track content type based on path (with error handling)
-    try {
-      if (path.includes('/edmonton')) {
-        await trackContentView('location', 'edmonton', 'Edmonton Page')
-      } else if (path.includes('/calgary')) {
-        await trackContentView('location', 'calgary', 'Calgary Page')
-      } else if (path.includes('/articles/')) {
-        await trackContentView('article', path.split('/').pop() || '', title)
-      } else if (path.includes('/events')) {
-        await trackContentView('event', 'events', 'Events Page')
-      } else if (path.includes('/best-of')) {
-        await trackContentView('bestOf', 'best-of', 'Best of Alberta')
-      }
-    } catch (error) {
-      console.warn('Failed to track content view in database:', error)
-    }
   } catch (error) {
     console.warn('Analytics tracking failed:', error)
   }
 }
 
-// Track content views specifically
+// Track content views specifically (GA4 only, no DB writes)
 export const trackContentView = async (type: string, id: string, title: string, location?: string) => {
-  const sessionId = getSessionId()
-  if (!sessionId) return
-  
-  await trackDBContentView({
-    session_id: sessionId,
-    content_type: type,
-    content_id: id,
-    content_title: title,
-    location
-  })
+  // No-op: content views tracked by Vercel Analytics + GA4 automatically
 }
 
-// Track custom events
+// Track custom events (GA4 only, no DB writes)
 export const trackEvent = async (event: AnalyticsEvent) => {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', event.action, {
@@ -132,15 +70,6 @@ export const trackEvent = async (event: AnalyticsEvent) => {
       value: event.value,
     })
   }
-  
-  const sessionId = getSessionId()
-  if (!sessionId) return
-  
-  await trackDBEvent({
-    event_type: event.action,
-    session_id: sessionId,
-    page_title: event.label
-  })
 }
 
 // Get comprehensive analytics data for dashboard
