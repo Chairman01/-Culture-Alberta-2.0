@@ -93,7 +93,7 @@ export async function getAllEvents(): Promise<Event[]> {
     }
 
     console.log('🔄 Fetching events from Supabase...')
-    const timeoutDuration = process.env.NODE_ENV === 'development' ? 3500 : 3000
+    const timeoutDuration = process.env.NODE_ENV === 'development' ? 5000 : 7000
     const supabasePromise = supabase
       .from('events')
       .select('*')
@@ -206,7 +206,7 @@ export async function getUpcomingEvents(limit: number = 10): Promise<Event[]> {
 
     if (!supabase) {
       console.error('Supabase client is not initialized')
-      return []
+      throw new Error('Supabase client is not initialized')
     }
 
     console.log('Fetching upcoming events from Supabase...')
@@ -221,7 +221,7 @@ export async function getUpcomingEvents(limit: number = 10): Promise<Event[]> {
 
     if (error) {
       console.error('Error fetching upcoming events:', error)
-      return []
+      throw error
     }
 
     console.log('Successfully fetched upcoming events from Supabase:', data?.length || 0, 'events')
@@ -229,7 +229,15 @@ export async function getUpcomingEvents(limit: number = 10): Promise<Event[]> {
     return data || []
   } catch (error) {
     console.error('Error in getUpcomingEvents:', error)
-    return []
+    const allEvents = await getAllEvents()
+    const now = new Date()
+    return allEvents
+      .filter(event => {
+        const eventDate = new Date(event.event_date)
+        return !isNaN(eventDate.getTime()) && eventDate >= now
+      })
+      .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
+      .slice(0, limit)
   }
 }
 

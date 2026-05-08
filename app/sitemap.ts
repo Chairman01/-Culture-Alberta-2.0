@@ -3,8 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { getAllEvents } from '@/lib/events'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
-// Always regenerate fresh — ensures new articles appear in the sitemap immediately
-export const revalidate = 0
+export const revalidate = 3600
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.culturealberta.com'

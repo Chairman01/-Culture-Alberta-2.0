@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-// GET /api/articles/views?slug=some-article-slug
-// Returns view count and increments it (single indexed lookup on articles.view_count)
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug')
+  const shouldIncrement = request.nextUrl.searchParams.get('increment') === '1'
+
   if (!slug) {
     return NextResponse.json({ count: 0 })
   }
 
   try {
-    // Read current count
     const { data: article, error: selectError } = await supabase
       .from('articles')
       .select('view_count')
@@ -22,13 +21,15 @@ export async function GET(request: NextRequest) {
     }
 
     const currentCount = (article.view_count as number) || 0
+    const nextCount = shouldIncrement ? currentCount + 1 : currentCount
 
-    // Increment in background — small race window is acceptable for a view counter
-    void Promise.resolve(
-      supabase.from('articles').update({ view_count: currentCount + 1 }).eq('slug', slug)
-    ).catch(() => {})
+    if (shouldIncrement) {
+      void Promise.resolve(
+        supabase.from('articles').update({ view_count: nextCount }).eq('slug', slug)
+      ).catch(() => {})
+    }
 
-    return NextResponse.json({ count: currentCount + 1 })
+    return NextResponse.json({ count: nextCount })
   } catch {
     return NextResponse.json({ count: 0 })
   }

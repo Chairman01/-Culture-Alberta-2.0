@@ -1,5 +1,9 @@
 import { supabase } from './supabase'
 
+const isInternalAnalyticsEnabled = () =>
+  process.env.NEXT_PUBLIC_ENABLE_INTERNAL_ANALYTICS === 'true' ||
+  process.env.ENABLE_INTERNAL_ANALYTICS === 'true'
+
 // Types for analytics data
 export interface AnalyticsEvent {
   event_type: string
@@ -98,6 +102,10 @@ export const getDeviceInfo = () => {
 // Check if analytics tables exist
 export const checkAnalyticsTables = async () => {
   try {
+    if (!isInternalAnalyticsEnabled()) {
+      return false
+    }
+
     if (!supabase) {
       console.warn('Supabase not available')
       return false
@@ -192,6 +200,10 @@ CREATE TABLE IF NOT EXISTS analytics_content_views (
 // Track analytics event in database
 export const trackAnalyticsEvent = async (event: AnalyticsEvent) => {
   try {
+    if (!isInternalAnalyticsEnabled()) {
+      return false
+    }
+
     if (!supabase) {
       console.warn('Supabase not available, falling back to localStorage')
       return false
@@ -229,6 +241,10 @@ export const trackAnalyticsEvent = async (event: AnalyticsEvent) => {
 // Track page view in database
 export const trackPageView = async (pageView: PageView) => {
   try {
+    if (!isInternalAnalyticsEnabled()) {
+      return false
+    }
+
     if (!supabase) {
       console.warn('Supabase not available, falling back to localStorage')
       return false
@@ -256,6 +272,10 @@ export const trackPageView = async (pageView: PageView) => {
 // Track content view in database
 export const trackContentView = async (contentView: ContentView) => {
   try {
+    if (!isInternalAnalyticsEnabled()) {
+      return false
+    }
+
     if (!supabase) {
       console.warn('Supabase not available, falling back to localStorage')
       return false
@@ -283,6 +303,10 @@ export const trackContentView = async (contentView: ContentView) => {
 // Create or update session in database
 export const trackSession = async (session: Session) => {
   try {
+    if (!isInternalAnalyticsEnabled()) {
+      return false
+    }
+
     if (!supabase) {
       console.warn('Supabase not available, falling back to localStorage')
       return false

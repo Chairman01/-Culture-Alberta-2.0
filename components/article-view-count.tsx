@@ -9,18 +9,47 @@ interface ArticleViewCountProps {
   className?: string
 }
 
+const countCache = new Map<string, number>()
+const countRequests = new Map<string, Promise<number | null>>()
+
 export function ArticleViewCount({ slug, articleTitle, className = "" }: ArticleViewCountProps) {
   const [count, setCount] = useState<number | null>(null)
 
   useEffect(() => {
     if (!slug) return
 
-    // Fetch view count (the API also increments the counter atomically)
-    fetch(`/api/articles/views?slug=${encodeURIComponent(slug)}`)
+    const cachedCount = countCache.get(slug)
+    if (cachedCount !== undefined) {
+      setCount(cachedCount)
+      return
+    }
+
+    const sessionKey = `article_view_counted:${slug}`
+    const shouldIncrement = typeof window !== 'undefined' && !sessionStorage.getItem(sessionKey)
+    if (shouldIncrement) {
+      sessionStorage.setItem(sessionKey, '1')
+    }
+
+    const existingRequest = countRequests.get(slug)
+    const request = existingRequest || fetch(`/api/articles/views?slug=${encodeURIComponent(slug)}&increment=${shouldIncrement ? '1' : '0'}`)
       .then(r => r.json())
-      .then(data => setCount(data.count || 0))
-      .catch(() => setCount(null))
-  }, [slug, articleTitle])
+      .then(data => {
+        const nextCount = data.count || 0
+        countCache.set(slug, nextCount)
+        countRequests.delete(slug)
+        return nextCount
+      })
+      .catch(() => {
+        countRequests.delete(slug)
+        return null
+      })
+
+    if (!existingRequest) {
+      countRequests.set(slug, request)
+    }
+
+    request.then(nextCount => setCount(nextCount))
+  }, [slug])
 
   if (count === null) return null
 

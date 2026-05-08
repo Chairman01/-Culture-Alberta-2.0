@@ -143,7 +143,7 @@ async function getHomePageData() {
 
     return {
       posts: publishedPosts,
-      events: [], // We'll filter events by category later
+      events,
       albertaArticles,
     }
   } catch (error) {
@@ -397,7 +397,23 @@ export default async function HomeStatic() {
   // Upcoming Events must only show real event records
   const eventPosts = sortedPosts.filter(post => {
     return post.type === 'event'
-  }).slice(0, 3)
+  })
+  const rawEventPosts = (events || []).map((event: any) => ({
+    id: event.id,
+    title: event.title,
+    excerpt: event.excerpt || event.description || '',
+    content: event.description || '',
+    category: 'Events',
+    categories: ['Events'],
+    location: event.location,
+    author: event.organizer || 'Event Organizer',
+    imageUrl: event.imageUrl || event.image_url || '',
+    date: event.event_date,
+    createdAt: event.created_at,
+    updatedAt: event.updated_at,
+    status: event.status,
+    type: 'event',
+  })) as Article[]
 
   // Trending: use actual view data when available, else recent articles
   const eligiblePosts = sortedPosts.filter(post => post.type !== 'event')
@@ -451,7 +467,15 @@ export default async function HomeStatic() {
   console.log('Events found:', eventPosts.length)
   console.log('Events:', eventPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
 
-  const upcomingEvents = eventPosts.slice(0, 3) // Get the first 3 events
+  const now = new Date()
+  const eventCandidates = [...eventPosts, ...rawEventPosts]
+    .filter((event, index, arr) => arr.findIndex(item => item.id === event.id) === index)
+    .filter(event => {
+      const eventDate = new Date(getPostDate(event))
+      return !isNaN(eventDate.getTime()) && eventDate >= now
+    })
+    .sort((a, b) => new Date(getPostDate(a)).getTime() - new Date(getPostDate(b)).getTime())
+  const upcomingEvents = eventCandidates.slice(0, 3)
 
   return (
     <>

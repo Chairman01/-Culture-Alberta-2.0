@@ -12,8 +12,6 @@ export const metadata: Metadata = {
   },
 }
 
-// Force dynamic rendering to always get fresh events
-export const dynamic = 'force-dynamic'
 export const revalidate = 3600 // Revalidate every hour
 
 async function getEvents() {
