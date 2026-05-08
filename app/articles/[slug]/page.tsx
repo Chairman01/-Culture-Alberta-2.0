@@ -394,13 +394,17 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           try {
             const controller = new AbortController()
             const abortTimer = setTimeout(() => controller.abort(), timeoutMs)
-            const resp = await fetch(
-              `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/admin/articles/${loadedArticle.id}`,
-              {
-                cache: 'force-cache',
-                signal: controller.signal
-              }
+            const fallbackArticles = await getFastArticles()
+            const fallbackArticle = fallbackArticles.find(article =>
+              article.id === loadedArticle.id ||
+              (article.slug && String(article.slug).toLowerCase() === slug.toLowerCase()) ||
+              createSlug(article.title) === slug.toLowerCase()
             )
+            const resp = {
+              ok: !!(fallbackArticle && typeof fallbackArticle.content === 'string' && fallbackArticle.content.trim().length > 0),
+              status: fallbackArticle ? 200 : 404,
+              json: async () => fallbackArticle,
+            }
             clearTimeout(abortTimer)
             if (resp.ok) {
               const apiArticle = await resp.json()

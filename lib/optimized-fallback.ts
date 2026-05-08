@@ -85,8 +85,32 @@ export async function updateOptimizedFallback(articles: Article[]): Promise<void
   try {
     console.log(`🔄 Updating optimized fallback with ${articles.length} articles...`)
 
-    // Convert to optimized format
-    const optimizedArticles = articles.map(optimizeArticle)
+    let existingContentById = new Map<string, string>()
+    if (fs.existsSync(OPTIMIZED_FALLBACK_PATH)) {
+      try {
+        const existingArticles = JSON.parse(fs.readFileSync(OPTIMIZED_FALLBACK_PATH, 'utf-8'))
+        if (Array.isArray(existingArticles)) {
+          existingContentById = new Map(
+            existingArticles
+              .filter((article: any) => article?.id && typeof article.content === 'string' && article.content.trim().length > 0)
+              .map((article: any) => [article.id, article.content])
+          )
+        }
+      } catch (readError) {
+        console.warn('âš ï¸ Could not read existing fallback before update:', readError)
+      }
+    }
+
+    // Convert to optimized format, preserving full content when a lightweight
+    // listing query returns the same article with an empty content field.
+    const optimizedArticles = articles.map(article => {
+      const existingContent = existingContentById.get(article.id)
+      const content = typeof article.content === 'string' && article.content.trim().length > 0
+        ? article.content
+        : existingContent || ''
+
+      return optimizeArticle({ ...article, content })
+    })
 
     // Write optimized file
     fs.writeFileSync(OPTIMIZED_FALLBACK_PATH, JSON.stringify(optimizedArticles, null, 2))

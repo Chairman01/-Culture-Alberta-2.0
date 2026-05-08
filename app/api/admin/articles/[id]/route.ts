@@ -45,6 +45,17 @@ async function generateArticleSlug(
   return generateUniqueSlug(baseSlug, existingSlugs)
 }
 
+function hasMeaningfulContent(content: unknown) {
+  if (typeof content !== 'string') return false
+  const text = content
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return text.length >= 50 || content.includes('<img')
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -102,6 +113,17 @@ export async function PUT(
     const articleId = resolvedParams.id
     
     console.log('✏️ Updating article:', articleId, articleData.title)
+
+    if (!hasMeaningfulContent(articleData.content)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Article content is required',
+          details: 'Add the full article body before saving.',
+        },
+        { status: 400 }
+      )
+    }
 
     // Get Supabase client
     const supabase = getSupabaseClient()

@@ -36,11 +36,33 @@ async function generateArticleSlug(supabase: ReturnType<typeof getSupabaseClient
   return generateUniqueSlug(baseSlug, existingSlugs)
 }
 
+function hasMeaningfulContent(content: unknown) {
+  if (typeof content !== 'string') return false
+  const text = content
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return text.length >= 50 || content.includes('<img')
+}
+
 export async function POST(request: NextRequest) {
   try {
     const articleData = await request.json()
     
     console.log('📝 Creating new article:', articleData.title)
+
+    if (!hasMeaningfulContent(articleData.content)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Article content is required',
+          details: 'Add the full article body before publishing.',
+        },
+        { status: 400 }
+      )
+    }
 
     // Get Supabase client
     const supabase = getSupabaseClient()
