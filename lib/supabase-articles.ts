@@ -14,6 +14,8 @@ import { getProductionCacheSettings, handleProductionError, trackProductionPerfo
 import { optimizeDataFetching, trackResourceUsage } from './vercel-optimizations'
 import { deduplicateRequest, generateCacheKey } from './request-deduplication'
 import { startBackgroundSyncIfNeeded } from './background-sync'
+import { createSlug } from './utils/slug'
+import { loadOptimizedFallback } from './optimized-fallback'
 
 // Constants to prevent typos and ensure consistency
 const IMAGE_FIELDS = {
@@ -74,6 +76,51 @@ function validateImageUrl(imageUrl: any, articleTitle: string): string | undefin
   }
 
   return imageUrl
+}
+
+function mapArticleRow(article: any): Article {
+  return {
+    ...article,
+    imageUrl: validateImageUrl(article.image_url || article.image || article.imageUrl, article.title),
+    date: article.created_at || article.createdAt || article.date,
+    createdAt: article.created_at || article.createdAt,
+    updatedAt: article.updated_at || article.updatedAt,
+    trendingHome: article.trending_home || article.trendingHome || false,
+    trendingEdmonton: article.trending_edmonton || article.trendingEdmonton || false,
+    trendingCalgary: article.trending_calgary || article.trendingCalgary || false,
+    featuredHome: article.featured_home || article.featuredHome || false,
+    featuredEdmonton: article.featured_edmonton || article.featuredEdmonton || false,
+    featuredCalgary: article.featured_calgary || article.featuredCalgary || false,
+  }
+}
+
+function buildTitleSearchPattern(slug: string): string {
+  const words = slug
+    .toLowerCase()
+    .split('-')
+    .map(word => word.replace(/[%_]/g, ''))
+    .filter(word => word.length > 1)
+    .slice(0, 8)
+
+  return words.length > 0 ? `%${words.join('%')}%` : `%${slug.replace(/[%_]/g, '')}%`
+}
+
+async function getArticleFromOptimizedFallbackBySlug(slug: string): Promise<Article | null> {
+  try {
+    const fallbackArticles = await loadOptimizedFallback()
+    const normalizedSlug = slug.toLowerCase()
+    const article = fallbackArticles.find(article => {
+      if (article.type === 'event') return false
+      if (createSlug(article.title) === normalizedSlug) return true
+      if ((article as any).slug && String((article as any).slug).toLowerCase() === normalizedSlug) return true
+      return false
+    })
+
+    return article ? mapArticleRow(article) : null
+  } catch (error) {
+    console.warn('⚠️ Optimized fallback slug lookup failed:', error instanceof Error ? error.message : error)
+    return null
+  }
 }
 
 // Enhanced cache for articles to prevent multiple API calls
@@ -945,6 +992,14 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   try {
     console.log('=== getArticleBySlug called for:', slug)
 
+    // The optimized fallback is bundled with the deployment and covers recent/live article URLs.
+    // Checking it first prevents public article pages from depending entirely on Supabase slug state.
+    const fallbackArticle = await getArticleFromOptimizedFallbackBySlug(slug)
+    if (fallbackArticle) {
+      console.log('✅ OPTIMIZED FALLBACK: Found article by generated title slug:', fallbackArticle.title)
+      return fallbackArticle
+    }
+
     // FAST PATH: Direct indexed slug lookup — single row, no scanning
     if (supabase) {
       try {
@@ -977,6 +1032,35 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
         }
       } catch (fastErr) {
         console.warn('⚠️ Fast slug lookup failed, falling back:', fastErr instanceof Error ? fastErr.message : fastErr)
+      }
+    }
+
+    // Some older articles were published before the slug column was reliably populated.
+    // Search by the words in the title-derived URL before falling back to capped scans.
+    if (supabase) {
+      try {
+        const fields = ensureImageFields('id, title, excerpt, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, slug')
+        const titlePattern = buildTitleSearchPattern(slug)
+        const { data, error } = await Promise.race([
+          supabase
+            .from('articles')
+            .select(fields)
+            .ilike('title', titlePattern)
+            .limit(25),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+        ]) as any
+
+        if (!error && data && data.length > 0) {
+          const exactTitleSlugMatch = data.find((article: any) => createSlug(article.title) === slug.toLowerCase())
+          if (exactTitleSlugMatch) {
+            console.log('✅ TITLE SEARCH: Found article by generated title slug:', exactTitleSlugMatch.title)
+            return mapArticleRow(exactTitleSlugMatch)
+          }
+        } else if (error) {
+          console.warn('⚠️ Title search lookup error:', error.message)
+        }
+      } catch (titleSearchErr) {
+        console.warn('⚠️ Title search lookup failed, falling back:', titleSearchErr instanceof Error ? titleSearchErr.message : titleSearchErr)
       }
     }
 

@@ -22,8 +22,8 @@ export function titleToSlug(title: string): string {
  * @param article - The article object
  * @returns The article URL path
  */
-export function getArticleUrl(article: { id: string; title: string }): string {
-  const urlTitle = titleToSlug(article.title)
+export function getArticleUrl(article: { id: string; title: string; slug?: string }): string {
+  const urlTitle = article.slug || titleToSlug(article.title)
   return `/articles/${urlTitle}`
 }
 
@@ -40,8 +40,8 @@ export function getArticleUrlByTitle(title: string): string {
 /**
  * Get the article path for analytics matching (e.g. /articles/my-article-slug)
  */
-export function getArticlePath(article: { title: string }): string {
-  return `/articles/${titleToSlug(article.title)}`
+export function getArticlePath(article: { title: string; slug?: string }): string {
+  return `/articles/${article.slug || titleToSlug(article.title)}`
 }
 
 /**

@@ -4,11 +4,33 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { createSlug, generateUniqueSlug } from '../lib/utils/slug.js'
+
+function createSlug(title) {
+  return String(title || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 100)
+    .replace(/-+$/, '')
+}
+
+function generateUniqueSlug(baseSlug, existingSlugs) {
+  let slug = baseSlug
+  let counter = 1
+
+  while (existingSlugs.includes(slug)) {
+    slug = `${baseSlug}-${counter}`
+    counter++
+  }
+
+  return slug
+}
 
 // Supabase configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key'
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key'
 
 if (!supabaseKey || supabaseKey === 'your-anon-key') {
   console.error('❌ Please set NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
@@ -25,7 +47,7 @@ async function generateSlugsForArticles() {
     const { data: articles, error: fetchError } = await supabase
       .from('articles')
       .select('id, title, slug')
-      .is('slug', null)
+      .or('slug.is.null,slug.eq.')
     
     if (fetchError) {
       console.error('❌ Error fetching articles:', fetchError)

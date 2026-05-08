@@ -35,6 +35,14 @@ import { ArticleViewCount } from '@/components/article-view-count'
 const LEGACY_ARTICLE_REDIRECTS: Record<string, string> = {}
 const useFastDevMode = process.env.NODE_ENV === 'development' && process.env.USE_SUPABASE_IN_DEV !== '1'
 
+function isNextNavigationError(error: unknown): boolean {
+  const digest = typeof error === 'object' && error !== null && 'digest' in error
+    ? String((error as { digest?: unknown }).digest)
+    : ''
+
+  return digest.startsWith('NEXT_REDIRECT') || digest.startsWith('NEXT_NOT_FOUND')
+}
+
 // Don't pre-render articles at build time — let ISR handle on first request.
 // Pre-rendering 200+ articles at build time made deployments take 5+ minutes.
 export async function generateStaticParams() {
@@ -75,7 +83,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const description = loadedArticle.excerpt || loadedArticle.description || `Read about ${loadedArticle.title} on Culture Alberta`
 
     // Always use canonical slug (from title) not the incoming slug (which could be a numeric ID)
-    const canonicalSlug = createSlug(loadedArticle.title)
+    const canonicalSlug = loadedArticle.slug || createSlug(loadedArticle.title)
     const fullUrl = `https://www.culturealberta.com/articles/${canonicalSlug}`
 
     // Handle image URL properly - use article image if available, otherwise use default
@@ -248,6 +256,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
       // Try multiple matching strategies
       loadedArticle = fastArticles.find(article => {
+        if (article.slug && String(article.slug).toLowerCase() === slug.toLowerCase()) {
+          console.log('Found matching article by stored slug:', article.title)
+          return true
+        }
+
         // Use consistent slug generation
         const articleSlug = createSlug(article.title)
 
@@ -309,7 +322,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
     // Redirect numeric ID URLs (e.g. /articles/article-1766206001328-0yq0zr5g5)
     // to the canonical title-based slug (e.g. /articles/attention-edmonton-...)
-    const canonicalSlug = createSlug(loadedArticle.title)
+    const canonicalSlug = loadedArticle.slug || createSlug(loadedArticle.title)
     if (slug !== canonicalSlug) {
       console.log(`🔀 Redirecting ${slug} → ${canonicalSlug}`)
       redirect(`/articles/${canonicalSlug}`)
@@ -796,6 +809,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       </>
     )
   } catch (error) {
+    if (isNextNavigationError(error)) {
+      throw error
+    }
+
     console.error('Error loading article:', error)
     notFound()
   }

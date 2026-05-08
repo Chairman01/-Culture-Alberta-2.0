@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js'
 import fs from 'fs'
 import path from 'path'
+import { createSlug } from './utils/slug'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
@@ -33,6 +34,7 @@ export interface Article {
   trendingHome: boolean
   trendingEdmonton: boolean
   trendingCalgary: boolean
+  slug?: string
   type: 'article' | 'event'
 }
 
@@ -54,7 +56,7 @@ export async function autoSyncArticles(): Promise<{ success: boolean; count: num
     const articlesResult = await Promise.race([
       supabase
         .from('articles')
-        .select('id,title,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary,image_url')
+        .select('id,title,slug,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary,image_url')
         .order('created_at', { ascending: false })
         .limit(50),
       timeoutPromise
@@ -93,6 +95,7 @@ export async function autoSyncArticles(): Promise<{ success: boolean; count: num
         featuredCalgary: article.featured_calgary || false,
         createdAt: article.created_at,
         updatedAt: article.updated_at,
+        slug: article.slug || createSlug(article.title),
         type: 'article' as const
       }
     })
@@ -163,7 +166,7 @@ export async function quickSyncArticle(articleId: string): Promise<{ success: bo
     // Fetch the specific article
     const { data: article, error } = await supabase
       .from('articles')
-      .select('id,title,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary,image_url')
+      .select('id,title,slug,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary,image_url')
       .eq('id', articleId)
       .single()
     
@@ -200,6 +203,7 @@ export async function quickSyncArticle(articleId: string): Promise<{ success: bo
       featuredCalgary: article.featured_calgary || false,
       createdAt: article.created_at,
       updatedAt: article.updated_at,
+      slug: article.slug || createSlug(article.title),
       type: 'article' as const
     }
     

@@ -4,7 +4,7 @@ import { quickSyncArticle } from '@/lib/auto-sync'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
-import { createSlug } from '@/lib/utils/slug'
+import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -20,6 +20,22 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseKey)
 }
 
+async function generateArticleSlug(supabase: ReturnType<typeof getSupabaseClient>, title: string) {
+  const baseSlug = createSlug(title)
+  const { data, error } = await supabase
+    .from('articles')
+    .select('slug')
+    .not('slug', 'is', null)
+
+  if (error) {
+    console.warn('⚠️ Could not fetch existing slugs; using base slug:', error.message)
+    return baseSlug
+  }
+
+  const existingSlugs = (data || []).map(article => article.slug).filter(Boolean)
+  return generateUniqueSlug(baseSlug, existingSlugs)
+}
+
 export async function POST(request: NextRequest) {
   try {
     const articleData = await request.json()
@@ -31,6 +47,7 @@ export async function POST(request: NextRequest) {
 
     // Generate a unique ID for the article
     const articleId = `article-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const articleSlug = articleData.slug || await generateArticleSlug(supabase, articleData.title)
     
     // Insert the article into Supabase
     const { data, error } = await supabase
@@ -48,6 +65,7 @@ export async function POST(request: NextRequest) {
         type: articleData.type || 'article',
         status: articleData.status || 'published',
         image_url: articleData.imageUrl,
+        slug: articleSlug,
         image_source: articleData.imageSource || null,
         trending_home: articleData.trendingHome || false,
         trending_edmonton: articleData.trendingEdmonton || false,
@@ -127,8 +145,7 @@ export async function POST(request: NextRequest) {
 
     // Auto-notify search engines about the new article (non-blocking)
     if (data.status === 'published') {
-      const articleSlug = createSlug(data.title)
-      notifySearchEngines(`/articles/${articleSlug}`).catch(err =>
+      notifySearchEngines(`/articles/${data.slug || articleSlug}`).catch(err =>
         console.warn('⚠️ Search engine notification failed (non-fatal):', err)
       )
     }

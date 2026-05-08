@@ -1,4 +1,5 @@
 import { Article } from './types/article'
+import { createSlug } from './utils/slug'
 import fs from 'fs'
 import path from 'path'
 
@@ -33,6 +34,7 @@ interface OptimizedArticle {
   organizer?: string
   organizer_contact?: string
   website_url?: string
+  slug?: string
 }
 
 const OPTIMIZED_FALLBACK_PATH = path.join(process.cwd(), 'optimized-fallback.json')
@@ -72,6 +74,7 @@ function optimizeArticle(article: Article): OptimizedArticle {
     organizer: (article as any).organizer || undefined,
     organizer_contact: (article as any).organizer_contact || undefined,
     website_url: (article as any).website_url || undefined,
+    slug: article.slug || createSlug(article.title),
   }
 }
 
@@ -120,7 +123,7 @@ export async function loadOptimizedFallback(): Promise<Article[]> {
     const articles: Article[] = optimizedArticles.map(opt => ({
       ...opt,
       content: opt.content || '', // Use content if available, otherwise empty
-      slug: opt.id, // Use ID as slug
+      slug: opt.slug || createSlug(opt.title),
       updatedAt: opt.createdAt, // Use createdAt as updatedAt fallback
     }))
 

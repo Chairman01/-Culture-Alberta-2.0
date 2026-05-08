@@ -5,7 +5,7 @@ import { quickSyncArticle } from '@/lib/auto-sync'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
 import { requireAdmin } from '@/lib/admin-auth'
-import { createSlug } from '@/lib/utils/slug'
+import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -19,6 +19,30 @@ function getSupabaseClient() {
   }
   
   return createClient(supabaseUrl, supabaseKey)
+}
+
+async function generateArticleSlug(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  title: string,
+  currentArticleId: string
+) {
+  const baseSlug = createSlug(title)
+  const { data, error } = await supabase
+    .from('articles')
+    .select('id, slug')
+    .not('slug', 'is', null)
+
+  if (error) {
+    console.warn('⚠️ Could not fetch existing slugs; using base slug:', error.message)
+    return baseSlug
+  }
+
+  const existingSlugs = (data || [])
+    .filter(article => article.id !== currentArticleId)
+    .map(article => article.slug)
+    .filter(Boolean)
+
+  return generateUniqueSlug(baseSlug, existingSlugs)
 }
 
 export async function GET(
@@ -85,9 +109,11 @@ export async function PUT(
     // Fetch current title before update so we can detect slug changes
     const { data: existingArticle } = await supabase
       .from('articles')
-      .select('title')
+      .select('title, slug')
       .eq('id', articleId)
       .single()
+
+    const nextSlug = articleData.slug || await generateArticleSlug(supabase, articleData.title, articleId)
 
     // Update the article in Supabase
     const { data, error } = await supabase
@@ -104,6 +130,7 @@ export async function PUT(
         type: articleData.type || 'article',
         status: articleData.status || 'published',
         image_url: articleData.imageUrl,
+        slug: nextSlug,
         image_source: articleData.imageSource || null,
         trending_home: articleData.trendingHome || false,
         trending_edmonton: articleData.trendingEdmonton || false,
@@ -126,8 +153,8 @@ export async function PUT(
     // Auto-save slug redirect if title changed
     if (existingArticle && existingArticle.title !== articleData.title) {
       try {
-        const oldSlug = createSlug(existingArticle.title)
-        const newSlug = createSlug(articleData.title)
+        const oldSlug = existingArticle.slug || createSlug(existingArticle.title)
+        const newSlug = nextSlug
         if (oldSlug !== newSlug) {
           await supabase
             .from('slug_redirects')
@@ -175,6 +202,7 @@ export async function PUT(
             featuredEdmonton: articleData.featuredEdmonton || false,
             featuredCalgary: articleData.featuredCalgary || false,
             date: originalArticle.createdAt || originalArticle.date || new Date().toISOString(),
+            slug: nextSlug,
           }
           await updateOptimizedFallback(allArticles)
           console.log('✅ Optimized fallback updated successfully (fallback)')
@@ -203,7 +231,7 @@ export async function PUT(
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             date: new Date().toISOString(),
-            slug: articleId,
+            slug: nextSlug,
           })
           await updateOptimizedFallback(allArticles)
         }
@@ -239,6 +267,7 @@ export async function PUT(
             featuredEdmonton: articleData.featuredEdmonton || false,
             featuredCalgary: articleData.featuredCalgary || false,
             date: originalArticle.createdAt || originalArticle.date || new Date().toISOString(),
+            slug: nextSlug,
           }
           await updateOptimizedFallback(allArticles)
           console.log('✅ Optimized fallback updated successfully (fallback)')
@@ -267,7 +296,7 @@ export async function PUT(
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             date: new Date().toISOString(),
-            slug: articleId,
+            slug: nextSlug,
           })
           await updateOptimizedFallback(allArticles)
         }
@@ -303,8 +332,7 @@ export async function PUT(
     // Auto-notify search engines about the updated article (non-blocking)
     // Use the slug derived from the title (same as public URL), not the raw DB id
     if (data.status === 'published') {
-      const articleSlug = createSlug(data.title)
-      notifySearchEngines(`/articles/${articleSlug}`).catch(err =>
+      notifySearchEngines(`/articles/${data.slug || nextSlug}`).catch(err =>
         console.warn('⚠️ Search engine notification failed (non-fatal):', err)
       )
     }

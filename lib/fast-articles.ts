@@ -54,6 +54,10 @@ export async function getFastArticleBySlug(slug: string): Promise<any | null> {
   const articles = await getFastArticles()
   
   const foundArticle = articles.find(article => {
+    if (article.slug && String(article.slug).toLowerCase() === slug.toLowerCase()) {
+      return true
+    }
+
     const articleSlug = createSlug(article.title)
     
     // Try multiple matching strategies

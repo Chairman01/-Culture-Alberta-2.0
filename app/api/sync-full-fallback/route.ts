@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import fs from 'fs'
 import path from 'path'
+import { createSlug } from '@/lib/utils/slug'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 55
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
         featuredHome: row.featured_home || false,
         featuredEdmonton: row.featured_edmonton || false,
         featuredCalgary: row.featured_calgary || false,
-        slug: row.slug || '',
+        slug: row.slug || createSlug(row.title),
       }
     })
 
