@@ -10,6 +10,7 @@ import { Article } from '@/lib/types/article'
 import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getTrendingByViews } from '@/lib/trending-articles'
+import { loadOptimizedFallback } from '@/lib/optimized-fallback'
 
 // ISR: cache for 60s, revalidate in background — stops hammering Supabase on every request
 export const revalidate = 300
@@ -269,8 +270,15 @@ export default async function HomeStatic() {
     return post.author || 'Culture Alberta'
   }
 
-  // Only show a featured ARTICLE when explicitly flagged; otherwise show the placeholder
-  const featuredPost = posts.find(post => post.featuredHome === true && post.type !== 'event') || null
+  let fallbackPosts: Article[] = []
+  try {
+    fallbackPosts = (await loadOptimizedFallback()).filter(post =>
+      post.type !== 'event' &&
+      (post.status === 'published' || post.status === undefined || post.status === null)
+    )
+  } catch (error) {
+    console.warn('Failed to load homepage fallback posts:', error)
+  }
 
   // Sort articles by date (newest first) before filtering
   // For articles, prioritize date; for events, use date or createdAt
@@ -296,6 +304,21 @@ export default async function HomeStatic() {
     return dateB.getTime() - dateA.getTime() // Newest first
   })
 
+  const fallbackSortedPosts = fallbackPosts.sort((a, b) =>
+    new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
+  )
+
+  const homepageCandidatePosts = [...sortedPosts, ...fallbackSortedPosts].filter((post, index, arr) =>
+    post.type !== 'event' && arr.findIndex(item => item.id === post.id) === index
+  )
+
+  // Prefer explicit featured flags, but never show an empty hero when articles exist.
+  const featuredPost =
+    homepageCandidatePosts.find(post => post.featuredHome === true) ||
+    homepageCandidatePosts.find(post => !!getPostImage(post) && getPostImage(post) !== '/placeholder.svg') ||
+    homepageCandidatePosts[0] ||
+    null
+
 
   // Other Alberta cities - exclude these from Edmonton/Calgary spotlights (fixes mis-tagged articles)
   const OTHER_ALBERTA_CITIES = ['red deer', 'lethbridge', 'medicine hat', 'grande prairie', 'fort mcmurray', 'airdrie', 'st. albert', 'okotoks', 'canmore', 'banff', 'brooks', 'edson', 'camrose', 'lloydminster', 'drumheller', 'jasper']
@@ -305,32 +328,39 @@ export default async function HomeStatic() {
     const tags = ((post as any).tags || []).map((t: string) => t.toLowerCase())
     const combined = [loc, ...cats, ...tags].join(' ')
     // Location "Alberta" = province-wide, not city-specific
-    if (loc === 'alberta') return true
+    if (loc === 'alberta') return false
     return OTHER_ALBERTA_CITIES.some(city => combined.includes(city))
   }
 
+  const hasCitySignal = (post: Article, city: string) => {
+    const cityLower = city.toLowerCase()
+    return post.category?.toLowerCase().includes(cityLower) ||
+      post.categories?.some((cat: string) => cat.toLowerCase().includes(cityLower)) ||
+      post.location?.toLowerCase().includes(cityLower) ||
+      (post as any).tags?.some((tag: string) => tag.toLowerCase().includes(cityLower)) ||
+      post.title?.toLowerCase().includes(cityLower)
+  }
+
   // Edmonton Spotlight: Edmonton-only, exclude Red Deer/Lethbridge etc (even if mis-tagged)
-  const edmontonPosts = sortedPosts.filter(post => {
+  const primaryEdmontonPosts = homepageCandidatePosts.filter(post => {
     if (post.type === 'event') return false
     if (isFromOtherAlbertaCity(post)) return false
 
-    const hasEdmonton = post.category?.toLowerCase().includes('edmonton') ||
-      post.categories?.some((cat: string) => cat.toLowerCase().includes('edmonton')) ||
-      post.location?.toLowerCase().includes('edmonton') ||
-      (post as any).tags?.some((tag: string) => tag.toLowerCase().includes('edmonton'))
-    return !!hasEdmonton
+    return hasCitySignal(post, 'edmonton')
   }).slice(0, 3)
+  const fallbackEdmontonPosts = fallbackSortedPosts.filter(post => {
+    if (post.type === 'event') return false
+    if (isFromOtherAlbertaCity(post)) return false
+    return hasCitySignal(post, 'edmonton')
+  }).slice(0, 3)
+  const edmontonPosts = primaryEdmontonPosts.length > 0 ? primaryEdmontonPosts : fallbackEdmontonPosts
 
   // Calgary Spotlight: Calgary-only, exclude Red Deer/Lethbridge etc (even if mis-tagged)
-  const calgaryPosts = sortedPosts.filter(post => {
+  const calgaryPosts = homepageCandidatePosts.filter(post => {
     if (post.type === 'event') return false
     if (isFromOtherAlbertaCity(post)) return false
 
-    const hasCalgary = post.category?.toLowerCase().includes('calgary') ||
-      post.categories?.some((cat: string) => cat.toLowerCase().includes('calgary')) ||
-      post.location?.toLowerCase().includes('calgary') ||
-      (post as any).tags?.some((tag: string) => tag.toLowerCase().includes('calgary'))
-    return !!hasCalgary
+    return hasCitySignal(post, 'calgary')
   }).slice(0, 3)
 
   // More From Alberta: Alberta-wide, Red Deer, Lethbridge, Medicine Hat, Grande Prairie, other communities
