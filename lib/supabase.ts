@@ -18,6 +18,5 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
     headers: {
       'X-Client-Info': 'culture-alberta-app',
     },
-    fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
   },
 })
