@@ -131,7 +131,6 @@ function ArticleCard({ article, formatDate }: { article: Article; formatDate: (s
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">
             {article.category}
           </span>
-          <span>{formatDate(article.date || '')}</span>
         </div>
         <h3 className="font-bold group-hover:text-amber-700">{article.title}</h3>
         <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
@@ -266,7 +265,6 @@ export default async function AlbertaPage() {
                       <div className="mt-3">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="bg-amber-500 text-white px-2 py-1 text-xs rounded">Featured</span>
-                          <span className="text-sm text-gray-500">Posted {formatDate(featuredArticle.date || '')}</span>
                         </div>
                         <h2 className="text-2xl font-bold leading-tight tracking-tighter md:text-3xl lg:text-4xl group-hover:text-amber-700">
                           {featuredArticle.title}
@@ -296,10 +294,9 @@ export default async function AlbertaPage() {
                               {index + 1}
                             </span>
                             <div>
-                              <h3 className="font-display font-semibold text-base group-hover:text-amber-700 line-clamp-2 leading-tight mb-1">
+                              <h3 className="font-display font-semibold text-base group-hover:text-amber-700 line-clamp-2 leading-tight">
                                 {article.title}
                               </h3>
-                              <p className="font-body text-sm text-gray-500">{formatDate(article.date || '')}</p>
                             </div>
                           </div>
                         </Link>

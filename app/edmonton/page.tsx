@@ -205,7 +205,6 @@ export default async function EdmontonPage() {
                       <div className="mt-3">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="bg-red-500 text-white px-2 py-1 text-xs rounded">Featured</span>
-                          <span className="text-sm text-gray-500">Posted {formatDate(featuredArticle.date || '')}</span>
                         </div>
                         <h2 className="text-2xl font-bold leading-tight tracking-tighter md:text-3xl lg:text-4xl group-hover:text-blue-600">
                           {featuredArticle.title}
@@ -236,8 +235,7 @@ export default async function EdmontonPage() {
                             <div className="flex items-start space-x-4">
                               <span className="text-lg font-bold text-gray-300 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">{index + 1}</span>
                               <div>
-                                <h3 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight mb-1">{article.title}</h3>
-                                <p className="font-body text-sm text-gray-500">{formatDate(article.date || '')}</p>
+                                <h3 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight">{article.title}</h3>
                               </div>
                             </div>
                           </Link>
@@ -253,8 +251,7 @@ export default async function EdmontonPage() {
                             <div className="flex items-start space-x-4">
                               <span className="text-lg font-bold text-gray-300 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">{index + 1}</span>
                               <div>
-                                <h3 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight mb-1">{article.title}</h3>
-                                <p className="font-body text-sm text-gray-500">{formatDate(article.date || '')}</p>
+                                <h3 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight">{article.title}</h3>
                               </div>
                             </div>
                           </Link>
@@ -375,8 +372,7 @@ export default async function EdmontonPage() {
                         <div className="mt-2 space-y-1">
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold">{article.category}</span>
-                            <span>{formatDate(article.date || '')}</span>
-                          </div>
+                                                      </div>
                           <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
                           <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
                         </div>
@@ -404,8 +400,7 @@ export default async function EdmontonPage() {
                         <div className="mt-2 space-y-1">
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <span className="rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 text-xs font-semibold">Top Story</span>
-                            <span>{formatDate(article.date || '')}</span>
-                          </div>
+                                                      </div>
                           <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
                           <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
                         </div>
@@ -437,8 +432,7 @@ export default async function EdmontonPage() {
                               <div className="mt-2 space-y-1">
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   <span className="rounded-full bg-orange-100 text-orange-800 px-2.5 py-0.5 text-xs font-semibold">Food & Drink</span>
-                                  <span>{formatDate(article.date || '')}</span>
-                                </div>
+                                                                  </div>
                                 <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
                                 <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
                               </div>
@@ -475,8 +469,7 @@ export default async function EdmontonPage() {
                               <div className="mt-2 space-y-1">
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   <span className="rounded-full bg-purple-100 text-purple-800 px-2.5 py-0.5 text-xs font-semibold">Arts & Culture</span>
-                                  <span>{formatDate(article.date || '')}</span>
-                                </div>
+                                                                  </div>
                                 <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
                                 <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
                               </div>
@@ -513,8 +506,7 @@ export default async function EdmontonPage() {
                             <div className="mt-2 space-y-1">
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span className="rounded-full bg-yellow-100 text-yellow-800 px-2.5 py-0.5 text-xs font-semibold">Sports</span>
-                                <span>{formatDate(article.date || '')}</span>
-                              </div>
+                                                              </div>
                               <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
                               <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
                             </div>
@@ -547,8 +539,7 @@ export default async function EdmontonPage() {
                             <div className="mt-2 space-y-1">
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span className="rounded-full bg-teal-100 text-teal-800 px-2.5 py-0.5 text-xs font-semibold">Real Estate</span>
-                                <span>{formatDate(article.date || '')}</span>
-                              </div>
+                                                              </div>
                               <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
                               <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
                             </div>
@@ -579,8 +570,7 @@ export default async function EdmontonPage() {
                             <div className="mt-2 space-y-1">
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span className="rounded-full bg-red-100 text-red-800 px-2.5 py-0.5 text-xs font-semibold">Crime</span>
-                                <span>{formatDate(article.date || '')}</span>
-                              </div>
+                                                              </div>
                               <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
                               <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
                             </div>
@@ -611,8 +601,7 @@ export default async function EdmontonPage() {
                             <div className="mt-2 space-y-1">
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span className="rounded-full bg-gray-100 text-gray-800 px-2.5 py-0.5 text-xs font-semibold">Politics</span>
-                                <span>{formatDate(article.date || '')}</span>
-                              </div>
+                                                              </div>
                               <h3 className="font-bold group-hover:text-blue-600">{article.title}</h3>
                               <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
                             </div>

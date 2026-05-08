@@ -454,6 +454,7 @@ export default async function HomeStatic() {
                         </div>
                         <div className="p-6">
                           <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
+                            <span className="bg-red-500 text-white px-2 py-1 text-xs rounded font-medium">Featured</span>
                             <span className="rounded-full bg-black text-white px-4 py-1.5 font-medium">{getPostCategory(featuredPost)}</span>
                           </div>
                           <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold group-hover:text-gray-600 transition-colors duration-300 mb-3 leading-tight">{getPostTitle(featuredPost)}</h2>
@@ -473,6 +474,11 @@ export default async function HomeStatic() {
                       </div>
                     </div>
                   )}
+                  <div className="mt-3 text-center">
+                    <Link href="/partner" className="text-sm text-gray-500 hover:text-gray-800 underline underline-offset-2">
+                      Have your business featured today →
+                    </Link>
+                  </div>
                 </div>
 
                 {/* Trending Sidebar */}
