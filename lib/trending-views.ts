@@ -14,6 +14,7 @@ async function getMostViewedArticlePathsUncached(
   days: number = 7,
   limit: number = 10
 ): Promise<{ path: string; count: number }[]> {
+  // Try GA4 first if credentials are configured
   if (process.env.GA4_PROPERTY_ID) {
     const ga4 = await getMostViewedArticlePathsFromGA4(days, Math.max(limit, 20))
     if (ga4.length > 0) {
@@ -21,50 +22,31 @@ async function getMostViewedArticlePathsUncached(
     }
   }
 
+  // Use articles.view_count — single indexed query, always current
   try {
     if (!supabase) return []
 
-    const since = new Date()
-    since.setDate(since.getDate() - days)
-    const sinceIso = since.toISOString()
-    const pathCounts: Record<string, number> = {}
+    const { data: articles } = await supabase
+      .from('articles')
+      .select('slug, view_count')
+      .eq('status', 'published')
+      .gt('view_count', 0)
+      .order('view_count', { ascending: false })
+      .limit(limit)
 
-    const { data: pageViews } = await supabase
-      .from('analytics_page_views')
-      .select('page_path')
-      .gte('created_at', sinceIso)
-      .like('page_path', '/articles/%')
-
-    pageViews?.forEach((v) => {
-      const raw = v.page_path?.trim()
-      if (raw) {
-        const path = raw.toLowerCase().replace(/\/$/, '')
-        pathCounts[path] = (pathCounts[path] || 0) + 1
-      }
-    })
-
-    const { data: contentViews } = await supabase
-      .from('analytics_content_views')
-      .select('content_id')
-      .gte('created_at', sinceIso)
-      .eq('content_type', 'article')
-
-    contentViews?.forEach((v) => {
-      const id = v.content_id?.trim()
-      if (id) {
-        const path = (id.startsWith('/') ? id : `/articles/${id}`).toLowerCase().replace(/\/$/, '')
-        pathCounts[path] = (pathCounts[path] || 0) + 1
-      }
-    })
-
-    return Object.entries(pathCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, limit)
-      .map(([path, count]) => ({ path, count }))
+    if (articles && articles.length > 0) {
+      return articles
+        .filter((a) => a.slug)
+        .map((a) => ({
+          path: `/articles/${a.slug}`,
+          count: (a.view_count as number) || 0,
+        }))
+    }
   } catch (error) {
     console.warn('getMostViewedArticlePaths error:', error)
-    return []
   }
+
+  return []
 }
 
 /**
