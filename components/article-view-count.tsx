@@ -15,14 +15,7 @@ export function ArticleViewCount({ slug, articleTitle, className = "" }: Article
   useEffect(() => {
     if (!slug) return
 
-    // Track this view
-    try {
-      import('@/lib/analytics').then(({ trackArticleView }) => {
-        trackArticleView(slug, articleTitle || slug)
-      }).catch(() => {})
-    } catch {}
-
-    // Fetch view count
+    // Fetch view count (the API also increments the counter atomically)
     fetch(`/api/articles/views?slug=${encodeURIComponent(slug)}`)
       .then(r => r.json())
       .then(data => setCount(data.count || 0))
