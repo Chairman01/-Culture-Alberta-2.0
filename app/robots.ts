@@ -74,7 +74,6 @@ export default function robots(): MetadataRoute.Robots {
     },
     sitemap: [
       'https://www.culturealberta.com/sitemap.xml',
-      'https://www.culturealberta.com/api/news-sitemap',
     ],
   }
 }

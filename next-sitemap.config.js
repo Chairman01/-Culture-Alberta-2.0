@@ -35,7 +35,6 @@ export default {
     ],
     additionalSitemaps: [
       'https://www.culturealberta.com/server-sitemap.xml',
-      'https://www.culturealberta.com/news-sitemap.xml',
     ],
   },
   additionalPaths: async (config) => {

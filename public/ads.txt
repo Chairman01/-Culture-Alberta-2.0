@@ -1,4 +1,3 @@
-google.com, pub-6902227267422426, DIRECT, f08c47fec0942fa0
 # Mediavine Ads.txt v20260430
 managerdomain=mediavine.com
 contact=sales@mediavine.com

@@ -455,7 +455,6 @@ export default async function HomeStatic() {
                         <div className="p-6">
                           <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
                             <span className="rounded-full bg-black text-white px-4 py-1.5 font-medium">{getPostCategory(featuredPost)}</span>
-                            <span className="font-medium">{formatDate(getPostDate(featuredPost))}</span>
                           </div>
                           <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold group-hover:text-gray-600 transition-colors duration-300 mb-3 leading-tight">{getPostTitle(featuredPost)}</h2>
                           <p className="font-body text-gray-600 text-lg leading-relaxed">{getPostExcerpt(featuredPost)}</p>
@@ -492,8 +491,7 @@ export default async function HomeStatic() {
                             <div className="flex items-start space-x-4">
                               <span className="text-lg font-bold text-gray-300 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">{index + 1}</span>
                               <div>
-                                <h3 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight mb-1">{getPostTitle(post)}</h3>
-                                <p className="font-body text-sm text-gray-500">{formatDate(getPostDate(post))}</p>
+                                <h3 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight">{getPostTitle(post)}</h3>
                               </div>
                             </div>
                           </Link>
@@ -505,8 +503,7 @@ export default async function HomeStatic() {
                             <div className="flex items-start space-x-4">
                               <span className="text-lg font-bold text-gray-300 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">{index + 1}</span>
                               <div>
-                                <h3 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight mb-1">{getPostTitle(post)}</h3>
-                                <p className="font-body text-sm text-gray-500">{formatDate(getPostDate(post))}</p>
+                                <h3 className="font-display font-semibold text-base group-hover:text-gray-600 transition-colors duration-300 line-clamp-2 leading-tight">{getPostTitle(post)}</h3>
                               </div>
                             </div>
                           </Link>

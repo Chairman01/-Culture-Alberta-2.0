@@ -24,12 +24,9 @@ export async function GET(request: NextRequest) {
     const currentCount = (article.view_count as number) || 0
 
     // Increment in background — small race window is acceptable for a view counter
-    supabase
-      .from('articles')
-      .update({ view_count: currentCount + 1 })
-      .eq('slug', slug)
-      .then(() => {})
-      .catch(() => {})
+    void Promise.resolve(
+      supabase.from('articles').update({ view_count: currentCount + 1 }).eq('slug', slug)
+    ).catch(() => {})
 
     return NextResponse.json({ count: currentCount + 1 })
   } catch {
