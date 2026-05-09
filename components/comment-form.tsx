@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Send, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
-import { useAuth } from './auth-provider'
 
 interface CommentFormProps {
     articleId: string
@@ -10,10 +9,12 @@ interface CommentFormProps {
 }
 
 export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps) {
-    const { user, getAccessToken } = useAuth()
+    const [authorName, setAuthorName] = useState('')
+    const [authorEmail, setAuthorEmail] = useState('')
     const [content, setContent] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+    const [nameError, setNameError] = useState('')
     const [contentError, setContentError] = useState('')
 
     // Auto-dismiss success message after 5 seconds
@@ -30,7 +31,23 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
         e.preventDefault()
 
         setMessage(null)
+        setNameError('')
         setContentError('')
+
+        if (!authorName.trim()) {
+            setNameError('Please enter your name')
+            return
+        }
+
+        if (authorName.trim().length > 100) {
+            setNameError('Name must be less than 100 characters')
+            return
+        }
+
+        if (authorEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authorEmail.trim())) {
+            setMessage({ type: 'error', text: 'Please enter a valid email address or leave it blank.' })
+            return
+        }
 
         if (!content.trim()) {
             setContentError('Please enter your comment')
@@ -47,12 +64,6 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
             return
         }
 
-        const token = await getAccessToken()
-        if (!token) {
-            setMessage({ type: 'error', text: 'Your session expired. Please sign in again.' })
-            return
-        }
-
         setIsSubmitting(true)
 
         try {
@@ -60,10 +71,11 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     articleId,
+                    authorName: authorName.trim(),
+                    authorEmail: authorEmail.trim() || null,
                     content: content.trim(),
                 }),
             })
@@ -77,6 +89,7 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
                 })
 
                 setContent('')
+                setAuthorEmail('')
                 onCommentSubmitted?.()
             } else {
                 setMessage({ type: 'error', text: data.error || 'Failed to submit comment. Please try again.' })
@@ -93,17 +106,58 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
     const charLimit = 1000
     const charPercentage = (charCount / charLimit) * 100
 
-    const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'You'
-
     return (
         <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg p-8 border border-blue-100">
             <h3 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
                 <Send className="w-6 h-6 text-blue-600" />
                 Share Your Thoughts
             </h3>
-            <p className="text-sm text-gray-500 mb-6">Commenting as <span className="font-medium text-gray-700">{displayName}</span></p>
+            <p className="text-sm text-gray-500 mb-6">No account required. Comments are reviewed before publishing.</p>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label htmlFor="authorName" className="block text-sm font-semibold text-gray-700 mb-2">
+                            Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            id="authorName"
+                            value={authorName}
+                            onChange={(e) => {
+                                setAuthorName(e.target.value)
+                                setNameError('')
+                            }}
+                            className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${nameError ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                                }`}
+                            placeholder="Your name"
+                            maxLength={100}
+                            disabled={isSubmitting}
+                        />
+                        {nameError && (
+                            <p className="text-sm text-red-600 flex items-center gap-1 mt-2">
+                                <AlertCircle className="w-4 h-4" />
+                                {nameError}
+                            </p>
+                        )}
+                    </div>
+
+                    <div>
+                        <label htmlFor="authorEmail" className="block text-sm font-semibold text-gray-700 mb-2">
+                            Email <span className="text-gray-400 font-normal">(optional)</span>
+                        </label>
+                        <input
+                            id="authorEmail"
+                            type="email"
+                            value={authorEmail}
+                            onChange={(e) => setAuthorEmail(e.target.value)}
+                            className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-gray-200 bg-white"
+                            placeholder="you@example.com"
+                            maxLength={255}
+                            disabled={isSubmitting}
+                        />
+                    </div>
+                </div>
+
                 {/* Comment Textarea */}
                 <div>
                     <label htmlFor="content" className="block text-sm font-semibold text-gray-700 mb-2">

@@ -15,12 +15,25 @@ function sanitizeContent(content: string): string {
     return sanitized
 }
 
+function sanitizeSingleLine(value: string, maxLength: number): string {
+    return value
+        .replace(/<[^>]*>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, maxLength)
+}
+
+function isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
 // GET: Fetch approved comments for an article
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams
         const articleId = searchParams.get('articleId')
-        const limit = parseInt(searchParams.get('limit') || '10', 10)
+        const requestedLimit = parseInt(searchParams.get('limit') || '3', 10)
+        const limit = Number.isFinite(requestedLimit) ? Math.min(requestedLimit, 3) : 3
         const offset = parseInt(searchParams.get('offset') || '0', 10)
 
         console.log('📥 GET /api/comments - Request received:', {
@@ -122,53 +135,47 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST: Submit a new comment (requires authentication)
+// POST: Submit a new comment
 export async function POST(request: NextRequest) {
     try {
-        // Require Authorization header with Bearer token
-        const authHeader = request.headers.get('authorization')
-        const token = authHeader?.replace(/^Bearer\s+/i, '')
-
-        if (!token) {
-            return NextResponse.json(
-                { error: 'Sign in required to comment. Please create an account or sign in.' },
-                { status: 401 }
-            )
-        }
-
-        // Verify the JWT and get user
-        const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-        if (authError || !user) {
-            return NextResponse.json(
-                { error: 'Invalid or expired session. Please sign in again.' },
-                { status: 401 }
-            )
-        }
-
         const body = await request.json()
-        const { articleId, content } = body
+        const { articleId, authorName, authorEmail, content } = body
 
         // Validate required fields
-        if (!articleId || !content) {
+        if (!articleId || !authorName || !content) {
             return NextResponse.json(
-                { error: 'Article ID and content are required' },
+                { error: 'Name and comment are required' },
+                { status: 400 }
+            )
+        }
+
+        const sanitizedAuthorName = sanitizeSingleLine(String(authorName), 100)
+        const sanitizedAuthorEmail = typeof authorEmail === 'string' && authorEmail.trim()
+            ? sanitizeSingleLine(authorEmail, 255)
+            : null
+        const sanitizedContent = sanitizeContent(String(content))
+
+        if (!sanitizedAuthorName) {
+            return NextResponse.json(
+                { error: 'Name is required' },
+                { status: 400 }
+            )
+        }
+
+        if (sanitizedAuthorEmail && !isValidEmail(sanitizedAuthorEmail)) {
+            return NextResponse.json(
+                { error: 'Please enter a valid email address' },
                 { status: 400 }
             )
         }
 
         // Validate content length
-        if (content.trim().length < 3 || content.trim().length > 1000) {
+        if (sanitizedContent.length < 3 || sanitizedContent.length > 1000) {
             return NextResponse.json(
                 { error: 'Comment must be between 3 and 1000 characters' },
                 { status: 400 }
             )
         }
-
-        // Get author info from authenticated user
-        const authorName = (user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous').trim().substring(0, 100)
-        const authorEmail = user.email?.trim().substring(0, 255) || null
-        const sanitizedContent = sanitizeContent(content)
 
         // Get IP address for spam prevention
         const ipAddress = request.headers.get('x-forwarded-for') ||
@@ -178,8 +185,8 @@ export async function POST(request: NextRequest) {
         // Insert comment with 'pending' status
         console.log('📝 Attempting to insert comment:', {
             article_id: articleId,
-            author_name: authorName,
-            author_email: authorEmail,
+            author_name: sanitizedAuthorName,
+            author_email: sanitizedAuthorEmail,
             content_length: sanitizedContent.length,
             status: 'pending',
         })
@@ -189,8 +196,8 @@ export async function POST(request: NextRequest) {
             .insert([
                 {
                     article_id: articleId,
-                    author_name: authorName,
-                    author_email: authorEmail,
+                    author_name: sanitizedAuthorName,
+                    author_email: sanitizedAuthorEmail,
                     content: sanitizedContent,
                     status: 'pending',
                     ip_address: ipAddress,

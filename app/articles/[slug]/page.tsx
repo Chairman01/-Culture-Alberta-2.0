@@ -25,8 +25,6 @@ import { Metadata } from 'next'
 
 import { processArticleContent } from '@/lib/utils/youtube'
 import Script from 'next/script'
-import { CommentForm } from '@/components/comment-form'
-import { CommentList } from '@/components/comment-list'
 import { CommentsSection } from '@/components/comments-section'
 import { ArticleViewCount } from '@/components/article-view-count'
 
@@ -36,6 +34,87 @@ import { ArticleViewCount } from '@/components/article-view-count'
 
 const LEGACY_ARTICLE_REDIRECTS: Record<string, string> = {}
 const useFastDevMode = process.env.NODE_ENV === 'development' && process.env.USE_SUPABASE_IN_DEV !== '1'
+const DEFAULT_ARTICLE_AUTHOR = 'Adam Harrison'
+type ArticleRecommendation = Article & { recommendationReason?: string }
+
+function normalizeArticleAuthor(author?: string | null): string {
+  const trimmedAuthor = typeof author === 'string' ? author.trim() : ''
+  return trimmedAuthor && trimmedAuthor !== 'Culture Alberta' ? trimmedAuthor : DEFAULT_ARTICLE_AUTHOR
+}
+
+function tokenizeForRecommendations(value?: string | null): Set<string> {
+  const stopWords = new Set([
+    'the', 'and', 'for', 'with', 'after', 'before', 'from', 'that', 'this', 'into',
+    'about', 'your', 'you', 'are', 'was', 'were', 'has', 'have', 'will', 'can',
+    'its', 'their', 'our', 'out', 'new', 'next', 'why', 'how', 'what',
+  ])
+
+  return new Set(
+    (value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !stopWords.has(word))
+  )
+}
+
+function getSharedCount(a: Iterable<string>, b: Set<string>): number {
+  let count = 0
+  for (const item of a) {
+    if (b.has(item.toLowerCase())) count += 1
+  }
+  return count
+}
+
+function scoreArticleRecommendation(current: Article, candidate: Article): number {
+  let score = 0
+  const currentCategory = (current.category || '').toLowerCase()
+  const candidateCategory = (candidate.category || '').toLowerCase()
+  const currentLocation = (current.location || '').toLowerCase()
+  const candidateLocation = (candidate.location || '').toLowerCase()
+  const currentCategories = new Set((current.categories || []).map(category => category.toLowerCase()))
+  const candidateCategories = (candidate.categories || []).map(category => category.toLowerCase())
+  const currentTags = new Set((current.tags || []).map(tag => tag.toLowerCase()))
+  const candidateTags = (candidate.tags || []).map(tag => tag.toLowerCase())
+  const currentWords = tokenizeForRecommendations(`${current.title} ${current.excerpt || ''} ${current.description || ''}`)
+  const candidateWords = tokenizeForRecommendations(`${candidate.title} ${candidate.excerpt || ''} ${candidate.description || ''}`)
+
+  if (currentCategory && candidateCategory && currentCategory === candidateCategory) score += 30
+  if (currentLocation && candidateLocation && currentLocation === candidateLocation) score += 24
+  score += getSharedCount(candidateCategories, currentCategories) * 12
+  score += getSharedCount(candidateTags, currentTags) * 10
+  score += getSharedCount(candidateWords, currentWords) * 3
+
+  if (candidate.featuredHome || candidate.featuredEdmonton || candidate.featuredCalgary) score += 5
+  if (candidate.trendingHome || candidate.trendingEdmonton || candidate.trendingCalgary) score += 4
+
+  const dateValue = candidate.date || candidate.createdAt
+  if (dateValue) {
+    const ageDays = (Date.now() - new Date(dateValue).getTime()) / (1000 * 60 * 60 * 24)
+    if (Number.isFinite(ageDays)) {
+      if (ageDays < 14) score += 8
+      else if (ageDays < 45) score += 5
+      else if (ageDays < 120) score += 2
+    }
+  }
+
+  return score
+}
+
+function getRecommendationReason(current: Article, candidate: Article): string {
+  if (current.location && candidate.location && current.location === candidate.location) {
+    return `More from ${candidate.location}`
+  }
+  if (current.category && candidate.category && current.category === candidate.category) {
+    return `More ${candidate.category}`
+  }
+  const sharedTag = (candidate.tags || []).find(tag =>
+    (current.tags || []).some(currentTag => currentTag.toLowerCase() === tag.toLowerCase())
+  )
+  if (sharedTag) return `Also about ${sharedTag}`
+  if (candidate.trendingHome || candidate.trendingEdmonton || candidate.trendingCalgary) return 'Trending now'
+  return 'Recommended next'
+}
 
 // unstable_cache: shared across ALL concurrent serverless invocations on Vercel.
 // Prevents the thundering herd — if 50 users trigger ISR revalidation at the same
@@ -43,7 +122,31 @@ const useFastDevMode = process.env.NODE_ENV === 'development' && process.env.USE
 const getArticleFromDB = unstable_cache(
   async (slug: string): Promise<Article | null> => {
     let article: Article | null = null
-    try { article = await getArticleBySlug(slug) } catch {}
+    try {
+      const { data, error } = await Promise.race([
+        supabase.from('articles').select('*').eq('slug', slug).maybeSingle(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Supabase slug timeout')), 3000))
+      ]) as any
+
+      if (!error && data) {
+        article = {
+          ...data,
+          imageUrl: data.image_url || data.image || data.imageUrl,
+          date: data.created_at || data.date,
+          createdAt: data.created_at || data.createdAt,
+          updatedAt: data.updated_at || data.updatedAt,
+          trendingHome: data.trending_home || data.trendingHome || false,
+          trendingEdmonton: data.trending_edmonton || data.trendingEdmonton || false,
+          trendingCalgary: data.trending_calgary || data.trendingCalgary || false,
+          featuredHome: data.featured_home || data.featuredHome || false,
+          featuredEdmonton: data.featured_edmonton || data.featuredEdmonton || false,
+          featuredCalgary: data.featured_calgary || data.featuredCalgary || false,
+        }
+      }
+    } catch {}
+    if (!article) {
+      try { article = await getArticleBySlug(slug) } catch {}
+    }
     if (!article) {
       try { article = await getArticleById(slug) } catch {}
     }
@@ -55,11 +158,17 @@ const getArticleFromDB = unstable_cache(
 
 // React.cache(): deduplicates within a single request (metadata + page component).
 const getCachedArticle = cache(async (slug: string): Promise<Article | null> => {
-  // 1. Try local JSON first — zero DB calls
+  // Article detail pages should prefer Supabase so admin edits, including author
+  // changes, are reflected instead of stale optimized-fallback data.
+  if (!useFastDevMode) {
+    const dbArticle = await getArticleFromDB(slug)
+    if (dbArticle) return dbArticle
+  }
+
   const fast = await getFastArticleBySlug(slug)
   if (fast) return fast
-  // 2. Fall back to DB, protected by unstable_cache against concurrent spikes
-  return getArticleFromDB(slug)
+
+  return useFastDevMode ? getArticleFromDB(slug) : null
 })
 
 function logArticlePage(event: string, data: Record<string, unknown>) {
@@ -218,7 +327,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: fullTitle,
       description: description,
       keywords: [...(loadedArticle.tags || []), loadedArticle.category, 'Alberta', 'Culture'].filter(Boolean).join(', '),
-      authors: [{ name: loadedArticle.author || 'Culture Alberta' }],
+      authors: [{ name: normalizeArticleAuthor(loadedArticle.author) }],
       robots: {
         index: true,
         follow: true,
@@ -245,7 +354,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         locale: 'en_CA',
         publishedTime: loadedArticle.date,
         modifiedTime: loadedArticle.updatedAt || loadedArticle.date,
-        authors: [loadedArticle.author || 'Culture Alberta'],
+        authors: [normalizeArticleAuthor(loadedArticle.author)],
         section: loadedArticle.category,
         tags: loadedArticle.tags || [],
       },
@@ -262,7 +371,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       },
       // Additional meta tags for article info
       other: {
-        'article:author': loadedArticle.author || 'Culture Alberta',
+        'article:author': normalizeArticleAuthor(loadedArticle.author),
         'article:section': loadedArticle.category || '',
         'article:published_time': loadedArticle.date || '',
         'article:modified_time': loadedArticle.updatedAt || loadedArticle.date || '',
@@ -338,6 +447,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     }
 
     logArticlePage('loaded', { slug, article: summarizeArticleForLog(loadedArticle) })
+    loadedArticle = {
+      ...loadedArticle,
+      author: normalizeArticleAuthor(loadedArticle.author),
+    }
 
     // Redirect numeric ID URLs (e.g. /articles/article-1766206001328-0yq0zr5g5)
     // to the canonical title-based slug (e.g. /articles/attention-edmonton-...)
@@ -422,28 +535,34 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
     // Article loaded successfully
 
-    // Load related articles from local fallback cache - avoids a full Supabase table scan
-    let relatedArticles: Article[] = []
+    // Load related articles from local fallback cache and rank them by reader intent.
+    let relatedArticles: ArticleRecommendation[] = []
     try {
       const allCachedArticles = (await getFastArticles()).filter(a => a.type !== 'event')
 
       if (allCachedArticles.length > 0) {
-        const sameCategory = allCachedArticles
-          .filter(a => a.id !== loadedArticle.id && a.category === loadedArticle.category)
-          .slice(0, 3)
-
-        const otherArticles = allCachedArticles
-          .filter(a => a.id !== loadedArticle.id && a.category !== loadedArticle.category)
-          .slice(0, 3)
-
-        relatedArticles = [...sameCategory, ...otherArticles]
-          .sort(() => Math.random() - 0.5)
+        relatedArticles = allCachedArticles
+          .filter(a => a.id !== loadedArticle.id)
+          .map(article => ({
+            ...article,
+            recommendationReason: getRecommendationReason(loadedArticle, article),
+            recommendationScore: scoreArticleRecommendation(loadedArticle, article),
+          }))
+          .sort((a, b) => {
+            const scoreDiff = ((b as any).recommendationScore || 0) - ((a as any).recommendationScore || 0)
+            if (scoreDiff !== 0) return scoreDiff
+            return new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
+          })
+          .map(({ recommendationScore, ...article }: any) => article)
           .slice(0, 6)
 
-        // Simple fallback if category matching found nothing
         if (relatedArticles.length === 0) {
           relatedArticles = allCachedArticles
             .filter(a => a.id !== loadedArticle.id)
+            .map(article => ({
+              ...article,
+              recommendationReason: getRecommendationReason(loadedArticle, article),
+            }))
             .slice(0, 6)
         }
       }
@@ -699,13 +818,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       variant="fixed"
                     />
 
-                    {/* Comments Section */}
-                    <CommentsSection articleId={loadedArticle.id} />
-
                     {/* More Articles Section */}
                     {relatedArticles.length > 0 && (
                       <div className="mt-16 pt-12 border-t border-gray-200">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">More Articles</h2>
+                        <div className="mb-8 text-center">
+                          <h2 className="text-3xl font-bold text-gray-900">Keep Reading</h2>
+                          <p className="mt-2 text-gray-600">
+                            Picked for readers of this story based on place, topic, and what is fresh right now.
+                          </p>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                           {relatedArticles.slice(0, 6).map((relatedArticle) => (
                             <Link
@@ -740,10 +861,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                                   </div>
                                 </div>
                                 <div className="p-6">
-                                  <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
+                                  <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-3">
                                     <span className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full font-medium text-sm">
                                       {relatedArticle.category}
                                     </span>
+                                    {relatedArticle.recommendationReason && (
+                                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        {relatedArticle.recommendationReason}
+                                      </span>
+                                    )}
                                     {relatedArticle.date && (
                                       <span className="font-medium">{formatDate(relatedArticle.date)}</span>
                                     )}
@@ -763,6 +889,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                         </div>
                       </div>
                     )}
+
+                    {/* Comments Section */}
+                    <CommentsSection articleId={loadedArticle.id} />
                   </div>
 
                   {/* Sidebar */}
@@ -772,7 +901,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
                     {/* Latest Articles */}
                     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                      <h3 className="text-xl font-bold mb-4 text-gray-900">Latest Articles</h3>
+                      <h3 className="text-xl font-bold mb-1 text-gray-900">Recommended Reads</h3>
+                      <p className="text-sm text-gray-500 mb-4">Closest matches to this article</p>
                       <div className="space-y-4">
                         {relatedArticles.slice(0, 3).map((relatedArticle) => (
                           <Link

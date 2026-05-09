@@ -346,6 +346,10 @@ export async function PUT(
       revalidatePath('/lethbridge')
       revalidatePath('/edmonton')
       revalidatePath('/calgary')
+      revalidatePath(`/articles/${data.slug || nextSlug}`)
+      if (existingArticle?.slug && existingArticle.slug !== nextSlug) {
+        revalidatePath(`/articles/${existingArticle.slug}`)
+      }
       console.log('✅ Pages revalidated (including Alberta/city pages)')
     } catch (revalidateError) {
       console.error('❌ Revalidation failed:', revalidateError)

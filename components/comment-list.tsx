@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { CommentItem } from './comment-item'
-import { Loader2, MessageSquare, ChevronDown } from 'lucide-react'
+import { Loader2, MessageSquare } from 'lucide-react'
 
 interface Comment {
     id: string
@@ -16,37 +16,29 @@ interface CommentListProps {
     refreshTrigger?: number
 }
 
-const COMMENTS_PER_PAGE = 10
+const COMMENTS_TO_SHOW = 3
 
 export function CommentList({ articleId, refreshTrigger }: CommentListProps) {
     const [comments, setComments] = useState<Comment[]>([])
     const [isLoading, setIsLoading] = useState(true)
-    const [isLoadingMore, setIsLoadingMore] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [total, setTotal] = useState(0)
-    const [hasMore, setHasMore] = useState(false)
 
-    const fetchComments = async (append = false) => {
+    const fetchComments = async () => {
         try {
-            if (append) {
-                setIsLoadingMore(true)
-            } else {
-                setIsLoading(true)
-                setComments([])
-            }
+            setIsLoading(true)
+            setComments([])
             setError(null)
 
-            const offset = append ? comments.length : 0
             const response = await fetch(
-                `/api/comments?articleId=${articleId}&limit=${COMMENTS_PER_PAGE}&offset=${offset}`
+                `/api/comments?articleId=${articleId}&limit=${COMMENTS_TO_SHOW}&offset=0`
             )
             const data = await response.json()
 
             if (response.ok) {
                 const newComments = data.comments || []
-                setComments(prev => append ? [...prev, ...newComments] : newComments)
+                setComments(newComments)
                 setTotal(data.total || 0)
-                setHasMore((offset + newComments.length) < (data.total || 0))
             } else {
                 setError(data.error || 'Failed to load comments')
             }
@@ -55,12 +47,7 @@ export function CommentList({ articleId, refreshTrigger }: CommentListProps) {
             setError('Failed to load comments')
         } finally {
             setIsLoading(false)
-            setIsLoadingMore(false)
         }
-    }
-
-    const handleLoadMore = () => {
-        fetchComments(true)
     }
 
     useEffect(() => {
@@ -135,30 +122,10 @@ export function CommentList({ articleId, refreshTrigger }: CommentListProps) {
                 ))}
             </div>
 
-            {/* Load More Button */}
-            {hasMore && (
-                <div className="flex flex-col items-center gap-3 pt-4">
-                    <p className="text-sm text-gray-500">
-                        Showing {comments.length} of {total} comments
-                    </p>
-                    <button
-                        onClick={handleLoadMore}
-                        disabled={isLoadingMore}
-                        className="group flex items-center gap-2 px-6 py-3 bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-400 text-blue-600 font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
-                    >
-                        {isLoadingMore ? (
-                            <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                Loading...
-                            </>
-                        ) : (
-                            <>
-                                <ChevronDown className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" />
-                                Load More Comments
-                            </>
-                        )}
-                    </button>
-                </div>
+            {total > COMMENTS_TO_SHOW && (
+                <p className="text-sm text-gray-500 text-center pt-2">
+                    Showing the latest {COMMENTS_TO_SHOW} comments
+                </p>
             )}
         </div>
     )

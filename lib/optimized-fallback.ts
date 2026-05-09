@@ -38,6 +38,7 @@ interface OptimizedArticle {
 }
 
 const OPTIMIZED_FALLBACK_PATH = path.join(process.cwd(), 'optimized-fallback.json')
+const DEFAULT_ARTICLE_AUTHOR = 'Adam Harrison'
 // NOTE: We do NOT truncate excerpts here - CSS line-clamp handles visual truncation on listings
 // Article detail pages need full excerpts for proper display and SEO
 const MAX_CONTENT_LENGTH = 1000000 // Increased limit to allow full articles (1MB)
@@ -59,7 +60,7 @@ function optimizeArticle(article: Article): OptimizedArticle {
     createdAt: article.createdAt,
     date: article.date || article.createdAt || new Date().toISOString(),
     type: article.type || 'article',
-    author: article.author || 'Culture Alberta',
+    author: article.author || DEFAULT_ARTICLE_AUTHOR,
     imageUrl: article.imageUrl || (article as any).image_url || (article as any).image || '/placeholder-image.jpg',
     trendingHome: article.trendingHome || false,
     trendingEdmonton: article.trendingEdmonton || false,
@@ -86,6 +87,7 @@ export async function updateOptimizedFallback(articles: Article[]): Promise<void
     console.log(`🔄 Updating optimized fallback with ${articles.length} articles...`)
 
     let existingContentById = new Map<string, string>()
+    let existingAuthorById = new Map<string, string>()
     if (fs.existsSync(OPTIMIZED_FALLBACK_PATH)) {
       try {
         const existingArticles = JSON.parse(fs.readFileSync(OPTIMIZED_FALLBACK_PATH, 'utf-8'))
@@ -94,6 +96,11 @@ export async function updateOptimizedFallback(articles: Article[]): Promise<void
             existingArticles
               .filter((article: any) => article?.id && typeof article.content === 'string' && article.content.trim().length > 0)
               .map((article: any) => [article.id, article.content])
+          )
+          existingAuthorById = new Map(
+            existingArticles
+              .filter((article: any) => article?.id && typeof article.author === 'string' && article.author.trim().length > 0)
+              .map((article: any) => [article.id, article.author])
           )
         }
       } catch (readError) {
@@ -108,8 +115,11 @@ export async function updateOptimizedFallback(articles: Article[]): Promise<void
       const content = typeof article.content === 'string' && article.content.trim().length > 0
         ? article.content
         : existingContent || ''
+      const author = typeof article.author === 'string' && article.author.trim().length > 0
+        ? article.author
+        : existingAuthorById.get(article.id) || DEFAULT_ARTICLE_AUTHOR
 
-      return optimizeArticle({ ...article, content })
+      return optimizeArticle({ ...article, content, author })
     })
 
     // Write optimized file

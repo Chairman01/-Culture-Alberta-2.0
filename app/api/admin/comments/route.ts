@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { requireAdmin } from '@/lib/admin-auth'
 
 // GET: Fetch all comments (admin only)
 export async function GET(request: NextRequest) {
+    const auth = requireAdmin(request)
+    if (!auth.ok) return auth.response
+
     try {
         const searchParams = request.nextUrl.searchParams
         const status = searchParams.get('status') // 'pending', 'approved', 'rejected', or null for all
@@ -49,6 +53,9 @@ export async function GET(request: NextRequest) {
 
 // PATCH: Update comment status (approve/reject)
 export async function PATCH(request: NextRequest) {
+    const auth = requireAdmin(request)
+    if (!auth.ok) return auth.response
+
     try {
         const body = await request.json()
         const { commentId, status } = body
@@ -100,6 +107,9 @@ export async function PATCH(request: NextRequest) {
 
 // DELETE: Delete a comment
 export async function DELETE(request: NextRequest) {
+    const auth = requireAdmin(request)
+    if (!auth.ok) return auth.response
+
     try {
         const searchParams = request.nextUrl.searchParams
         const commentId = searchParams.get('commentId')

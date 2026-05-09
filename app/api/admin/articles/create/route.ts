@@ -159,6 +159,7 @@ export async function POST(request: NextRequest) {
     try {
       revalidatePath('/', 'layout')
       revalidatePath('/articles')
+      revalidatePath(`/articles/${data.slug || articleSlug}`)
       console.log('✅ Pages revalidated')
     } catch (revalidateError) {
       console.error('❌ Revalidation failed:', revalidateError)

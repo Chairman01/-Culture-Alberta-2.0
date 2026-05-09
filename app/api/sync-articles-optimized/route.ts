@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       category: article.category || 'General',
       categories: article.categories || [article.category || 'General'],
       location: article.location || 'Alberta',
-      author: article.author || 'Culture Alberta',
+      author: article.author || 'Adam Harrison',
       tags: article.tags || [],
       type: article.type || 'article',
       status: article.status || 'published',
