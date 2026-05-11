@@ -41,6 +41,11 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      {
+        source: '/ads.txt',
+        destination: 'https://adstxt.mediavine.com/sites/culturealberta/ads.txt',
+        statusCode: 301,
+      },
       // Fix domain redirect loop - force www as primary
       {
         source: '/:path*',
@@ -217,4 +222,4 @@ const nextConfig = {
   },
 }
 
-export default nextConfig 
+export default nextConfig
