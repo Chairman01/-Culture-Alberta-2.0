@@ -1,6 +1,5 @@
 import { Article } from '@/lib/types'
 import { FAQItem } from '@/components/seo/faq-schema'
-import { getAbsoluteImageUrl, getSocialPreviewImageUrl } from '@/lib/social-image'
 
 /**
  * SEO Schema Utility Functions
@@ -21,10 +20,7 @@ export function generateArticleSchema(
         "@type": "Article",
         "headline": article.title,
         "description": article.excerpt || article.content?.substring(0, 160),
-        "image": [
-            getSocialPreviewImageUrl(article.imageUrl, baseUrl),
-            getAbsoluteImageUrl(article.imageUrl, baseUrl)
-        ],
+        "image": getArticleImageUrl(article.imageUrl, baseUrl),
         "datePublished": article.date,
         "dateModified": article.updatedAt || article.date,
         "author": {
@@ -79,10 +75,7 @@ export function generateEventSchema(
         "@type": "Event",
         "name": article.title,
         "description": article.excerpt || article.content?.substring(0, 160),
-        "image": [
-            getSocialPreviewImageUrl(article.imageUrl, baseUrl),
-            getAbsoluteImageUrl(article.imageUrl, baseUrl)
-        ],
+        "image": getArticleImageUrl(article.imageUrl, baseUrl),
         "startDate": eventDate,
         "eventStatus": "https://schema.org/EventScheduled",
         "eventAttendanceMode": location
@@ -232,3 +225,17 @@ function createSlug(title: string): string {
         .replace(/^-+|-+$/g, '')
 }
 
+function getArticleImageUrl(imageUrl: string | undefined, baseUrl: string): string {
+    const defaultImage = `${baseUrl}/images/culture-alberta-og.jpg`
+
+    if (!imageUrl) return defaultImage
+    if (imageUrl.startsWith('data:image')) return defaultImage
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl
+    }
+    if (imageUrl.startsWith('/')) {
+        return `${baseUrl}${imageUrl}`
+    }
+
+    return `${baseUrl}/${imageUrl}`
+}

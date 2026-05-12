@@ -1,5 +1,4 @@
 import { Article } from '@/lib/types/article'
-import { getAbsoluteImageUrl, getSocialPreviewImageUrl } from '@/lib/social-image'
 
 interface ArticleSchemaProps {
   article: Article
@@ -7,15 +6,12 @@ interface ArticleSchemaProps {
 }
 
 export function ArticleSchema({ article, baseUrl = 'https://www.culturealberta.com' }: ArticleSchemaProps) {
-  const sourceImage = getAbsoluteImageUrl(article.imageUrl, baseUrl)
-  const socialImage = getSocialPreviewImageUrl(article.imageUrl, baseUrl)
-
   const schema = {
     "@context": "https://schema.org",
     "@type": "Article",
     "headline": article.title,
     "description": article.excerpt || article.content?.substring(0, 160),
-    "image": [socialImage, sourceImage],
+    "image": article.imageUrl || `${baseUrl}/images/placeholder.jpg`,
     "author": {
       "@type": "Organization",
       "name": "Culture Alberta",

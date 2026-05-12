@@ -15,7 +15,6 @@ import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { ArticleStructuredData, BreadcrumbStructuredData } from '@/components/seo/structured-data'
 import { ArticleEmbedActivator } from '@/components/article-embed-activator'
-import { getAbsoluteImageUrl, getSocialPreviewImageUrl } from '@/lib/social-image'
 
 // ISR: cache rendered pages for 10 min, revalidate in background.
 // Longer window = fewer Supabase revalidations during traffic spikes.
@@ -268,8 +267,35 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const canonicalSlug = loadedArticle.slug || createSlug(loadedArticle.title)
     const fullUrl = `https://www.culturealberta.com/articles/${canonicalSlug}`
 
-    const absoluteImageUrl = getAbsoluteImageUrl(loadedArticle.imageUrl)
-    const socialImageUrl = getSocialPreviewImageUrl(loadedArticle.imageUrl)
+    // Handle image URL properly - use article image if available, otherwise use default
+    let articleImage = loadedArticle.imageUrl || '/images/culture-alberta-og.jpg'
+
+    // CRITICAL: Reddit and social media platforms cannot use base64 images
+    // Always use a publicly accessible URL for Open Graph images
+    const defaultOgImage = 'https://www.culturealberta.com/images/culture-alberta-og.jpg'
+
+    // Ensure image URL is absolute and publicly accessible
+    let absoluteImageUrl = defaultOgImage
+
+    if (articleImage) {
+      // Skip base64 images - they won't work for social sharing
+      if (articleImage.startsWith('data:image')) {
+        console.warn('Article image is base64, using default OG image for social sharing')
+        absoluteImageUrl = defaultOgImage
+      }
+      // Use external URLs as-is if they're already absolute (including Supabase)
+      else if (articleImage.startsWith('http://') || articleImage.startsWith('https://')) {
+        absoluteImageUrl = articleImage
+      }
+      // Convert relative URLs to absolute
+      else if (articleImage.startsWith('/')) {
+        absoluteImageUrl = `https://www.culturealberta.com${articleImage}`
+      }
+      // Handle other relative paths
+      else {
+        absoluteImageUrl = `https://www.culturealberta.com/${articleImage}`
+      }
+    }
 
     // Detect image MIME type from URL extension
     const getImageMimeType = (url: string): string => {
@@ -285,16 +311,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       }
     }
 
-    const imageMimeType = getImageMimeType(socialImageUrl)
+    const imageMimeType = getImageMimeType(absoluteImageUrl)
 
     // Debug logging for metadata
     console.log('Article Metadata Debug:', {
       title: fullTitle,
       description: description,
-      image: socialImageUrl,
+      image: absoluteImageUrl,
       imageMimeType: imageMimeType,
       url: fullUrl,
-      sourceImage: absoluteImageUrl,
       originalImage: loadedArticle.imageUrl
     })
 
@@ -321,9 +346,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         url: fullUrl,
         images: [
           {
-            url: socialImageUrl,
-            width: 1200,
-            height: 630,
+            url: absoluteImageUrl,
             alt: loadedArticle.title,
           }
         ],
@@ -339,7 +362,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         card: 'summary_large_image',
         title: fullTitle,
         description: description,
-        images: [socialImageUrl],
+        images: [absoluteImageUrl],
         site: '@culturealberta',
         creator: '@culturealberta',
       },
