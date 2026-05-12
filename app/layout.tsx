@@ -119,10 +119,6 @@ export default function RootLayout({
             gtag('config', 'G-48EV1DX840');
           `}
         </Script>
-        {/* Mediavine Grow */}
-        <Script id="mediavine-grow" strategy="afterInteractive">
-          {`!(function(){window.growMe||((window.growMe=function(e){window.growMe._.push(e);}),(window.growMe._=[]));var e=document.createElement("script");(e.type="text/javascript"),(e.src="https://faves.grow.me/main.js"),(e.defer=!0),e.setAttribute("data-grow-faves-site-id","U2l0ZTpkMjNmYTliOS0wYTRiLTQ4NmItYmE4My05NmJlZjFhZGFkODM=");var t=document.getElementsByTagName("script")[0];t.parentNode.insertBefore(e,t);})();`}
-        </Script>
         {/* Microsoft Clarity */}
         <Script id="microsoft-clarity" strategy="afterInteractive">
           {`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","vwuiasrfc7");`}
