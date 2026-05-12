@@ -1,31 +1,10 @@
 import { Article } from '@/lib/types'
 import { createSlug } from '@/lib/utils/slug'
+import { getAbsoluteImageUrl, getSocialPreviewImageUrl } from '@/lib/social-image'
 
 interface StructuredDataProps {
   article: Article
   baseUrl?: string
-}
-
-// Helper to get proper image URL
-function getArticleImageUrl(imageUrl: string | undefined, baseUrl: string): string {
-  const defaultImage = `${baseUrl}/images/culture-alberta-og.jpg`
-
-  if (!imageUrl) return defaultImage
-
-  // Skip base64 images
-  if (imageUrl.startsWith('data:image')) return defaultImage
-
-  // Already absolute URL (Supabase, etc.)
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-    return imageUrl
-  }
-
-  // Relative URL
-  if (imageUrl.startsWith('/')) {
-    return `${baseUrl}${imageUrl}`
-  }
-
-  return `${baseUrl}/${imageUrl}`
 }
 
 // Categories that qualify as news journalism
@@ -43,13 +22,15 @@ export function ArticleStructuredData({ article, baseUrl = 'https://www.culturea
   // Generate slug from title for consistent URLs
   const articleSlug = article.slug || createSlug(article.title)
   const schemaType = getArticleSchemaType(article.category, article.tags)
+  const sourceImage = getAbsoluteImageUrl(article.imageUrl, baseUrl)
+  const socialImage = getSocialPreviewImageUrl(article.imageUrl, baseUrl)
 
   const structuredData = {
     "@context": "https://schema.org",
     "@type": schemaType,
     "headline": article.title,
     "description": article.excerpt || article.content?.substring(0, 160) || `Discover ${article.title} in Alberta`,
-    "image": getArticleImageUrl(article.imageUrl, baseUrl),
+    "image": [socialImage, sourceImage],
     "author": article.author && article.author !== 'Culture Alberta'
       ? { "@type": "Person", "name": article.author }
       : { "@type": "Organization", "name": "Culture Alberta", "url": baseUrl },

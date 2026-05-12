@@ -189,13 +189,13 @@ export default async function CalgaryPage() {
                 {featuredArticle && (
                   <div className="w-full">
                     <Link href={getArticleUrl(featuredArticle)} className="group block">
-                      <div className="aspect-[16/9] rounded-lg overflow-hidden bg-gray-200">
+                      <div className="aspect-video rounded-lg overflow-hidden bg-gray-50">
                         <Image
                           src={featuredArticle.imageUrl || "/placeholder.svg"}
                           alt={featuredArticle.title}
                           width={800}
                           height={500}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-contain object-center"
                         />
                       </div>
                       <div className="mt-3">
@@ -361,8 +361,8 @@ export default async function CalgaryPage() {
                     {articles.slice(0, 6).map((article) => (
                       <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
-                          <div className="aspect-[4/3] w-full bg-gray-200">
-                            <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                          <div className="aspect-video w-full bg-gray-50">
+                            <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-contain object-center" loading="lazy" />
                           </div>
                         </div>
                         <div className="mt-2 space-y-1">
@@ -389,8 +389,8 @@ export default async function CalgaryPage() {
                     {topStories.slice(0, 6).map((article) => (
                       <Link key={article.id} href={getArticleUrl(article)} className="group block">
                         <div className="overflow-hidden rounded-lg">
-                          <div className="aspect-[4/3] w-full bg-gray-200">
-                            <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                          <div className="aspect-video w-full bg-gray-50">
+                            <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-contain object-center" loading="lazy" />
                           </div>
                         </div>
                         <div className="mt-2 space-y-1">
@@ -421,8 +421,8 @@ export default async function CalgaryPage() {
                           {filtered.map((article) => (
                             <Link key={article.id} href={getArticleUrl(article)} className="group block">
                               <div className="overflow-hidden rounded-lg">
-                                <div className="aspect-[4/3] w-full bg-gray-200">
-                                  <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                                <div className="aspect-video w-full bg-gray-50">
+                                  <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-contain object-center" loading="lazy" />
                                 </div>
                               </div>
                               <div className="mt-2 space-y-1">
@@ -458,8 +458,8 @@ export default async function CalgaryPage() {
                           {filtered.map((article) => (
                             <Link key={article.id} href={getArticleUrl(article)} className="group block">
                               <div className="overflow-hidden rounded-lg">
-                                <div className="aspect-[4/3] w-full bg-gray-200">
-                                  <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                                <div className="aspect-video w-full bg-gray-50">
+                                  <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-contain object-center" loading="lazy" />
                                 </div>
                               </div>
                               <div className="mt-2 space-y-1">
@@ -495,8 +495,8 @@ export default async function CalgaryPage() {
                         {filtered.map((article) => (
                           <Link key={article.id} href={getArticleUrl(article)} className="group block">
                             <div className="overflow-hidden rounded-lg">
-                              <div className="aspect-[4/3] w-full bg-gray-200">
-                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                              <div className="aspect-video w-full bg-gray-50">
+                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-contain object-center" loading="lazy" />
                               </div>
                             </div>
                             <div className="mt-2 space-y-1">
@@ -528,8 +528,8 @@ export default async function CalgaryPage() {
                         {filtered.map((article) => (
                           <Link key={article.id} href={getArticleUrl(article)} className="group block">
                             <div className="overflow-hidden rounded-lg">
-                              <div className="aspect-[4/3] w-full bg-gray-200">
-                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                              <div className="aspect-video w-full bg-gray-50">
+                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-contain object-center" loading="lazy" />
                               </div>
                             </div>
                             <div className="mt-2 space-y-1">
@@ -559,8 +559,8 @@ export default async function CalgaryPage() {
                         {filtered.map((article) => (
                           <Link key={article.id} href={getArticleUrl(article)} className="group block">
                             <div className="overflow-hidden rounded-lg">
-                              <div className="aspect-[4/3] w-full bg-gray-200">
-                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                              <div className="aspect-video w-full bg-gray-50">
+                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-contain object-center" loading="lazy" />
                               </div>
                             </div>
                             <div className="mt-2 space-y-1">
@@ -590,8 +590,8 @@ export default async function CalgaryPage() {
                         {filtered.map((article) => (
                           <Link key={article.id} href={getArticleUrl(article)} className="group block">
                             <div className="overflow-hidden rounded-lg">
-                              <div className="aspect-[4/3] w-full bg-gray-200">
-                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-cover" loading="lazy" />
+                              <div className="aspect-video w-full bg-gray-50">
+                                <Image src={article.imageUrl || "/placeholder.svg"} alt={article.title} width={400} height={300} className="w-full h-full object-contain object-center" loading="lazy" />
                               </div>
                             </div>
                             <div className="mt-2 space-y-1">
@@ -629,7 +629,7 @@ export default async function CalgaryPage() {
                           src={article.imageUrl || "/placeholder.svg"}
                           alt={article.title}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="object-contain object-center"
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                           loading="lazy"
                         />
@@ -678,7 +678,7 @@ export default async function CalgaryPage() {
                           src={article.imageUrl || "/placeholder.svg"}
                           alt={article.title}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="object-contain object-center"
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                           loading="lazy"
                         />

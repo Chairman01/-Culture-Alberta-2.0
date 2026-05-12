@@ -84,13 +84,13 @@ export default async function CalgaryAllArticlesPage() {
                   {articles.map((article) => (
                     <Link key={article.id} href={getArticleUrl(article)} className="group block">
                       <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
-                        <div className="aspect-[4/3] w-full bg-gray-200 relative">
+                        <div className="aspect-video w-full bg-gray-50 relative">
                           <Image
                             src={article.imageUrl || "/placeholder.svg"}
                             alt={article.title}
                             width={400}
                             height={300}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            className="w-full h-full object-contain object-center"
                           />
                         </div>
                         <div className="p-4">

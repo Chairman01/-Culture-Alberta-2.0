@@ -1,4 +1,5 @@
 import { Article } from '@/lib/types'
+import { getSocialPreviewImageUrl } from '@/lib/social-image'
 
 /**
  * Metadata Generation Utilities
@@ -84,7 +85,7 @@ export function generateOpenGraphMetadata(
     baseUrl: string = 'https://www.culturealberta.com'
 ) {
     const articleSlug = article.slug || createSlug(article.title)
-    const imageUrl = getArticleImageUrl(article.imageUrl, baseUrl)
+    const imageUrl = getSocialPreviewImageUrl(article.imageUrl, baseUrl)
 
     return {
         title: article.title,
@@ -115,7 +116,7 @@ export function generateTwitterMetadata(
     article: Article,
     baseUrl: string = 'https://www.culturealberta.com'
 ) {
-    const imageUrl = getArticleImageUrl(article.imageUrl, baseUrl)
+    const imageUrl = getSocialPreviewImageUrl(article.imageUrl, baseUrl)
 
     return {
         card: 'summary_large_image',
@@ -203,21 +204,6 @@ function createSlug(title: string): string {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '')
-}
-
-function getArticleImageUrl(imageUrl: string | undefined, baseUrl: string): string {
-    const defaultImage = `${baseUrl}/images/culture-alberta-og.jpg`
-
-    if (!imageUrl) return defaultImage
-    if (imageUrl.startsWith('data:image')) return defaultImage
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-        return imageUrl
-    }
-    if (imageUrl.startsWith('/')) {
-        return `${baseUrl}${imageUrl}`
-    }
-
-    return `${baseUrl}/${imageUrl}`
 }
 
 // Common English stop words to exclude from keywords

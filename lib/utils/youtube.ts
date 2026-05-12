@@ -62,8 +62,7 @@ export function processYouTubeAnchors(content: string): string {
 
 /**
  * Make inline article images responsive and properly displayed.
- * Removes forced aspect-ratio (which distorts portrait images) and instead
- * applies natural sizing: full-width, auto height, centered.
+ * Adds fallback dimensions so the browser can reserve space before images load.
  */
 function fixImageDimensions(html: string): string {
   if (!html) return html
@@ -73,15 +72,13 @@ function fixImageDimensions(html: string): string {
     // If we've already processed this in this pass, skip
     if (attrs.includes('data-img-fixed="true"')) return match
 
-    // 1. Strip width and height attributes from the tag itself
-    let cleanedAttrs = attrs
-      .replace(/\bwidth\s*=\s*["']\d*[^"']*["']/gi, '')
-      .replace(/\bheight\s*=\s*["']\d*[^"']*["']/gi, '')
-      .trim()
+    const hasWidth = /\bwidth\s*=/i.test(attrs)
+    const hasHeight = /\bheight\s*=/i.test(attrs)
+    let cleanedAttrs = attrs.trim()
 
     // 2. Handle style attribute
     const styleMatch = cleanedAttrs.match(/style\s*=\s*["']([^"']*)["']/i)
-    const baseStyle = 'max-width:100%; height:auto !important; aspect-ratio:auto !important; display:block; margin:1.5rem auto; border-radius:8px;'
+    const baseStyle = 'max-width:100%; height:auto; display:block; margin:1.5rem auto; border-radius:8px;'
 
     if (styleMatch) {
       // Strip problematic properties from existing style
@@ -96,6 +93,9 @@ function fixImageDimensions(html: string): string {
     } else {
       cleanedAttrs += ` style="${baseStyle}"`
     }
+
+    if (!hasWidth) cleanedAttrs += ' width="1600"'
+    if (!hasHeight) cleanedAttrs += ' height="900"'
 
     // 3. Add marker and return
     return `<img ${cleanedAttrs} data-img-fixed="true">`
@@ -179,7 +179,7 @@ export function processInstagramAnchors(content: string): string {
     const permalink = `https://www.instagram.com/${type}/${postCode}/`
 
     return `
-      <div class="instagram-embed my-6" style="max-width: 540px; margin: 0 auto;">
+      <div class="instagram-embed my-6" style="max-width: 540px; min-height: 640px; margin: 0 auto;">
         <blockquote
           class="instagram-media"
           data-instgrm-captioned
@@ -205,7 +205,7 @@ export function processInstagramLinks(content: string): string {
     const permalink = `https://www.instagram.com/${type}/${postCode}/`
 
     return `
-      <div class="instagram-embed my-6" style="max-width: 540px; margin: 0 auto;">
+      <div class="instagram-embed my-6" style="max-width: 540px; min-height: 640px; margin: 0 auto;">
         <blockquote
           class="instagram-media"
           data-instgrm-captioned
