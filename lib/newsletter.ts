@@ -28,12 +28,15 @@ export interface CampaignStat {
 
 export interface SubscriberEngagement {
   email: string
+  total_delivered: number
   total_opens: number
   total_clicks: number
+  last_delivered?: string
   last_opened?: string
   last_clicked?: string
   last_activity?: string
   last_campaign?: string
+  last_status?: EmailEvent['event_type']
   bounced: boolean
   complained: boolean
   delayed: boolean
@@ -392,6 +395,7 @@ export function computeSubscriberEngagement(events: EmailEvent[]): Record<string
     if (!engagement[ev.email]) {
       engagement[ev.email] = {
         email: ev.email,
+        total_delivered: 0,
         total_opens: 0,
         total_clicks: 0,
         bounced: false,
@@ -404,6 +408,11 @@ export function computeSubscriberEngagement(events: EmailEvent[]): Record<string
     if (ev.created_at && (!e.last_activity || ev.created_at > e.last_activity)) {
       e.last_activity = ev.created_at
       e.last_campaign = ev.subject
+      e.last_status = ev.event_type
+    }
+    if (ev.event_type === 'delivered') {
+      e.total_delivered++
+      if (!e.last_delivered || (ev.created_at && ev.created_at > e.last_delivered)) e.last_delivered = ev.created_at
     }
     if (ev.event_type === 'opened') {
       e.total_opens++

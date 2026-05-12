@@ -178,9 +178,12 @@ export default function NewsletterAdmin() {
   const [campaigns, setCampaigns] = useState<CampaignStat[]>([])
   const [engagement, setEngagement] = useState<Record<string, SubscriberEngagement>>({})
   const [selectedCampaignSubject, setSelectedCampaignSubject] = useState<string | null>(null)
-  const [campaignDetailFilter, setCampaignDetailFilter] = useState<'all' | 'opened' | 'clicked' | 'bounced' | 'complained' | 'delivery_delayed' | 'failed'>('all')
+  const [campaignDetailFilter, setCampaignDetailFilter] = useState<'all' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained' | 'delivery_delayed' | 'failed'>('all')
+  const [campaignSort, setCampaignSort] = useState<'recent' | 'open_rate' | 'click_rate' | 'bounced'>('recent')
+  const [campaignRecipientSort, setCampaignRecipientSort] = useState<'action' | 'status' | 'recent' | 'email'>('status')
   const [cityFilter, setCityFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'active' | 'unsubscribed'>('active')
+  const [subscriberSort, setSubscriberSort] = useState<'needs_review' | 'newest' | 'oldest' | 'opens' | 'clicks' | 'email'>('needs_review')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'subscribers' | 'campaigns' | 'analytics'>('subscribers')
@@ -652,6 +655,41 @@ export default function NewsletterAdmin() {
     return null
   }
 
+  const latestCampaignForCity = (city: string) => {
+    if (!CITY_CONFIG[city as CityKey]) return null
+    return campaigns.find(c => getCityFromSubject(c.subject) === city) || null
+  }
+
+  const getSubscriberCampaignStatus = (sub: NewsletterSubscription): { label: string; className: string; rank: number } => {
+    const eng = engagement[sub.email]
+    const latest = latestCampaignForCity(sub.city)
+
+    if (eng?.bounced || eng?.failed || eng?.complained) {
+      return { label: eng.complained ? 'Spam complaint - remove' : eng.failed ? 'Failed - remove' : 'Bounced - remove', className: 'bg-red-50 text-red-700 border-red-200', rank: 0 }
+    }
+    if (eng?.total_clicks > 0) return { label: 'Clicked - keep', className: 'bg-purple-50 text-purple-700 border-purple-200', rank: 5 }
+    if (eng?.total_opens > 0) return { label: 'Opened - keep', className: 'bg-blue-50 text-blue-700 border-blue-200', rank: 4 }
+    if (eng?.total_delivered > 0) return { label: 'Delivered, no open yet', className: 'bg-green-50 text-green-700 border-green-200', rank: 2 }
+    if (eng?.delayed) return { label: 'Delivery delayed', className: 'bg-amber-50 text-amber-700 border-amber-200', rank: 1 }
+    if (latest && sub.created_at && sub.created_at > latest.sent_at) {
+      return { label: 'New since last send', className: 'bg-gray-50 text-gray-600 border-gray-200', rank: 6 }
+    }
+    return { label: 'No campaign data yet', className: 'bg-gray-50 text-gray-600 border-gray-200', rank: 3 }
+  }
+
+  const showSubscribers = (status: 'active' | 'unsubscribed') => {
+    setActiveTab('subscribers')
+    setStatusFilter(status)
+    window.setTimeout(() => document.getElementById('subscriber-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
+
+  const sortedCampaigns = [...campaigns].sort((a, b) => {
+    if (campaignSort === 'open_rate') return b.open_rate - a.open_rate
+    if (campaignSort === 'click_rate') return b.click_rate - a.click_rate
+    if (campaignSort === 'bounced') return b.bounced - a.bounced
+    return b.sent_at.localeCompare(a.sent_at)
+  })
+
   const cityAnalytics = (Object.keys(CITY_CONFIG) as CityKey[]).map(city => {
     const cityCampaigns = campaigns.filter(c => getCityFromSubject(c.subject) === city)
     const totalDelivered = cityCampaigns.reduce((s, c) => s + c.delivered, 0)
@@ -676,13 +714,20 @@ export default function NewsletterAdmin() {
     : null
   const selectedCampaignRecipients = (() => {
     if (!selectedCampaignDetails) return []
-    if (campaignDetailFilter === 'opened') return selectedCampaignDetails.opened
-    if (campaignDetailFilter === 'clicked') return selectedCampaignDetails.clicked
-    if (campaignDetailFilter === 'bounced') return selectedCampaignDetails.bounced
-    if (campaignDetailFilter === 'complained') return selectedCampaignDetails.complained
-    if (campaignDetailFilter === 'delivery_delayed') return selectedCampaignDetails.delayed
-    if (campaignDetailFilter === 'failed') return selectedCampaignDetails.failed
-    return selectedCampaignDetails.recipients
+    let recipients = selectedCampaignDetails.recipients
+    if (campaignDetailFilter === 'delivered') recipients = selectedCampaignDetails.recipients.filter(r => r.delivered)
+    if (campaignDetailFilter === 'opened') recipients = selectedCampaignDetails.opened
+    if (campaignDetailFilter === 'clicked') recipients = selectedCampaignDetails.clicked
+    if (campaignDetailFilter === 'bounced') recipients = selectedCampaignDetails.bounced
+    if (campaignDetailFilter === 'complained') recipients = selectedCampaignDetails.complained
+    if (campaignDetailFilter === 'delivery_delayed') recipients = selectedCampaignDetails.delayed
+    if (campaignDetailFilter === 'failed') recipients = selectedCampaignDetails.failed
+    return recipients.sort((a, b) => {
+      if (campaignRecipientSort === 'email') return a.email.localeCompare(b.email)
+      if (campaignRecipientSort === 'recent') return (b.last_event_at || '').localeCompare(a.last_event_at || '')
+      const rank = (r: CampaignRecipient) => r.bounced || r.failed || r.complained ? 0 : r.clicked ? 5 : r.opened ? 4 : r.delivered ? 2 : r.delayed ? 1 : 3
+      return rank(a) - rank(b)
+    })
   })()
 
   // Returns bounced subscribers for a given city, with their current status
@@ -1275,7 +1320,7 @@ export default function NewsletterAdmin() {
         {/* ── STATS ─────────────────────────────────────────────────────────── */}
         {stats && (
           <div className="mb-6 space-y-3">
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-7">
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -1288,7 +1333,7 @@ export default function NewsletterAdmin() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="cursor-pointer hover:border-green-300 hover:bg-green-50/30 transition-colors" onClick={() => showSubscribers('active')}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                     <Users className="h-4 w-4" /> Active
@@ -1296,7 +1341,21 @@ export default function NewsletterAdmin() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Subscribed</p>
+                  <p className="text-xs text-muted-foreground mt-1">Included in sends</p>
+                  <p className="text-[10px] text-green-600 mt-1">Click to review</p>
+                </CardContent>
+              </Card>
+
+              <Card className="cursor-pointer hover:border-gray-300 hover:bg-gray-50 transition-colors" onClick={() => showSubscribers('unsubscribed')}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <X className="h-4 w-4" /> Unsubscribed
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-gray-700">{stats.unsubscribed}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Not sent emails</p>
+                  <p className="text-[10px] text-gray-500 mt-1">Click to review</p>
                 </CardContent>
               </Card>
 
@@ -1407,27 +1466,45 @@ export default function NewsletterAdmin() {
                       ))}
                     </div>
                   </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Sort</label>
+                    <select
+                      value={subscriberSort}
+                      onChange={e => setSubscriberSort(e.target.value as typeof subscriberSort)}
+                      className="h-8 rounded-md border bg-white px-2 text-xs"
+                    >
+                      <option value="needs_review">Needs review first</option>
+                      <option value="newest">Newest subscribers</option>
+                      <option value="oldest">Oldest subscribers</option>
+                      <option value="opens">Most opens</option>
+                      <option value="clicks">Most clicks</option>
+                      <option value="email">Email A-Z</option>
+                    </select>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Subscriber list */}
-            <Card>
+            <Card id="subscriber-list">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>{cityFilter === 'all' ? 'All Subscriptions' : `${CITY_FILTERS.find(c=>c.value===cityFilter)?.label} Subscriptions`}</CardTitle>
                     <CardDescription>
                       {subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && s.status===statusFilter).length} matching
+                      {statusFilter === 'active'
+                        ? ' - active means they are included in future newsletter sends.'
+                        : ' - unsubscribed means they are no longer included in newsletter sends.'}
                     </CardDescription>
                   </div>
                   {(() => {
-                    const activeFiltered = subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && s.status==='active')
-                    const copyText = activeFiltered.map(s => `${s.email} | ${getCityLabel(s.city)}`).join('\n')
-                    return activeFiltered.length > 0 ? (
+                    const copyFiltered = subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && s.status===statusFilter)
+                    const copyText = copyFiltered.map(s => `${s.email} | ${getCityLabel(s.city)}`).join('\n')
+                    return copyFiltered.length > 0 ? (
                       <Button variant="outline" size="sm" onClick={() => copyToClipboard(copyText, 'bulk')} className="flex items-center gap-2">
                         {copiedId === 'bulk' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                        Copy {activeFiltered.length} emails
+                        Copy {copyFiltered.length} emails
                       </Button>
                     ) : null
                   })()}
@@ -1435,13 +1512,31 @@ export default function NewsletterAdmin() {
               </CardHeader>
               <CardContent>
                 {(() => {
-                  const filtered = subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && s.status===statusFilter)
-                  const activeFiltered = filtered.filter(s => s.status==='active')
+                  const filtered = subscriptions
+                    .filter(s => (cityFilter==='all'||s.city===cityFilter) && s.status===statusFilter)
+                    .sort((a, b) => {
+                      const aEng = engagement[a.email]
+                      const bEng = engagement[b.email]
+                      if (subscriberSort === 'newest') return (b.created_at || '').localeCompare(a.created_at || '')
+                      if (subscriberSort === 'oldest') return (a.created_at || '').localeCompare(b.created_at || '')
+                      if (subscriberSort === 'opens') return (bEng?.total_opens || 0) - (aEng?.total_opens || 0)
+                      if (subscriberSort === 'clicks') return (bEng?.total_clicks || 0) - (aEng?.total_clicks || 0)
+                      if (subscriberSort === 'email') return a.email.localeCompare(b.email)
+                      return getSubscriberCampaignStatus(a).rank - getSubscriberCampaignStatus(b).rank
+                    })
+                  const activeFiltered = filtered
                   return filtered.length > 0 ? (
                     <>
                       {activeFiltered.length > 0 && (
                         <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                          <h3 className="font-medium mb-2 text-sm">Active — {cityFilter==='all'?'All Cities':CITY_FILTERS.find(c=>c.value===cityFilter)?.label} (Email | City)</h3>
+                          <h3 className="font-medium mb-1 text-sm">
+                            {statusFilter === 'active' ? 'Active emails' : 'Unsubscribed emails'} - {cityFilter==='all'?'All Cities':CITY_FILTERS.find(c=>c.value===cityFilter)?.label}
+                          </h3>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            {statusFilter === 'active'
+                              ? 'These addresses are currently included when you send newsletters.'
+                              : 'These addresses are kept for history, but are not included when newsletters are sent.'}
+                          </p>
                           <div className="space-y-1 max-h-40 overflow-y-auto">
                             {activeFiltered.map(sub => (
                               <div key={sub.id} onClick={() => copyToClipboard(`${sub.email} | ${getCityLabel(sub.city)}`, sub.id||sub.email)}
@@ -1456,12 +1551,15 @@ export default function NewsletterAdmin() {
                       <div className="space-y-2">
                         {filtered.map(sub => {
                           const eng = engagement[sub.email]
+                          const campaignStatus = getSubscriberCampaignStatus(sub)
                           return (
                             <div key={sub.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                                   <span className="font-medium text-sm truncate">{sub.email}</span>
                                   <Badge variant={sub.status==='active'?'default':'secondary'} className="text-xs">{sub.status}</Badge>
+                                  <span className={`inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5 border ${campaignStatus.className}`}>{campaignStatus.label}</span>
+                                  {eng?.total_delivered > 0 && <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 rounded-full px-2 py-0.5"><Mail className="h-3 w-3" />{eng.total_delivered}</span>}
                                   {eng?.total_opens > 0 && <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 rounded-full px-2 py-0.5"><Eye className="h-3 w-3" />{eng.total_opens}</span>}
                                   {eng?.total_clicks > 0 && <span className="inline-flex items-center gap-1 text-xs text-purple-600 bg-purple-50 rounded-full px-2 py-0.5"><MousePointerClick className="h-3 w-3" />{eng.total_clicks}</span>}
                                   {eng?.bounced && <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 rounded-full px-2 py-0.5"><AlertTriangle className="h-3 w-3" />bounced</span>}
@@ -1507,8 +1605,22 @@ export default function NewsletterAdmin() {
         {activeTab === 'campaigns' && (
           <Card>
             <CardHeader>
-              <CardTitle>Campaign Performance</CardTitle>
-              <CardDescription>Open and click rates per send — powered by Resend webhook</CardDescription>
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <CardTitle>Campaign Performance</CardTitle>
+                  <CardDescription>Open, click, delivery, bounce, delayed, and failed status per send - powered by Resend webhook</CardDescription>
+                </div>
+                <select
+                  value={campaignSort}
+                  onChange={e => setCampaignSort(e.target.value as typeof campaignSort)}
+                  className="h-8 rounded-md border bg-white px-2 text-xs"
+                >
+                  <option value="recent">Newest campaigns</option>
+                  <option value="open_rate">Highest open rate</option>
+                  <option value="click_rate">Highest click rate</option>
+                  <option value="bounced">Most bounces first</option>
+                </select>
+              </div>
             </CardHeader>
             <CardContent>
               {emailEventsTableMissing && (
@@ -1542,7 +1654,7 @@ export default function NewsletterAdmin() {
               )}
               {campaigns.length > 0 ? (
                 <div className="space-y-3">
-                  {campaigns.map((c, i) => (
+                  {sortedCampaigns.map((c, i) => (
                     <div
                       key={i}
                       className={`p-4 border rounded-lg cursor-pointer transition-colors hover:border-blue-300 hover:bg-blue-50/20 ${selectedCampaignSubject === c.subject ? 'border-blue-400 bg-blue-50/40' : ''}`}
@@ -1564,7 +1676,16 @@ export default function NewsletterAdmin() {
                         </div>
                       </div>
                       <div className="grid grid-cols-4 gap-3 mb-3">
-                        <div className="text-center"><div className="text-lg font-bold text-gray-700">{c.delivered}</div><div className="text-xs text-muted-foreground">Delivered</div></div>
+                        <button
+                          className="text-center rounded-md hover:bg-green-50"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedCampaignSubject(c.subject)
+                            setCampaignDetailFilter('delivered')
+                          }}
+                        >
+                          <div className="text-lg font-bold text-gray-700">{c.delivered}</div><div className="text-xs text-muted-foreground">Delivered</div>
+                        </button>
                         <button
                           className="text-center rounded-md hover:bg-blue-50"
                           onClick={(e) => {
@@ -1616,9 +1737,10 @@ export default function NewsletterAdmin() {
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-7 gap-2 mt-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 mt-4">
                           {[
                             ['all', 'All', selectedCampaignDetails.recipients.length],
+                            ['delivered', 'Delivered', selectedCampaignDetails.recipients.filter(r => r.delivered).length],
                             ['opened', 'Opened', selectedCampaignDetails.opened.length],
                             ['clicked', 'Clicked', selectedCampaignDetails.clicked.length],
                             ['bounced', 'Bounced', selectedCampaignDetails.bounced.length],
@@ -1635,6 +1757,18 @@ export default function NewsletterAdmin() {
                               <div className="text-[10px] uppercase tracking-wide opacity-70">{label}</div>
                             </button>
                           ))}
+                        </div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Sort recipients</span>
+                          <select
+                            value={campaignRecipientSort}
+                            onChange={e => setCampaignRecipientSort(e.target.value as typeof campaignRecipientSort)}
+                            className="h-8 rounded-md border bg-white px-2 text-xs"
+                          >
+                            <option value="status">Decision status</option>
+                            <option value="recent">Most recent activity</option>
+                            <option value="email">Email A-Z</option>
+                          </select>
                         </div>
                       </div>
 
