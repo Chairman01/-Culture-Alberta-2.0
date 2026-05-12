@@ -102,6 +102,35 @@ function fixImageDimensions(html: string): string {
   })
 }
 
+/**
+ * Converts Mediavine video embed snippets that were pasted into the editor and
+ * saved as escaped text back into the placeholder div Mediavine's script uses.
+ */
+function processMediavineVideoEmbeds(content: string): string {
+  if (!content) return content
+
+  const renderMediavineEmbed = (attrs: string) => {
+    const videoId = attrs.match(/\bdata-video-id\s*=\s*(?:"|&quot;|')?([A-Za-z0-9_-]+)/i)?.[1]
+      || attrs.match(/\bmv-video-id-([A-Za-z0-9_-]+)/i)?.[1]
+
+    if (!videoId) return null
+
+    return `<div class="mv-video-target mv-video-id-${videoId}" data-video-id="${videoId}"></div>`
+  }
+
+  let processed = content.replace(
+    /<p>\s*&lt;div\s+([^<>]*?\bmv-video-target\b[^<>]*?)&gt;\s*&lt;\/div&gt;\s*<\/p>/gi,
+    (match, attrs) => renderMediavineEmbed(attrs) || match
+  )
+
+  processed = processed.replace(
+    /&lt;div\s+([^<>]*?\bmv-video-target\b[^<>]*?)&gt;\s*&lt;\/div&gt;/gi,
+    (match, attrs) => renderMediavineEmbed(attrs) || match
+  )
+
+  return processed
+}
+
 
 /**
  * Processes anchor tags containing Twitter/X URLs and converts them to embedded tweets
@@ -196,8 +225,11 @@ export function processInstagramLinks(content: string): string {
 export function processArticleContent(content: string): string {
   if (!content) return content
 
+  // Restore trusted Mediavine video placeholders if the editor escaped them.
+  let processed = processMediavineVideoEmbeds(content)
+
   // First process anchor tags (more specific patterns, must run before standalone URL patterns)
-  let processed = processYouTubeAnchors(content)
+  processed = processYouTubeAnchors(processed)
   processed = processTwitterAnchors(processed)
   processed = processInstagramAnchors(processed)
 
