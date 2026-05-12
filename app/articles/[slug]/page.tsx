@@ -727,12 +727,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
                     {/* Featured Image */}
                     {loadedArticle.imageUrl && !loadedArticle.imageUrl.startsWith('data:image') && (
-                      <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-100">
+                      <div className="relative w-full aspect-[16/10] md:aspect-auto md:h-[400px] lg:h-[500px] rounded-xl overflow-hidden bg-gray-100">
                         <Image
                           src={loadedArticle.imageUrl}
                           alt={loadedArticle.title || 'Article image'}
                           fill
-                          className="object-contain object-center"
+                          className="object-cover"
                           priority
                           sizes="(max-width: 768px) 100vw, (max-width: 1280px) 75vw, 900px"
                           quality={85}
@@ -841,7 +841,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                                       src={relatedArticle.imageUrl}
                                       alt={relatedArticle.title}
                                       fill
-                                      className="object-contain object-center"
+                                      className="object-cover group-hover:scale-110 transition-transform duration-500"
                                       loading="lazy"
                                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                       quality={75}
@@ -918,7 +918,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                                     alt={relatedArticle.title}
                                     width={64}
                                     height={64}
-                                    className="w-full h-full object-contain object-center"
+                                    className="w-full h-full object-cover"
                                     loading="lazy"
                                     sizes="64px"
                                     quality={60}

@@ -139,12 +139,12 @@ export default async function FoodDrinkPage() {
                 </Link>
               </div>
               <Link href={getArticleUrl(featuredArticle)} className="group relative block">
-                <div className="aspect-video rounded-2xl overflow-hidden bg-gray-50 shadow-2xl">
+                <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl">
                   <Image
                     src={featuredArticle.imageUrl || "/placeholder.svg"}
                     alt={featuredArticle.title}
                     fill
-                    className="object-contain object-center"
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
                     priority
                   />
                 </div>
@@ -172,12 +172,12 @@ export default async function FoodDrinkPage() {
                   <Link key={article.id} href={getArticleUrl(article)} className="group">
                     <article className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="relative aspect-video overflow-hidden bg-gray-50">
+                        <div className="relative aspect-[4/3] overflow-hidden">
                           <Image
                             src={article.imageUrl || "/placeholder.svg"}
                             alt={article.title}
                             fill
-                            className="object-contain object-center"
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                         </div>
                         <div className="p-6 space-y-4">
@@ -262,7 +262,7 @@ export default async function FoodDrinkPage() {
                             alt={article.title}
                             width={64}
                             height={64}
-                            className="w-full h-full object-contain object-center"
+                            className="w-full h-full object-cover"
                           />
                         </div>
                         <div className="flex-1 min-w-0">
