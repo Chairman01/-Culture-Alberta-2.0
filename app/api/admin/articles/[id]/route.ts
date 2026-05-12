@@ -4,7 +4,7 @@ import { updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { quickSyncArticle } from '@/lib/auto-sync'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
-import { requireAdmin } from '@/lib/admin-auth'
+import { requireAdmin, requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 
 // Force dynamic rendering
@@ -60,6 +60,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authCheck = requireAdminOrContributor(request)
+  if (!authCheck.ok) return authCheck.response
+
   try {
     const resolved = await params
     const articleId = resolved.id
@@ -107,6 +110,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authCheck = requireAdminOrContributor(request)
+  if (!authCheck.ok) return authCheck.response
+
   try {
     const articleData = await request.json()
     const resolvedParams = await params

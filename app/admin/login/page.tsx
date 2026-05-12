@@ -34,7 +34,11 @@ export default function AdminLogin() {
         localStorage.setItem("admin_role", data.role ?? "admin")
         router.push(data.role === "contributor" ? "/admin/articles" : "/admin")
       } else {
-        setError("Invalid username or password")
+        if (response.status === 503) {
+          setError("Admin login is not configured correctly. Check the Vercel environment variables.")
+        } else {
+          setError("Invalid username or password")
+        }
       }
     } catch {
       setError("An error occurred. Please try again.")

@@ -82,7 +82,7 @@ function mapArticleRow(article: any): Article {
   return {
     ...article,
     imageUrl: validateImageUrl(article.image_url || article.image || article.imageUrl, article.title),
-    date: article.created_at || article.createdAt || article.date,
+    date: article.date || article.created_at || article.createdAt,
     createdAt: article.created_at || article.createdAt,
     updatedAt: article.updated_at || article.updatedAt,
     trendingHome: article.trending_home || article.trendingHome || false,

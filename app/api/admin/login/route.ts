@@ -2,13 +2,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 
+function isBcryptHash(value: string) {
+  return /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(value)
+}
+
+async function passwordMatches(password: string, configuredPassword?: string | null) {
+  const configured = configuredPassword?.trim()
+  if (!configured) return false
+
+  if (isBcryptHash(configured)) {
+    return bcrypt.compare(password, configured)
+  }
+
+  return password === configured
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { username, password } = body
+    const username = typeof body.username === 'string' ? body.username.trim() : ''
+    const password = typeof body.password === 'string' ? body.password : ''
 
     const adminUsername = process.env.ADMIN_USERNAME?.trim()
-    const adminPassword = process.env.ADMIN_PASSWORD?.trim()
+    const adminPassword = process.env.ADMIN_PASSWORD
     const jwtSecret     = process.env.JWT_SECRET?.trim()
 
     if (!adminUsername || !adminPassword || !jwtSecret) {
@@ -20,16 +36,24 @@ export async function POST(request: NextRequest) {
     let matchedRole: 'admin' | 'contributor' | null = null
 
     // Admin: plain text password comparison
-    if (username === adminUsername && password === adminPassword) {
+    if (username === adminUsername && await passwordMatches(password, adminPassword)) {
       matchedUsername = adminUsername
       matchedRole = 'admin'
     }
 
     // Contributor: bcrypt password comparison
-    const contributorUsername     = process.env.CONTRIBUTOR_USERNAME
-    const contributorPasswordHash = process.env.CONTRIBUTOR_PASSWORD_HASH
-    if (!matchedRole && contributorUsername && contributorPasswordHash) {
-      if (username === contributorUsername && await bcrypt.compare(password, contributorPasswordHash)) {
+    const contributorUsername     = process.env.CONTRIBUTOR_USERNAME?.trim()
+    const contributorPassword     = process.env.CONTRIBUTOR_PASSWORD
+    const contributorPasswordHash = process.env.CONTRIBUTOR_PASSWORD_HASH?.trim()
+    if (!matchedRole && contributorUsername && (contributorPasswordHash || contributorPassword)) {
+      const matchesHash = contributorPasswordHash
+        ? await passwordMatches(password, contributorPasswordHash)
+        : false
+      const matchesPlain = contributorPassword
+        ? await passwordMatches(password, contributorPassword)
+        : false
+
+      if (username === contributorUsername && (matchesHash || matchesPlain)) {
         matchedUsername = contributorUsername
         matchedRole = 'contributor'
       }

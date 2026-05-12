@@ -77,6 +77,19 @@ async function convertToJpeg(file: File): Promise<File> {
   })
 }
 
+async function getUploadResult(response: Response) {
+  const contentType = response.headers.get('content-type') || ''
+
+  if (contentType.includes('application/json')) {
+    return response.json()
+  }
+
+  const message = (await response.text()).trim()
+  return {
+    error: message || `Upload failed with status ${response.status}`,
+  }
+}
+
 export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -116,9 +129,17 @@ export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
         body: formData,
       })
 
-      const result = await response.json()
+      const result = await getUploadResult(response)
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Your admin session has expired. Please log in again, then retry the upload.')
+        }
+
+        if (response.status === 403) {
+          throw new Error('The upload was blocked. Please make sure you are logged in with an admin or contributor account.')
+        }
+
         throw new Error(result.error || 'Failed to upload image')
       }
 

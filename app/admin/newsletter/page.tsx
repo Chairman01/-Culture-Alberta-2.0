@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import {
   getAllNewsletterSubscriptions, getNewsletterStats,
   getEmailEvents, checkEmailEventsTable, computeCampaignStats, computeSubscriberEngagement,
-  type CampaignStat, type SubscriberEngagement,
+  getCampaignDetails,
+  type CampaignStat, type EmailEvent, type SubscriberEngagement, type CampaignRecipient,
 } from "@/lib/newsletter"
 import { triggerCityNewsletter, triggerAllNewsletters, sendTestNewsletter } from "./_actions"
 import {
@@ -30,6 +31,7 @@ import {
   Send, CheckCircle, AlertCircle, Loader2, Eye, X, FlaskConical,
   ChevronDown, ChevronUp, Settings, Star, ArrowUp, ArrowDown, Leaf,
   BarChart2, MousePointerClick, Copy, Check, Filter, AlertTriangle, TrendingUp, HelpCircle,
+  ExternalLink,
 } from "lucide-react"
 import Link from "next/link"
 import type { SendResult } from "@/lib/newsletter/send-newsletter"
@@ -172,8 +174,11 @@ export default function NewsletterAdmin() {
   })
 
   // Engagement & subscriber filter state
+  const [emailEvents, setEmailEvents] = useState<EmailEvent[]>([])
   const [campaigns, setCampaigns] = useState<CampaignStat[]>([])
   const [engagement, setEngagement] = useState<Record<string, SubscriberEngagement>>({})
+  const [selectedCampaignSubject, setSelectedCampaignSubject] = useState<string | null>(null)
+  const [campaignDetailFilter, setCampaignDetailFilter] = useState<'all' | 'opened' | 'clicked' | 'bounced' | 'complained' | 'delivery_delayed' | 'failed'>('all')
   const [cityFilter, setCityFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'active' | 'unsubscribed'>('active')
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -203,6 +208,7 @@ export default function NewsletterAdmin() {
         ])
         setSubscriptions(subscriptionsData)
         setStats(statsData)
+        setEmailEvents(eventsData)
         setCampaigns(computeCampaignStats(eventsData))
         setEngagement(computeSubscriberEngagement(eventsData))
         setEmailEventsTableMissing(!tableExists)
@@ -662,12 +668,58 @@ export default function NewsletterAdmin() {
   const overallClicked    = cityAnalytics.reduce((s, c) => s + c.totalClicked, 0)
   const overallOpenRate   = overallDelivered > 0 ? Math.round((overallOpened  / overallDelivered) * 100) : 0
   const overallClickRate  = overallDelivered > 0 ? Math.round((overallClicked / overallDelivered) * 100) : 0
+  const selectedCampaign = selectedCampaignSubject
+    ? campaigns.find(c => c.subject === selectedCampaignSubject) || null
+    : null
+  const selectedCampaignDetails = selectedCampaign
+    ? getCampaignDetails(emailEvents, selectedCampaign.subject)
+    : null
+  const selectedCampaignRecipients = (() => {
+    if (!selectedCampaignDetails) return []
+    if (campaignDetailFilter === 'opened') return selectedCampaignDetails.opened
+    if (campaignDetailFilter === 'clicked') return selectedCampaignDetails.clicked
+    if (campaignDetailFilter === 'bounced') return selectedCampaignDetails.bounced
+    if (campaignDetailFilter === 'complained') return selectedCampaignDetails.complained
+    if (campaignDetailFilter === 'delivery_delayed') return selectedCampaignDetails.delayed
+    if (campaignDetailFilter === 'failed') return selectedCampaignDetails.failed
+    return selectedCampaignDetails.recipients
+  })()
 
   // Returns bounced subscribers for a given city, with their current status
   const bouncedByCity = (city: CityKey) =>
     subscriptions
       .filter(s => s.city === city && engagement[s.email]?.bounced)
       .map(s => ({ email: s.email, status: s.status ?? 'active' }))
+
+  const getSubscriberStatus = (email: string) =>
+    subscriptions.find(s => s.email === email)?.status || 'not subscribed'
+
+  const getSubscriberCity = (email: string) => {
+    const sub = subscriptions.find(s => s.email === email)
+    return sub ? getCityLabel(sub.city) : 'Unknown'
+  }
+
+  const getSubscriberRecommendation = (recipient: CampaignRecipient): { label: string; className: string } => {
+    if (recipient.bounced || recipient.failed || recipient.complained) {
+      return { label: 'Remove', className: 'bg-red-50 text-red-700 border-red-200' }
+    }
+    if (recipient.clicked) {
+      return { label: 'Keep - clicked', className: 'bg-green-50 text-green-700 border-green-200' }
+    }
+    if (recipient.opened) {
+      return { label: 'Keep - opened', className: 'bg-blue-50 text-blue-700 border-blue-200' }
+    }
+    if (recipient.delayed) {
+      return { label: 'Watch delivery', className: 'bg-amber-50 text-amber-700 border-amber-200' }
+    }
+    return { label: 'No action yet', className: 'bg-gray-50 text-gray-600 border-gray-200' }
+  }
+
+  const eventPill = (label: string, active: boolean, activeClass: string) => (
+    <span className={`text-[10px] rounded-full px-2 py-0.5 border ${active ? activeClass : 'bg-gray-50 text-gray-300 border-gray-100'}`}>
+      {label}
+    </span>
+  )
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -1413,11 +1465,16 @@ export default function NewsletterAdmin() {
                                   {eng?.total_opens > 0 && <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 rounded-full px-2 py-0.5"><Eye className="h-3 w-3" />{eng.total_opens}</span>}
                                   {eng?.total_clicks > 0 && <span className="inline-flex items-center gap-1 text-xs text-purple-600 bg-purple-50 rounded-full px-2 py-0.5"><MousePointerClick className="h-3 w-3" />{eng.total_clicks}</span>}
                                   {eng?.bounced && <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 rounded-full px-2 py-0.5"><AlertTriangle className="h-3 w-3" />bounced</span>}
+                                  {eng?.complained && <span className="inline-flex items-center gap-1 text-xs text-orange-600 bg-orange-50 rounded-full px-2 py-0.5"><AlertCircle className="h-3 w-3" />spam</span>}
+                                  {eng?.failed && <span className="inline-flex items-center gap-1 text-xs text-red-700 bg-red-50 rounded-full px-2 py-0.5"><X className="h-3 w-3" />failed</span>}
+                                  {eng?.delayed && <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 rounded-full px-2 py-0.5"><AlertCircle className="h-3 w-3" />delayed</span>}
                                 </div>
                                 <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                                   <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{getCityLabel(sub.city)}</span>
                                   {sub.created_at && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(sub.created_at)}</span>}
                                   {eng?.last_opened && <span className="text-blue-500">opened {shortDate(eng.last_opened)}</span>}
+                                  {eng?.last_clicked && <span className="text-purple-500">clicked {shortDate(eng.last_clicked)}</span>}
+                                  {eng?.last_campaign && <span className="text-gray-500 truncate max-w-[420px]">last: {eng.last_campaign}</span>}
                                 </div>
                               </div>
                               {sub.status === 'unsubscribed' && engagement[sub.email]?.bounced ? (
@@ -1486,22 +1543,58 @@ export default function NewsletterAdmin() {
               {campaigns.length > 0 ? (
                 <div className="space-y-3">
                   {campaigns.map((c, i) => (
-                    <div key={i} className="p-4 border rounded-lg">
+                    <div
+                      key={i}
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors hover:border-blue-300 hover:bg-blue-50/20 ${selectedCampaignSubject === c.subject ? 'border-blue-400 bg-blue-50/40' : ''}`}
+                      onClick={() => {
+                        setSelectedCampaignSubject(selectedCampaignSubject === c.subject ? null : c.subject)
+                        setCampaignDetailFilter('all')
+                      }}
+                    >
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div>
                           <div className="font-medium text-sm">{c.subject}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">Sent {shortDate(c.sent_at)}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">Sent {shortDate(c.sent_at)} - click to see recipients</div>
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
                           {c.bounced > 0 && <span className="text-xs text-red-600 bg-red-50 rounded-full px-2 py-0.5">{c.bounced} bounced</span>}
                           {c.complained > 0 && <span className="text-xs text-orange-600 bg-orange-50 rounded-full px-2 py-0.5">{c.complained} spam</span>}
+                          {c.failed > 0 && <span className="text-xs text-red-700 bg-red-50 rounded-full px-2 py-0.5">{c.failed} failed</span>}
+                          {c.delayed > 0 && <span className="text-xs text-amber-600 bg-amber-50 rounded-full px-2 py-0.5">{c.delayed} delayed</span>}
                         </div>
                       </div>
                       <div className="grid grid-cols-4 gap-3 mb-3">
                         <div className="text-center"><div className="text-lg font-bold text-gray-700">{c.delivered}</div><div className="text-xs text-muted-foreground">Delivered</div></div>
-                        <div className="text-center"><div className="text-lg font-bold text-blue-600">{c.opened}</div><div className="text-xs text-muted-foreground">Opened</div></div>
-                        <div className="text-center"><div className="text-lg font-bold text-blue-700">{c.open_rate}%</div><div className="text-xs text-muted-foreground">Open Rate</div></div>
-                        <div className="text-center"><div className="text-lg font-bold text-purple-600">{c.click_rate}%</div><div className="text-xs text-muted-foreground">Click Rate</div></div>
+                        <button
+                          className="text-center rounded-md hover:bg-blue-50"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedCampaignSubject(c.subject)
+                            setCampaignDetailFilter('opened')
+                          }}
+                        >
+                          <div className="text-lg font-bold text-blue-600">{c.opened}</div><div className="text-xs text-muted-foreground">Opened</div>
+                        </button>
+                        <button
+                          className="text-center rounded-md hover:bg-blue-50"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedCampaignSubject(c.subject)
+                            setCampaignDetailFilter('opened')
+                          }}
+                        >
+                          <div className="text-lg font-bold text-blue-700">{c.open_rate}%</div><div className="text-xs text-muted-foreground">Open Rate</div>
+                        </button>
+                        <button
+                          className="text-center rounded-md hover:bg-purple-50"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedCampaignSubject(c.subject)
+                            setCampaignDetailFilter('clicked')
+                          }}
+                        >
+                          <div className="text-lg font-bold text-purple-600">{c.click_rate}%</div><div className="text-xs text-muted-foreground">Click Rate</div>
+                        </button>
                       </div>
                       <div className="space-y-1.5">
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{width:`${Math.min(c.open_rate,100)}%`}} /></div>
@@ -1509,6 +1602,127 @@ export default function NewsletterAdmin() {
                       </div>
                     </div>
                   ))}
+                  {selectedCampaign && selectedCampaignDetails && (
+                    <div className="mt-5 border rounded-xl bg-white">
+                      <div className="p-4 border-b bg-gray-50 rounded-t-xl">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">{selectedCampaign.subject}</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Recipient-level activity from Resend webhooks. Use this to decide who is worth keeping.
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedCampaignSubject(null)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-7 gap-2 mt-4">
+                          {[
+                            ['all', 'All', selectedCampaignDetails.recipients.length],
+                            ['opened', 'Opened', selectedCampaignDetails.opened.length],
+                            ['clicked', 'Clicked', selectedCampaignDetails.clicked.length],
+                            ['bounced', 'Bounced', selectedCampaignDetails.bounced.length],
+                            ['complained', 'Spam', selectedCampaignDetails.complained.length],
+                            ['delivery_delayed', 'Delayed', selectedCampaignDetails.delayed.length],
+                            ['failed', 'Failed', selectedCampaignDetails.failed.length],
+                          ].map(([value, label, count]) => (
+                            <button
+                              key={value}
+                              onClick={() => setCampaignDetailFilter(value as typeof campaignDetailFilter)}
+                              className={`rounded-lg border px-3 py-2 text-left transition-colors ${campaignDetailFilter === value ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-50'}`}
+                            >
+                              <div className="text-sm font-bold">{count}</div>
+                              <div className="text-[10px] uppercase tracking-wide opacity-70">{label}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {selectedCampaignDetails.clickUrls.length > 0 && (
+                        <div className="p-4 border-b">
+                          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Clicked links</div>
+                          <div className="space-y-2">
+                            {selectedCampaignDetails.clickUrls.map(link => (
+                              <div key={link.url} className="flex items-start justify-between gap-3 rounded-lg border bg-purple-50/40 px-3 py-2">
+                                <div className="min-w-0">
+                                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-xs text-purple-700 hover:underline break-all inline-flex items-center gap-1">
+                                    {link.url} <ExternalLink className="h-3 w-3 shrink-0" />
+                                  </a>
+                                  <div className="text-[10px] text-gray-500 mt-1">{link.emails.join(', ')}</div>
+                                </div>
+                                <span className="text-xs font-semibold text-purple-700 bg-white border border-purple-100 rounded-full px-2 py-0.5 shrink-0">
+                                  {link.count} click{link.count !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="p-4">
+                        <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+                          {selectedCampaignRecipients.length > 0 ? selectedCampaignRecipients.map(recipient => {
+                            const recommendation = getSubscriberRecommendation(recipient)
+                            return (
+                              <div key={recipient.email} className="rounded-lg border p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-medium text-sm">{recipient.email}</span>
+                                      <span className={`text-[10px] rounded-full px-2 py-0.5 border ${recommendation.className}`}>{recommendation.label}</span>
+                                      <span className="text-[10px] rounded-full px-2 py-0.5 border bg-gray-50 text-gray-600">{getSubscriberStatus(recipient.email)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-wrap mt-2">
+                                      {eventPill('delivered', recipient.delivered, 'bg-gray-100 text-gray-700 border-gray-200')}
+                                      {eventPill('opened', recipient.opened, 'bg-blue-50 text-blue-700 border-blue-200')}
+                                      {eventPill('clicked', recipient.clicked, 'bg-purple-50 text-purple-700 border-purple-200')}
+                                      {eventPill('bounced', recipient.bounced, 'bg-red-50 text-red-700 border-red-200')}
+                                      {eventPill('spam', recipient.complained, 'bg-orange-50 text-orange-700 border-orange-200')}
+                                      {eventPill('delayed', recipient.delayed, 'bg-amber-50 text-amber-700 border-amber-200')}
+                                      {eventPill('failed', recipient.failed, 'bg-red-50 text-red-800 border-red-200')}
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2 flex-wrap">
+                                      <span>{getSubscriberCity(recipient.email)}</span>
+                                      {recipient.opened_at && <span>opened {formatDate(recipient.opened_at)}</span>}
+                                      {recipient.clicked_at && <span>clicked {formatDate(recipient.clicked_at)}</span>}
+                                      {recipient.last_event_at && <span>last event {formatDate(recipient.last_event_at)}</span>}
+                                    </div>
+                                    {recipient.clicked_urls.length > 0 && (
+                                      <div className="mt-2 space-y-1">
+                                        {recipient.clicked_urls.map(url => (
+                                          <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="block text-xs text-purple-700 hover:underline break-all">
+                                            {url}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {(recipient.bounced || recipient.failed || recipient.complained) && getSubscriberStatus(recipient.email) === 'active' && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-xs h-7 shrink-0"
+                                      disabled={updatingEmail === recipient.email}
+                                      onClick={async () => {
+                                        const sub = subscriptions.find(s => s.email === recipient.email)
+                                        if (sub) await toggleStatus(sub)
+                                      }}
+                                    >
+                                      {updatingEmail === recipient.email ? '...' : 'Unsubscribe'}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          }) : (
+                            <div className="text-center text-sm text-muted-foreground py-8">
+                              No recipients match this filter.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 !emailEventsTableMissing && (
@@ -1534,7 +1748,7 @@ export default function NewsletterAdmin() {
                           <p className="text-sm font-semibold text-amber-800">Step 2 — Verify Resend webhook URL</p>
                           <p className="text-xs text-amber-700 mt-0.5 mb-2">Go to <strong>resend.com → Webhooks</strong> and confirm the endpoint is set to exactly:</p>
                           <code className="block bg-white border border-amber-200 rounded px-2 py-1 text-xs text-gray-800 font-mono">https://www.culturealberta.com/api/webhooks/resend</code>
-                          <p className="text-xs text-amber-700 mt-2">Events to enable: <strong>email.delivered · email.opened · email.clicked · email.bounced · email.complained</strong></p>
+                          <p className="text-xs text-amber-700 mt-2">Events to enable: <strong>email.delivered · email.opened · email.clicked · email.bounced · email.complained · email.delivery_delayed · email.failed</strong></p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3 p-3 border rounded-lg bg-gray-50 border-gray-200">

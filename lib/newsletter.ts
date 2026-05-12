@@ -5,7 +5,7 @@ import { supabase } from './supabase'
 export interface EmailEvent {
   id?: string
   email: string
-  event_type: 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained'
+  event_type: 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained' | 'delivery_delayed' | 'failed'
   email_id?: string
   subject?: string
   clicked_url?: string
@@ -19,6 +19,8 @@ export interface CampaignStat {
   clicked: number
   bounced: number
   complained: number
+  delayed: number
+  failed: number
   open_rate: number
   click_rate: number
   sent_at: string
@@ -30,8 +32,38 @@ export interface SubscriberEngagement {
   total_clicks: number
   last_opened?: string
   last_clicked?: string
+  last_activity?: string
+  last_campaign?: string
   bounced: boolean
   complained: boolean
+  delayed: boolean
+  failed: boolean
+}
+
+export interface CampaignRecipient {
+  email: string
+  delivered: boolean
+  opened: boolean
+  clicked: boolean
+  bounced: boolean
+  complained: boolean
+  delayed: boolean
+  failed: boolean
+  opened_at?: string
+  clicked_at?: string
+  last_event_at?: string
+  clicked_urls: string[]
+}
+
+export interface CampaignDetails {
+  recipients: CampaignRecipient[]
+  opened: CampaignRecipient[]
+  clicked: CampaignRecipient[]
+  bounced: CampaignRecipient[]
+  complained: CampaignRecipient[]
+  delayed: CampaignRecipient[]
+  failed: CampaignRecipient[]
+  clickUrls: { url: string; count: number; emails: string[] }[]
 }
 
 // ── Subscription interfaces ────────────────────────────────────────────────────
@@ -306,14 +338,23 @@ export async function getEmailEvents(): Promise<EmailEvent[]> {
 }
 
 export function computeCampaignStats(events: EmailEvent[]): CampaignStat[] {
-  const campaigns: Record<string, { delivered: Set<string>; opened: Set<string>; clicked: Set<string>; bounced: Set<string>; complained: Set<string>; first_at: string }> = {}
+  const campaigns: Record<string, {
+    delivered: Set<string>
+    opened: Set<string>
+    clicked: Set<string>
+    bounced: Set<string>
+    complained: Set<string>
+    delayed: Set<string>
+    failed: Set<string>
+    first_at: string
+  }> = {}
 
   for (const ev of events) {
     if (!ev.subject) continue
     if (!campaigns[ev.subject]) {
       campaigns[ev.subject] = {
         delivered: new Set(), opened: new Set(), clicked: new Set(),
-        bounced: new Set(), complained: new Set(),
+        bounced: new Set(), complained: new Set(), delayed: new Set(), failed: new Set(),
         first_at: ev.created_at || '',
       }
     }
@@ -323,6 +364,8 @@ export function computeCampaignStats(events: EmailEvent[]): CampaignStat[] {
     if (ev.event_type === 'clicked')   c.clicked.add(ev.email)
     if (ev.event_type === 'bounced')   c.bounced.add(ev.email)
     if (ev.event_type === 'complained') c.complained.add(ev.email)
+    if (ev.event_type === 'delivery_delayed') c.delayed.add(ev.email)
+    if (ev.event_type === 'failed') c.failed.add(ev.email)
     if (ev.created_at && ev.created_at < c.first_at) c.first_at = ev.created_at
   }
 
@@ -334,6 +377,7 @@ export function computeCampaignStats(events: EmailEvent[]): CampaignStat[] {
       return {
         subject, delivered, opened, clicked,
         bounced: c.bounced.size, complained: c.complained.size,
+        delayed: c.delayed.size, failed: c.failed.size,
         open_rate:  delivered > 0 ? Math.round((opened  / delivered) * 100) : 0,
         click_rate: delivered > 0 ? Math.round((clicked / delivered) * 100) : 0,
         sent_at: c.first_at,
@@ -346,9 +390,21 @@ export function computeSubscriberEngagement(events: EmailEvent[]): Record<string
   const engagement: Record<string, SubscriberEngagement> = {}
   for (const ev of events) {
     if (!engagement[ev.email]) {
-      engagement[ev.email] = { email: ev.email, total_opens: 0, total_clicks: 0, bounced: false, complained: false }
+      engagement[ev.email] = {
+        email: ev.email,
+        total_opens: 0,
+        total_clicks: 0,
+        bounced: false,
+        complained: false,
+        delayed: false,
+        failed: false,
+      }
     }
     const e = engagement[ev.email]
+    if (ev.created_at && (!e.last_activity || ev.created_at > e.last_activity)) {
+      e.last_activity = ev.created_at
+      e.last_campaign = ev.subject
+    }
     if (ev.event_type === 'opened') {
       e.total_opens++
       if (!e.last_opened || (ev.created_at && ev.created_at > e.last_opened)) e.last_opened = ev.created_at
@@ -359,6 +415,76 @@ export function computeSubscriberEngagement(events: EmailEvent[]): Record<string
     }
     if (ev.event_type === 'bounced')    e.bounced = true
     if (ev.event_type === 'complained') e.complained = true
+    if (ev.event_type === 'delivery_delayed') e.delayed = true
+    if (ev.event_type === 'failed') e.failed = true
   }
   return engagement
+}
+
+export function getCampaignDetails(events: EmailEvent[], subject: string): CampaignDetails {
+  const recipientMap: Record<string, CampaignRecipient> = {}
+  const urlMap: Record<string, { url: string; count: number; emails: Set<string> }> = {}
+
+  for (const ev of events) {
+    if (ev.subject !== subject) continue
+    if (!recipientMap[ev.email]) {
+      recipientMap[ev.email] = {
+        email: ev.email,
+        delivered: false,
+        opened: false,
+        clicked: false,
+        bounced: false,
+        complained: false,
+        delayed: false,
+        failed: false,
+        clicked_urls: [],
+      }
+    }
+
+    const recipient = recipientMap[ev.email]
+    if (ev.created_at && (!recipient.last_event_at || ev.created_at > recipient.last_event_at)) {
+      recipient.last_event_at = ev.created_at
+    }
+
+    if (ev.event_type === 'delivered') recipient.delivered = true
+    if (ev.event_type === 'opened') {
+      recipient.opened = true
+      if (!recipient.opened_at || (ev.created_at && ev.created_at > recipient.opened_at)) recipient.opened_at = ev.created_at
+    }
+    if (ev.event_type === 'clicked') {
+      recipient.clicked = true
+      if (!recipient.clicked_at || (ev.created_at && ev.created_at > recipient.clicked_at)) recipient.clicked_at = ev.created_at
+      if (ev.clicked_url && !recipient.clicked_urls.includes(ev.clicked_url)) {
+        recipient.clicked_urls.push(ev.clicked_url)
+      }
+      if (ev.clicked_url) {
+        if (!urlMap[ev.clicked_url]) {
+          urlMap[ev.clicked_url] = { url: ev.clicked_url, count: 0, emails: new Set() }
+        }
+        urlMap[ev.clicked_url].count++
+        urlMap[ev.clicked_url].emails.add(ev.email)
+      }
+    }
+    if (ev.event_type === 'bounced') recipient.bounced = true
+    if (ev.event_type === 'complained') recipient.complained = true
+    if (ev.event_type === 'delivery_delayed') recipient.delayed = true
+    if (ev.event_type === 'failed') recipient.failed = true
+  }
+
+  const recipients = Object.values(recipientMap).sort((a, b) =>
+    (b.last_event_at || '').localeCompare(a.last_event_at || '')
+  )
+
+  return {
+    recipients,
+    opened: recipients.filter(r => r.opened),
+    clicked: recipients.filter(r => r.clicked),
+    bounced: recipients.filter(r => r.bounced),
+    complained: recipients.filter(r => r.complained),
+    delayed: recipients.filter(r => r.delayed),
+    failed: recipients.filter(r => r.failed),
+    clickUrls: Object.values(urlMap)
+      .map(item => ({ url: item.url, count: item.count, emails: Array.from(item.emails).sort() }))
+      .sort((a, b) => b.count - a.count),
+  }
 }

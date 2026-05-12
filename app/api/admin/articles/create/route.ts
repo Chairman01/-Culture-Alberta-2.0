@@ -4,6 +4,7 @@ import { quickSyncArticle } from '@/lib/auto-sync'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
+import { requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 
 // Force dynamic rendering
@@ -48,6 +49,9 @@ function hasMeaningfulContent(content: unknown) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = requireAdminOrContributor(request)
+  if (!auth.ok) return auth.response
+
   try {
     const articleData = await request.json()
     

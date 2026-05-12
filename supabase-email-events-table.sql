@@ -3,12 +3,13 @@
 --
 -- After creating the table, add the webhook in Resend dashboard:
 --   URL: https://www.culturealberta.com/api/webhooks/resend
---   Events: email.delivered, email.opened, email.clicked, email.bounced, email.complained
+--   Events: email.delivered, email.opened, email.clicked, email.bounced, email.complained,
+--           email.delivery_delayed, email.failed
 
 CREATE TABLE IF NOT EXISTS newsletter_email_events (
   id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   email         VARCHAR(255) NOT NULL,
-  event_type    VARCHAR(50)  NOT NULL, -- 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained'
+  event_type    VARCHAR(50)  NOT NULL, -- 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained' | 'delivery_delayed' | 'failed'
   email_id      VARCHAR(255),          -- Resend's internal email ID
   subject       VARCHAR(500),          -- Email subject line (identifies the campaign)
   clicked_url   TEXT,                  -- Populated for 'clicked' events only

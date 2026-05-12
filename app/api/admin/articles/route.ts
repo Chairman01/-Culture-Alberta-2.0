@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { loadOptimizedFallback } from '@/lib/optimized-fallback'
 import { quickSyncArticle } from '@/lib/auto-sync'
-import { requireAdmin } from '@/lib/admin-auth'
+import { requireAdmin, requireAdminOrContributor } from '@/lib/admin-auth'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -16,7 +16,7 @@ function getSupabaseClient() {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = requireAdmin(request)
+  const auth = requireAdminOrContributor(request)
   if (!auth.ok) return auth.response
   try {
     const { searchParams } = new URL(request.url)

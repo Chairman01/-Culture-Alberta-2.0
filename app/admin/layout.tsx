@@ -17,6 +17,7 @@ export default function AdminLayout({
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [adminRole, setAdminRole] = useState<'admin' | 'contributor'>('admin')
 
   useEffect(() => {
     setIsClient(true)
@@ -31,6 +32,7 @@ export default function AdminLayout({
     const adminAuthenticated = localStorage.getItem('admin_authenticated')
     const adminToken = localStorage.getItem('admin_token')
     const loginTime = localStorage.getItem('admin_login_time')
+    const role = localStorage.getItem('admin_role') === 'contributor' ? 'contributor' : 'admin'
 
     console.log("Admin layout: Auth check results:", {
       adminAuthenticated,
@@ -65,6 +67,7 @@ export default function AdminLayout({
     }
 
     console.log("Admin layout: Authenticated successfully")
+    setAdminRole(role)
     setIsAuthenticated(true)
     setIsLoading(false)
   }, [router, pathname, isClient])
@@ -78,12 +81,13 @@ export default function AdminLayout({
     localStorage.removeItem('admin_token')
     localStorage.removeItem('admin_user')
     localStorage.removeItem('admin_login_time')
+    localStorage.removeItem('admin_role')
 
 
     router.push('/admin/login')
   }
 
-  const navigation = [
+  const adminNavigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart2 },
     { name: 'Articles', href: '/admin/articles', icon: FileText },
     { name: 'Events', href: '/admin/events', icon: Calendar },
@@ -92,6 +96,10 @@ export default function AdminLayout({
     { name: 'Newsletter', href: '/admin/newsletter', icon: Mail },
     { name: 'Sync Articles', href: '/admin/sync-articles', icon: RefreshCw },
   ]
+  const contributorNavigation = [
+    { name: 'Articles', href: '/admin/articles', icon: FileText },
+  ]
+  const navigation = adminRole === 'contributor' ? contributorNavigation : adminNavigation
 
   // Don't show the layout on the login page
   if (pathname === '/admin/login') {

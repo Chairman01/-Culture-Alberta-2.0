@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase'
 // Resend sends webhook events for email lifecycle events.
 // Set the webhook URL in Resend dashboard → Webhooks → Add endpoint:
 //   https://www.culturealberta.com/api/webhooks/resend
-// Events to subscribe: email.delivered, email.opened, email.clicked, email.bounced, email.complained
+// Events to subscribe: email.delivered, email.opened, email.clicked,
+// email.bounced, email.complained, email.delivery_delayed, email.failed
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +22,8 @@ export async function POST(request: NextRequest) {
       'email.clicked': 'clicked',
       'email.bounced': 'bounced',
       'email.complained': 'complained',
+      'email.delivery_delayed': 'delivery_delayed',
+      'email.failed': 'failed',
     }
 
     const eventType = eventMap[type]

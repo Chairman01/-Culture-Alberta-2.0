@@ -132,7 +132,7 @@ const getArticleFromDB = unstable_cache(
         article = {
           ...data,
           imageUrl: data.image_url || data.image || data.imageUrl,
-          date: data.created_at || data.date,
+          date: data.date || data.created_at,
           createdAt: data.created_at || data.createdAt,
           updatedAt: data.updated_at || data.updatedAt,
           trendingHome: data.trending_home || data.trendingHome || false,
@@ -582,12 +582,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         if (isNaN(date.getTime())) {
           return ''
         }
-        const year = date.getFullYear()
-        const month = date.getMonth()
-        const day = date.getDate()
-        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-          'July', 'August', 'September', 'October', 'November', 'December']
-        return `${monthNames[month]} ${day}, ${year}`
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+          timeZone: 'America/Edmonton',
+        }).format(date)
       } catch {
         return ''
       }
@@ -727,12 +727,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
                     {/* Featured Image */}
                     {loadedArticle.imageUrl && !loadedArticle.imageUrl.startsWith('data:image') && (
-                      <div className="relative w-full h-[400px] lg:h-[500px] rounded-xl overflow-hidden">
+                      <div className="relative w-full aspect-[16/10] md:aspect-auto md:h-[400px] lg:h-[500px] rounded-xl overflow-hidden bg-gray-100">
                         <Image
                           src={loadedArticle.imageUrl}
                           alt={loadedArticle.title || 'Article image'}
                           fill
-                          className="object-cover"
+                          className="object-contain object-center md:object-cover"
                           priority
                           sizes="(max-width: 768px) 100vw, (max-width: 1280px) 75vw, 900px"
                           quality={85}

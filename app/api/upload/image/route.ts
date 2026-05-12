@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdminOrContributor } from '@/lib/admin-auth'
 
 // Initialize Supabase client for storage operations
 const supabaseUrl = 'https://itdmwpbsnviassgqfhxk.supabase.co'
@@ -14,6 +15,9 @@ export async function POST(request: NextRequest) {
     console.log('📤 Image upload API called')
 
     try {
+        const auth = requireAdminOrContributor(request)
+        if (!auth.ok) return auth.response
+
         const formData = await request.formData()
         const file = formData.get('image') as File | null
 
