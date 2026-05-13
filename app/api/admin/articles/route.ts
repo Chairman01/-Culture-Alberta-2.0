@@ -18,6 +18,8 @@ function getSupabaseClient() {
 export async function GET(request: NextRequest) {
   const auth = requireAdminOrContributor(request)
   if (!auth.ok) return auth.response
+  const contributorAuthor = auth.role === 'contributor' ? auth.username : null
+
   try {
     const { searchParams } = new URL(request.url)
     const forceRefresh = searchParams.get('refresh') === 'true'
@@ -29,10 +31,16 @@ export async function GET(request: NextRequest) {
       const supabase = getSupabaseClient()
 
       // Fetch all articles with essential fields only (EXCLUDE image data for performance)
-      const { data: liveArticles, error } = await supabase
+      let query = supabase
         .from('articles')
         .select('id,title,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary')
         .order('created_at', { ascending: false })
+
+      if (contributorAuthor) {
+        query = query.eq('author', contributorAuthor)
+      }
+
+      const { data: liveArticles, error } = await query
 
       if (!error && liveArticles && liveArticles.length > 0) {
         console.log(`✅ Admin Articles API: Loaded ${liveArticles.length} live articles from Supabase`)
@@ -64,7 +72,8 @@ export async function GET(request: NextRequest) {
 
     // Fallback to optimized fallback if Supabase fails
     console.log('🔧 Admin Articles API: Falling back to optimized fallback...')
-    const fallbackArticles = await loadOptimizedFallback()
+    const fallbackArticles = (await loadOptimizedFallback())
+      .filter(article => !contributorAuthor || article.author === contributorAuthor)
     console.log(`✅ Admin Articles API: Loaded ${fallbackArticles.length} articles from optimized fallback`)
 
     // Map fallback data to match admin interface expectations

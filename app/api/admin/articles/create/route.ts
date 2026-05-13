@@ -51,9 +51,13 @@ function hasMeaningfulContent(content: unknown) {
 export async function POST(request: NextRequest) {
   const auth = requireAdminOrContributor(request)
   if (!auth.ok) return auth.response
+  const articleOwner = auth.role === 'contributor'
+    ? auth.username
+    : undefined
 
   try {
     const articleData = await request.json()
+    const articleAuthor = articleOwner || articleData.author || 'Admin'
     
     console.log('📝 Creating new article:', articleData.title)
 
@@ -86,7 +90,7 @@ export async function POST(request: NextRequest) {
         category: articleData.category,
         categories: articleData.categories,
         location: articleData.location,
-        author: articleData.author,
+        author: articleAuthor,
         tags: articleData.tags,
         type: articleData.type || 'article',
         status: articleData.status || 'published',
@@ -126,7 +130,7 @@ export async function POST(request: NextRequest) {
         content: data.content || '',
         category: data.category || 'General',
         categories: data.categories || [],
-        author: data.author || 'Admin',
+        author: data.author || articleAuthor,
         imageUrl: data.image_url,
         date: data.created_at,
         trendingHome: data.trending_home || false,

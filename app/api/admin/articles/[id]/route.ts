@@ -56,6 +56,13 @@ function hasMeaningfulContent(content: unknown) {
   return text.length >= 50 || content.includes('<img')
 }
 
+function contributorCanAccessArticle(
+  auth: { role: 'admin' | 'contributor'; username: string },
+  article: { author?: string | null } | null | undefined
+) {
+  return auth.role === 'admin' || !!article?.author && article.author === auth.username
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -82,6 +89,10 @@ export async function GET(
 
     if (!data) {
       return NextResponse.json({ error: 'Article not found' }, { status: 404 })
+    }
+
+    if (!contributorCanAccessArticle(authCheck, data)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const mapped = {
@@ -137,11 +148,18 @@ export async function PUT(
     // Fetch current title before update so we can detect slug changes
     const { data: existingArticle } = await supabase
       .from('articles')
-      .select('title, slug')
+      .select('title, slug, author')
       .eq('id', articleId)
       .single()
 
+    if (!contributorCanAccessArticle(authCheck, existingArticle)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const nextSlug = articleData.slug || await generateArticleSlug(supabase, articleData.title, articleId)
+    const articleAuthor = authCheck.role === 'contributor'
+      ? authCheck.username
+      : articleData.author
 
     // Update the article in Supabase
     const { data, error } = await supabase
@@ -153,7 +171,7 @@ export async function PUT(
         category: articleData.category,
         categories: articleData.categories,
         location: articleData.location,
-        author: articleData.author,
+        author: articleAuthor,
         tags: articleData.tags,
         type: articleData.type || 'article',
         status: articleData.status || 'published',
@@ -219,7 +237,7 @@ export async function PUT(
             category: articleData.category,
             categories: articleData.categories,
             location: articleData.location,
-            author: articleData.author,
+            author: articleAuthor,
             tags: articleData.tags,
             type: articleData.type || 'article',
             imageUrl: articleData.imageUrl,
@@ -245,7 +263,7 @@ export async function PUT(
             category: articleData.category,
             categories: articleData.categories,
             location: articleData.location,
-            author: articleData.author,
+            author: articleAuthor,
             tags: articleData.tags,
             type: articleData.type || 'article',
             status: 'published',
@@ -284,7 +302,7 @@ export async function PUT(
             category: articleData.category,
             categories: articleData.categories,
             location: articleData.location,
-            author: articleData.author,
+            author: articleAuthor,
             tags: articleData.tags,
             type: articleData.type || 'article',
             imageUrl: articleData.imageUrl,
@@ -310,7 +328,7 @@ export async function PUT(
             category: articleData.category,
             categories: articleData.categories,
             location: articleData.location,
-            author: articleData.author,
+            author: articleAuthor,
             tags: articleData.tags,
             type: articleData.type || 'article',
             status: 'published',
