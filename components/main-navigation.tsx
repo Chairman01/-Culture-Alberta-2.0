@@ -76,8 +76,8 @@ export function MainNavigation() {
           <Link href="/culture" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Culture
           </Link>
-          <Link href="/best-of" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-            Best of Alberta
+          <Link href="/tools" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+            Tools
           </Link>
           <Link href="/shop" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Shop
@@ -191,11 +191,11 @@ export function MainNavigation() {
               Culture
             </Link>
             <Link
-              href="/best-of"
+              href="/tools"
               onClick={closeMobileMenu}
               className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
             >
-              Best of Alberta
+              Tools
             </Link>
             <Link
               href="/shop"

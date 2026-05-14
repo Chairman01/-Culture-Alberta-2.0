@@ -20,6 +20,7 @@ export function Footer() {
               <li><Link href="/alberta" className="text-gray-600 hover:text-gray-900">Around Alberta</Link></li>
               <li><Link href="/events" className="text-gray-600 hover:text-gray-900">Events</Link></li>
               <li><Link href="/food-drink" className="text-gray-600 hover:text-gray-900">Food & Drink</Link></li>
+              <li><Link href="/tools" className="text-gray-600 hover:text-gray-900">Alberta Tools</Link></li>
             </ul>
           </div>
 
