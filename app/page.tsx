@@ -842,42 +842,34 @@ export default async function HomeStatic() {
               <div className="grid gap-4 md:grid-cols-2">
                 {/* AISH Calculator card */}
                 <Link href="/tools/aish-calculator" className="group block">
-                  <div className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col">
-                    {/* Logo banner */}
-                    <div className="relative h-[72px] bg-white border-b border-gray-100">
-                      <Image
-                        src="/images/aish-logo.svg"
-                        alt="AISH – Assured Income for the Severely Handicapped"
-                        fill
-                        className="object-contain object-left px-5 py-2"
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                      />
+                  <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg hover:border-emerald-200 transition-all duration-300 h-full flex flex-col">
+                    {/* Header: logo + badge */}
+                    <div className="flex items-center justify-between px-5 pt-4 pb-3 bg-gradient-to-r from-emerald-50 to-white border-b border-emerald-100">
+                      <div className="relative h-8 w-32 shrink-0">
+                        <Image
+                          src="/images/aish-logo.svg"
+                          alt="AISH – Assured Income for the Severely Handicapped"
+                          fill
+                          className="object-contain object-left"
+                          sizes="128px"
+                        />
+                      </div>
+                      <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full shrink-0">
+                        <Calculator className="w-3 h-3" />
+                        Free calculator
+                      </span>
                     </div>
                     {/* Content */}
-                    <div className="p-5 flex flex-col flex-1">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-1 text-xs font-semibold">2026 rates</span>
-                        <span className="text-xs text-gray-400 font-medium">Free calculator</span>
-                      </div>
-                      <h3 className="font-display font-bold text-xl text-gray-900 group-hover:text-emerald-700 transition-colors duration-300 leading-tight mb-1.5">
+                    <div className="p-4 flex flex-col flex-1">
+                      <h3 className="font-display font-bold text-lg text-gray-900 group-hover:text-emerald-700 transition-colors leading-tight mb-1">
                         AISH Calculator Alberta
                       </h3>
-                      <p className="font-body text-sm text-gray-600 leading-relaxed flex-1 mb-4">
-                        Estimate your monthly AISH payment, child benefit, income exemption, clawback, and take-home income using 2026 Alberta rates.
+                      <p className="font-body text-sm text-gray-500 leading-relaxed flex-1 mb-4">
+                        Enter your income and family size to get your estimated 2026 AISH payment instantly — including exemptions and child benefits.
                       </p>
-                      <div className="flex items-center gap-4 pt-3 border-t border-gray-50">
-                        <div>
-                          <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">Base rate</p>
-                          <p className="text-base font-bold text-gray-900">$1,940/mo</p>
-                        </div>
-                        <div className="w-px h-7 bg-gray-100" />
-                        <div>
-                          <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">1st child</p>
-                          <p className="text-base font-bold text-gray-900">+$232/mo</p>
-                        </div>
-                        <div className="ml-auto flex items-center gap-1.5 text-sm font-semibold text-emerald-700 group-hover:gap-2.5 transition-all">
-                          Calculate <ArrowRight className="w-4 h-4" />
-                        </div>
+                      <div className="flex items-center justify-between bg-emerald-600 group-hover:bg-emerald-700 text-white rounded-xl px-4 py-2.5 transition-colors">
+                        <span className="text-sm font-semibold">Calculate my payment</span>
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </div>
                   </div>
@@ -885,31 +877,37 @@ export default async function HomeStatic() {
 
                 {/* Tools hub card */}
                 <Link href="/tools" className="group block">
-                  <div className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col">
+                  <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300 h-full flex flex-col">
                     <div className="p-5 flex flex-col flex-1">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                          <Calculator className="w-5 h-5 text-blue-600" />
+                        <div className="w-11 h-11 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                          <Calculator className="w-5 h-5 text-white" />
                         </div>
-                        <span className="rounded-full bg-blue-100 text-blue-700 px-2.5 py-1 text-xs font-semibold">Tools hub</span>
+                        <div>
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-600">Alberta Tools</span>
+                          <p className="text-sm font-bold text-gray-900 leading-tight">More calculators coming</p>
+                        </div>
                       </div>
-                      <h3 className="font-display font-bold text-xl text-gray-900 group-hover:text-blue-700 transition-colors duration-300 leading-tight mb-1.5">
-                        Calculators for Albertans
-                      </h3>
-                      <p className="font-body text-sm text-gray-600 leading-relaxed flex-1 mb-4">
-                        Quick reference tools for benefits, housing, stat holidays, and everyday Alberta questions. No sign-up required.
-                      </p>
-                      <div className="space-y-2.5 pt-3 border-t border-gray-50">
+                      <div className="flex-1 space-y-3 mb-4">
                         {[
-                          "Alberta Damage Deposit Calculator",
-                          "Alberta Stat Holiday Pay Calculator",
-                        ].map((name) => (
-                          <div key={name} className="flex items-center gap-2 text-xs text-gray-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-gray-200 shrink-0" />
-                            <span>{name}</span>
-                            <span className="ml-auto text-gray-300 font-medium">Coming soon</span>
+                          { name: "Alberta Damage Deposit Calculator", desc: "Max deposit under the Residential Tenancies Act" },
+                          { name: "Alberta Stat Holiday Pay Calculator", desc: "What you're owed on Alberta stat holidays" },
+                        ].map((tool) => (
+                          <div key={tool.name} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                            <div className="w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center shrink-0 mt-0.5">
+                              <Calculator className="w-3 h-3 text-gray-400" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-700 leading-tight">{tool.name}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{tool.desc}</p>
+                            </div>
+                            <span className="ml-auto text-[10px] font-semibold text-gray-300 uppercase tracking-wide shrink-0 mt-1">Soon</span>
                           </div>
                         ))}
+                      </div>
+                      <div className="flex items-center justify-between border border-blue-100 bg-blue-50 rounded-xl px-4 py-2.5">
+                        <span className="text-sm font-semibold text-blue-700">View all tools</span>
+                        <ArrowRight className="w-4 h-4 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </div>
                   </div>

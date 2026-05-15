@@ -324,16 +324,6 @@ export default function AISHCalculatorPage() {
                 />
               </div>
 
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 mb-2">
-                  What this tool estimates
-                </p>
-                <p className="text-sm leading-relaxed text-emerald-950">
-                  Enter your employment income and dependent children to see an estimated AISH
-                  payment, annual benefit, and how much employment income may be exempt before it
-                  affects your monthly support.
-                </p>
-              </div>
             </div>
           </div>
         </div>

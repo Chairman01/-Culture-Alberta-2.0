@@ -109,43 +109,55 @@ export default function ToolsPage() {
       {/* Tools Grid */}
       <main className="container mx-auto px-4 max-w-5xl py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* AISH Calculator — featured card with logo */}
+          {/* AISH Calculator — featured card with calculator screen */}
           <Link href="/tools/aish-calculator" className="group block h-full">
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col h-full hover:shadow-md transition-shadow cursor-pointer">
-              {/* Logo banner */}
-              <div className="relative h-[72px] bg-white border-b border-gray-100">
-                <Image
-                  src="/images/aish-logo.svg"
-                  alt="AISH – Assured Income for the Severely Handicapped"
-                  fill
-                  className="object-contain object-left px-5 py-2"
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  priority
-                />
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col h-full hover:shadow-xl hover:border-emerald-200 transition-all duration-300 cursor-pointer">
+              {/* Header: logo + badge */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 bg-gradient-to-r from-emerald-50 to-white border-b border-emerald-100">
+                <div className="relative h-9 w-36 shrink-0">
+                  <Image
+                    src="/images/aish-logo.svg"
+                    alt="AISH – Assured Income for the Severely Handicapped"
+                    fill
+                    className="object-contain object-left"
+                    sizes="144px"
+                    priority
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">2026 rates</span>
+                  <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">Free</span>
+                </div>
               </div>
-              <div className="p-6 flex flex-col flex-1 gap-4">
-                <div className="flex items-start justify-between gap-3">
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${tools[0].badgeColor}`}>
-                    {tools[0].badge}
-                  </span>
+              {/* Stats bar */}
+              <div className="mx-6 mt-4 grid grid-cols-3 gap-0 bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Base rate</p>
+                  <p className="text-sm font-bold text-gray-900">$1,940</p>
+                  <p className="text-[10px] text-gray-400">/month</p>
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">{tools[0].title}</h2>
-                  <p className="text-sm text-gray-600 leading-relaxed">{tools[0].description}</p>
+                <div className="text-center py-3 px-2 border-x border-gray-100">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">1st child</p>
+                  <p className="text-sm font-bold text-gray-900">+$232</p>
+                  <p className="text-[10px] text-gray-400">/month</p>
                 </div>
-                <div className="flex items-center gap-4 pt-3 border-t border-gray-50">
-                  <div>
-                    <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">Base rate</p>
-                    <p className="text-base font-bold text-gray-900">$1,940/mo</p>
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Exemption</p>
+                  <p className="text-sm font-bold text-gray-900">$1,072</p>
+                  <p className="text-[10px] text-gray-400">single/mo</p>
+                </div>
+              </div>
+              {/* Content + CTA */}
+              <div className="p-6 flex flex-col flex-1">
+                <h2 className="text-xl font-bold text-gray-900 group-hover:text-emerald-700 transition-colors mb-2">{tools[0].title}</h2>
+                <p className="text-sm text-gray-500 leading-relaxed flex-1 mb-5">{tools[0].description}</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 group-hover:bg-emerald-700 text-white rounded-xl py-3 font-semibold text-sm transition-colors">
+                    <Calculator className="w-4 h-4" />
+                    Calculate my AISH payment
                   </div>
-                  <div className="w-px h-7 bg-gray-100" />
-                  <div>
-                    <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">1st child</p>
-                    <p className="text-base font-bold text-gray-900">+$232/mo</p>
-                  </div>
-                  <div className="ml-auto flex items-center gap-1 text-sm font-medium text-emerald-700 group-hover:gap-2 transition-all">
-                    Open Calculator
-                    <ArrowRight className="w-4 h-4" />
+                  <div className="w-11 h-11 flex items-center justify-center border border-emerald-200 rounded-xl text-emerald-600 group-hover:bg-emerald-50 transition-colors">
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               </div>
