@@ -14,12 +14,27 @@ import { Metadata } from 'next'
 
 // Proper App Router metadata export (replaces broken PageSEO component)
 export const metadata: Metadata = {
-  title: 'Calgary - Culture Alberta',
-  description: "Discover the latest news, events, and stories from Alberta's largest city. Explore Calgary's vibrant neighborhoods, unique attractions, and local culture.",
+  title: 'Calgary News, Events & Culture | Culture Alberta',
+  description: "Your local guide to Calgary, Alberta. Discover the latest news, events, restaurants, neighborhoods, and cultural stories from Alberta's largest city.",
+  keywords: 'Calgary events, Calgary news, Calgary culture, things to do in Calgary, Calgary restaurants, Calgary neighborhoods, Calgary Alberta, Calgary arts, Calgary entertainment',
+  alternates: {
+    canonical: 'https://www.culturealberta.com/calgary',
+  },
   openGraph: {
-    title: 'Calgary - Culture Alberta',
-    description: "Discover the latest news, events, and stories from Alberta's largest city.",
+    title: 'Calgary News, Events & Culture | Culture Alberta',
+    description: "Your local guide to Calgary, Alberta. Discover news, events, restaurants, and culture from Alberta's largest city.",
     url: 'https://www.culturealberta.com/calgary',
+    siteName: 'Culture Alberta',
+    locale: 'en_CA',
+    type: 'website',
+    images: [{ url: 'https://www.culturealberta.com/images/culture-alberta-og.jpg', width: 1200, height: 630, alt: 'Calgary - Culture Alberta' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Calgary News, Events & Culture | Culture Alberta',
+    description: "Your local guide to Calgary, Alberta — news, events, restaurants, and culture.",
+    site: '@culturealberta',
+    images: ['https://www.culturealberta.com/images/culture-alberta-og.jpg'],
   },
 }
 
@@ -53,9 +68,9 @@ async function getCalgaryData() {
       return dateB - dateA // Newest first
     })
 
-    // Featured article: first article with featuredCalgary flag, or first Calgary article (excluding events) as fallback
+    // Featured article: use featuredCalgary flag if set, else newest article
     const featuredArticle = sortedArticles.find(post => post.featuredCalgary === true) ||
-      sortedArticles.find(post => post.type !== 'event' && post.type !== 'Event') ||
+      sortedArticles[0] ||
       null
 
     // Trending: use actual view data when available, else manual flags, else recent
@@ -162,8 +177,34 @@ export default async function CalgaryPage() {
     }
   }
 
+  const calgarySchema = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Calgary News, Events & Culture",
+    "description": "Your local guide to Calgary, Alberta — news, events, restaurants, neighborhoods, and culture.",
+    "url": "https://www.culturealberta.com/calgary",
+    "isPartOf": { "@type": "WebSite", "name": "Culture Alberta", "url": "https://www.culturealberta.com" },
+    "about": {
+      "@type": "City",
+      "name": "Calgary",
+      "containedInPlace": { "@type": "AdministrativeArea", "name": "Alberta", "containedInPlace": { "@type": "Country", "name": "Canada" } }
+    },
+    "publisher": { "@type": "Organization", "name": "Culture Alberta", "url": "https://www.culturealberta.com" }
+  }
+
+  const calgaryBreadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.culturealberta.com" },
+      { "@type": "ListItem", "position": 2, "name": "Calgary", "item": "https://www.culturealberta.com/calgary" }
+    ]
+  }
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(calgarySchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(calgaryBreadcrumb) }} />
       {/* Metadata is now handled by the metadata export above */}
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">

@@ -3,12 +3,11 @@
 import Link from 'next/link'
 import Image from 'next/image'
 // Removed direct import - using API instead
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Calculator, DollarSign } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { PageSEO } from '@/components/seo/page-seo'
 import { Article } from '@/lib/types/article'
 import { Suspense, useState, useEffect } from 'react'
-import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { HomepageLoading } from '@/components/page-loading'
 
@@ -615,8 +614,61 @@ export default function Home() {
           </div>
         </section>
 
-          {/* Best of Alberta */}
-          <BestOfSection />
+          {/* Alberta Tools */}
+          <section className="w-full py-8">
+            <div className="container mx-auto px-4 md:px-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold">Alberta Tools</h2>
+                <Link href="/tools" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
+                  View All <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Link href="/tools/aish-calculator" className="group block">
+                  <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 h-full">
+                    <div className="p-5 flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                        <DollarSign className="w-6 h-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                          <span className="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1.5 font-medium">2026 rates</span>
+                          <span className="font-medium">Free calculator</span>
+                        </div>
+                        <h3 className="font-display font-bold text-xl group-hover:text-emerald-700 transition-colors duration-300 leading-tight">
+                          AISH Calculator Alberta
+                        </h3>
+                        <p className="font-body text-sm text-gray-600 mt-2 line-clamp-2">
+                          Estimate monthly AISH payments, child benefits, employment income exemptions, and clawbacks.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+                <Link href="/tools" className="group block">
+                  <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 h-full">
+                    <div className="p-5 flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                        <Calculator className="w-6 h-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                          <span className="rounded-full bg-blue-100 text-blue-800 px-3 py-1.5 font-medium">Tools hub</span>
+                          <span className="font-medium">More coming soon</span>
+                        </div>
+                        <h3 className="font-display font-bold text-xl group-hover:text-blue-700 transition-colors duration-300 leading-tight">
+                          Calculators for Albertans
+                        </h3>
+                        <p className="font-body text-sm text-gray-600 mt-2 line-clamp-2">
+                          Quick reference tools for benefits, housing, holidays, and everyday Alberta questions.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          </section>
         </main>
       </div>
       </Suspense>

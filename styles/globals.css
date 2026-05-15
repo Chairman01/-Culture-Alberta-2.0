@@ -6,6 +6,35 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* ============================================================
+   CLS (Cumulative Layout Shift) Prevention
+   Reserve space for dynamically-loaded embeds and ad units
+   so the browser doesn't shift content when they expand.
+   ============================================================ */
+
+/* Twitter/X embeds: widget.js replaces blockquote with ~500px iframe */
+.twitter-tweet {
+  display: block;
+  min-height: 500px;
+}
+
+/* Mediavine video placeholder: player injects into .mv-video-target */
+.mv-video-target {
+  display: block;
+  min-height: 315px;
+}
+
+/* Article images: aspect-ratio fallback so space is reserved before load.
+   The fixImageDimensions() function sets width/height HTML attributes which
+   the browser uses to infer aspect-ratio. This CSS is a belt-and-suspenders
+   fallback for any images that slip through without explicit dimensions. */
+.article-content-wrapper img:not([width]):not([height]) {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  height: auto;
+  background-color: #f3f4f6;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

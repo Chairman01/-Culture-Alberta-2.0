@@ -28,7 +28,16 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
         .replace(/<p>/g, '<p class="mb-6 leading-relaxed text-gray-700 text-lg">')
         .replace(/<strong>/g, '<strong class="font-semibold text-gray-900">')
         .replace(/<em>/g, '<em class="italic text-gray-800">')
-        .replace(/<img([^>]*)>/g, '<img$1 class="rounded-lg shadow-lg my-8 max-w-full h-auto">')
+        .replace(/<img([^>]*)>/g, (match, attrs) => {
+          const hasWidth = /\bwidth\s*=/i.test(attrs)
+          const hasHeight = /\bheight\s*=/i.test(attrs)
+          let out = attrs
+          // Add default dimensions so the browser can reserve space before the image loads.
+          // This prevents layout shift (CLS) from images with unknown intrinsic size.
+          if (!hasWidth) out += ' width="1600"'
+          if (!hasHeight) out += ' height="900"'
+          return `<img${out} class="rounded-lg shadow-lg my-8 max-w-full h-auto">`
+        })
         .replace(/<span style="font-family:([^"]+)"/g, '<span style="font-family:$1"')
         .replace(/<span style="font-size:([^"]+)"/g, '<span style="font-size:$1"')
     }, [content])

@@ -142,9 +142,11 @@ export function processTwitterAnchors(content: string): string {
 
   return content.replace(anchorPattern, (_match, url, _tweetId) => {
     return `
-      <blockquote class="twitter-tweet" data-dnt="true" data-theme="light">
-        <a href="${url}"></a>
-      </blockquote>
+      <div class="twitter-embed-wrapper" style="min-height:500px;display:block;overflow:hidden;">
+        <blockquote class="twitter-tweet" data-dnt="true" data-theme="light">
+          <a href="${url}"></a>
+        </blockquote>
+      </div>
     `
   })
 }
@@ -160,9 +162,11 @@ export function processTwitterLinks(content: string): string {
 
   return content.replace(twitterUrlPattern, (match, url, _tweetId) => {
     return `
-      <blockquote class="twitter-tweet" data-dnt="true" data-theme="light">
-        <a href="${url}"></a>
-      </blockquote>
+      <div class="twitter-embed-wrapper" style="min-height:500px;display:block;overflow:hidden;">
+        <blockquote class="twitter-tweet" data-dnt="true" data-theme="light">
+          <a href="${url}"></a>
+        </blockquote>
+      </div>
     `
   })
 }

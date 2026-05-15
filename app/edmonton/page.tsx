@@ -15,12 +15,27 @@ import { Metadata } from 'next'
 
 // Proper App Router metadata export (replaces broken PageSEO component)
 export const metadata: Metadata = {
-  title: 'Edmonton - Culture Alberta',
-  description: "Discover the latest news, events, and stories from Alberta's capital city. Explore Edmonton's vibrant neighborhoods, cultural venues, and outdoor activities.",
+  title: 'Edmonton News, Events & Culture | Culture Alberta',
+  description: "Your local guide to Edmonton, Alberta. Discover the latest news, events, restaurants, neighborhoods, and cultural stories from Alberta's capital city.",
+  keywords: 'Edmonton events, Edmonton news, Edmonton culture, things to do in Edmonton, Edmonton restaurants, Edmonton neighborhoods, Edmonton Alberta, Edmonton arts, Edmonton entertainment',
+  alternates: {
+    canonical: 'https://www.culturealberta.com/edmonton',
+  },
   openGraph: {
-    title: 'Edmonton - Culture Alberta',
-    description: "Discover the latest news, events, and stories from Alberta's capital city.",
+    title: 'Edmonton News, Events & Culture | Culture Alberta',
+    description: "Your local guide to Edmonton, Alberta. Discover news, events, restaurants, and culture from Alberta's capital city.",
     url: 'https://www.culturealberta.com/edmonton',
+    siteName: 'Culture Alberta',
+    locale: 'en_CA',
+    type: 'website',
+    images: [{ url: 'https://www.culturealberta.com/images/culture-alberta-og.jpg', width: 1200, height: 630, alt: 'Edmonton - Culture Alberta' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Edmonton News, Events & Culture | Culture Alberta',
+    description: "Your local guide to Edmonton, Alberta — news, events, restaurants, and culture.",
+    site: '@culturealberta',
+    images: ['https://www.culturealberta.com/images/culture-alberta-og.jpg'],
   },
 }
 
@@ -92,9 +107,9 @@ async function getEdmontonData() {
         ? trendingByFlag.slice(0, 6)
         : eligibleArticles.slice(0, 6)
 
-    // Get featured article - if no featuredEdmonton flag, use the first article
+    // Get featured article: use featuredEdmonton flag if set, else newest article
     const featuredArticle = sortedArticles.find(post => post.featuredEdmonton === true) ||
-      sortedArticles.find(post => post.type !== 'event' && post.type !== 'Event') ||
+      sortedArticles[0] ||
       null
 
     console.log(`📊 Edmonton page data: ${sortedArticles.length} articles, ${finalTrendingArticles.length} trending, ${featuredArticle ? '1' : '0'} featured`)
@@ -165,8 +180,34 @@ export default async function EdmontonPage() {
     }
   }
 
+  const edmontonSchema = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Edmonton News, Events & Culture",
+    "description": "Your local guide to Edmonton, Alberta — news, events, restaurants, neighborhoods, and culture.",
+    "url": "https://www.culturealberta.com/edmonton",
+    "isPartOf": { "@type": "WebSite", "name": "Culture Alberta", "url": "https://www.culturealberta.com" },
+    "about": {
+      "@type": "City",
+      "name": "Edmonton",
+      "containedInPlace": { "@type": "AdministrativeArea", "name": "Alberta", "containedInPlace": { "@type": "Country", "name": "Canada" } }
+    },
+    "publisher": { "@type": "Organization", "name": "Culture Alberta", "url": "https://www.culturealberta.com" }
+  }
+
+  const edmontonBreadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.culturealberta.com" },
+      { "@type": "ListItem", "position": 2, "name": "Edmonton", "item": "https://www.culturealberta.com/edmonton" }
+    ]
+  }
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(edmontonSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(edmontonBreadcrumb) }} />
       {/* Metadata is now handled by the metadata export above */}
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">

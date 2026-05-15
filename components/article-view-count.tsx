@@ -51,7 +51,14 @@ export function ArticleViewCount({ slug, articleTitle, className = "" }: Article
     request.then(nextCount => setCount(nextCount))
   }, [slug])
 
-  if (count === null) return null
+  // Render invisible placeholder while loading to prevent layout shift.
+  // The span occupies the same space so nothing in the flex row moves.
+  if (count === null) return (
+    <span className={`inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full invisible ${className}`} aria-hidden="true">
+      <Eye className="w-4 h-4" />
+      0 views
+    </span>
+  )
 
   return (
     <span className={`inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full ${className}`}>

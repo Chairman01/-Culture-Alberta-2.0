@@ -88,6 +88,13 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   other: {
     'google-adsense-account': 'ca-pub-6902227267422426',
+    // Geographic meta tags — tell search engines and AI this site is about Alberta, Canada
+    'geo.region': 'CA-AB',
+    'geo.placename': 'Alberta, Canada',
+    'geo.position': '53.9333;-116.5765',
+    'ICBM': '53.9333, -116.5765',
+    // Content language declaration
+    'content-language': 'en-CA',
   },
 }
 

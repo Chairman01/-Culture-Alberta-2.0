@@ -3,11 +3,10 @@ import Image from 'next/image'
 import { getHomepageArticles } from '@/lib/articles'
 import { getAllAlbertaArticles } from '@/lib/alberta-cities'
 import { getAllEvents } from '@/lib/events'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Calculator, DollarSign } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { SearchBar } from '@/components/search-bar'
 import { Article } from '@/lib/types/article'
-import { BestOfSection } from '@/components/best-of-section'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getTrendingByViews } from '@/lib/trending-articles'
 import { loadOptimizedFallback } from '@/lib/optimized-fallback'
@@ -291,17 +290,22 @@ export default async function HomeStatic() {
     new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
   )
 
-  const homepageCandidatePosts = [...sortedPosts, ...fallbackSortedPosts].filter((post, index, arr) =>
-    post.type !== 'event' && arr.findIndex(item => item.id === post.id) === index
-  )
+  const homepageCandidatePosts = [...sortedPosts, ...fallbackSortedPosts]
+    .filter((post, index, arr) =>
+      post.type !== 'event' && arr.findIndex(item => item.id === post.id) === index
+    )
+    // Re-sort after combining so newest always floats to the top regardless of source
+    .sort((a, b) =>
+      new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
+    )
 
-  // Prefer explicit featured flags, but never show an empty hero when articles exist.
+  // Featured hero: always use the manually-pinned featuredHome article if one is set.
+  // Fall back to newest article with an image, then newest article overall.
   const featuredPost =
     homepageCandidatePosts.find(post => post.featuredHome === true) ||
     homepageCandidatePosts.find(post => !!getPostImage(post) && getPostImage(post) !== '/placeholder.svg') ||
     homepageCandidatePosts[0] ||
     null
-
 
   // Other Alberta cities - exclude these from Edmonton/Calgary spotlights (fixes mis-tagged articles)
   const OTHER_ALBERTA_CITIES = ['red deer', 'lethbridge', 'medicine hat', 'grande prairie', 'fort mcmurray', 'airdrie', 'st. albert', 'okotoks', 'canmore', 'banff', 'brooks', 'edson', 'camrose', 'lloydminster', 'drumheller', 'jasper']
@@ -826,8 +830,93 @@ export default async function HomeStatic() {
             </div>
           </section>
 
-          {/* Best of Alberta */}
-          <BestOfSection />
+          {/* Alberta Tools */}
+          <section className="w-full py-8">
+            <div className="container mx-auto px-4 md:px-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold">Alberta Tools</h2>
+                <Link href="/tools" className="text-blue-600 hover:text-blue-700 flex items-center gap-2 font-body font-medium">
+                  View All <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* AISH Calculator card */}
+                <Link href="/tools/aish-calculator" className="group block">
+                  <div className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col">
+                    {/* Logo banner */}
+                    <div className="relative h-[72px] bg-white border-b border-gray-100">
+                      <Image
+                        src="/images/aish-logo.svg"
+                        alt="AISH – Assured Income for the Severely Handicapped"
+                        fill
+                        className="object-contain object-left px-5 py-2"
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                      />
+                    </div>
+                    {/* Content */}
+                    <div className="p-5 flex flex-col flex-1">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-1 text-xs font-semibold">2026 rates</span>
+                        <span className="text-xs text-gray-400 font-medium">Free calculator</span>
+                      </div>
+                      <h3 className="font-display font-bold text-xl text-gray-900 group-hover:text-emerald-700 transition-colors duration-300 leading-tight mb-1.5">
+                        AISH Calculator Alberta
+                      </h3>
+                      <p className="font-body text-sm text-gray-600 leading-relaxed flex-1 mb-4">
+                        Estimate your monthly AISH payment, child benefit, income exemption, clawback, and take-home income using 2026 Alberta rates.
+                      </p>
+                      <div className="flex items-center gap-4 pt-3 border-t border-gray-50">
+                        <div>
+                          <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">Base rate</p>
+                          <p className="text-base font-bold text-gray-900">$1,940/mo</p>
+                        </div>
+                        <div className="w-px h-7 bg-gray-100" />
+                        <div>
+                          <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">1st child</p>
+                          <p className="text-base font-bold text-gray-900">+$232/mo</p>
+                        </div>
+                        <div className="ml-auto flex items-center gap-1.5 text-sm font-semibold text-emerald-700 group-hover:gap-2.5 transition-all">
+                          Calculate <ArrowRight className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+
+                {/* Tools hub card */}
+                <Link href="/tools" className="group block">
+                  <div className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col">
+                    <div className="p-5 flex flex-col flex-1">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                          <Calculator className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <span className="rounded-full bg-blue-100 text-blue-700 px-2.5 py-1 text-xs font-semibold">Tools hub</span>
+                      </div>
+                      <h3 className="font-display font-bold text-xl text-gray-900 group-hover:text-blue-700 transition-colors duration-300 leading-tight mb-1.5">
+                        Calculators for Albertans
+                      </h3>
+                      <p className="font-body text-sm text-gray-600 leading-relaxed flex-1 mb-4">
+                        Quick reference tools for benefits, housing, stat holidays, and everyday Alberta questions. No sign-up required.
+                      </p>
+                      <div className="space-y-2.5 pt-3 border-t border-gray-50">
+                        {[
+                          "Alberta Damage Deposit Calculator",
+                          "Alberta Stat Holiday Pay Calculator",
+                        ].map((name) => (
+                          <div key={name} className="flex items-center gap-2 text-xs text-gray-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-200 shrink-0" />
+                            <span>{name}</span>
+                            <span className="ml-auto text-gray-300 font-medium">Coming soon</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          </section>
         </main>
       </div>
     </>

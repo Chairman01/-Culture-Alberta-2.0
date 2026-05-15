@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 735 160" role="img" aria-labelledby="aish-logo-title">
+  <title id="aish-logo-title">AISH – Assured Income for the Severely Handicapped</title>
+  <rect width="735" height="160" fill="#ffffff"/>
+  <!-- AISH wordmark: sky-blue, ultra-light weight, wide letter-spacing to match official logo -->
+  <text
+    x="10"
+    y="120"
+    fill="#47BCE0"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="114"
+    font-weight="200"
+    letter-spacing="10"
+    text-rendering="geometricPrecision">AISH</text>
+  <!-- Vertical rule separator -->
+  <line x1="328" y1="14" x2="328" y2="146" stroke="#9ca3af" stroke-width="2" stroke-linecap="round"/>
+  <!-- Program name: two lines, no textLength/lengthAdjust to avoid glyph distortion -->
+  <text
+    x="350"
+    y="74"
+    fill="#6b7280"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="27"
+    font-weight="300"
+    text-rendering="geometricPrecision">Assured Income for</text>
+  <text
+    x="350"
+    y="114"
+    fill="#6b7280"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="27"
+    font-weight="300"
+    text-rendering="geometricPrecision">the Severely Handicapped</text>
+</svg>
