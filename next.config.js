@@ -76,6 +76,17 @@ const nextConfig = {
         destination: '/articles/alberta-stat-holidays-2026-full-list-dates-pay-rules-updated-may-2026',
         permanent: true,
       },
+      // Article slug chain: Halal insurance article renamed twice
+      {
+        source: '/articles/alberta-may-explore-halal-insurance-model-premier-smith-signals-at-calgary-eid-celebration',
+        destination: '/articles/premier-danielle-smith-signals-alberta-may-explore-halal-insurance-model-at-calgary-eid-celebration',
+        permanent: true,
+      },
+      {
+        source: '/articles/premier-danielle-smith-says-alberta-may-explore-halal-insurance-model-for-muslim-residents',
+        destination: '/articles/premier-danielle-smith-signals-alberta-may-explore-halal-insurance-model-at-calgary-eid-celebration',
+        permanent: true,
+      },
       // Redirect common misspellings
       {
         source: '/calagry',
