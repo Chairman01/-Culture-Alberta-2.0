@@ -70,6 +70,12 @@ const nextConfig = {
         destination: '/articles/grande-prairie-rcmp-asking-for-help-finding-15-year-old-gracie-ann-gale',
         permanent: true,
       },
+      // Article slug change: Alberta stat holidays 2026 renamed
+      {
+        source: '/articles/alberta-stat-holidays-2026-complete-list-of-dates-long-weekends-and-whats-open',
+        destination: '/articles/alberta-stat-holidays-2026-full-list-dates-pay-rules-updated-may-2026',
+        permanent: true,
+      },
       // Redirect common misspellings
       {
         source: '/calagry',
