@@ -443,6 +443,20 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         console.warn('Failed to check events:', error)
       }
 
+      // Check slug_redirects table for renamed articles
+      try {
+        const { data: slugRedirect } = await supabase
+          .from('slug_redirects')
+          .select('new_slug')
+          .eq('old_slug', slug)
+          .single()
+        if (slugRedirect?.new_slug) {
+          redirect(`/articles/${slugRedirect.new_slug}`)
+        }
+      } catch {
+        // No redirect found, fall through to notFound
+      }
+
       notFound()
     }
 
