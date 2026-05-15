@@ -114,13 +114,13 @@ export default function ToolsPage() {
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col h-full hover:shadow-xl hover:border-emerald-200 transition-all duration-300 cursor-pointer">
               {/* Header: logo + badge */}
               <div className="flex items-center justify-between px-6 pt-5 pb-4 bg-gradient-to-r from-emerald-50 to-white border-b border-emerald-100">
-                <div className="relative h-9 w-36 shrink-0">
+                <div className="relative h-12 w-48 shrink-0">
                   <Image
                     src="/images/aish-logo.svg"
                     alt="AISH – Assured Income for the Severely Handicapped"
                     fill
                     className="object-contain object-left"
-                    sizes="144px"
+                    sizes="192px"
                     priority
                   />
                 </div>

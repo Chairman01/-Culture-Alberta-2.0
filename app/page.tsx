@@ -845,13 +845,13 @@ export default async function HomeStatic() {
                   <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg hover:border-emerald-200 transition-all duration-300 h-full flex flex-col">
                     {/* Header: logo + badge */}
                     <div className="flex items-center justify-between px-5 pt-4 pb-3 bg-gradient-to-r from-emerald-50 to-white border-b border-emerald-100">
-                      <div className="relative h-8 w-32 shrink-0">
+                      <div className="relative h-11 w-44 shrink-0">
                         <Image
                           src="/images/aish-logo.svg"
                           alt="AISH – Assured Income for the Severely Handicapped"
                           fill
                           className="object-contain object-left"
-                          sizes="128px"
+                          sizes="176px"
                         />
                       </div>
                       <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full shrink-0">
@@ -868,7 +868,7 @@ export default async function HomeStatic() {
                         Enter your income and family size to get your estimated 2026 AISH payment instantly — including exemptions and child benefits.
                       </p>
                       <div className="flex items-center justify-between bg-emerald-600 group-hover:bg-emerald-700 text-white rounded-xl px-4 py-2.5 transition-colors">
-                        <span className="text-sm font-semibold">Calculate my payment</span>
+                        <span className="text-sm font-semibold">Calculate my AISH payment</span>
                         <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </div>
