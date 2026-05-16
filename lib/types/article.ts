@@ -6,6 +6,7 @@ export interface Article {
   description?: string;
   imageUrl?: string; // Keep for backward compatibility
   imageUrls?: string[]; // New field for multiple images
+  imageSource?: string; // Image credit / attribution
   category?: string;
   categories?: string[]; // New field for multiple categories
   location?: string;

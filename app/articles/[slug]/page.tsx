@@ -132,6 +132,7 @@ const getArticleFromDB = unstable_cache(
         article = {
           ...data,
           imageUrl: data.image_url || data.image || data.imageUrl,
+          imageSource: data.image_source || data.imageSource || null,
           date: data.date || data.created_at,
           createdAt: data.created_at || data.createdAt,
           updatedAt: data.updated_at || data.updatedAt,
@@ -741,18 +742,25 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
                     {/* Featured Image */}
                     {loadedArticle.imageUrl && !loadedArticle.imageUrl.startsWith('data:image') && (
-                      <div className="relative w-full aspect-[16/10] md:aspect-auto md:h-[400px] lg:h-[500px] rounded-xl overflow-hidden bg-gray-100">
-                        <Image
-                          src={loadedArticle.imageUrl}
-                          alt={loadedArticle.title || 'Article image'}
-                          fill
-                          className="object-cover"
-                          priority
-                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 75vw, 900px"
-                          quality={85}
-                          placeholder="blur"
-                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                        />
+                      <div>
+                        <div className="relative w-full aspect-[16/10] md:aspect-auto md:h-[400px] lg:h-[500px] rounded-xl overflow-hidden bg-gray-100">
+                          <Image
+                            src={loadedArticle.imageUrl}
+                            alt={loadedArticle.title || 'Article image'}
+                            fill
+                            className="object-cover"
+                            priority
+                            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 75vw, 900px"
+                            quality={85}
+                            placeholder="blur"
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                          />
+                        </div>
+                        {loadedArticle.imageSource && (
+                          <p className="mt-2 text-sm text-gray-500 text-right">
+                            Photo: {loadedArticle.imageSource}
+                          </p>
+                        )}
                       </div>
                     )}
 
