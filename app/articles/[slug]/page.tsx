@@ -27,6 +27,7 @@ import { processArticleContent } from '@/lib/utils/youtube'
 import Script from 'next/script'
 import { CommentsSection } from '@/components/comments-section'
 import { ArticleViewCount } from '@/components/article-view-count'
+import { encodeSocialImageUrl } from '@/lib/social-image-url'
 
 // import NewsletterSignup from '@/components/newsletter-signup' // Removed - using ArticleNewsletterSignup instead
 // Removed ArticleContent import to fix hydration issues
@@ -51,7 +52,7 @@ function getSocialImageUrl(imageUrl?: string | null): string {
       : `${SITE_URL}/${imageUrl}`
 
   if (absoluteUrl.includes('supabase.co/storage')) {
-    return `${SITE_URL}/api/og-image?url=${encodeURIComponent(absoluteUrl)}`
+    return `${SITE_URL}/api/og-image/${encodeSocialImageUrl(absoluteUrl)}`
   }
 
   return absoluteUrl
@@ -312,7 +313,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     // Social crawlers need a public, non-base64 image URL. Supabase Storage images
     // are served through our proxy so Reddit can validate them without restrictive headers.
     const absoluteImageUrl = getSocialImageUrl(loadedArticle.imageUrl)
-    const imageMimeType = getImageMimeType(absoluteImageUrl)
+    const imageMimeType = getImageMimeType(loadedArticle.imageUrl || absoluteImageUrl)
 
     // Debug logging for metadata
     console.log('Article Metadata Debug:', {
