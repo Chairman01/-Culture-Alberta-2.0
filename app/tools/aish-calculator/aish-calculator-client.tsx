@@ -54,6 +54,13 @@ const relatedArticles = [
     description:
       "The 2026 payment amount, deposit timing, and the July disability support changes Albertans should know.",
   },
+  {
+    href: "/articles/alberta-adap-application-2026-how-to-apply-what-it-pays-and-who-qualifies",
+    image: "/images/adap-logo.svg",
+    title: "Alberta ADAP Application 2026: How to Apply, What It Pays, and Who Qualifies",
+    description:
+      "Who qualifies for ADAP/AISH, what the program pays, asset limits, and how to start your application.",
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -313,7 +320,12 @@ export default function AISHCalculatorPage() {
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,640px)_1fr] lg:items-center">
-              <div className="relative aspect-[735/160] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <a
+                href="#calculator"
+                className="relative aspect-[735/160] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm block hover:border-emerald-300 hover:shadow-md transition-all group"
+                aria-label="Go to AISH calculator"
+                title="Click to jump to the calculator"
+              >
                 <Image
                   src={AISH_LOGO_IMAGE}
                   alt="AISH - Assured Income for the Severely Handicapped"
@@ -322,7 +334,10 @@ export default function AISHCalculatorPage() {
                   className="object-contain p-3 sm:p-5"
                   sizes="(max-width: 1024px) 100vw, 640px"
                 />
-              </div>
+                <span className="absolute bottom-2 right-2 text-[10px] bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                  Go to calculator ↓
+                </span>
+              </a>
 
             </div>
           </div>
@@ -358,30 +373,25 @@ export default function AISHCalculatorPage() {
         </div>
       </section>
 
-      <div className="lg:hidden sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-        <div className="container mx-auto px-4 max-w-6xl py-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                Estimated monthly AISH
-              </p>
-              <p className="text-2xl font-bold leading-tight text-gray-900">
-                {fmtShort(result.netMonthly)}
-              </p>
+      {hasCalculated && (
+        <div className="lg:hidden sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+          <div className="container mx-auto px-4 max-w-6xl py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                  Estimated monthly AISH
+                </p>
+                <p className="text-2xl font-bold leading-tight text-gray-900">
+                  {fmtShort(result.netMonthly)}
+                </p>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setHasCalculated(true)}
-              className="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700"
-            >
-              Save estimate
-            </button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Two-column grid */}
-      <div className="container mx-auto px-4 max-w-6xl py-10">
+      <div id="calculator" className="container mx-auto px-4 max-w-6xl py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 items-start">
 
           {/* ========== LEFT: INPUTS (sticky) ========== */}
@@ -563,6 +573,19 @@ export default function AISHCalculatorPage() {
 
           {/* ========== RIGHT: RESULTS ========== */}
           <div className="space-y-4">
+          {!hasCalculated && (
+            <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-white p-12 text-center">
+              <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <span className="text-2xl">🧮</span>
+              </div>
+              <p className="font-bold text-gray-800 text-lg mb-1">Your estimate will appear here</p>
+              <p className="text-sm text-gray-500 max-w-xs">
+                Fill in your details on the left, then press <strong>Calculate my AISH estimate</strong> to see your result.
+              </p>
+            </div>
+          )}
+          {hasCalculated && (
+          <>
 
             {/* Context message */}
             <div className={`flex items-start gap-3 rounded-xl px-4 py-3.5 text-sm font-medium ${
@@ -892,12 +915,12 @@ export default function AISHCalculatorPage() {
                     href={article.href}
                     className="group grid grid-cols-[72px_1fr] items-center gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[96px_1fr_auto] sm:gap-4"
                   >
-                    <div className="relative h-16 w-[72px] overflow-hidden rounded-lg bg-gray-100 sm:h-20 sm:w-24">
+                    <div className={`relative h-16 w-[72px] overflow-hidden rounded-lg sm:h-20 sm:w-24 ${article.image.endsWith('.svg') ? 'bg-blue-50 border border-blue-100' : 'bg-gray-100'}`}>
                       <Image
                         src={article.image}
                         alt={article.title}
                         fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        className={`${article.image.endsWith('.svg') ? 'object-contain p-1.5' : 'object-cover'} transition-transform duration-300 group-hover:scale-105`}
                         sizes="96px"
                       />
                     </div>
@@ -914,7 +937,8 @@ export default function AISHCalculatorPage() {
                 ))}
               </div>
             </div>
-
+          </>
+          )}
 
           </div>
         </div>

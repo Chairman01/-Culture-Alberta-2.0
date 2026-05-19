@@ -1,13 +1,13 @@
 import Link from "next/link"
 import Image from "next/image"
-import { Calculator, DollarSign, Calendar, ArrowRight, Wrench } from "lucide-react"
+import { Calculator, DollarSign, Calendar, ArrowRight, Wrench, Scale } from "lucide-react"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
   title: "Alberta Tools & Calculators | Free for Albertans | Culture Alberta",
   description:
-    "Free tools and calculators built for Albertans. Calculate AISH payments, damage deposits, stat holiday pay, and more. No sign-up required.",
-  keywords: "Alberta calculators, AISH calculator Alberta, Alberta government tools, damage deposit calculator Alberta, stat holiday pay Alberta, Alberta benefits calculator, free tools Alberta",
+    "Free tools and calculators built for Albertans. Calculate AISH payments, compare income with ADAP, damage deposits, stat holiday pay, and more. No sign-up required.",
+  keywords: "Alberta calculators, AISH calculator Alberta, ADAP calculator Alberta, Alberta government tools, damage deposit calculator Alberta, stat holiday pay Alberta, Alberta benefits calculator, AISH income comparison, free tools Alberta",
   alternates: {
     canonical: "https://www.culturealberta.com/tools",
   },
@@ -37,8 +37,18 @@ const tools = [
     title: "AISH Calculator Alberta",
     description:
       "Estimate Assured Income for the Severely Handicapped payments using 2026 Alberta rates, including child benefits, employment income exemptions, and clawbacks.",
-    badge: "New",
+    badge: "2026 rates",
     badgeColor: "bg-green-100 text-green-700",
+  },
+  {
+    href: "/tools/adap-calculator",
+    icon: Scale,
+    title: "ADAP Calculator Alberta",
+    description:
+      "Compare ADAP ($1,740/month) and AISH ($1,940/month) side by side. See the $200 difference at zero income and how benefits change as your employment income grows.",
+    badge: "New · July 2026",
+    badgeColor: "bg-blue-100 text-blue-700",
+    disabled: false,
   },
   {
     href: "#",
@@ -66,11 +76,15 @@ const toolsPageSchema = {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
   "name": "Alberta Tools & Calculators",
-  "description": "Free tools and calculators built for Albertans. AISH payment calculator, damage deposit calculator, and more.",
+  "description": "Free tools and calculators built for Albertans. AISH payment calculator, ADAP income comparison calculator, damage deposit calculator, and more.",
   "url": "https://www.culturealberta.com/tools",
   "isPartOf": { "@type": "WebSite", "name": "Culture Alberta", "url": "https://www.culturealberta.com" },
   "publisher": { "@type": "Organization", "name": "Culture Alberta", "url": "https://www.culturealberta.com" },
-  "about": { "@type": "AdministrativeArea", "name": "Alberta", "containedInPlace": { "@type": "Country", "name": "Canada" } }
+  "about": { "@type": "AdministrativeArea", "name": "Alberta", "containedInPlace": { "@type": "Country", "name": "Canada" } },
+  "hasPart": [
+    { "@type": "WebApplication", "name": "AISH Calculator Alberta 2026", "url": "https://www.culturealberta.com/tools/aish-calculator" },
+    { "@type": "WebApplication", "name": "ADAP Calculator Alberta 2026", "url": "https://www.culturealberta.com/tools/adap-calculator" }
+  ]
 }
 
 const toolsBreadcrumb = {
@@ -164,32 +178,81 @@ export default function ToolsPage() {
             </div>
           </Link>
 
-          {/* Remaining tools (disabled / coming soon) */}
-          {tools.slice(1).map((tool) => {
-            const Icon = tool.icon
-            const card = (
-              <div
-                className={`bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4 h-full transition-shadow ${
-                  tool.disabled
-                    ? "opacity-60 cursor-not-allowed"
-                    : "hover:shadow-md cursor-pointer"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
-                    <Icon className="w-5 h-5 text-gray-600" />
-                  </div>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${tool.badgeColor}`}>
-                    {tool.badge}
-                  </span>
+          {/* ADAP Calculator — featured card */}
+          <Link href="/tools/adap-calculator" className="group block h-full">
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col h-full hover:shadow-xl hover:border-blue-200 transition-all duration-300 cursor-pointer">
+              {/* Header: logo + badge */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 bg-gradient-to-r from-blue-50 to-white border-b border-blue-100">
+                <div className="relative h-12 w-48 shrink-0">
+                  <Image
+                    src="/images/adap-logo.svg"
+                    alt="ADAP – Alberta Disability Assistance Program"
+                    fill
+                    className="object-contain object-left"
+                    sizes="192px"
+                  />
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">{tool.title}</h2>
-                  <p className="text-sm text-gray-600 leading-relaxed">{tool.description}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full">New</span>
+                  <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">Free</span>
+                </div>
+              </div>
+              {/* Stats bar */}
+              <div className="mx-6 mt-4 grid grid-cols-3 gap-0 bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-blue-500 uppercase tracking-wide font-semibold mb-0.5">ADAP</p>
+                  <p className="text-sm font-bold text-gray-900">$1,740</p>
+                  <p className="text-[10px] text-gray-400">/month</p>
+                </div>
+                <div className="text-center py-3 px-2 border-x border-gray-100">
+                  <p className="text-[10px] text-emerald-600 uppercase tracking-wide font-semibold mb-0.5">AISH</p>
+                  <p className="text-sm font-bold text-gray-900">$1,940</p>
+                  <p className="text-[10px] text-gray-400">/month</p>
+                </div>
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Difference</p>
+                  <p className="text-sm font-bold text-emerald-700">+$200</p>
+                  <p className="text-[10px] text-gray-400">AISH pays more</p>
+                </div>
+              </div>
+              {/* Content + CTA */}
+              <div className="p-6 flex flex-col flex-1">
+                <h2 className="text-xl font-bold text-gray-900 group-hover:text-blue-700 transition-colors mb-2">{tools[1].title}</h2>
+                <p className="text-sm text-gray-500 leading-relaxed flex-1 mb-5">{tools[1].description}</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center justify-center gap-2 bg-blue-600 group-hover:bg-blue-700 text-white rounded-xl py-3 font-semibold text-sm transition-colors">
+                    <Scale className="w-4 h-4" />
+                    Compare ADAP vs AISH
+                  </div>
+                  <div className="w-11 h-11 flex items-center justify-center border border-blue-200 rounded-xl text-blue-600 group-hover:bg-blue-50 transition-colors">
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Coming Soon tools */}
+          {tools.slice(2).map((tool) => {
+            const Icon = tool.icon
+            return (
+              <div key={tool.href + tool.title} className="opacity-60 cursor-not-allowed">
+                <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4 h-full">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-gray-100">
+                      <Icon className="w-5 h-5 text-gray-600" />
+                    </div>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${tool.badgeColor}`}>
+                      {tool.badge}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-lg font-semibold mb-2 text-gray-900">{tool.title}</h2>
+                    <p className="text-sm text-gray-600 leading-relaxed">{tool.description}</p>
+                  </div>
                 </div>
               </div>
             )
-            return <div key={tool.href + tool.title}>{card}</div>
           })}
         </div>
 

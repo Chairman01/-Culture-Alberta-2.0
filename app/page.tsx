@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { getHomepageArticles } from '@/lib/articles'
 import { getAllAlbertaArticles } from '@/lib/alberta-cities'
 import { getAllEvents } from '@/lib/events'
-import { ArrowRight, Calculator, DollarSign } from 'lucide-react'
+import { ArrowRight, Calculator, DollarSign, Scale } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { SearchBar } from '@/components/search-bar'
 import { Article } from '@/lib/types/article'
@@ -875,39 +875,36 @@ export default async function HomeStatic() {
                   </div>
                 </Link>
 
-                {/* Tools hub card */}
-                <Link href="/tools" className="group block">
+                {/* ADAP Calculator card */}
+                <Link href="/tools/adap-calculator" className="group block">
                   <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300 h-full flex flex-col">
-                    <div className="p-5 flex flex-col flex-1">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-11 h-11 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                          <Calculator className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-600">Alberta Tools</span>
-                          <p className="text-sm font-bold text-gray-900 leading-tight">More calculators coming</p>
-                        </div>
+                    {/* Header: logo + badge */}
+                    <div className="flex items-center justify-between px-5 pt-4 pb-3 bg-gradient-to-r from-blue-50 to-white border-b border-blue-100">
+                      <div className="relative h-11 w-44 shrink-0">
+                        <Image
+                          src="/images/adap-logo.svg"
+                          alt="ADAP – Alberta Disability Assistance Program"
+                          fill
+                          className="object-contain object-left"
+                          sizes="176px"
+                        />
                       </div>
-                      <div className="flex-1 space-y-3 mb-4">
-                        {[
-                          { name: "Alberta Damage Deposit Calculator", desc: "Max deposit under the Residential Tenancies Act" },
-                          { name: "Alberta Stat Holiday Pay Calculator", desc: "What you're owed on Alberta stat holidays" },
-                        ].map((tool) => (
-                          <div key={tool.name} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
-                            <div className="w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center shrink-0 mt-0.5">
-                              <Calculator className="w-3 h-3 text-gray-400" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-700 leading-tight">{tool.name}</p>
-                              <p className="text-xs text-gray-400 mt-0.5">{tool.desc}</p>
-                            </div>
-                            <span className="ml-auto text-[10px] font-semibold text-gray-300 uppercase tracking-wide shrink-0 mt-1">Soon</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex items-center justify-between border border-blue-100 bg-blue-50 rounded-xl px-4 py-2.5">
-                        <span className="text-sm font-semibold text-blue-700">View all tools</span>
-                        <ArrowRight className="w-4 h-4 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+                      <span className="flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full shrink-0">
+                        <Scale className="w-3 h-3" />
+                        New
+                      </span>
+                    </div>
+                    {/* Content */}
+                    <div className="p-4 flex flex-col flex-1">
+                      <h3 className="font-display font-bold text-lg text-gray-900 group-hover:text-blue-700 transition-colors leading-tight mb-1">
+                        ADAP Calculator Alberta
+                      </h3>
+                      <p className="font-body text-sm text-gray-500 leading-relaxed flex-1 mb-4">
+                        Compare your current income side-by-side with your estimated income on AISH. See exactly how much more you&apos;d take home — monthly and annually.
+                      </p>
+                      <div className="flex items-center justify-between bg-blue-600 group-hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 transition-colors">
+                        <span className="text-sm font-semibold">Calculate my ADAP estimate</span>
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </div>
                   </div>

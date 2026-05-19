@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 // Removed direct import - using API instead
-import { ArrowRight, Calculator, DollarSign } from 'lucide-react'
+import { ArrowRight, Calculator, DollarSign, Scale } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { PageSEO } from '@/components/seo/page-seo'
 import { Article } from '@/lib/types/article'
@@ -645,22 +645,22 @@ export default function Home() {
                     </div>
                   </div>
                 </Link>
-                <Link href="/tools" className="group block">
+                <Link href="/tools/adap-calculator" className="group block">
                   <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 h-full">
                     <div className="p-5 flex items-start gap-4">
                       <div className="w-12 h-12 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                        <Calculator className="w-6 h-6" />
+                        <Scale className="w-6 h-6" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                          <span className="rounded-full bg-blue-100 text-blue-800 px-3 py-1.5 font-medium">Tools hub</span>
-                          <span className="font-medium">More coming soon</span>
+                          <span className="rounded-full bg-blue-100 text-blue-800 px-3 py-1.5 font-medium">New</span>
+                          <span className="font-medium">Free calculator</span>
                         </div>
                         <h3 className="font-display font-bold text-xl group-hover:text-blue-700 transition-colors duration-300 leading-tight">
-                          Calculators for Albertans
+                          ADAP Calculator Alberta
                         </h3>
                         <p className="font-body text-sm text-gray-600 mt-2 line-clamp-2">
-                          Quick reference tools for benefits, housing, holidays, and everyday Alberta questions.
+                          Compare your current income side-by-side with your estimated income on AISH. See exactly how much more you'd take home.
                         </p>
                       </div>
                     </div>

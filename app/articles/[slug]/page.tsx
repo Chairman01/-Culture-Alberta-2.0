@@ -35,7 +35,48 @@ import { ArticleViewCount } from '@/components/article-view-count'
 const LEGACY_ARTICLE_REDIRECTS: Record<string, string> = {}
 const useFastDevMode = process.env.NODE_ENV === 'development' && process.env.USE_SUPABASE_IN_DEV !== '1'
 const DEFAULT_ARTICLE_AUTHOR = 'Adam Harrison'
+const SITE_URL = 'https://www.culturealberta.com'
+const DEFAULT_OG_IMAGE = `${SITE_URL}/images/culture-alberta-og.jpg`
 type ArticleRecommendation = Article & { recommendationReason?: string }
+
+function getSocialImageUrl(imageUrl?: string | null): string {
+  if (!imageUrl || imageUrl.startsWith('data:image')) {
+    return DEFAULT_OG_IMAGE
+  }
+
+  const absoluteUrl = imageUrl.startsWith('http://') || imageUrl.startsWith('https://')
+    ? imageUrl
+    : imageUrl.startsWith('/')
+      ? `${SITE_URL}${imageUrl}`
+      : `${SITE_URL}/${imageUrl}`
+
+  if (absoluteUrl.includes('supabase.co/storage')) {
+    return `${SITE_URL}/api/og-image?url=${encodeURIComponent(absoluteUrl)}`
+  }
+
+  return absoluteUrl
+}
+
+function getImageMimeType(url: string): string {
+  const pathname = (() => {
+    try {
+      return new URL(url).pathname
+    } catch {
+      return url
+    }
+  })()
+  const ext = pathname.split('.').pop()?.toLowerCase()
+
+  switch (ext) {
+    case 'png': return 'image/png'
+    case 'gif': return 'image/gif'
+    case 'webp': return 'image/webp'
+    case 'svg': return 'image/svg+xml'
+    case 'jpg':
+    case 'jpeg':
+    default: return 'image/jpeg'
+  }
+}
 
 function normalizeArticleAuthor(author?: string | null): string {
   const trimmedAuthor = typeof author === 'string' ? author.trim() : ''
@@ -268,50 +309,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const canonicalSlug = loadedArticle.slug || createSlug(loadedArticle.title)
     const fullUrl = `https://www.culturealberta.com/articles/${canonicalSlug}`
 
-    // Handle image URL properly - use article image if available, otherwise use default
-    let articleImage = loadedArticle.imageUrl || '/images/culture-alberta-og.jpg'
-
-    // CRITICAL: Reddit and social media platforms cannot use base64 images
-    // Always use a publicly accessible URL for Open Graph images
-    const defaultOgImage = 'https://www.culturealberta.com/images/culture-alberta-og.jpg'
-
-    // Ensure image URL is absolute and publicly accessible
-    let absoluteImageUrl = defaultOgImage
-
-    if (articleImage) {
-      // Skip base64 images - they won't work for social sharing
-      if (articleImage.startsWith('data:image')) {
-        console.warn('Article image is base64, using default OG image for social sharing')
-        absoluteImageUrl = defaultOgImage
-      }
-      // Use external URLs as-is if they're already absolute (including Supabase)
-      else if (articleImage.startsWith('http://') || articleImage.startsWith('https://')) {
-        absoluteImageUrl = articleImage
-      }
-      // Convert relative URLs to absolute
-      else if (articleImage.startsWith('/')) {
-        absoluteImageUrl = `https://www.culturealberta.com${articleImage}`
-      }
-      // Handle other relative paths
-      else {
-        absoluteImageUrl = `https://www.culturealberta.com/${articleImage}`
-      }
-    }
-
-    // Detect image MIME type from URL extension
-    const getImageMimeType = (url: string): string => {
-      const ext = url.split('.').pop()?.toLowerCase()
-      switch (ext) {
-        case 'png': return 'image/png'
-        case 'gif': return 'image/gif'
-        case 'webp': return 'image/webp'
-        case 'svg': return 'image/svg+xml'
-        case 'jpg':
-        case 'jpeg':
-        default: return 'image/jpeg'
-      }
-    }
-
+    // Social crawlers need a public, non-base64 image URL. Supabase Storage images
+    // are served through our proxy so Reddit can validate them without restrictive headers.
+    const absoluteImageUrl = getSocialImageUrl(loadedArticle.imageUrl)
     const imageMimeType = getImageMimeType(absoluteImageUrl)
 
     // Debug logging for metadata
@@ -348,7 +348,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         images: [
           {
             url: absoluteImageUrl,
+            width: 1200,
+            height: 630,
             alt: loadedArticle.title,
+            type: imageMimeType,
           }
         ],
         siteName: 'Culture Alberta',
