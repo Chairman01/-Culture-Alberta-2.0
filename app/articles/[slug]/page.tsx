@@ -52,7 +52,7 @@ function getSocialImageUrl(imageUrl?: string | null): string {
       : `${SITE_URL}/${imageUrl}`
 
   if (absoluteUrl.includes('supabase.co/storage')) {
-    return `${SITE_URL}/api/og-image/${encodeSocialImageUrl(absoluteUrl)}`
+    return `${SITE_URL}/og-image/${encodeSocialImageUrl(absoluteUrl)}/preview.jpg`
   }
 
   return absoluteUrl
