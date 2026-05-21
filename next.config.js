@@ -2,6 +2,7 @@
 // Force cache clear: 2025-01-27 13:00 - REGENERATE FALLBACK WITH FULL CONTENT - DEPLOY NOW
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   // Performance optimizations
   compress: true,
   // Production optimizations

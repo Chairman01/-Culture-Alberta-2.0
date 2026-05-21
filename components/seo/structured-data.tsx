@@ -91,6 +91,7 @@ export function WebsiteStructuredData({ baseUrl = 'https://www.culturealberta.co
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": `${baseUrl}/#website`,
     "name": "Culture Alberta",
     "description": "Discover the best culture, events, food, and experiences in Alberta. Your guide to Calgary and Edmonton's vibrant cultural scene.",
     "url": baseUrl,
@@ -113,6 +114,91 @@ export function WebsiteStructuredData({ baseUrl = 'https://www.culturealberta.co
       }
     }
   }
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  )
+}
+
+export function HomepageStructuredData({ baseUrl = 'https://www.culturealberta.com' }) {
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": `${baseUrl}/#webpage`,
+      "url": baseUrl,
+      "name": "Culture Alberta",
+      "description": "Culture Alberta is a local guide to Alberta events, food, culture, neighbourhood stories, practical tools, and local news across Edmonton, Calgary, and communities throughout Alberta.",
+      "inLanguage": "en-CA",
+      "isPartOf": {
+        "@id": `${baseUrl}/#website`
+      },
+      "publisher": {
+        "@id": `${baseUrl}/#organization`
+      },
+      "about": [
+        { "@type": "Thing", "name": "Alberta culture" },
+        { "@type": "Thing", "name": "Alberta events" },
+        { "@type": "Thing", "name": "Calgary restaurants" },
+        { "@type": "Thing", "name": "Edmonton local news" },
+        { "@type": "Thing", "name": "Things to do in Alberta" }
+      ],
+      "spatialCoverage": {
+        "@type": "State",
+        "name": "Alberta",
+        "containedInPlace": {
+          "@type": "Country",
+          "name": "Canada"
+        }
+      },
+      "mainEntity": {
+        "@type": "ItemList",
+        "name": "Culture Alberta main sections",
+        "itemListElement": [
+          { "@type": "SiteNavigationElement", "position": 1, "name": "Edmonton", "url": `${baseUrl}/edmonton` },
+          { "@type": "SiteNavigationElement", "position": 2, "name": "Calgary", "url": `${baseUrl}/calgary` },
+          { "@type": "SiteNavigationElement", "position": 3, "name": "Around Alberta", "url": `${baseUrl}/alberta` },
+          { "@type": "SiteNavigationElement", "position": 4, "name": "Events", "url": `${baseUrl}/events` },
+          { "@type": "SiteNavigationElement", "position": 5, "name": "Food & Drink", "url": `${baseUrl}/food-drink` },
+          { "@type": "SiteNavigationElement", "position": 6, "name": "Tools", "url": `${baseUrl}/tools` }
+        ]
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "@id": `${baseUrl}/#faq`,
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Culture Alberta?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Culture Alberta is an Alberta-focused media and guide site covering local stories, events, restaurants, arts, culture, neighbourhoods, and practical tools for people in Edmonton, Calgary, and communities across Alberta."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What cities does Culture Alberta cover?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Culture Alberta covers Edmonton, Calgary, Red Deer, Lethbridge, Medicine Hat, Grande Prairie, and province-wide Alberta stories."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What can readers find on Culture Alberta?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Readers can find local news, city spotlights, event listings, restaurant and food coverage, arts and culture stories, guides, and Alberta-focused tools."
+          }
+        }
+      ]
+    }
+  ]
 
   return (
     <script

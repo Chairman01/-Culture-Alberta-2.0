@@ -67,6 +67,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9, // Increased priority for events landing
     },
     {
+      url: baseUrl + '/alberta',
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
       url: baseUrl + '/best-of',
       lastModified: new Date(),
       changeFrequency: 'weekly',
@@ -90,7 +96,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.8,
     },
-    // Note: /arts route removed - only /culture page exists
+    {
+      url: baseUrl + '/guides',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
     {
       url: baseUrl + '/food-drink',
       lastModified: new Date(),
@@ -141,6 +152,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: baseUrl + '/tools/aish-calculator',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: baseUrl + '/tools/adap-calculator',
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.9,

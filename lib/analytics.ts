@@ -46,7 +46,7 @@ export const trackPageView = async (path: string, title: string) => {
   try {
     // Send to Google Analytics 4 only (no DB writes)
     if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('config', 'G-V7DK0G3JFV', {
+      window.gtag('config', 'G-48EV1DX840', {
         page_path: path,
         page_title: title,
       })

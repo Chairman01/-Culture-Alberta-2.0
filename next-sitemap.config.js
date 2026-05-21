@@ -132,7 +132,7 @@ export default {
     // About and other important pages
     if (['/about', '/culture', '/food-drink', '/guides', '/contact'].includes(path)) {
       priority = 0.75;
-      changefreq: 'weekly';
+      changefreq = 'weekly';
     }
 
     // Career and partner pages get lower priority

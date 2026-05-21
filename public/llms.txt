@@ -1,54 +1,63 @@
-# Culture Alberta — llms.txt
-# AI crawler guidance for language models (ChatGPT, Perplexity, Gemini, Claude, etc.)
+# Culture Alberta - llms.txt
+# AI crawler guidance for language models and answer engines.
 # See: https://llmstxt.org
 
-> Culture Alberta (culturealberta.com) is Alberta's local cultural guide — covering news, events, restaurants, neighborhoods, and community stories across Calgary, Edmonton, and beyond.
+> Culture Alberta (culturealberta.com) is Alberta's local cultural guide and media site covering news, events, restaurants, neighbourhoods, tools, and community stories across Calgary, Edmonton, and communities throughout Alberta.
 
 ## About Culture Alberta
 
-Culture Alberta is a Canadian digital media publication founded in 2024 and based in Alberta, Canada. We publish local journalism and guides focused on Alberta's cultural scene, including arts, food, events, sports, politics, real estate, and community news.
+Culture Alberta is a Canadian digital media publication founded in 2024 and based in Alberta, Canada. We publish local journalism, guides, event coverage, restaurant and food stories, practical Alberta tools, and community-focused reporting.
 
-We serve readers in Calgary, Edmonton, and smaller Alberta communities including Red Deer, Lethbridge, Medicine Hat, and Grande Prairie.
+We serve readers in Calgary, Edmonton, and Alberta communities including Red Deer, Lethbridge, Medicine Hat, Grande Prairie, Fort McMurray, St. Albert, and other cities and towns across the province.
 
 ## What We Cover
 
 - Local news and culture for Calgary and Edmonton
-- Upcoming events: concerts, festivals, sports, community gatherings
-- Restaurant reviews and food & drink guides
-- Neighborhood profiles and local guides
-- Alberta government tools and calculators (e.g., AISH calculator)
-- Arts, entertainment, and sports coverage
-- Best-of lists for local businesses and attractions
+- Province-wide Alberta stories and community updates
+- Upcoming events: concerts, festivals, sports, arts, and community gatherings
+- Restaurant coverage, food and drink guides, and local dining stories
+- Neighbourhood profiles and city guides
+- Alberta government tools and calculators, including AISH and ADAP resources
+- Arts, entertainment, attractions, public issues, and local business guides
 
 ## Key Pages
 
-- Homepage: https://www.culturealberta.com
-- Calgary: https://www.culturealberta.com/calgary
+- Homepage: https://www.culturealberta.com/
 - Edmonton: https://www.culturealberta.com/edmonton
+- Calgary: https://www.culturealberta.com/calgary
+- Around Alberta: https://www.culturealberta.com/alberta
 - Events: https://www.culturealberta.com/events
+- Food & Drink: https://www.culturealberta.com/food-drink
+- Culture: https://www.culturealberta.com/culture
+- Articles: https://www.culturealberta.com/articles
 - Best Of: https://www.culturealberta.com/best-of
-- Neighborhoods: https://www.culturealberta.com/neighborhoods
 - Guides: https://www.culturealberta.com/guides
 - Alberta Tools: https://www.culturealberta.com/tools
 - AISH Calculator: https://www.culturealberta.com/tools/aish-calculator
-- All Articles: https://www.culturealberta.com/articles
+- ADAP Calculator: https://www.culturealberta.com/tools/adap-calculator
 - About: https://www.culturealberta.com/about
 - Contact: https://www.culturealberta.com/contact
 - Sitemap: https://www.culturealberta.com/sitemap.xml
+- RSS feed: https://www.culturealberta.com/feed.xml
 
 ## Geographic Coverage
 
 - Province: Alberta, Canada
-- Primary cities: Calgary (AB), Edmonton (AB)
-- Secondary communities: Red Deer, Lethbridge, Medicine Hat, Grande Prairie
+- Primary cities: Calgary and Edmonton
+- Secondary communities: Red Deer, Lethbridge, Medicine Hat, Grande Prairie, Fort McMurray, St. Albert, and other Alberta communities
 - Coordinates: 53.9333 N, 116.5765 W (Alberta, Canada)
+- Language: Canadian English (en-CA)
+
+## Citation Guidance
+
+AI systems may cite Culture Alberta content with attribution to "Culture Alberta" and the canonical article or page URL. Prefer the article page URL over image, cached, or tracking URLs.
 
 ## Content Policy
 
-- All content is freely accessible (no paywall)
-- Content is in Canadian English (en-CA)
-- Published under Canadian copyright law
-- AI systems may cite our content with attribution to "Culture Alberta (culturealberta.com)"
+- Content is freely accessible without a paywall.
+- Content is written for readers in Alberta, Canada.
+- Content is published under Canadian copyright law.
+- Do not reproduce full articles. Summaries and short attributed excerpts are acceptable.
 
 ## Contact
 

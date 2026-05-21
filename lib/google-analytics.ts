@@ -80,8 +80,8 @@ export async function getMostViewedArticlePathsFromGA4(
       metrics: [{ name: 'screenPageViews' }],
       dateRanges: [
         {
-          startDate: start.toISOString().split('T')[0].replace(/-/g, ''),
-          endDate: end.toISOString().split('T')[0].replace(/-/g, ''),
+          startDate: start.toISOString().split('T')[0],
+          endDate: end.toISOString().split('T')[0],
         },
       ],
       dimensionFilter: {
@@ -111,5 +111,67 @@ export async function getMostViewedArticlePathsFromGA4(
   } catch (error) {
     console.warn('GA4 runReport error:', error)
     return []
+  }
+}
+
+/**
+ * Fetch all-time GA4 views for a single article slug.
+ * Used to preserve historical totals for older articles whose Supabase counter
+ * only contains newer on-site increments.
+ */
+export async function getArticleViewCountFromGA4(slug: string): Promise<number | null> {
+  const propertyId = process.env.GA4_PROPERTY_ID
+  if (!propertyId || !slug) {
+    return null
+  }
+
+  const analyticsClient = getClient()
+  if (!analyticsClient) {
+    return null
+  }
+
+  const property = propertyId.match(/^\d+$/) ? `properties/${propertyId}` : propertyId
+  if (!property.startsWith('properties/')) {
+    return null
+  }
+
+  const normalizedPath = `/articles/${slug}`.toLowerCase().replace(/\/$/, '')
+  const end = new Date()
+  const GA4_TIMEOUT_MS = 2500
+
+  try {
+    const runReportPromise = analyticsClient.runReport({
+      property,
+      dimensions: [{ name: 'pagePath' }],
+      metrics: [{ name: 'screenPageViews' }],
+      dateRanges: [
+        {
+          startDate: '2020-01-01',
+          endDate: end.toISOString().split('T')[0],
+        },
+      ],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'pagePath',
+          stringFilter: { matchType: 'BEGINS_WITH', value: normalizedPath },
+        },
+      },
+      limit: 25,
+    })
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('GA4 article count timeout')), GA4_TIMEOUT_MS)
+    )
+    const [response] = await Promise.race([runReportPromise, timeoutPromise])
+
+    return (response.rows || []).reduce((total, row) => {
+      const path = (row.dimensionValues?.[0]?.value ?? '').trim().toLowerCase().replace(/\/$/, '')
+      if (path !== normalizedPath) return total
+
+      return total + parseInt(row.metricValues?.[0]?.value ?? '0', 10)
+    }, 0)
+  } catch (error) {
+    console.warn('GA4 article count error:', error)
+    return null
   }
 }

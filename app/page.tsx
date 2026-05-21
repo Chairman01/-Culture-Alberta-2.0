@@ -10,10 +10,15 @@ import { Article } from '@/lib/types/article'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getTrendingByViews } from '@/lib/trending-articles'
 import { loadOptimizedFallback } from '@/lib/optimized-fallback'
+import { HomepageStructuredData } from '@/components/seo/structured-data'
 
 // ISR: cache for 10 min, revalidate in background — reduces Supabase load during traffic spikes
 export const revalidate = 600
 export const dynamicParams = true // Generate pages on-demand
+
+const logHomeDebug = (...args: unknown[]) => {
+  if (process.env.NODE_ENV !== 'production') console.log(...args)
+}
 
 // Server-side data loading for dynamic rendering (NOT static generation)
 async function getHomePageData() {
@@ -80,16 +85,16 @@ async function getHomePageData() {
 
     // Simple approach: Use all posts for all sections, filter by categories
     const allPostsForFiltering = allPosts
-    console.log('🔍 DEBUG: allPostsForFiltering length:', allPostsForFiltering.length)
-    console.log('🔍 DEBUG: First few post titles:', allPostsForFiltering.slice(0, 3).map(p => p.title))
+    logHomeDebug('🔍 DEBUG: allPostsForFiltering length:', allPostsForFiltering.length)
+    logHomeDebug('🔍 DEBUG: First few post titles:', allPostsForFiltering.slice(0, 3).map(p => p.title))
 
     // CRITICAL: If no posts are found, create fallback content to prevent empty homepage
     if (allPostsForFiltering.length === 0) {
       console.warn('⚠️ No articles found in database, using fast fallback content')
-      console.log('🔍 DEBUG: allPostsForFiltering is empty, checking why...')
-      console.log('🔍 DEBUG: apiArticles length:', apiArticles?.length || 0)
-      console.log('🔍 DEBUG: events length:', events?.length || 0)
-      console.log('🔍 DEBUG: combinedPosts length:', combinedPosts?.length || 0)
+      logHomeDebug('🔍 DEBUG: allPostsForFiltering is empty, checking why...')
+      logHomeDebug('🔍 DEBUG: apiArticles length:', apiArticles?.length || 0)
+      logHomeDebug('🔍 DEBUG: events length:', events?.length || 0)
+      logHomeDebug('🔍 DEBUG: combinedPosts length:', combinedPosts?.length || 0)
 
       // Pre-created fallback for maximum speed - no object creation overhead
       const fallbackPosts = [{
@@ -115,13 +120,13 @@ async function getHomePageData() {
     }
 
     // Debug: Check what status values we have
-    console.log('🔍 DEBUG: Status values in articles:', allPostsForFiltering.map(p => ({ title: p.title, status: p.status })).slice(0, 3))
+    logHomeDebug('🔍 DEBUG: Status values in articles:', allPostsForFiltering.map(p => ({ title: p.title, status: p.status })).slice(0, 3))
 
     // Filter by status, but be more lenient if status is undefined
     const publishedPosts = allPostsForFiltering.filter(post =>
       post.status === 'published' || post.status === undefined || post.status === null
     )
-    console.log('🔍 DEBUG: Published posts after filtering:', publishedPosts.length)
+    logHomeDebug('🔍 DEBUG: Published posts after filtering:', publishedPosts.length)
 
     return {
       posts: publishedPosts,
@@ -238,7 +243,7 @@ export default async function HomeStatic() {
     const createdAt = post.createdAt
     const fallback = new Date().toISOString()
 
-    console.log('Server getPostDate for post:', post.title, {
+    logHomeDebug('Server getPostDate for post:', post.title, {
       event_date: eventDate,
       date: regularDate,
       createdAt: createdAt,
@@ -413,32 +418,32 @@ export default async function HomeStatic() {
       : eligiblePosts.slice(0, 5)
 
   // Debug logging for homepage articles
-  console.log('Total posts loaded:', posts.length)
-  console.log('Posts with trendingHome flag:', posts.filter(post => post.trendingHome === true).length)
-  console.log('Top 5 articles selected:', trendingPosts.length)
-  console.log('Featured post found:', featuredPost ? featuredPost.title : 'None')
-  console.log('First few posts:', posts.slice(0, 3).map(p => ({ title: p.title, type: p.type, featuredHome: p.featuredHome })))
+  logHomeDebug('Total posts loaded:', posts.length)
+  logHomeDebug('Posts with trendingHome flag:', posts.filter(post => post.trendingHome === true).length)
+  logHomeDebug('Top 5 articles selected:', trendingPosts.length)
+  logHomeDebug('Featured post found:', featuredPost ? featuredPost.title : 'None')
+  logHomeDebug('First few posts:', posts.slice(0, 3).map(p => ({ title: p.title, type: p.type, featuredHome: p.featuredHome })))
 
 
   // Debug: Show all unique categories and types
   const allCategories = [...new Set(posts.map(p => p.category).filter(Boolean))]
   const allTypes = [...new Set(posts.map(p => p.type).filter(Boolean))]
   const allCategoryArrays = [...new Set(posts.flatMap(p => p.categories || []))]
-  console.log('All unique categories:', allCategories)
-  console.log('All unique types:', allTypes)
-  console.log('All unique category arrays:', allCategoryArrays)
+  logHomeDebug('All unique categories:', allCategories)
+  logHomeDebug('All unique types:', allTypes)
+  logHomeDebug('All unique category arrays:', allCategoryArrays)
 
   // Debug logging for Edmonton posts
-  console.log('=== SIMPLE CATEGORY-BASED FILTERING RESULTS ===')
-  console.log('Edmonton posts found:', edmontonPosts.length)
-  console.log('Edmonton posts:', edmontonPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
+  logHomeDebug('=== SIMPLE CATEGORY-BASED FILTERING RESULTS ===')
+  logHomeDebug('Edmonton posts found:', edmontonPosts.length)
+  logHomeDebug('Edmonton posts:', edmontonPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
 
-  console.log('Calgary posts found:', calgaryPosts.length)
-  console.log('Calgary posts:', calgaryPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
+  logHomeDebug('Calgary posts found:', calgaryPosts.length)
+  logHomeDebug('Calgary posts:', calgaryPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
 
 
   // Debug: Check all posts with food/drink related content
-  console.log('DEBUG: All posts with food/drink keywords:')
+  logHomeDebug('DEBUG: All posts with food/drink keywords:')
   sortedPosts.forEach((post, index) => {
     const title = post.title?.toLowerCase() || '';
     const category = post.category?.toLowerCase() || '';
@@ -447,12 +452,12 @@ export default async function HomeStatic() {
     if (title.includes('food') || title.includes('restaurant') || title.includes('sushi') ||
       title.includes('drink') || category.includes('food') || category.includes('drink') ||
       categories.some(c => c.includes('food') || c.includes('drink'))) {
-      console.log(`  ${index}: "${post.title}" - category: "${post.category}", categories: [${categories.join(', ')}]`)
+      logHomeDebug(`  ${index}: "${post.title}" - category: "${post.category}", categories: [${categories.join(', ')}]`)
     }
   })
 
-  console.log('Events found:', eventPosts.length)
-  console.log('Events:', eventPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
+  logHomeDebug('Events found:', eventPosts.length)
+  logHomeDebug('Events:', eventPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
 
   const now = new Date()
   const eventCandidates = [...eventPosts, ...rawEventPosts]
@@ -466,15 +471,29 @@ export default async function HomeStatic() {
 
   return (
     <>
+      <HomepageStructuredData />
       {/* Metadata is handled by layout.tsx - no PageSEO needed in App Router */}
       <div className="flex min-h-screen flex-col">
         <main className="flex-1">
-          {/* SEO H1 - visually hidden but present for search engines */}
-          <h1 className="sr-only">Culture Alberta — Your Guide to Events, Culture & Food in Calgary & Edmonton</h1>
-
           {/* Featured Article + Trending Sidebar */}
           <section className="w-full py-8 md:py-10 lg:py-12 bg-gradient-to-b from-gray-50 to-white">
             <div className="container mx-auto px-4 md:px-6">
+              <div className="mb-8 max-w-4xl">
+                <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+                  Alberta culture, events, food, and local stories
+                </p>
+                <h1 className="font-display text-4xl font-bold leading-tight tracking-tight text-gray-950 sm:text-5xl">
+                  Culture Alberta
+                </h1>
+                <div className="mt-4 space-y-3 text-base leading-7 text-gray-700 md:text-lg">
+                  <p>
+                    Culture Alberta is a local guide to what is happening across Edmonton, Calgary, and communities throughout Alberta. We cover arts and culture, restaurants, festivals, neighbourhood stories, public issues, practical guides, and events that help Albertans decide what to read, where to go, and what matters nearby.
+                  </p>
+                  <p>
+                    Our homepage brings together fresh local reporting, weekly trending stories, city spotlights, upcoming events, food and drink coverage, and useful Alberta tools in one place. For official province-wide visitor information, you can also visit <a href="https://www.travelalberta.com/" className="font-semibold text-blue-700 underline underline-offset-2" target="_blank" rel="noopener noreferrer">Travel Alberta</a>.
+                  </p>
+                </div>
+              </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Featured Article */}
                 <div className="lg:col-span-2">
@@ -909,6 +928,34 @@ export default async function HomeStatic() {
                     </div>
                   </div>
                 </Link>
+              </div>
+            </div>
+          </section>
+
+          <section className="w-full py-10 bg-gray-50">
+            <div className="container mx-auto px-4 md:px-6">
+              <div className="max-w-4xl">
+                <h2 className="font-display text-2xl sm:text-3xl font-bold text-gray-950">About Culture Alberta</h2>
+                <div className="mt-5 grid gap-5 md:grid-cols-3">
+                  <div>
+                    <h3 className="font-display text-lg font-bold text-gray-900">What is Culture Alberta?</h3>
+                    <p className="mt-2 text-sm leading-6 text-gray-600">
+                      Culture Alberta is an Alberta-focused media and guide site for local stories, events, food, arts, culture, neighbourhoods, and practical tools.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="font-display text-lg font-bold text-gray-900">What cities are covered?</h3>
+                    <p className="mt-2 text-sm leading-6 text-gray-600">
+                      We cover Edmonton, Calgary, Red Deer, Lethbridge, Medicine Hat, Grande Prairie, and province-wide Alberta stories.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="font-display text-lg font-bold text-gray-900">What can readers find?</h3>
+                    <p className="mt-2 text-sm leading-6 text-gray-600">
+                      Readers can find local news, weekly trending stories, city spotlights, event listings, restaurant coverage, guides, and Alberta tools.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
