@@ -485,11 +485,7 @@ export default async function HomeStatic() {
           {/* Featured Article + Trending Sidebar */}
           <section className="w-full py-8 md:py-10 lg:py-12 bg-gradient-to-b from-gray-50 to-white">
             <div className="container mx-auto px-4 md:px-6">
-              <div className="mb-8 max-w-4xl">
-                <h1 className="font-display text-4xl font-bold leading-tight tracking-tight text-gray-950 sm:text-5xl">
-                  Culture Alberta
-                </h1>
-              </div>
+              <h1 className="sr-only">Culture Alberta</h1>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Featured Article */}
                 <div className="lg:col-span-2">
