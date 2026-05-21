@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { getHomepageArticles } from '@/lib/articles'
 import { getAllAlbertaArticles } from '@/lib/alberta-cities'
 import { getAllEvents } from '@/lib/events'
-import { ArrowRight, Calculator, DollarSign, Scale } from 'lucide-react'
+import { ArrowRight, Calculator, Scale } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { SearchBar } from '@/components/search-bar'
 import { Article } from '@/lib/types/article'
@@ -164,7 +164,14 @@ async function getHomePageData() {
 
 export default async function HomeStatic() {
   // Load data for static generation
-  const { posts, events, albertaArticles } = await getHomePageData()
+  const [homeData, fallbackResult] = await Promise.allSettled([
+    getHomePageData(),
+    loadOptimizedFallback(),
+  ])
+
+  const { posts, events, albertaArticles } = homeData.status === 'fulfilled'
+    ? homeData.value
+    : { posts: [], events: [], albertaArticles: [] }
 
   const formatDate = (dateString: string) => {
     try {
@@ -257,14 +264,14 @@ export default async function HomeStatic() {
     return post.author || 'Culture Alberta'
   }
 
-  let fallbackPosts: Article[] = []
-  try {
-    fallbackPosts = (await loadOptimizedFallback()).filter(post =>
-      post.type !== 'event' &&
-      (post.status === 'published' || post.status === undefined || post.status === null)
-    )
-  } catch (error) {
-    console.warn('Failed to load homepage fallback posts:', error)
+  const fallbackPosts: Article[] = fallbackResult.status === 'fulfilled'
+    ? fallbackResult.value.filter((post: Article) =>
+        post.type !== 'event' &&
+        (post.status === 'published' || post.status === undefined || post.status === null)
+      )
+    : []
+  if (fallbackResult.status === 'rejected') {
+    console.warn('Failed to load homepage fallback posts:', fallbackResult.reason)
   }
 
   // Sort articles by date (newest first) before filtering
@@ -479,20 +486,9 @@ export default async function HomeStatic() {
           <section className="w-full py-8 md:py-10 lg:py-12 bg-gradient-to-b from-gray-50 to-white">
             <div className="container mx-auto px-4 md:px-6">
               <div className="mb-8 max-w-4xl">
-                <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                  Alberta culture, events, food, and local stories
-                </p>
                 <h1 className="font-display text-4xl font-bold leading-tight tracking-tight text-gray-950 sm:text-5xl">
                   Culture Alberta
                 </h1>
-                <div className="mt-4 space-y-3 text-base leading-7 text-gray-700 md:text-lg">
-                  <p>
-                    Culture Alberta is a local guide to what is happening across Edmonton, Calgary, and communities throughout Alberta. We cover arts and culture, restaurants, festivals, neighbourhood stories, public issues, practical guides, and events that help Albertans decide what to read, where to go, and what matters nearby.
-                  </p>
-                  <p>
-                    Our homepage brings together fresh local reporting, weekly trending stories, city spotlights, upcoming events, food and drink coverage, and useful Alberta tools in one place. For official province-wide visitor information, you can also visit <a href="https://www.travelalberta.com/" className="font-semibold text-blue-700 underline underline-offset-2" target="_blank" rel="noopener noreferrer">Travel Alberta</a>.
-                  </p>
-                </div>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Featured Article */}
