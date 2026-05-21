@@ -7,6 +7,10 @@ import Placeholder from '@tiptap/extension-placeholder'
 import { TextStyle } from '@tiptap/extension-text-style'
 import FontFamily from '@tiptap/extension-font-family'
 import { Extension } from '@tiptap/core'
+import { Table } from '@tiptap/extension-table'
+import { TableRow } from '@tiptap/extension-table-row'
+import { TableCell } from '@tiptap/extension-table-cell'
+import { TableHeader } from '@tiptap/extension-table-header'
 import { Button } from "@/components/ui/button"
 
 // Custom FontSize extension
@@ -61,11 +65,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ImageUploader } from './image-uploader'
 import { useState, useEffect } from 'react'
 import { 
-  Bold, 
-  Italic, 
-  List, 
-  ListOrdered, 
-  Quote, 
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Quote,
   Image as ImageIcon,
   Undo,
   Redo,
@@ -74,7 +78,11 @@ import {
   Type,
   RotateCcw,
   AlignCenter,
-  Space
+  Space,
+  Table as TableIcon,
+  Plus,
+  Minus,
+  Trash2
 } from 'lucide-react'
 
 interface RichTextEditorProps {
@@ -103,6 +111,15 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
       Placeholder.configure({
         placeholder,
       }),
+      Table.configure({
+        resizable: false,
+        HTMLAttributes: {
+          class: 'editor-table',
+        },
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -148,6 +165,9 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
     <div className="border rounded-lg">
       {/* Custom styles for better preview */}
       <style jsx>{`
+        .ProseMirror {
+          font-size: 18px;
+        }
         .ProseMirror ul {
           list-style: none;
           margin: 1rem 0;
@@ -222,6 +242,38 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
         /* Preview mode font size preservation */
         .prose span[style*="font-size"] {
           /* Let the inline style take precedence */
+        }
+        /* Table styles */
+        .ProseMirror table,
+        .editor-table {
+          border-collapse: collapse;
+          margin: 1.5rem 0;
+          width: 100%;
+          overflow: hidden;
+        }
+        .ProseMirror table td,
+        .ProseMirror table th {
+          border: 2px solid #d1d5db;
+          padding: 0.5rem 0.75rem;
+          vertical-align: top;
+          min-width: 80px;
+          position: relative;
+        }
+        .ProseMirror table th {
+          background: #f3f4f6;
+          font-weight: 600;
+          text-align: left;
+        }
+        .ProseMirror table tr:nth-child(even) td {
+          background: #f9fafb;
+        }
+        .ProseMirror table .selectedCell:after {
+          background: rgba(59, 130, 246, 0.15);
+          content: "";
+          left: 0; right: 0; top: 0; bottom: 0;
+          pointer-events: none;
+          position: absolute;
+          z-index: 2;
         }
       `}</style>
       
@@ -360,6 +412,67 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
         >
           <ImageIcon className="h-4 w-4" />
         </Button>
+
+        <div className="w-px h-6 bg-border mx-1" />
+
+        {/* Table Buttons */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+          title="Insert table"
+        >
+          <TableIcon className="h-4 w-4" />
+        </Button>
+
+        {editor.isActive('table') && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => editor.chain().focus().addColumnAfter().run()}
+              title="Add column"
+            >
+              <Plus className="h-3 w-3" />
+              <span className="text-xs ml-0.5">Col</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+              title="Add row"
+            >
+              <Plus className="h-3 w-3" />
+              <span className="text-xs ml-0.5">Row</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => editor.chain().focus().deleteColumn().run()}
+              title="Delete column"
+            >
+              <Minus className="h-3 w-3" />
+              <span className="text-xs ml-0.5">Col</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => editor.chain().focus().deleteRow().run()}
+              title="Delete row"
+            >
+              <Minus className="h-3 w-3" />
+              <span className="text-xs ml-0.5">Row</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => editor.chain().focus().deleteTable().run()}
+              title="Delete table"
+            >
+              <Trash2 className="h-3 w-3 text-red-500" />
+            </Button>
+          </>
+        )}
 
         <div className="w-px h-6 bg-border mx-1" />
 

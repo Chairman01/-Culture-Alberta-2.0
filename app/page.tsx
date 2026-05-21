@@ -923,34 +923,6 @@ export default async function HomeStatic() {
               </div>
             </div>
           </section>
-
-          <section className="w-full py-10 bg-gray-50">
-            <div className="container mx-auto px-4 md:px-6">
-              <div className="max-w-4xl">
-                <h2 className="font-display text-2xl sm:text-3xl font-bold text-gray-950">About Culture Alberta</h2>
-                <div className="mt-5 grid gap-5 md:grid-cols-3">
-                  <div>
-                    <h3 className="font-display text-lg font-bold text-gray-900">What is Culture Alberta?</h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-600">
-                      Culture Alberta is an Alberta-focused media and guide site for local stories, events, food, arts, culture, neighbourhoods, and practical tools.
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="font-display text-lg font-bold text-gray-900">What cities are covered?</h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-600">
-                      We cover Edmonton, Calgary, Red Deer, Lethbridge, Medicine Hat, Grande Prairie, and province-wide Alberta stories.
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="font-display text-lg font-bold text-gray-900">What can readers find?</h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-600">
-                      Readers can find local news, weekly trending stories, city spotlights, event listings, restaurant coverage, guides, and Alberta tools.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
         </main>
       </div>
     </>
