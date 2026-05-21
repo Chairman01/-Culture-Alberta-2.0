@@ -38,7 +38,7 @@ const useFastDevMode = process.env.NODE_ENV === 'development' && process.env.USE
 const DEFAULT_ARTICLE_AUTHOR = 'Adam Harrison'
 const SITE_URL = 'https://www.culturealberta.com'
 const DEFAULT_OG_IMAGE = `${SITE_URL}/images/culture-alberta-og.jpg`
-type ArticleRecommendation = Article & { recommendationReason?: string }
+type ArticleRecommendation = Article & { recommendationReason?: string; viewCount?: number }
 
 function getSocialImageUrl(imageUrl?: string | null): string {
   if (!imageUrl || imageUrl.startsWith('data:image')) {
@@ -108,6 +108,19 @@ function getSharedCount(a: Iterable<string>, b: Set<string>): number {
   return count
 }
 
+function getArticleTime(article: Article): number {
+  const time = new Date(article.date || article.createdAt || 0).getTime()
+  return Number.isFinite(time) ? time : 0
+}
+
+function getArticleAgeDays(article: Article): number | null {
+  const time = getArticleTime(article)
+  if (!time) return null
+
+  const ageDays = (Date.now() - time) / (1000 * 60 * 60 * 24)
+  return Number.isFinite(ageDays) ? ageDays : null
+}
+
 function scoreArticleRecommendation(current: Article, candidate: Article): number {
   let score = 0
   const currentCategory = (current.category || '').toLowerCase()
@@ -121,23 +134,29 @@ function scoreArticleRecommendation(current: Article, candidate: Article): numbe
   const currentWords = tokenizeForRecommendations(`${current.title} ${current.excerpt || ''} ${current.description || ''}`)
   const candidateWords = tokenizeForRecommendations(`${candidate.title} ${candidate.excerpt || ''} ${candidate.description || ''}`)
 
-  if (currentCategory && candidateCategory && currentCategory === candidateCategory) score += 30
-  if (currentLocation && candidateLocation && currentLocation === candidateLocation) score += 24
+  if (currentCategory && candidateCategory && currentCategory === candidateCategory) score += 24
+  if (currentLocation && candidateLocation && currentLocation === candidateLocation) score += 18
   score += getSharedCount(candidateCategories, currentCategories) * 12
   score += getSharedCount(candidateTags, currentTags) * 10
   score += getSharedCount(candidateWords, currentWords) * 3
 
-  if (candidate.featuredHome || candidate.featuredEdmonton || candidate.featuredCalgary) score += 5
-  if (candidate.trendingHome || candidate.trendingEdmonton || candidate.trendingCalgary) score += 4
+  if (candidate.featuredHome || candidate.featuredEdmonton || candidate.featuredCalgary || candidate.featuredAlberta) score += 5
+  if (candidate.trendingHome || candidate.trendingEdmonton || candidate.trendingCalgary || candidate.trendingAlberta) score += 8
 
-  const dateValue = candidate.date || candidate.createdAt
-  if (dateValue) {
-    const ageDays = (Date.now() - new Date(dateValue).getTime()) / (1000 * 60 * 60 * 24)
-    if (Number.isFinite(ageDays)) {
-      if (ageDays < 14) score += 8
-      else if (ageDays < 45) score += 5
-      else if (ageDays < 120) score += 2
-    }
+  const ageDays = getArticleAgeDays(candidate)
+  if (ageDays !== null) {
+    if (ageDays < 3) score += 36
+    else if (ageDays < 7) score += 30
+    else if (ageDays < 14) score += 24
+    else if (ageDays < 30) score += 16
+    else if (ageDays < 60) score += 8
+    else if (ageDays > 180) score -= 24
+    else if (ageDays > 120) score -= 14
+  }
+
+  const viewCount = (candidate as ArticleRecommendation).viewCount || (candidate as any).view_count || 0
+  if (viewCount > 0) {
+    score += Math.min(18, Math.log10(viewCount + 1) * 7)
   }
 
   return score
@@ -241,6 +260,63 @@ function summarizeArticleForLog(article: Article | null | undefined) {
     imagePresent: !!article.imageUrl,
   }
 }
+
+function mapRecommendationArticleRow(row: any): ArticleRecommendation {
+  return {
+    ...row,
+    imageUrl: row.image_url || row.image || row.imageUrl,
+    imageSource: row.image_source || row.imageSource || null,
+    date: row.date || row.created_at || row.createdAt,
+    readTime: row.read_time || row.readTime,
+    createdAt: row.created_at || row.createdAt,
+    updatedAt: row.updated_at || row.updatedAt,
+    trendingHome: row.trending_home || row.trendingHome || false,
+    trendingEdmonton: row.trending_edmonton || row.trendingEdmonton || false,
+    trendingCalgary: row.trending_calgary || row.trendingCalgary || false,
+    trendingAlberta: row.trending_alberta || row.trendingAlberta || false,
+    featuredHome: row.featured_home || row.featuredHome || false,
+    featuredEdmonton: row.featured_edmonton || row.featuredEdmonton || false,
+    featuredCalgary: row.featured_calgary || row.featuredCalgary || false,
+    featuredAlberta: row.featured_alberta || row.featuredAlberta || false,
+    viewCount: row.view_count || row.viewCount || 0,
+  }
+}
+
+const getFreshRecommendationCandidates = unstable_cache(
+  async (): Promise<ArticleRecommendation[]> => {
+    try {
+      const { data, error } = await Promise.race([
+        supabase
+          .from('articles')
+          .select(`
+            id, title, content, excerpt, description, image_url, image, image_source,
+            category, categories, location, date, read_time, type, author, status, tags,
+            slug, created_at, updated_at, trending_home, trending_edmonton, trending_calgary,
+            trending_alberta, featured_home, featured_edmonton, featured_calgary,
+            featured_alberta, view_count
+          `)
+          .eq('status', 'published')
+          .neq('type', 'event')
+          .order('date', { ascending: false, nullsFirst: false })
+          .order('created_at', { ascending: false, nullsFirst: false })
+          .limit(90),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Supabase recommendations timeout')), 3000))
+      ]) as any
+
+      if (error) {
+        console.warn('Supabase recommendation lookup failed:', error.message)
+        return []
+      }
+
+      return (data || []).map(mapRecommendationArticleRow)
+    } catch (error) {
+      console.warn('Supabase recommendation lookup failed:', error instanceof Error ? error.message : error)
+      return []
+    }
+  },
+  ['fresh-article-recommendation-candidates'],
+  { revalidate: 300 }
+)
 
 async function getFullArticleContentById(id: string): Promise<string | null> {
   try {
@@ -554,14 +630,34 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
     // Article loaded successfully
 
-    // Load related articles from local fallback cache and rank them by reader intent.
+    // Load recommendation candidates from Supabase first so new articles can appear quickly.
+    // The optimized fallback cache is only a resilience backup.
     let relatedArticles: ArticleRecommendation[] = []
     try {
-      const allCachedArticles = (await getFastArticles()).filter(a => a.type !== 'event')
+      const freshCandidates = await getFreshRecommendationCandidates()
+      const fallbackCandidates = freshCandidates.length >= 12
+        ? []
+        : (await getFastArticles()).filter(a => a.type !== 'event')
 
-      if (allCachedArticles.length > 0) {
-        relatedArticles = allCachedArticles
-          .filter(a => a.id !== loadedArticle.id)
+      const seenCandidates = new Set<string>()
+      const recommendationCandidates = [...freshCandidates, ...fallbackCandidates]
+        .map(article => mapRecommendationArticleRow(article))
+        .filter(article => {
+          const candidateSlug = article.slug || createSlug(article.title || '')
+          const currentSlug = loadedArticle.slug || createSlug(loadedArticle.title || '')
+          const dedupeKey = String(article.id || candidateSlug || article.title).toLowerCase()
+
+          if (article.id === loadedArticle.id || candidateSlug === currentSlug) return false
+          if (article.status && article.status !== 'published') return false
+          if (String(article.type || '').toLowerCase() === 'event') return false
+          if (seenCandidates.has(dedupeKey)) return false
+
+          seenCandidates.add(dedupeKey)
+          return true
+        })
+
+      if (recommendationCandidates.length > 0) {
+        relatedArticles = recommendationCandidates
           .map(article => ({
             ...article,
             recommendationReason: getRecommendationReason(loadedArticle, article),
@@ -570,18 +666,18 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           .sort((a, b) => {
             const scoreDiff = ((b as any).recommendationScore || 0) - ((a as any).recommendationScore || 0)
             if (scoreDiff !== 0) return scoreDiff
-            return new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
+            return getArticleTime(b) - getArticleTime(a)
           })
           .map(({ recommendationScore, ...article }: any) => article)
           .slice(0, 6)
 
         if (relatedArticles.length === 0) {
-          relatedArticles = allCachedArticles
-            .filter(a => a.id !== loadedArticle.id)
+          relatedArticles = recommendationCandidates
             .map(article => ({
               ...article,
               recommendationReason: getRecommendationReason(loadedArticle, article),
             }))
+            .sort((a, b) => getArticleTime(b) - getArticleTime(a))
             .slice(0, 6)
         }
       }
