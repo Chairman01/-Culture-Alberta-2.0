@@ -89,6 +89,7 @@ function tokenizeForRecommendations(value?: string | null): Set<string> {
     'the', 'and', 'for', 'with', 'after', 'before', 'from', 'that', 'this', 'into',
     'about', 'your', 'you', 'are', 'was', 'were', 'has', 'have', 'will', 'can',
     'its', 'their', 'our', 'out', 'new', 'next', 'why', 'how', 'what',
+    'edmonton', 'calgary', 'alberta', 'canada', 'canadian',
   ])
 
   return new Set(
@@ -98,6 +99,37 @@ function tokenizeForRecommendations(value?: string | null): Set<string> {
       .split(/\s+/)
       .filter(word => word.length > 2 && !stopWords.has(word))
   )
+}
+
+const CITY_CATEGORIES = new Set(['edmonton', 'calgary', 'alberta', 'red deer', 'medicine hat', 'grande prairie'])
+
+const RECOMMENDATION_TOPICS: Record<string, string[]> = {
+  crime: ['police', 'charged', 'charges', 'arrest', 'assault', 'murder', 'warrant', 'seize', 'seized', 'drug', 'drugs', 'trafficking', 'victim', 'complainants'],
+  transit: ['transit', 'streetcar', 'lrt', 'train', 'bus', 'bridge', 'construction', 'rehabilitation', 'road', 'traffic', 'route', 'station'],
+  heritage: ['heritage', 'historic', 'history', 'museum', 'village', 'artifacts', 'century', 'old', 'reopens', 'destroyed', 'visitor'],
+  architecture: ['building', 'pavilion', 'campus', 'architecture', 'ugliest', 'iconic', 'design', 'tower', 'downtown'],
+  education: ['school', 'schools', 'teacher', 'teachers', 'student', 'students', 'strike', 'classroom', 'education', 'daycare', 'childcare'],
+  housing: ['rent', 'rental', 'housing', 'homeless', 'shelter', 'affordable', 'landlord', 'tenant', 'apartment'],
+  culture: ['festival', 'arts', 'artist', 'music', 'theatre', 'gallery', 'culture', 'concert', 'exhibit'],
+  food: ['restaurant', 'food', 'coffee', 'bar', 'brewery', 'bakery', 'menu', 'chef', 'eat'],
+  outdoors: ['park', 'river', 'trail', 'valley', 'outdoor', 'hike', 'winter', 'wildfire', 'lake'],
+}
+
+function getRecommendationText(article: Article): string {
+  return `${article.title} ${article.excerpt || ''} ${article.description || ''} ${(article.tags || []).join(' ')} ${(article.categories || []).join(' ')}`
+}
+
+function getTopicMatches(article: Article): Set<string> {
+  const tokens = tokenizeForRecommendations(getRecommendationText(article))
+  const matches = new Set<string>()
+
+  for (const [topic, words] of Object.entries(RECOMMENDATION_TOPICS)) {
+    if (words.some(word => tokens.has(word))) {
+      matches.add(topic)
+    }
+  }
+
+  return matches
 }
 
 function getSharedCount(a: Iterable<string>, b: Set<string>): number {
@@ -131,24 +163,37 @@ function scoreArticleRecommendation(current: Article, candidate: Article): numbe
   const candidateCategories = (candidate.categories || []).map(category => category.toLowerCase())
   const currentTags = new Set((current.tags || []).map(tag => tag.toLowerCase()))
   const candidateTags = (candidate.tags || []).map(tag => tag.toLowerCase())
-  const currentWords = tokenizeForRecommendations(`${current.title} ${current.excerpt || ''} ${current.description || ''}`)
-  const candidateWords = tokenizeForRecommendations(`${candidate.title} ${candidate.excerpt || ''} ${candidate.description || ''}`)
+  const currentWords = tokenizeForRecommendations(getRecommendationText(current))
+  const candidateWords = tokenizeForRecommendations(getRecommendationText(candidate))
+  const currentTitleWords = tokenizeForRecommendations(current.title)
+  const candidateTitleWords = tokenizeForRecommendations(candidate.title)
+  const currentTopics = getTopicMatches(current)
+  const candidateTopics = getTopicMatches(candidate)
+  const sharedTopics = getSharedCount(candidateTopics, currentTopics)
 
-  if (currentCategory && candidateCategory && currentCategory === candidateCategory) score += 24
-  if (currentLocation && candidateLocation && currentLocation === candidateLocation) score += 18
+  if (currentCategory && candidateCategory && currentCategory === candidateCategory) {
+    score += CITY_CATEGORIES.has(currentCategory) ? 4 : 22
+  }
+  if (currentLocation && candidateLocation && currentLocation === candidateLocation) score += 8
   score += getSharedCount(candidateCategories, currentCategories) * 12
   score += getSharedCount(candidateTags, currentTags) * 10
-  score += getSharedCount(candidateWords, currentWords) * 3
+  score += getSharedCount(candidateWords, currentWords) * 4
+  score += getSharedCount(candidateTitleWords, currentTitleWords) * 10
+  score += sharedTopics * 28
+
+  if (currentTopics.size > 0 && candidateTopics.size > 0 && sharedTopics === 0) score -= 18
+  if (!currentTopics.has('crime') && candidateTopics.has('crime')) score -= 26
+  if (currentTopics.has('crime') && !candidateTopics.has('crime')) score -= 10
 
   if (candidate.featuredHome || candidate.featuredEdmonton || candidate.featuredCalgary || candidate.featuredAlberta) score += 5
   if (candidate.trendingHome || candidate.trendingEdmonton || candidate.trendingCalgary || candidate.trendingAlberta) score += 8
 
   const ageDays = getArticleAgeDays(candidate)
   if (ageDays !== null) {
-    if (ageDays < 3) score += 36
-    else if (ageDays < 7) score += 30
-    else if (ageDays < 14) score += 24
-    else if (ageDays < 30) score += 16
+    if (ageDays < 3) score += 28
+    else if (ageDays < 7) score += 24
+    else if (ageDays < 14) score += 18
+    else if (ageDays < 30) score += 12
     else if (ageDays < 60) score += 8
     else if (ageDays > 180) score -= 24
     else if (ageDays > 120) score -= 14
