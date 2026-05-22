@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Info,
   CheckCircle2,
+  Newspaper,
 } from "lucide-react"
 
 // ---------------------------------------------------------------------------
@@ -544,68 +545,72 @@ export default function ADAPCalculatorClient() {
             </div>
 
             {/* Related reading */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-4">Related Reading</p>
-              <div className="divide-y divide-gray-100">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Newspaper className="w-4 h-4 text-gray-400" />
+                <p className="text-sm font-bold text-gray-900">Related Reading</p>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
                 <Link
                   href="/articles/alberta-adap-application-2026-how-to-apply-what-it-pays-and-who-qualifies"
-                  className="group grid grid-cols-[72px_1fr] items-center gap-3 pb-4 sm:grid-cols-[96px_1fr_auto] sm:gap-4"
+                  className="group bg-white rounded-2xl border border-blue-100 hover:border-blue-200 overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col"
                 >
-                  <div className="relative h-16 w-[72px] overflow-hidden rounded-lg bg-blue-50 border border-blue-100 sm:h-20 sm:w-24">
+                  <div className="relative w-full h-32 overflow-hidden bg-blue-50 border-b border-blue-100 shrink-0 flex items-center justify-center">
                     <Image
                       src="/images/adap-logo.svg"
                       alt="ADAP – Alberta Disability Assistance Program"
-                      fill
-                      className="object-contain p-2 transition-transform duration-300 group-hover:scale-105"
-                      sizes="96px"
+                      width={100}
+                      height={60}
+                      className="object-contain transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
-                  <div className="space-y-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-gray-900 group-hover:underline leading-snug">
-                      Alberta ADAP Application 2026: How to Apply, What It Pays, and Who Qualifies
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      Who qualifies, what ADAP and AISH each pay, the July 2026 launch, and how to apply.
-                    </p>
+                  <div className="p-4 flex items-start justify-between gap-3 flex-1">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors leading-snug text-sm mb-1.5">
+                        Alberta ADAP Application 2026: How to Apply, What It Pays, and Who Qualifies
+                      </p>
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        Who qualifies, what ADAP and AISH each pay, the July 2026 launch, and how to apply.
+                      </p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-300 shrink-0 mt-0.5 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
                   </div>
-                  <ArrowRight className="hidden w-4 h-4 text-gray-400 shrink-0 group-hover:translate-x-1 transition-transform sm:block" />
                 </Link>
                 <Link
                   href="/articles/aish-payments-in-alberta-2026-how-much-you-get-when-it-arrives-and-whats-changing-in-july"
-                  className="group grid grid-cols-[72px_1fr] items-center gap-3 py-4 sm:grid-cols-[96px_1fr_auto] sm:gap-4"
+                  className="group bg-white rounded-2xl border border-gray-200 hover:border-blue-200 overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col"
                 >
-                  <div className="relative h-16 w-[72px] overflow-hidden rounded-lg bg-gray-100 sm:h-20 sm:w-24">
+                  <div className="relative w-full h-32 overflow-hidden bg-gray-100 shrink-0">
                     <Image
                       src="https://itdmwpbsnviassgqfhxk.supabase.co/storage/v1/object/public/Article-image/article-1776632299965-2pipcg.jpg"
                       alt="AISH Payments in Alberta 2026"
                       fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="96px"
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      sizes="(max-width: 1024px) 100vw, 480px"
                     />
                   </div>
-                  <div className="space-y-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-gray-900 group-hover:underline leading-snug">
-                      AISH Payments in Alberta 2026: How Much You Get, When It Arrives, and What&apos;s Changing in July
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      The 2026 AISH payment amount, deposit timing, and the July disability support changes Albertans should know.
-                    </p>
+                  <div className="p-4 flex items-start justify-between gap-3 flex-1">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors leading-snug text-sm mb-1.5">
+                        AISH Payments in Alberta 2026: How Much You Get, When It Arrives
+                      </p>
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        The 2026 AISH payment amount, deposit timing, and the July disability support changes Albertans should know.
+                      </p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-300 shrink-0 mt-0.5 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
                   </div>
-                  <ArrowRight className="hidden w-4 h-4 text-gray-400 shrink-0 group-hover:translate-x-1 transition-transform sm:block" />
                 </Link>
                 <Link
                   href="/tools/aish-calculator"
-                  className="group flex items-center justify-between pt-4"
+                  className="group bg-white rounded-2xl border border-gray-200 hover:border-blue-200 hover:shadow-lg transition-all p-4 flex items-center justify-between gap-4"
                 >
-                  <div className="space-y-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-gray-900 group-hover:underline leading-snug">
-                      AISH Calculator Alberta 2026
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      Full AISH breakdown with clawback, child benefit, and 2026 payment dates.
-                    </p>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-0.5">Tool</p>
+                    <p className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors text-sm leading-snug">AISH Calculator Alberta 2026</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Full AISH breakdown with clawback, child benefit, and 2026 payment dates.</p>
                   </div>
-                  <ArrowRight className="hidden w-4 h-4 text-gray-400 shrink-0 group-hover:translate-x-1 transition-transform sm:block ml-4" />
+                  <ArrowRight className="w-4 h-4 text-gray-300 shrink-0 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
                 </Link>
               </div>
             </div>

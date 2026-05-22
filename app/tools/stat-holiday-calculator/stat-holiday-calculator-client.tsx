@@ -74,7 +74,21 @@ function fmt(n: number) {
   return n.toLocaleString("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 2 })
 }
 
-export default function StatHolidayCalculatorClient() {
+type RelatedArticle = {
+  href: string
+  label: string
+  title: string
+  description: string
+  image: string
+  featured: boolean
+}
+
+export default function StatHolidayCalculatorClient({
+  relatedArticles: propRelatedArticles,
+}: {
+  relatedArticles?: RelatedArticle[]
+}) {
+  const activeRelated = propRelatedArticles ?? RELATED_ARTICLES
   const [payType, setPayType] = useState<"hourly" | "salary">("hourly")
   const [rawHourlyRate, setRawHourlyRate] = useState("")
   const [rawHoursPerWeek, setRawHoursPerWeek] = useState("")
@@ -616,7 +630,7 @@ export default function StatHolidayCalculatorClient() {
             <h2 className="text-lg font-bold text-gray-900">Related Reading</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {RELATED_ARTICLES.map((a, i) => (
+            {activeRelated.map((a, i) => (
               <Link
                 key={i}
                 href={a.href}

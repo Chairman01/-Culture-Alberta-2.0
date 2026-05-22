@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useState, useMemo } from "react"
-import { ArrowLeft, ArrowRight, Info, AlertCircle, ExternalLink, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, Info, AlertCircle, ExternalLink, CheckCircle2, Newspaper } from "lucide-react"
 
 // ---------------------------------------------------------------------------
 // 2026 AISH program constants (Alberta government — verify annually)
@@ -906,33 +906,38 @@ export default function AISHCalculatorPage() {
             )}
 
             {/* Related articles */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-3">Related Reading</p>
-              <div className="divide-y divide-gray-100">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Newspaper className="w-4 h-4 text-gray-400" />
+                <p className="text-sm font-bold text-gray-900">Related Reading</p>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
                 {relatedArticles.map((article) => (
                   <Link
                     key={article.href}
                     href={article.href}
-                    className="group grid grid-cols-[72px_1fr] items-center gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[96px_1fr_auto] sm:gap-4"
+                    className={`group bg-white rounded-2xl border overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col ${
+                      article.image.endsWith('.svg')
+                        ? 'border-blue-100 hover:border-blue-200'
+                        : 'border-gray-200 hover:border-emerald-200'
+                    }`}
                   >
-                    <div className={`relative h-16 w-[72px] overflow-hidden rounded-lg sm:h-20 sm:w-24 ${article.image.endsWith('.svg') ? 'bg-blue-50 border border-blue-100' : 'bg-gray-100'}`}>
+                    <div className={`relative w-full h-32 overflow-hidden shrink-0 ${article.image.endsWith('.svg') ? 'bg-blue-50 border-b border-blue-100' : 'bg-gray-100'}`}>
                       <Image
                         src={article.image}
                         alt={article.title}
                         fill
-                        className={`${article.image.endsWith('.svg') ? 'object-contain p-1.5' : 'object-cover'} transition-transform duration-300 group-hover:scale-105`}
-                        sizes="96px"
+                        className={`${article.image.endsWith('.svg') ? 'object-contain p-4' : 'object-cover group-hover:scale-105'} transition-transform duration-300`}
+                        sizes="(max-width: 1024px) 100vw, 480px"
                       />
                     </div>
-                    <div className="space-y-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-gray-900 group-hover:underline leading-snug">
-                        {article.title}
-                      </h3>
-                      <p className="text-xs text-gray-500">
-                        {article.description}
-                      </p>
+                    <div className="p-4 flex items-start justify-between gap-3 flex-1">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 group-hover:text-emerald-700 transition-colors leading-snug text-sm mb-1.5">{article.title}</p>
+                        <p className="text-xs text-gray-500 leading-relaxed">{article.description}</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-gray-300 shrink-0 mt-0.5 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
                     </div>
-                    <ArrowRight className="hidden w-4 h-4 text-gray-400 shrink-0 group-hover:translate-x-1 transition-transform sm:block" />
                   </Link>
                 ))}
               </div>
