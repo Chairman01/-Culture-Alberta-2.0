@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
-import { Calculator, DollarSign, Calendar, ArrowRight, Wrench, Scale } from "lucide-react"
+import { Calculator, DollarSign, Calendar, ArrowRight, Wrench, Scale, Clock } from "lucide-react"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -60,16 +60,6 @@ const tools = [
     badgeColor: "bg-gray-100 text-gray-500",
     disabled: true,
   },
-  {
-    href: "#",
-    icon: Calendar,
-    title: "Alberta Stat Holiday Pay Calculator",
-    description:
-      "Find out what you're owed for statutory holiday pay under Alberta's Employment Standards Code — whether you worked the holiday or not.",
-    badge: "Coming Soon",
-    badgeColor: "bg-gray-100 text-gray-500",
-    disabled: true,
-  },
 ]
 
 const toolsPageSchema = {
@@ -83,7 +73,8 @@ const toolsPageSchema = {
   "about": { "@type": "AdministrativeArea", "name": "Alberta", "containedInPlace": { "@type": "Country", "name": "Canada" } },
   "hasPart": [
     { "@type": "WebApplication", "name": "AISH Calculator Alberta 2026", "url": "https://www.culturealberta.com/tools/aish-calculator" },
-    { "@type": "WebApplication", "name": "ADAP Calculator Alberta 2026", "url": "https://www.culturealberta.com/tools/adap-calculator" }
+    { "@type": "WebApplication", "name": "ADAP Calculator Alberta 2026", "url": "https://www.culturealberta.com/tools/adap-calculator" },
+    { "@type": "WebApplication", "name": "Alberta Stat Holiday Pay Calculator 2026", "url": "https://www.culturealberta.com/tools/stat-holiday-calculator" }
   ]
 }
 
@@ -225,6 +216,62 @@ export default function ToolsPage() {
                     Compare ADAP vs AISH
                   </div>
                   <div className="w-11 h-11 flex items-center justify-center border border-blue-200 rounded-xl text-blue-600 group-hover:bg-blue-50 transition-colors">
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Stat Holiday Pay Calculator — featured card */}
+          <Link href="/tools/stat-holiday-calculator" className="group block h-full">
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col h-full hover:shadow-xl hover:border-orange-200 transition-all duration-300 cursor-pointer">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 bg-gradient-to-r from-orange-50 to-white border-b border-orange-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Alberta</p>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">Stat Holiday Pay</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-orange-700 bg-orange-100 px-2.5 py-1 rounded-full">2026 rules</span>
+                  <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">Free</span>
+                </div>
+              </div>
+              {/* Stats bar */}
+              <div className="mx-6 mt-4 grid grid-cols-3 gap-0 bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Holidays</p>
+                  <p className="text-sm font-bold text-gray-900">9</p>
+                  <p className="text-[10px] text-gray-400">per year</p>
+                </div>
+                <div className="text-center py-3 px-2 border-x border-gray-100">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Formula</p>
+                  <p className="text-sm font-bold text-gray-900">÷ 20</p>
+                  <p className="text-[10px] text-gray-400">4-wk wages</p>
+                </div>
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">If worked</p>
+                  <p className="text-sm font-bold text-orange-600">1.5×</p>
+                  <p className="text-[10px] text-gray-400">option B</p>
+                </div>
+              </div>
+              {/* Content + CTA */}
+              <div className="p-6 flex flex-col flex-1">
+                <h2 className="text-xl font-bold text-gray-900 group-hover:text-orange-700 transition-colors mb-2">Alberta Stat Holiday Pay Calculator</h2>
+                <p className="text-sm text-gray-500 leading-relaxed flex-1 mb-5">
+                  Find out what you&apos;re owed for all 9 Alberta general holidays under the Employment Standards Code — whether you worked the holiday or not.
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center justify-center gap-2 bg-orange-600 group-hover:bg-orange-700 text-white rounded-xl py-3 font-semibold text-sm transition-colors">
+                    <Clock className="w-4 h-4" />
+                    Calculate my stat pay
+                  </div>
+                  <div className="w-11 h-11 flex items-center justify-center border border-orange-200 rounded-xl text-orange-600 group-hover:bg-orange-50 transition-colors">
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
