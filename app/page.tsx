@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { getHomepageArticles } from '@/lib/articles'
 import { getAllAlbertaArticles } from '@/lib/alberta-cities'
 import { getAllEvents } from '@/lib/events'
-import { ArrowRight, Calculator, Scale } from 'lucide-react'
+import { ArrowRight, Calculator, Scale, Calendar } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
 import { SearchBar } from '@/components/search-bar'
 import { Article } from '@/lib/types/article'
@@ -850,7 +850,7 @@ export default async function HomeStatic() {
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {/* AISH Calculator card */}
                 <Link href="/tools/aish-calculator" className="group block">
                   <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg hover:border-emerald-200 transition-all duration-300 h-full flex flex-col">
@@ -915,6 +915,34 @@ export default async function HomeStatic() {
                       </p>
                       <div className="flex items-center justify-between bg-blue-600 group-hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 transition-colors">
                         <span className="text-sm font-semibold">Calculate my ADAP estimate</span>
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+                {/* Stat Holiday Calculator card */}
+                <Link href="/tools/stat-holiday-calculator" className="group block">
+                  <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg hover:border-orange-200 transition-all duration-300 h-full flex flex-col">
+                    <div className="flex items-center justify-between px-5 pt-4 pb-3 bg-gradient-to-r from-orange-50 to-white border-b border-orange-100">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                          <Calendar className="w-4 h-4 text-orange-600" />
+                        </div>
+                        <span className="text-sm font-bold text-gray-900 leading-tight">Stat Holiday Pay</span>
+                      </div>
+                      <span className="flex items-center gap-1 text-[11px] font-semibold text-orange-700 bg-orange-100 px-2.5 py-1 rounded-full shrink-0">
+                        2026 rules
+                      </span>
+                    </div>
+                    <div className="p-4 flex flex-col flex-1">
+                      <h3 className="font-display font-bold text-lg text-gray-900 group-hover:text-orange-700 transition-colors leading-tight mb-1">
+                        Stat Holiday Pay Calculator
+                      </h3>
+                      <p className="font-body text-sm text-gray-500 leading-relaxed flex-1 mb-4">
+                        Find out what you&apos;re owed for all 9 Alberta general holidays — whether you worked or had the day off.
+                      </p>
+                      <div className="flex items-center justify-between bg-orange-600 group-hover:bg-orange-700 text-white rounded-xl px-4 py-2.5 transition-colors">
+                        <span className="text-sm font-semibold">Calculate my stat pay</span>
                         <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </div>
