@@ -1,60 +1,58 @@
 /**
- * Eventbrite API client for fetching weekend events by Alberta city.
- * API docs: https://www.eventbrite.com/platform/api
+ * Ticketmaster Discovery API client for fetching weekend events by Alberta city.
+ * Replaces the deprecated Eventbrite public search API.
  *
- * Requires env var: EVENTBRITE_PRIVATE_TOKEN
- * Get yours at: eventbrite.com → Account Settings → Developer Links → API Keys
+ * API docs: https://developer.ticketmaster.com/products-and-docs/apis/discovery-api/v2/
+ * Free tier: 5,000 calls/day — plenty for weekly automation.
+ *
+ * Requires env var: TICKETMASTER_API_KEY
+ * Get yours (free) at: https://developer.ticketmaster.com/
  */
 
 import { filterEvents, type FilterableEvent } from './content-filter'
 
-const BASE_URL = 'https://www.eventbriteapi.com/v3'
+const BASE_URL = 'https://app.ticketmaster.com/discovery/v2'
 
-// Eventbrite category IDs to INCLUDE (family/community friendly)
-// Full list: https://www.eventbrite.com/platform/api#/reference/category
-const ALLOWED_CATEGORY_IDS = [
-  '103', // Music
-  '110', // Food & Drink
-  '113', // Community & Culture
-  '115', // Performing & Visual Arts
-  '116', // Film, Media & Entertainment
-  '117', // Sports & Fitness
-  '118', // Travel & Outdoor
-  '119', // Charity & Causes
-  '105', // Arts
+// Ticketmaster segment/classification names to include
+const ALLOWED_CLASSIFICATIONS = [
+  'Music',
+  'Arts & Theatre',
+  'Sports',
+  'Family',
+  'Film',
+  'Miscellaneous',
 ]
 
-// Eventbrite uses canonical city names for location search
-const CITY_CONFIG: Record<string, { query: string; label: string; province: string }> = {
+const CITY_CONFIG: Record<string, { query: string; label: string; stateCode: string }> = {
   calgary: {
-    query: 'Calgary, AB, Canada',
+    query: 'Calgary',
     label: 'Calgary',
-    province: 'AB',
+    stateCode: 'AB',
   },
   edmonton: {
-    query: 'Edmonton, AB, Canada',
+    query: 'Edmonton',
     label: 'Edmonton',
-    province: 'AB',
+    stateCode: 'AB',
   },
   lethbridge: {
-    query: 'Lethbridge, AB, Canada',
+    query: 'Lethbridge',
     label: 'Lethbridge',
-    province: 'AB',
+    stateCode: 'AB',
   },
   'medicine-hat': {
-    query: 'Medicine Hat, AB, Canada',
+    query: 'Medicine Hat',
     label: 'Medicine Hat',
-    province: 'AB',
+    stateCode: 'AB',
   },
   'grande-prairie': {
-    query: 'Grande Prairie, AB, Canada',
+    query: 'Grande Prairie',
     label: 'Grande Prairie',
-    province: 'AB',
+    stateCode: 'AB',
   },
   'fort-mcmurray': {
-    query: 'Fort McMurray, AB, Canada',
+    query: 'Fort McMurray',
     label: 'Fort McMurray',
-    province: 'AB',
+    stateCode: 'AB',
   },
 }
 
@@ -75,9 +73,10 @@ export interface EventbriteEvent {
   imageUrl: string | null
 }
 
-function formatEventbriteDate(utcStr: string, timezone: string): string {
+function formatDate(localDate: string, localTime: string | undefined, timezone = 'America/Edmonton'): string {
   try {
-    return new Date(utcStr).toLocaleString('en-CA', {
+    const dateStr = localTime ? `${localDate}T${localTime}` : localDate
+    return new Date(dateStr).toLocaleString('en-CA', {
       timeZone: timezone,
       weekday: 'long',
       month: 'long',
@@ -87,57 +86,58 @@ function formatEventbriteDate(utcStr: string, timezone: string): string {
       hour12: true,
     })
   } catch {
-    return utcStr
+    return localDate
   }
 }
 
-function formatPrice(ticketClasses: Array<{ free: boolean; cost?: { display: string } }>): string {
-  if (!ticketClasses || ticketClasses.length === 0) return 'See website'
-
-  const allFree = ticketClasses.every(t => t.free)
-  if (allFree) return 'Free'
-
-  const prices = ticketClasses
-    .filter(t => !t.free && t.cost?.display)
-    .map(t => t.cost!.display)
-
-  if (prices.length === 0) return 'See website'
-  if (prices.length === 1) return prices[0]
-
-  // Return range
-  return `${prices[0]} – ${prices[prices.length - 1]}`
+function formatPrice(ranges: Array<{ min?: number; max?: number; currency?: string }> | undefined): string {
+  if (!ranges || ranges.length === 0) return 'See website'
+  const r = ranges[0]
+  if (!r.min && !r.max) return 'See website'
+  const currency = r.currency === 'CAD' ? 'CA$' : '$'
+  if (r.min === r.max || !r.max) return `${currency}${r.min?.toFixed(0)}`
+  return `${currency}${r.min?.toFixed(0)}-${currency}${r.max?.toFixed(0)}`
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapEvent(raw: any): EventbriteEvent {
-  const timezone = raw.start?.timezone || 'America/Edmonton'
-  const ticketClasses = raw.ticket_classes || []
-  const isFree = ticketClasses.length === 0 || ticketClasses.every((t: any) => t.free)
+  const venue = raw._embedded?.venues?.[0]
+  const venueName = venue?.name || ''
+  const venueAddress = [venue?.address?.line1, venue?.city?.name ?? venue?.location?.city]
+    .filter(Boolean).join(', ')
+
+  const localDate = raw.dates?.start?.localDate || ''
+  const localTime = raw.dates?.start?.localTime
+  const isoStart = raw.dates?.start?.dateTime || localDate
+
+  const classification = raw.classifications?.[0]
+  const categoryName = classification?.segment?.name || classification?.genre?.name || ''
+
+  // Pick best image (prefer 16:9 landscape)
+  const images: Array<{ url: string; ratio?: string; width?: number }> = raw.images || []
+  const best = images.find(i => i.ratio === '16_9' && (i.width || 0) >= 1024)
+    ?? images.find(i => i.ratio === '16_9')
+    ?? images[0]
+
+  const name: string = raw.name || 'Untitled Event'
+  const info: string = raw.info || raw.pleaseNote || raw.description || ''
 
   return {
     id: raw.id,
-    title: raw.name?.text || 'Untitled Event',
-    description: raw.description?.text || '',
-    shortDescription: (raw.description?.text || '').slice(0, 300),
-    startDate: raw.start?.utc || '',
-    endDate: raw.end?.utc || '',
-    startFormatted: formatEventbriteDate(raw.start?.utc, timezone),
-    venueName: raw.venue?.name || '',
-    venueAddress: [
-      raw.venue?.address?.address_1,
-      raw.venue?.address?.city,
-    ].filter(Boolean).join(', '),
+    title: name,
+    description: info,
+    shortDescription: info.slice(0, 300),
+    startDate: isoStart,
+    endDate: raw.dates?.end?.dateTime || isoStart,
+    startFormatted: formatDate(localDate, localTime),
+    venueName,
+    venueAddress,
     url: raw.url || '',
-    isFree,
-    price: formatPrice(ticketClasses),
-    categoryName: raw.category?.name || '',
-    imageUrl: raw.logo?.url || null,
+    isFree: !raw.priceRanges || raw.priceRanges.length === 0,
+    price: formatPrice(raw.priceRanges),
+    categoryName,
+    imageUrl: best?.url || null,
   }
-}
-
-/** Strip non-ASCII characters so the value is safe to use in HTTP headers. */
-function sanitizeHeader(value: string): string {
-  return value.replace(/[^\x00-\x7F]/g, '').trim()
 }
 
 export async function fetchWeekendEvents(
@@ -146,77 +146,69 @@ export async function fetchWeekendEvents(
   weekendEnd: Date,
   maxResults = 30
 ): Promise<EventbriteEvent[]> {
-  const rawToken = process.env.EVENTBRITE_PRIVATE_TOKEN
-  if (!rawToken) {
-    throw new Error('EVENTBRITE_PRIVATE_TOKEN env var is not set')
+  const apiKey = process.env.TICKETMASTER_API_KEY
+  if (!apiKey) {
+    throw new Error('TICKETMASTER_API_KEY env var is not set')
   }
-  const token = sanitizeHeader(rawToken)
 
   const cityConfig = CITY_CONFIG[city]
   if (!cityConfig) {
     throw new Error(`Unknown city: ${city}. Valid options: ${Object.keys(CITY_CONFIG).join(', ')}`)
   }
 
+  // Ticketmaster expects ISO 8601 without milliseconds
   const startStr = weekendStart.toISOString().replace(/\.\d{3}Z$/, 'Z')
   const endStr = weekendEnd.toISOString().replace(/\.\d{3}Z$/, 'Z')
 
   const params = new URLSearchParams({
-    'location.address': cityConfig.query,
-    'location.within': '25km',
-    'start_date.range_start': startStr,
-    'start_date.range_end': endStr,
-    'status': 'live',
-    'expand': 'venue,category,ticket_classes,logo',
-    'page_size': String(Math.min(maxResults, 50)),
-    'sort_by': 'date',
+    apikey: apiKey,
+    city: cityConfig.query,
+    stateCode: cityConfig.stateCode,
+    countryCode: 'CA',
+    startDateTime: startStr,
+    endDateTime: endStr,
+    size: String(Math.min(maxResults, 50)),
+    sort: 'date,asc',
+    classificationName: ALLOWED_CLASSIFICATIONS.join(','),
   })
 
-  // Add category filters
-  ALLOWED_CATEGORY_IDS.forEach(id => {
-    params.append('categories', id)
-  })
-
-  const url = `${BASE_URL}/events/search/?${params.toString()}`
-
-  console.log(`[eventbrite] Fetching events for ${cityConfig.label}...`)
+  const url = `${BASE_URL}/events.json?${params.toString()}`
+  console.log(`[ticketmaster] Fetching events for ${cityConfig.label}...`)
 
   const response = await fetch(url, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-    next: { revalidate: 0 }, // No caching — always fresh
+    next: { revalidate: 0 },
   })
 
   if (!response.ok) {
     const body = await response.text()
-    throw new Error(`Eventbrite API error ${response.status}: ${body}`)
+    throw new Error(`Ticketmaster API error ${response.status}: ${body}`)
   }
 
   const data = await response.json()
-  const rawEvents: unknown[] = data.events || []
+  const rawEvents: unknown[] = data._embedded?.events || []
 
-  console.log(`[eventbrite] Got ${rawEvents.length} raw events for ${cityConfig.label}`)
+  console.log(`[ticketmaster] Got ${rawEvents.length} raw events for ${cityConfig.label}`)
 
   // Map to our format
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapped = (rawEvents as any[]).map(mapEvent)
 
   // Apply content filter
   const filtered = filterEvents(mapped as Array<EventbriteEvent & FilterableEvent>)
 
-  console.log(`[eventbrite] ${filtered.length} events passed content filter for ${cityConfig.label}`)
+  console.log(`[ticketmaster] ${filtered.length} events passed content filter for ${cityConfig.label}`)
 
   return filtered
 }
 
 /**
  * Get the Friday–Sunday date range for the upcoming weekend.
- * Runs on Thursday — returns Fri/Sat/Sun of the same week.
  */
 export function getUpcomingWeekend(): { start: Date; end: Date; label: string } {
   const now = new Date()
-  const day = now.getDay() // 0=Sun, 1=Mon, ... 4=Thu, 5=Fri, 6=Sat
+  const day = now.getDay() // 0=Sun ... 4=Thu, 5=Fri, 6=Sat
 
-  // Days until Friday
+  // Days until Friday (if already Friday or later, go to NEXT Friday)
   const daysUntilFriday = (5 - day + 7) % 7 || 7
 
   const friday = new Date(now)

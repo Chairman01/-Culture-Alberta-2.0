@@ -90,13 +90,13 @@ export async function generateWeekendArticleForCity(
 
   console.log(`\n[weekend-events] === Generating article for ${cityLabel} (${label}) ===`)
 
-  // Step 1: Fetch events from Eventbrite (with content filter applied inside)
+  // Step 1: Fetch events from Ticketmaster (with content filter applied inside)
   let events
   try {
     events = await fetchWeekendEvents(city, start, end, 30)
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err)
-    console.error(`[weekend-events] Eventbrite fetch failed for ${cityLabel}:`, error)
+    console.error(`[weekend-events] Ticketmaster fetch failed for ${cityLabel}:`, error)
     return { success: false, city, cityLabel, eventsFound: 0, eventsUsed: 0, error }
   }
 
