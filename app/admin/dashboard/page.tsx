@@ -4,16 +4,48 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { 
-  Home, 
+import {
+  Home,
   FileText,
   Star,
   Calendar,
   MapPin,
   Mail,
-  RefreshCw
+  RefreshCw,
+  Zap,
+  CheckCircle,
+  XCircle,
+  Loader2
 } from 'lucide-react'
 import Link from 'next/link'
+
+const AUTOMATION_CITIES = [
+  { value: 'all', label: 'All 6 Cities' },
+  { value: 'calgary', label: 'Calgary' },
+  { value: 'edmonton', label: 'Edmonton' },
+  { value: 'lethbridge', label: 'Lethbridge' },
+  { value: 'medicine-hat', label: 'Medicine Hat' },
+  { value: 'grande-prairie', label: 'Grande Prairie' },
+  { value: 'fort-mcmurray', label: 'Fort McMurray' },
+]
+
+interface AutomationResult {
+  success: boolean
+  city: string
+  cityLabel: string
+  title?: string
+  articleSlug?: string
+  eventsFound: number
+  eventsUsed: number
+  error?: string
+}
+
+interface AutomationResponse {
+  success: boolean
+  publishStatus: string
+  results: AutomationResult[]
+  summary: { attempted: number; succeeded: number; failed: number }
+}
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -21,6 +53,35 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [refreshMessage, setRefreshMessage] = useState('')
+
+  // Automation state
+  const [autoCity, setAutoCity] = useState('all')
+  const [autoStatus, setAutoStatus] = useState<'draft' | 'published'>('draft')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [autoResults, setAutoResults] = useState<AutomationResponse | null>(null)
+
+  const handleGenerateWeekendArticles = async () => {
+    setIsGenerating(true)
+    setAutoResults(null)
+    try {
+      const response = await fetch('/api/admin/automation/weekend-events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city: autoCity, status: autoStatus }),
+      })
+      const data: AutomationResponse = await response.json()
+      setAutoResults(data)
+    } catch {
+      setAutoResults({
+        success: false,
+        publishStatus: autoStatus,
+        results: [],
+        summary: { attempted: 0, succeeded: 0, failed: 1 },
+      })
+    } finally {
+      setIsGenerating(false)
+    }
+  }
 
   const handleRefreshCache = async () => {
     setIsRefreshing(true)
@@ -190,6 +251,95 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Weekend Events Automation */}
+        <Card className="mb-6 border-2 border-dashed border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-blue-500" />
+              Weekend Events — Auto-Generate
+            </CardTitle>
+            <CardDescription>
+              Pulls events from Eventbrite, generates article with Claude, uploads a cover photo.
+              Runs automatically every Thursday at 2pm MST. Use this to trigger manually.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-end gap-4 mb-4">
+              <div>
+                <label className="text-sm font-medium block mb-1">City</label>
+                <select
+                  value={autoCity}
+                  onChange={e => setAutoCity(e.target.value)}
+                  className="border rounded-md px-3 py-2 text-sm bg-background"
+                  disabled={isGenerating}
+                >
+                  {AUTOMATION_CITIES.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Publish As</label>
+                <select
+                  value={autoStatus}
+                  onChange={e => setAutoStatus(e.target.value as 'draft' | 'published')}
+                  className="border rounded-md px-3 py-2 text-sm bg-background"
+                  disabled={isGenerating}
+                >
+                  <option value="draft">Draft (review before publishing)</option>
+                  <option value="published">Published (go live immediately)</option>
+                </select>
+              </div>
+              <Button
+                onClick={handleGenerateWeekendArticles}
+                disabled={isGenerating}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isGenerating ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
+                ) : (
+                  <><Zap className="mr-2 h-4 w-4" /> Generate Now</>
+                )}
+              </Button>
+            </div>
+
+            {isGenerating && (
+              <p className="text-sm text-muted-foreground">
+                This takes 1–3 minutes per city. Fetching events, sourcing photos, and writing with Claude...
+              </p>
+            )}
+
+            {autoResults && (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm font-medium">
+                  Results: {autoResults.summary.succeeded}/{autoResults.summary.attempted} cities succeeded
+                  {autoResults.publishStatus === 'draft' && ' — check Articles (filter by Draft) to review'}
+                </p>
+                {autoResults.results.map(r => (
+                  <div
+                    key={r.city}
+                    className={`flex items-start gap-2 p-3 rounded-md text-sm ${
+                      r.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                    }`}
+                  >
+                    {r.success
+                      ? <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                      : <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                    }
+                    <div>
+                      <span className="font-medium">{r.cityLabel}:</span>{' '}
+                      {r.success
+                        ? <><a href={`/articles/${r.articleSlug}`} target="_blank" className="underline">{r.title}</a> ({r.eventsUsed} events)</>
+                        : <span className="text-red-700">{r.error}</span>
+                      }
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Info Card */}
         <Card>

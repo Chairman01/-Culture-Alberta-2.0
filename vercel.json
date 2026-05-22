@@ -33,6 +33,10 @@
         {
             "path": "/api/newsletter/send",
             "schedule": "0 14 * * *"
+        },
+        {
+            "path": "/api/cron/weekend-events?city=all&status=draft",
+            "schedule": "0 20 * * 4"
         }
     ]
 }

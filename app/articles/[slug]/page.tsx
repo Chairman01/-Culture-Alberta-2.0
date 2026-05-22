@@ -888,7 +888,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     {/* Featured Image */}
                     {loadedArticle.imageUrl && !loadedArticle.imageUrl.startsWith('data:image') && (
                       <div>
-                        <div className="relative w-full aspect-[16/10] md:aspect-auto md:h-[400px] lg:h-[500px] rounded-xl overflow-hidden bg-gray-100">
+                        <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden bg-gray-100">
                           <Image
                             src={loadedArticle.imageUrl}
                             alt={loadedArticle.title || 'Article image'}

@@ -282,9 +282,9 @@ export function ArticleContent({ content, className = "" }: ArticleContentProps)
                   src={part.src as string}
                   alt={part.alt || ''}
                   width={800}
-                  height={600}
-                  className="rounded-lg shadow-lg"
-                  style={{ objectFit: 'cover' }}
+                  height={450}
+                  className="rounded-lg shadow-lg w-full h-auto"
+                  style={{ objectFit: 'contain' }}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 800px"
                 />
                 {part.alt && (
@@ -359,9 +359,9 @@ export function ArticleContentWithHTML({ content, className = "" }: ArticleConte
                   src={part.src as string}
                   alt={part.alt || ''}
                   width={800}
-                  height={600}
-                  className="rounded-lg shadow-lg"
-                  style={{ objectFit: 'cover' }}
+                  height={450}
+                  className="rounded-lg shadow-lg w-full h-auto"
+                  style={{ objectFit: 'contain' }}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 800px"
                 />
                 {part.alt && (
