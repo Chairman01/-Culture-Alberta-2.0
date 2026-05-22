@@ -17,6 +17,9 @@ const CITY_SEARCH_TERM: Record<string, string> = {
   calgary: 'calgary',
   lethbridge: 'lethbridge',
   'medicine-hat': 'medicine hat',
+  'red-deer': 'red deer',
+  'grande-prairie': 'grande prairie',
+  'fort-mcmurray': 'fort mcmurray',
 }
 
 export type { NewsletterConfig, ArticlePickerItem }
@@ -43,7 +46,7 @@ export async function saveArticleOrder(
 export async function saveAlbertaArticles(
   articleIds: string[] | null,
 ): Promise<{ error: string | null }> {
-  const cities: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
+  const cities: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray']
   for (const city of cities) {
     const result = await saveNewsletterConfig(city, { alberta_article_ids: articleIds })
     if (result.error) return result

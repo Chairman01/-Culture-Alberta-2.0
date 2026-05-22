@@ -1,7 +1,7 @@
 import type { NewsletterArticle, NewsletterContent, NewsletterEvent } from './fetch-articles'
 
 // ── City configuration ────────────────────────────────────────────────────────
-export type NewsletterCity = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat'
+export type NewsletterCity = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat' | 'red-deer' | 'grande-prairie' | 'fort-mcmurray'
 
 interface CityConfig {
   newsletterName: string
@@ -49,6 +49,33 @@ const CITY_CONFIG: Record<NewsletterCity, CityConfig> = {
     accentColorDark: '#92400e',
     greeting: 'Good morning, Medicine Hat',
     emoji: '🎩',
+  },
+  'red-deer': {
+    newsletterName: 'The Parkland',
+    tagline: "Red Deer's Daily Brief",
+    cityLabel: 'Red Deer',
+    accentColor: '#c62828',
+    accentColorDark: '#b71c1c',
+    greeting: 'Good morning, Red Deer',
+    emoji: '🦌',
+  },
+  'grande-prairie': {
+    newsletterName: 'The Peace',
+    tagline: "Grande Prairie's Daily Brief",
+    cityLabel: 'Grande Prairie',
+    accentColor: '#2e7d32',
+    accentColorDark: '#1b5e20',
+    greeting: 'Good morning, Grande Prairie',
+    emoji: '🌿',
+  },
+  'fort-mcmurray': {
+    newsletterName: 'The North',
+    tagline: "Fort McMurray's Daily Brief",
+    cityLabel: 'Fort McMurray',
+    accentColor: '#37474f',
+    accentColorDark: '#263238',
+    greeting: 'Good morning, Fort McMurray',
+    emoji: '🌲',
   },
 }
 

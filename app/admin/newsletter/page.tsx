@@ -48,7 +48,7 @@ interface NewsletterSubscription {
   status?: 'active' | 'unsubscribed'
 }
 
-type CityKey = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat'
+type CityKey = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat' | 'red-deer' | 'grande-prairie' | 'fort-mcmurray'
 
 interface SendState {
   status: 'idle' | 'sending' | 'success' | 'error'
@@ -89,15 +89,16 @@ interface PickerState {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const CITY_CONFIG: Record<CityKey, { label: string; newsletter: string; color: string; accent: string; border: string }> = {
-  edmonton:       { label: 'Edmonton',     newsletter: 'The Capital',  color: 'text-blue-600',   accent: 'bg-blue-600',   border: 'border-blue-200'   },
-  calgary:        { label: 'Calgary',      newsletter: 'The Chinook',  color: 'text-red-600',    accent: 'bg-red-600',    border: 'border-red-200'    },
-  lethbridge:     { label: 'Lethbridge',   newsletter: 'The Westerly', color: 'text-amber-600',  accent: 'bg-amber-600',  border: 'border-amber-200'  },
-  'medicine-hat': { label: 'Medicine Hat', newsletter: 'The Hat',      color: 'text-orange-700', accent: 'bg-orange-700', border: 'border-orange-200' },
+  edmonton:         { label: 'Edmonton',      newsletter: 'The Capital',  color: 'text-blue-600',   accent: 'bg-blue-600',   border: 'border-blue-200'   },
+  calgary:          { label: 'Calgary',       newsletter: 'The Chinook',  color: 'text-red-600',    accent: 'bg-red-600',    border: 'border-red-200'    },
+  lethbridge:       { label: 'Lethbridge',    newsletter: 'The Westerly', color: 'text-amber-600',  accent: 'bg-amber-600',  border: 'border-amber-200'  },
+  'medicine-hat':   { label: 'Medicine Hat',  newsletter: 'The Hat',      color: 'text-orange-700', accent: 'bg-orange-700', border: 'border-orange-200' },
+  'red-deer':       { label: 'Red Deer',      newsletter: 'The Parkland', color: 'text-red-700',    accent: 'bg-red-700',    border: 'border-red-300'    },
+  'grande-prairie': { label: 'Grande Prairie',newsletter: 'The Peace',    color: 'text-green-700',  accent: 'bg-green-700',  border: 'border-green-200'  },
+  'fort-mcmurray':  { label: 'Fort McMurray', newsletter: 'The North',    color: 'text-slate-700',  accent: 'bg-slate-700',  border: 'border-slate-200'  },
 }
 
 const OTHER_CITY_LABELS: Record<string, string> = {
-  'red-deer':       'Red Deer',
-  'grande-prairie': 'Grande Prairie',
   'other-alberta':  'Other Alberta',
   'outside-alberta':'Outside Alberta',
   'other':          'Other',
@@ -124,29 +125,38 @@ export default function NewsletterAdmin() {
   const [previewCity, setPreviewCity] = useState<CityKey | null>(null)
   const [previewTimestamp, setPreviewTimestamp] = useState(0)
   const [loadingCurrent, setLoadingCurrent] = useState<Record<CityKey | 'alberta', boolean>>({
-    edmonton: false, calgary: false, lethbridge: false, 'medicine-hat': false, alberta: false,
+    edmonton: false, calgary: false, lethbridge: false, 'medicine-hat': false,
+    'red-deer': false, 'grande-prairie': false, 'fort-mcmurray': false, alberta: false,
   })
 
   // Send states
   const [sendStates, setSendStates] = useState<Record<CityKey, SendState>>({
-    edmonton:       { status: 'idle' },
-    calgary:        { status: 'idle' },
-    lethbridge:     { status: 'idle' },
-    'medicine-hat': { status: 'idle' },
+    edmonton:         { status: 'idle' },
+    calgary:          { status: 'idle' },
+    lethbridge:       { status: 'idle' },
+    'medicine-hat':   { status: 'idle' },
+    'red-deer':       { status: 'idle' },
+    'grande-prairie': { status: 'idle' },
+    'fort-mcmurray':  { status: 'idle' },
   })
   // Confirmation gate — true means "waiting for user to confirm before actual send"
   const [confirmSend, setConfirmSend] = useState<Record<CityKey, boolean>>({
     edmonton: false, calgary: false, lethbridge: false, 'medicine-hat': false,
+    'red-deer': false, 'grande-prairie': false, 'fort-mcmurray': false,
   })
   const [testStates, setTestStates] = useState<Record<CityKey, TestState>>({
-    edmonton:       { open: false, email: '', status: 'idle' },
-    calgary:        { open: false, email: '', status: 'idle' },
-    lethbridge:     { open: false, email: '', status: 'idle' },
-    'medicine-hat': { open: false, email: '', status: 'idle' },
+    edmonton:         { open: false, email: '', status: 'idle' },
+    calgary:          { open: false, email: '', status: 'idle' },
+    lethbridge:       { open: false, email: '', status: 'idle' },
+    'medicine-hat':   { open: false, email: '', status: 'idle' },
+    'red-deer':       { open: false, email: '', status: 'idle' },
+    'grande-prairie': { open: false, email: '', status: 'idle' },
+    'fort-mcmurray':  { open: false, email: '', status: 'idle' },
   })
   // Optional custom opening note per city — typed before sending, shown in preview
   const [customNotes, setCustomNotes] = useState<Record<CityKey, string>>({
     edmonton: '', calgary: '', lethbridge: '', 'medicine-hat': '',
+    'red-deer': '', 'grande-prairie': '', 'fort-mcmurray': '',
   })
   const [sendAllState, setSendAllState] = useState<{
     status: 'idle' | 'sending' | 'success' | 'error'
@@ -158,10 +168,13 @@ export default function NewsletterAdmin() {
   // Configure states
   const [configCollapsed, setConfigCollapsed] = useState(false)
   const [cityDrafts, setCityDrafts] = useState<Record<CityKey, CityConfigDraft>>({
-    edmonton:       emptyDraft(),
-    calgary:        emptyDraft(),
-    lethbridge:     emptyDraft(),
-    'medicine-hat': emptyDraft(),
+    edmonton:         emptyDraft(),
+    calgary:          emptyDraft(),
+    lethbridge:       emptyDraft(),
+    'medicine-hat':   emptyDraft(),
+    'red-deer':       emptyDraft(),
+    'grande-prairie': emptyDraft(),
+    'fort-mcmurray':  emptyDraft(),
   })
   const [albertaDraft, setAlbertaDraft] = useState<AlbertaDraft>({ ids: null, items: [], isDirty: false })
   const [saving, setSaving] = useState(false)
@@ -191,6 +204,7 @@ export default function NewsletterAdmin() {
   const [emailEventsTableMissing, setEmailEventsTableMissing] = useState(false)
   const [lastSentAt, setLastSentAt] = useState<Record<CityKey, string | null>>({
     edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null,
+    'red-deer': null, 'grande-prairie': null, 'fort-mcmurray': null,
   })
 
   // ── Load on mount ───────────────────────────────────────────────────────────
@@ -217,8 +231,8 @@ export default function NewsletterAdmin() {
         setEmailEventsTableMissing(!tableExists)
 
         // Hydrate city drafts + extract last_sent_at
-        const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
-        const sentAt: Record<CityKey, string | null> = { edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null }
+        const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray']
+        const sentAt: Record<CityKey, string | null> = { edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null, 'red-deer': null, 'grande-prairie': null, 'fort-mcmurray': null }
         for (const city of cities) {
           // DB value wins; fall back to localStorage (works before SQL migration is run)
           const dbTime = configData[city]?.last_sent_at ?? null
@@ -230,6 +244,7 @@ export default function NewsletterAdmin() {
         setLastSentAt(sentAt)
         const newDrafts: Record<CityKey, CityConfigDraft> = {
           edmonton: emptyDraft(), calgary: emptyDraft(), lethbridge: emptyDraft(), 'medicine-hat': emptyDraft(),
+          'red-deer': emptyDraft(), 'grande-prairie': emptyDraft(), 'fort-mcmurray': emptyDraft(),
         }
         const allArticleIds = new Set<string>()
 
@@ -492,7 +507,7 @@ export default function NewsletterAdmin() {
     setSaveSuccess(false)
     setSaveError(null)
 
-    const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
+    const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray']
     const errors: string[] = []
 
     for (const city of cities) {
@@ -577,6 +592,7 @@ export default function NewsletterAdmin() {
     { value: 'lethbridge', label: 'Lethbridge' },
     { value: 'red-deer', label: 'Red Deer' },
     { value: 'grande-prairie', label: 'Grande Prairie' },
+    { value: 'fort-mcmurray', label: 'Fort McMurray' },
     { value: 'other-alberta', label: 'Other Alberta' },
     { value: 'outside-alberta', label: 'Outside Alberta' },
     { value: 'other', label: 'Other' },
@@ -636,7 +652,7 @@ export default function NewsletterAdmin() {
   const otherCities = Object.entries(OTHER_CITY_LABELS).filter(
     ([key]) => (stats?.byCity?.[key] ?? 0) > 0
   )
-  const newsletterCityTotal = (['edmonton', 'calgary', 'lethbridge', 'medicine-hat'] as CityKey[])
+  const newsletterCityTotal = (['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray'] as CityKey[])
     .reduce((s, c) => s + (stats?.byCity?.[c] ?? 0), 0)
   const otherCityTotal = otherCities.reduce((s, [key]) => s + (stats?.byCity?.[key] ?? 0), 0)
 
@@ -644,10 +660,13 @@ export default function NewsletterAdmin() {
 
   const getCityFromSubject = (subject: string): CityKey | null => {
     const map: Record<string, CityKey> = {
-      'The Capital': 'edmonton',
-      'The Chinook': 'calgary',
+      'The Capital':  'edmonton',
+      'The Chinook':  'calgary',
       'The Westerly': 'lethbridge',
-      'The Hat': 'medicine-hat',
+      'The Hat':      'medicine-hat',
+      'The Parkland': 'red-deer',
+      'The Peace':    'grande-prairie',
+      'The North':    'fort-mcmurray',
     }
     for (const [name, city] of Object.entries(map)) {
       if (subject.includes(name)) return city

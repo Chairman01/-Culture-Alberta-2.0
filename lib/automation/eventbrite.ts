@@ -135,16 +135,22 @@ function mapEvent(raw: any): EventbriteEvent {
   }
 }
 
+/** Strip non-ASCII characters so the value is safe to use in HTTP headers. */
+function sanitizeHeader(value: string): string {
+  return value.replace(/[^\x00-\x7F]/g, '').trim()
+}
+
 export async function fetchWeekendEvents(
   city: string,
   weekendStart: Date,
   weekendEnd: Date,
   maxResults = 30
 ): Promise<EventbriteEvent[]> {
-  const token = process.env.EVENTBRITE_PRIVATE_TOKEN
-  if (!token) {
+  const rawToken = process.env.EVENTBRITE_PRIVATE_TOKEN
+  if (!rawToken) {
     throw new Error('EVENTBRITE_PRIVATE_TOKEN env var is not set')
   }
+  const token = sanitizeHeader(rawToken)
 
   const cityConfig = CITY_CONFIG[city]
   if (!cityConfig) {
@@ -222,7 +228,7 @@ export function getUpcomingWeekend(): { start: Date; end: Date; label: string } 
   sunday.setHours(23, 59, 59, 999)
 
   const monthName = friday.toLocaleString('en-CA', { month: 'long' })
-  const label = `${monthName} ${friday.getDate()}–${sunday.getDate()}`
+  const label = `${monthName} ${friday.getDate()}-${sunday.getDate()}`
 
   return { start: friday, end: sunday, label }
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sendCityNewsletter, sendAllNewsletters } from '@/lib/newsletter/send-newsletter'
 import type { NewsletterCity } from '@/lib/newsletter/template'
 
-const VALID_CITIES: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge']
+const VALID_CITIES: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray']
 
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.NEWSLETTER_CRON_SECRET

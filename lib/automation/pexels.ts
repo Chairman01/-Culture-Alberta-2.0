@@ -41,9 +41,15 @@ interface PexelsPhoto {
   alt: string
 }
 
+/** Strip non-ASCII characters so the value is safe to use in HTTP headers. */
+function sanitizeHeader(value: string): string {
+  return value.replace(/[^\x00-\x7F]/g, '').trim()
+}
+
 async function searchPexels(query: string, perPage = 10): Promise<PexelsPhoto[]> {
-  const apiKey = process.env.PEXELS_API_KEY
-  if (!apiKey) throw new Error('PEXELS_API_KEY env var is not set')
+  const rawKey = process.env.PEXELS_API_KEY
+  if (!rawKey) throw new Error('PEXELS_API_KEY env var is not set')
+  const apiKey = sanitizeHeader(rawKey)
 
   const params = new URLSearchParams({
     query,

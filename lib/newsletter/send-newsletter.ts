@@ -134,7 +134,7 @@ export async function sendCityNewsletter(city: NewsletterCity, options?: SendOpt
 
 // ── Send all cities ───────────────────────────────────────────────────────────
 export async function sendAllNewsletters(): Promise<SendResult[]> {
-  const cities: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat']
+  const cities: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray']
   const results: SendResult[] = []
 
   for (const city of cities) {

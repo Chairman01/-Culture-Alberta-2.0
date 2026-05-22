@@ -50,10 +50,13 @@ const CITY_SEARCH_TERM: Record<string, string> = {
   calgary: 'calgary',
   lethbridge: 'lethbridge',
   'medicine-hat': 'medicine hat',
+  'red-deer': 'red deer',
+  'grande-prairie': 'grande prairie',
+  'fort-mcmurray': 'fort mcmurray',
 }
 
 export async function fetchNewsletterContent(
-  city: 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat'
+  city: 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat' | 'red-deer' | 'grande-prairie' | 'fort-mcmurray'
 ): Promise<NewsletterContent> {
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)

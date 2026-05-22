@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 
-export type NewsletterCity = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat'
+export type NewsletterCity = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat' | 'red-deer' | 'grande-prairie' | 'fort-mcmurray'
 
 export interface NewsletterConfig {
   city: NewsletterCity
@@ -53,6 +53,9 @@ export async function getAllNewsletterConfigs(): Promise<Record<NewsletterCity, 
     calgary: empty('calgary'),
     lethbridge: empty('lethbridge'),
     'medicine-hat': empty('medicine-hat'),
+    'red-deer': empty('red-deer'),
+    'grande-prairie': empty('grande-prairie'),
+    'fort-mcmurray': empty('fort-mcmurray'),
   }
   for (const row of data || []) {
     result[row.city as NewsletterCity] = row as NewsletterConfig
