@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
-import { Calculator, DollarSign, Calendar, ArrowRight, Wrench, Scale, Clock } from "lucide-react"
+import { Calculator, DollarSign, Calendar, ArrowRight, Wrench, Scale, Clock, Tent } from "lucide-react"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -51,6 +51,26 @@ const tools = [
     disabled: false,
   },
   {
+    href: "/tools/calgary-vs-edmonton-cost-of-living",
+    icon: Scale,
+    title: "Calgary vs Edmonton Cost of Living",
+    description:
+      "Side-by-side comparison of rent, groceries, transit, home prices, utilities, and more. See which city fits your budget — and how much you'd have left over.",
+    badge: "New · 2025 data",
+    badgeColor: "bg-purple-100 text-purple-700",
+    disabled: false,
+  },
+  {
+    href: "/tools/alberta-rental-increase-calculator",
+    icon: Calculator,
+    title: "Alberta Rental Increase Calculator",
+    description:
+      "Check if a rent increase follows Alberta's 3-month notice rule and 12-month frequency rule. See exactly how much more you'll pay per month and per year.",
+    badge: "New · 2025 rules",
+    badgeColor: "bg-orange-100 text-orange-700",
+    disabled: false,
+  },
+  {
     href: "#",
     icon: Calculator,
     title: "Alberta Damage Deposit Calculator",
@@ -74,7 +94,10 @@ const toolsPageSchema = {
   "hasPart": [
     { "@type": "WebApplication", "name": "AISH Calculator Alberta 2026", "url": "https://www.culturealberta.com/tools/aish-calculator" },
     { "@type": "WebApplication", "name": "ADAP Calculator Alberta 2026", "url": "https://www.culturealberta.com/tools/adap-calculator" },
-    { "@type": "WebApplication", "name": "Alberta Stat Holiday Pay Calculator 2026", "url": "https://www.culturealberta.com/tools/stat-holiday-calculator" }
+    { "@type": "WebApplication", "name": "Alberta Stat Holiday Pay Calculator 2026", "url": "https://www.culturealberta.com/tools/stat-holiday-calculator" },
+    { "@type": "WebApplication", "name": "Calgary vs Edmonton Cost of Living 2025", "url": "https://www.culturealberta.com/tools/calgary-vs-edmonton-cost-of-living" },
+    { "@type": "WebApplication", "name": "Alberta Rental Increase Calculator 2025", "url": "https://www.culturealberta.com/tools/alberta-rental-increase-calculator" },
+    { "@type": "Dataset", "name": "Alberta Tourism & Recreation Major Projects Tracker", "url": "https://www.culturealberta.com/tools/alberta-major-projects" }
   ]
 }
 
@@ -279,26 +302,97 @@ export default function ToolsPage() {
             </div>
           </Link>
 
-          {/* Coming Soon tools */}
-          {tools.slice(2).map((tool) => {
-            const Icon = tool.icon
-            return (
-              <div key={tool.href + tool.title} className="opacity-60 cursor-not-allowed">
-                <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4 h-full">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-gray-100">
-                      <Icon className="w-5 h-5 text-gray-600" />
-                    </div>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${tool.badgeColor}`}>
-                      {tool.badge}
-                    </span>
+          {/* Alberta Major Projects Tracker */}
+          <Link href="/tools/alberta-major-projects" className="group block h-full">
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col h-full hover:shadow-xl hover:border-teal-200 transition-all duration-300 cursor-pointer">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 bg-gradient-to-r from-teal-50 to-white border-b border-teal-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center">
+                    <Tent className="w-5 h-5 text-teal-600" />
                   </div>
-                  <div className="flex-1">
-                    <h2 className="text-lg font-semibold mb-2 text-gray-900">{tool.title}</h2>
-                    <p className="text-sm text-gray-600 leading-relaxed">{tool.description}</p>
+                  <div>
+                    <p className="text-xs font-semibold text-teal-600 uppercase tracking-wide">Alberta Tracker</p>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">Major Projects</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-teal-700 bg-teal-100 px-2.5 py-1 rounded-full">Live data</span>
+                  <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">Free</span>
+                </div>
+              </div>
+              {/* Stats bar */}
+              <div className="mx-6 mt-4 grid grid-cols-3 gap-0 bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Sector</p>
+                  <p className="text-sm font-bold text-gray-900">Tourism</p>
+                  <p className="text-[10px] text-gray-400">& Recreation</p>
+                </div>
+                <div className="text-center py-3 px-2 border-x border-gray-100">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Stages</p>
+                  <p className="text-sm font-bold text-gray-900">3</p>
+                  <p className="text-[10px] text-gray-400">tracked</p>
+                </div>
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Updated</p>
+                  <p className="text-sm font-bold text-teal-600">Daily</p>
+                  <p className="text-[10px] text-gray-400">from Province</p>
+                </div>
+              </div>
+              {/* Content + CTA */}
+              <div className="p-6 flex flex-col flex-1">
+                <h2 className="text-xl font-bold text-gray-900 group-hover:text-teal-700 transition-colors mb-2">Alberta Tourism & Recreation Projects</h2>
+                <p className="text-sm text-gray-500 leading-relaxed flex-1 mb-5">
+                  Hotels, arenas, recreation centres, and event venues being built across Alberta right now. Stage-by-stage updates with linked news articles.
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center justify-center gap-2 bg-teal-600 group-hover:bg-teal-700 text-white rounded-xl py-3 font-semibold text-sm transition-colors">
+                    <Tent className="w-4 h-4" />
+                    Browse projects
+                  </div>
+                  <div className="w-11 h-11 flex items-center justify-center border border-teal-200 rounded-xl text-teal-600 group-hover:bg-teal-50 transition-colors">
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               </div>
+            </div>
+          </Link>
+
+          {/* Additional tools */}
+          {tools.slice(2).map((tool) => {
+            const Icon = tool.icon
+            const inner = (
+              <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4 h-full group-hover:shadow-md group-hover:border-gray-300 transition-all">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-gray-100">
+                    <Icon className="w-5 h-5 text-gray-600" />
+                  </div>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${tool.badgeColor}`}>
+                    {tool.badge}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold mb-2 text-gray-900">{tool.title}</h2>
+                  <p className="text-sm text-gray-600 leading-relaxed">{tool.description}</p>
+                </div>
+                {!tool.disabled && (
+                  <div className="flex items-center gap-1 text-sm font-medium text-blue-600">
+                    Open tool <ArrowRight className="w-4 h-4" />
+                  </div>
+                )}
+              </div>
+            )
+            if (tool.disabled) {
+              return (
+                <div key={tool.href + tool.title} className="opacity-60 cursor-not-allowed">
+                  {inner}
+                </div>
+              )
+            }
+            return (
+              <Link key={tool.href + tool.title} href={tool.href} className="group block h-full">
+                {inner}
+              </Link>
             )
           })}
         </div>

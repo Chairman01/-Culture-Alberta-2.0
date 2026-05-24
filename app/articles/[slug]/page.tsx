@@ -1,7 +1,7 @@
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { notFound, redirect } from 'next/navigation'
-import { Calendar, Clock, Bookmark, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Calendar, Clock, Bookmark, ArrowLeft, ArrowRight, MapPin, ChevronRight, Calculator } from 'lucide-react'
 import { ArticleActions } from '@/components/article-actions'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -220,6 +220,14 @@ function getRecommendationReason(current: Article, candidate: Article): string {
   if (sharedTag) return `Also about ${sharedTag}`
   if (candidate.trendingHome || candidate.trendingEdmonton || candidate.trendingCalgary) return 'Trending now'
   return 'Recommended next'
+}
+
+function getCityHub(location?: string | null, categories?: string[] | null, category?: string | null): { url: string; label: string } | null {
+  const text = `${location || ''} ${(categories || []).join(' ')} ${category || ''}`.toLowerCase()
+  if (text.includes('edmonton')) return { url: '/edmonton', label: 'Edmonton' }
+  if (text.includes('calgary')) return { url: '/calgary', label: 'Calgary' }
+  if (text.includes('alberta')) return { url: '/alberta', label: 'Alberta' }
+  return null
 }
 
 // unstable_cache: shared across ALL concurrent serverless invocations on Vercel.
@@ -753,6 +761,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       }
     }
 
+    const cityHub = getCityHub(loadedArticle.location, loadedArticle.categories, loadedArticle.category)
+
     return (
       <>
         {/* Structured Data for Google Rich Snippets */}
@@ -847,6 +857,19 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                   {/* Article Content */}
                   <div className="lg:col-span-3 space-y-8">
+                    {/* Breadcrumb Navigation */}
+                    <nav className="flex items-center gap-1.5 text-sm text-gray-500 flex-wrap">
+                      <Link href="/" className="hover:text-blue-600 transition-colors">Home</Link>
+                      <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
+                      {cityHub ? (
+                        <Link href={cityHub.url} className="hover:text-blue-600 transition-colors">{cityHub.label}</Link>
+                      ) : (
+                        <span>{loadedArticle.category}</span>
+                      )}
+                      <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="text-gray-700 line-clamp-1">{loadedArticle.title}</span>
+                    </nav>
+
                     {/* Article Header */}
                     <div className="space-y-6">
                       <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -883,6 +906,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                           {loadedArticle.description || loadedArticle.excerpt}
                         </p>
                       )}
+
                     </div>
 
                     {/* Featured Image */}
@@ -1107,6 +1131,47 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                             </div>
                           </Link>
                         ))}
+                      </div>
+                    </div>
+
+                    {/* Alberta Tools */}
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Calculator className="w-5 h-5 text-blue-600" />
+                        <h3 className="text-xl font-bold text-gray-900">Alberta Tools</h3>
+                      </div>
+                      <div className="space-y-2">
+                        <Link href="/tools/stat-holiday-calculator" className="group flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors">
+                          <span className="text-xl">🗓️</span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 group-hover:text-blue-700">Stat Holiday Pay</p>
+                            <p className="text-xs text-gray-500">Calculate your holiday pay</p>
+                          </div>
+                        </Link>
+                        <Link href="/tools/aish-calculator" className="group flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors">
+                          <span className="text-xl">💰</span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 group-hover:text-blue-700">AISH Calculator</p>
+                            <p className="text-xs text-gray-500">Assured income amounts</p>
+                          </div>
+                        </Link>
+                        <Link href="/tools/alberta-rental-increase-calculator" className="group flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors">
+                          <span className="text-xl">🏠</span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 group-hover:text-blue-700">Rent Increase Check</p>
+                            <p className="text-xs text-gray-500">Is your increase legal?</p>
+                          </div>
+                        </Link>
+                        <Link href="/tools/calgary-vs-edmonton-cost-of-living" className="group flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors">
+                          <span className="text-xl">⚖️</span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 group-hover:text-blue-700">Calgary vs Edmonton</p>
+                            <p className="text-xs text-gray-500">Cost of living comparison</p>
+                          </div>
+                        </Link>
+                        <Link href="/tools" className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium mt-1 pt-1">
+                          View all tools <ChevronRight className="w-3.5 h-3.5" />
+                        </Link>
                       </div>
                     </div>
                   </div>
