@@ -224,7 +224,7 @@ function CopyTagButton({ projectId }: { projectId: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Project detail panel (slide-out)
+// Project detail panel — bottom sheet on mobile, right panel on desktop
 // ---------------------------------------------------------------------------
 function ProjectDetailPanel({
   project,
@@ -243,28 +243,90 @@ function ProjectDetailPanel({
   const displayName = project.friendlyName || project.name
   const publicFunder = isPublicFunder(project.developer)
   const storySuggestions = linkedArticles.length === 0 ? getStorySuggestions(project) : []
+  const firstArticle = linkedArticles[0] ?? null
 
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
     document.addEventListener("keydown", handler)
-    return () => document.removeEventListener("keydown", handler)
+    // Prevent body scroll while open
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.removeEventListener("keydown", handler)
+      document.body.style.overflow = ""
+    }
   }, [onClose])
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/40 z-40 backdrop-blur-[2px]"
+        className="fixed inset-0 bg-black/50 z-40"
         onClick={onClose}
       />
 
-      {/* Panel */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-white z-50 shadow-2xl overflow-y-auto flex flex-col animate-in slide-in-from-right duration-200">
+      {/*
+        Mobile: slides up from bottom as a sheet (max 90vh)
+        Desktop (sm+): right panel, full height
+      */}
+      <div className={`
+        fixed z-50 bg-white overflow-y-auto
+        /* mobile: bottom sheet */
+        bottom-0 left-0 right-0 max-h-[90vh] rounded-t-2xl
+        /* desktop: right panel */
+        sm:top-0 sm:right-0 sm:bottom-0 sm:left-auto sm:max-h-full sm:h-full sm:w-[480px] sm:rounded-none
+        shadow-2xl flex flex-col
+      `}>
 
-        {/* ── Header ── */}
-        <div className={`border-b-4 ${stageCfg.topBorder} p-6 shrink-0`}>
-          <div className="flex items-center justify-between mb-3">
+        {/* Drag handle (mobile only) */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 bg-gray-200 rounded-full" />
+        </div>
+
+        {/* ── Article Hero (if linked) ── */}
+        {firstArticle && firstArticle.image_url && (
+          <a
+            href={`/articles/${firstArticle.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block relative w-full shrink-0 group"
+            style={{ aspectRatio: "16/9" }}
+          >
+            <Image
+              src={firstArticle.image_url}
+              alt={firstArticle.title}
+              fill
+              className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
+              sizes="(max-width: 640px) 100vw, 480px"
+              priority
+            />
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+            {/* Title overlay */}
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <p className="text-[10px] font-bold text-teal-300 uppercase tracking-widest mb-1">
+                Culture Alberta Coverage
+              </p>
+              <p className="text-white font-bold text-base leading-snug line-clamp-3">
+                {firstArticle.title}
+              </p>
+              <p className="text-white/70 text-xs mt-1.5 flex items-center gap-1">
+                Read full article <ArrowRight className="w-3 h-3" />
+              </p>
+            </div>
+            {/* Close button top-right */}
+            <button
+              onClick={(e) => { e.preventDefault(); onClose() }}
+              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </a>
+        )}
+
+        {/* Close button when no image */}
+        {(!firstArticle || !firstArticle.image_url) && (
+          <div className={`flex items-center justify-between px-5 pt-4 pb-0 shrink-0`}>
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${stageCfg.badgeClass}`}>
               {stageCfg.label}
             </span>
@@ -275,27 +337,34 @@ function ProjectDetailPanel({
               <X className="w-4 h-4" />
             </button>
           </div>
+        )}
 
-          {costStr && (
-            <div className={`text-4xl font-black ${stageCfg.accentText} leading-none mb-2`}>
-              {costStr}
-            </div>
-          )}
-          <h2 className="text-xl font-bold text-gray-900 leading-tight">{displayName}</h2>
-          {project.type && <p className="text-sm text-gray-400 mt-1">{project.type}</p>}
-        </div>
+        {/* ── Main scrollable content ── */}
+        <div className="flex-1 overflow-y-auto">
 
-        {/* ── Details ── */}
-        <div className="p-6 space-y-5 flex-1">
+          {/* Project identity */}
+          <div className={`px-5 pt-5 pb-4 border-b border-gray-100 ${firstArticle?.image_url ? "" : `border-t-4 ${stageCfg.topBorder} mt-3`}`}>
+            {firstArticle?.image_url && (
+              <span className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${stageCfg.badgeClass} mb-2`}>
+                {stageCfg.label}
+              </span>
+            )}
+            {costStr && (
+              <div className={`text-3xl font-black ${stageCfg.accentText} leading-none mb-1.5`}>
+                {costStr}
+              </div>
+            )}
+            <h2 className="text-lg font-bold text-gray-900 leading-snug">{displayName}</h2>
+            {project.type && <p className="text-sm text-gray-400 mt-0.5">{project.type}</p>}
+          </div>
 
-          {/* Location + timeline */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Quick stats */}
+          <div className="px-5 py-4 grid grid-cols-2 gap-3 border-b border-gray-100">
             {cities && (
               <div>
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Location</p>
                 <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                  {cities}
+                  <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />{cities}
                 </p>
               </div>
             )}
@@ -304,51 +373,48 @@ function ProjectDetailPanel({
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Timeline</p>
                 <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                  {startYear && startYear !== endYear ? `${startYear} – ${endYear}` : endYear ? `Est. ${endYear}` : startYear}
+                  {startYear && startYear !== endYear ? `${startYear}–${endYear}` : endYear ? `Est. ${endYear}` : startYear}
                 </p>
               </div>
             )}
           </div>
 
-          {/* Progress timeline */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className={`text-xs font-semibold ${stageCfg.accentText}`}>{stageCfg.label}</span>
-              <span className="text-[11px] text-gray-400">{stageCfg.description}</span>
+          {/* Progress */}
+          <div className="px-5 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <span className={`text-sm font-semibold ${stageCfg.accentText}`}>{stageCfg.label}</span>
+              <span className="text-xs text-gray-400">{stageCfg.description}</span>
             </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
-              <div
-                className={`h-full rounded-full ${stageCfg.progressBg} transition-all duration-700`}
-                style={{ width: stageCfg.progressWidth }}
-              />
+            <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-2">
+              <div className={`h-full rounded-full ${stageCfg.progressBg}`} style={{ width: stageCfg.progressWidth }} />
             </div>
-            <div className="flex items-center gap-2 text-[10px]">
+            <div className="flex items-center gap-2 text-[11px]">
               {STAGE_STEPS.map((s, i) => {
                 const cfg = STAGE_CONFIG[s]
                 const isDone = cfg.step < (STAGE_CONFIG[project.stage as StageKey]?.step ?? -1)
                 const isActive = s === project.stage
                 return (
-                  <span key={s} className={`flex items-center gap-1 ${isActive ? `font-bold ${cfg.accentText}` : isDone ? "text-gray-300 line-through" : "text-gray-200"}`}>
-                    {i > 0 && <ChevronRight className="w-2.5 h-2.5" />}
+                  <span key={s} className={`flex items-center gap-1 ${isActive ? `font-bold ${cfg.accentText}` : isDone ? "text-gray-300" : "text-gray-200"}`}>
+                    {i > 0 && <ChevronRight className="w-3 h-3" />}
                     {s === "Under Construction" ? "Building" : s}
-                    {isActive && <span className={`w-1.5 h-1.5 rounded-full ${cfg.progressBg} inline-block`} />}
+                    {isActive && <span className={`w-1.5 h-1.5 rounded-full ${cfg.progressBg} inline-block ml-0.5`} />}
                   </span>
                 )
               })}
             </div>
           </div>
 
-          {/* Project team */}
+          {/* Team */}
           {(project.developer || project.contractor || project.architect) && (
-            <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
+            <div className="px-5 py-4 border-b border-gray-100 space-y-2.5">
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Project Team</p>
               {project.developer && (
-                <div className="flex items-start gap-2">
-                  <span className="text-[10px] text-gray-400 w-20 shrink-0 pt-0.5">Developer</span>
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0 flex-wrap">
-                    <span className="text-xs text-gray-700 font-medium leading-snug">{project.developer}</span>
+                <div className="flex items-start gap-3">
+                  <span className="text-xs text-gray-400 w-20 shrink-0 pt-0.5">Developer</span>
+                  <div className="flex items-start gap-1.5 flex-wrap flex-1 min-w-0">
+                    <span className="text-sm text-gray-700 font-medium leading-snug">{project.developer}</span>
                     {publicFunder && (
-                      <span className="flex items-center gap-0.5 text-[9px] font-medium text-violet-600 bg-violet-50 border border-violet-100 px-1.5 py-0.5 rounded-full shrink-0">
+                      <span className="flex items-center gap-0.5 text-[10px] font-semibold text-violet-600 bg-violet-50 border border-violet-100 px-1.5 py-0.5 rounded-full shrink-0">
                         <Landmark className="w-2.5 h-2.5" /> Public
                       </span>
                     )}
@@ -356,15 +422,15 @@ function ProjectDetailPanel({
                 </div>
               )}
               {project.contractor && (
-                <div className="flex items-start gap-2">
-                  <span className="text-[10px] text-gray-400 w-20 shrink-0 pt-0.5">Contractor</span>
-                  <span className="text-xs text-gray-700 leading-snug">{project.contractor}</span>
+                <div className="flex items-start gap-3">
+                  <span className="text-xs text-gray-400 w-20 shrink-0 pt-0.5">Contractor</span>
+                  <span className="text-sm text-gray-700 leading-snug">{project.contractor}</span>
                 </div>
               )}
               {project.architect && (
-                <div className="flex items-start gap-2">
-                  <span className="text-[10px] text-gray-400 w-20 shrink-0 pt-0.5">Architect</span>
-                  <span className="text-xs text-gray-700 leading-snug">{project.architect}</span>
+                <div className="flex items-start gap-3">
+                  <span className="text-xs text-gray-400 w-20 shrink-0 pt-0.5">Architect</span>
+                  <span className="text-sm text-gray-700 leading-snug">{project.architect}</span>
                 </div>
               )}
             </div>
@@ -372,103 +438,100 @@ function ProjectDetailPanel({
 
           {/* External link */}
           {project.website && (
-            <a
-              href={project.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex items-center justify-between w-full px-4 py-3 rounded-xl border ${stageCfg.accentBg} border-gray-100 hover:shadow-sm transition-all group`}
-            >
-              <span className={`text-sm font-medium ${stageCfg.accentText}`}>Official Project Website</span>
-              <ExternalLink className={`w-4 h-4 ${stageCfg.accentText} group-hover:translate-x-0.5 transition-transform`} />
-            </a>
+            <div className="px-5 py-4 border-b border-gray-100">
+              <a
+                href={project.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center justify-between w-full px-4 py-3 rounded-xl ${stageCfg.accentBg} hover:shadow-sm transition-all group`}
+              >
+                <span className={`text-sm font-semibold ${stageCfg.accentText}`}>Official Project Website</span>
+                <ExternalLink className={`w-4 h-4 ${stageCfg.accentText} shrink-0`} />
+              </a>
+            </div>
           )}
-        </div>
 
-        {/* ── Article / Coverage section ── */}
-        <div className="border-t border-gray-100 p-6 shrink-0">
-          {linkedArticles.length > 0 ? (
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Culture Alberta Coverage</p>
+          {/* Article links (multiple) or no-article state */}
+          <div className="px-5 py-5">
+            {linkedArticles.length > 0 ? (
               <div className="space-y-3">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                  Culture Alberta Coverage ({linkedArticles.length})
+                </p>
                 {linkedArticles.map((article) => (
                   <a
                     key={article.slug}
                     href={`/articles/${article.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex gap-3 p-3 rounded-xl border border-gray-100 hover:border-teal-200 hover:bg-teal-50/50 transition-all group"
+                    className="flex gap-3 p-3 rounded-xl border border-gray-100 hover:border-teal-200 hover:bg-teal-50/40 transition-all group"
                   >
                     {article.image_url && (
-                      <div className="relative w-16 h-12 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                      <div className="relative w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-gray-100">
                         <Image
                           src={article.image_url}
                           alt={article.title}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          sizes="64px"
+                          className="object-cover"
+                          sizes="80px"
                         />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug group-hover:text-teal-700 transition-colors">
+                      <p className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug group-hover:text-teal-700 transition-colors">
                         {article.title}
                       </p>
-                      <p className="text-[10px] text-teal-500 mt-1 flex items-center gap-0.5">
-                        Read on Culture Alberta <ArrowRight className="w-2.5 h-2.5" />
+                      <p className="text-[11px] text-teal-500 mt-1.5 flex items-center gap-0.5 font-medium">
+                        Read on Culture Alberta <ArrowRight className="w-3 h-3" />
                       </p>
                     </div>
                   </a>
                 ))}
+                <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 mt-2">
+                  <span className="text-[11px] text-gray-400">Link another article:</span>
+                  <CopyTagButton projectId={project.id} />
+                </div>
               </div>
-
-              {/* Also show tag for adding more articles */}
-              <div className="mt-4 flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                <span className="text-[10px] text-gray-400">Write another article about this project:</span>
-                <CopyTagButton projectId={project.id} />
-              </div>
-            </div>
-          ) : (
-            <div>
-              {/* Story ideas */}
-              {storySuggestions.length > 0 && (
-                <div className="mb-5">
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
-                    <Lightbulb className="w-3 h-3 text-amber-400" />
-                    Story ideas
-                  </p>
-                  <div className="space-y-2">
+            ) : (
+              <div className="space-y-4">
+                {/* Story ideas */}
+                {storySuggestions.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-400" /> Story ideas
+                    </p>
                     {storySuggestions.map((idea, i) => (
-                      <div key={i} className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                        <span className="text-amber-400 font-bold text-xs shrink-0 mt-0.5">{i + 1}</span>
-                        <p className="text-xs text-amber-800 leading-snug">{idea}</p>
+                      <div key={i} className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-2">
+                        <span className="text-amber-500 font-bold text-sm shrink-0">{i + 1}.</span>
+                        <p className="text-sm text-amber-900 leading-snug">{idea}</p>
                       </div>
                     ))}
                   </div>
+                )}
+
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-gray-700 mb-1">No article yet</p>
+                  <p className="text-xs text-gray-400 mb-4">Write about this project and tag it to link it here.</p>
+                  <div className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-3 py-2 mb-3">
+                    <span className="text-xs font-mono text-gray-500">project:{project.id}</span>
+                    <CopyTagButton projectId={project.id} />
+                  </div>
+                  <a
+                    href="/admin/articles/new"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors w-full justify-center"
+                  >
+                    <FileText className="w-4 h-4" /> Write an article
+                  </a>
                 </div>
-              )}
-
-              <div className="text-center py-2">
-                <FileText className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-gray-700 mb-1">No article yet</p>
-                <p className="text-xs text-gray-400 mb-4">Cover this project on Culture Alberta.</p>
-
-                <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3 flex items-center justify-between">
-                  <span className="text-xs font-mono text-gray-500">project:{project.id}</span>
-                  <CopyTagButton projectId={project.id} />
-                </div>
-
-                <a
-                  href="/admin/articles/new"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
-                >
-                  <FileText className="w-4 h-4" />
-                  Write an article
-                </a>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Bottom padding for mobile home-bar */}
+          <div className="h-6 sm:h-2" />
         </div>
       </div>
     </>
