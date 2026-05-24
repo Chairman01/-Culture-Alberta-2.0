@@ -271,7 +271,64 @@ export default async function AlbertaMajorProjectsPage() {
   }
 
   // ------------------------------------------------------------------
-  // 3. Render
+  // 3. Auto-match articles by keyword for projects without explicit tags
+  // ------------------------------------------------------------------
+  const STOP_WORDS = new Set(["the","a","an","and","or","for","in","of","to","is","are","at","by","on","with","from","this","that","its","it","be","was","has","have","new","will"])
+
+  function extractProjectKeywords(text: string): string[] {
+    return text.toLowerCase().split(/[\s\-\/&,.()+]+/).filter(w => w.length > 3 && !STOP_WORDS.has(w))
+  }
+
+  let allArticleTitles: Array<{ slug: string; title: string; image_url: string | null }> = []
+  try {
+    const { data: titleData } = await supabase
+      .from("articles")
+      .select("slug, title, image_url")
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
+      .limit(400)
+    allArticleTitles = titleData || []
+  } catch {
+    // proceed without auto-matching
+  }
+
+  for (const project of projects) {
+    if ((articlesByProject[project.id] || []).length > 0) continue
+
+    const projectCities = (project.municipalities ?? []).map(c => c.toLowerCase())
+    const nameText = `${project.name} ${project.friendlyName ?? ""}`
+    const projectKeywords = extractProjectKeywords(nameText)
+
+    for (const article of allArticleTitles) {
+      const titleLower = article.title.toLowerCase()
+
+      // City must match (multi-word cities need all parts present)
+      const hasCity = projectCities.some(city => {
+        const parts = city.split(" ").filter(p => p.length > 2)
+        return parts.length > 1
+          ? parts.every(p => titleLower.includes(p))
+          : titleLower.includes(city)
+      })
+      if (!hasCity) continue
+
+      // Need ≥ 2 keyword matches from project name
+      const hits = projectKeywords.filter(kw => titleLower.includes(kw))
+      if (hits.length >= 2) {
+        articlesByProject[project.id] = [{
+          slug: article.slug,
+          title: article.title,
+          image_url: article.image_url ?? null,
+          description: null,
+          excerpt: null,
+          tags: null,
+        }]
+        break
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // 4. Render
   // ------------------------------------------------------------------
   return (
     <>
