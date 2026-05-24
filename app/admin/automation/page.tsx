@@ -15,6 +15,9 @@ import {
   ExternalLink,
   RefreshCw,
   Eye,
+  Wifi,
+  WifiOff,
+  AlertTriangle,
 } from 'lucide-react'
 
 const AUTOMATION_CITIES = [
@@ -72,6 +75,10 @@ export default function AutomationPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [genResults, setGenResults] = useState<AutomationResponse | null>(null)
 
+  // API key test state
+  const [isTesting, setIsTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string; fix?: string; keyPreview?: string } | null>(null)
+
   const loadDrafts = useCallback(async () => {
     setIsLoadingDrafts(true)
     try {
@@ -123,6 +130,20 @@ export default function AutomationPage() {
     }
   }
 
+  const handleTestKey = async () => {
+    setIsTesting(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/admin/test-ticketmaster')
+      const data = await res.json()
+      setTestResult(data)
+    } catch {
+      setTestResult({ ok: false, message: 'Could not reach the test endpoint. Check your connection.' })
+    } finally {
+      setIsTesting(false)
+    }
+  }
+
   const handleGenerate = async () => {
     setIsGenerating(true)
     setGenResults(null)
@@ -170,7 +191,7 @@ export default function AutomationPage() {
             Generate New Articles
           </CardTitle>
           <CardDescription>
-            Pulls from Eventbrite, sources a photo, and writes with Claude. Saves as draft by default.
+            Pulls from Ticketmaster, sources a photo, and writes with Claude. Saves as draft by default.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -213,6 +234,50 @@ export default function AutomationPage() {
             </Button>
           </div>
 
+          {/* Test API Key button */}
+          <div className="flex items-center gap-3 mb-3 pt-1 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTestKey}
+              disabled={isTesting || isGenerating}
+              className="text-xs"
+            >
+              {isTesting
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />Testing...</>
+                : <><Wifi className="h-3.5 w-3.5 mr-1" />Test API Key</>
+              }
+            </Button>
+            <span className="text-xs text-muted-foreground">Verify your Ticketmaster key before generating</span>
+          </div>
+
+          {testResult && (
+            <div className={`mb-3 px-3 py-2.5 rounded-md text-sm border ${
+              testResult.ok
+                ? 'bg-green-50 border-green-200 text-green-800'
+                : 'bg-red-50 border-red-200 text-red-800'
+            }`}>
+              <div className="flex items-start gap-2">
+                {testResult.ok
+                  ? <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                  : <WifiOff className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                }
+                <div>
+                  <p className="font-medium">{testResult.message}</p>
+                  {testResult.keyPreview && (
+                    <p className="text-xs mt-0.5 opacity-75">Key: {testResult.keyPreview}</p>
+                  )}
+                  {testResult.fix && (
+                    <div className="flex items-start gap-1 mt-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-600" />
+                      <p className="text-xs text-amber-800">{testResult.fix}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {isGenerating && (
             <p className="text-xs text-muted-foreground">
               Fetching events, sourcing photos, and writing with Claude. This takes 1–3 minutes per city...
@@ -239,7 +304,12 @@ export default function AutomationPage() {
                   <span className="font-medium">{r.cityLabel}:</span>
                   {r.success
                     ? <span>{r.title} ({r.eventsUsed} events)</span>
-                    : <span className="text-red-700">{r.error}</span>
+                    : <span className="text-red-700">
+                        {r.error?.includes('401') || r.error?.includes('InvalidApiKey')
+                          ? 'Invalid API key — click "Test API Key" above to diagnose'
+                          : r.error
+                        }
+                      </span>
                   }
                 </div>
               ))}
