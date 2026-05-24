@@ -196,9 +196,10 @@ function scoreArticleRecommendation(current: Article, candidate: Article): numbe
     else if (ageDays < 7) score += 28
     else if (ageDays < 10) score += 18
     else if (ageDays < 14) score += 6      // still slightly positive — last two weeks
-    else if (ageDays < 30) score -= 30     // 2–4 weeks: needs strong relevance to show
-    else if (ageDays < 60) score -= 50     // 1–2 months: only high-relevance evergreen
-    else score -= 65                       // 2+ months: essentially excluded
+    else if (ageDays < 21) score -= 40     // 2–3 weeks: needs strong relevance to show
+    else if (ageDays < 30) score -= 65     // 3–4 weeks: very strong penalty
+    else if (ageDays < 60) score -= 90     // 1–2 months: essentially excluded
+    else score -= 120                      // 2+ months: always excluded
   }
 
   const viewCount = (candidate as ArticleRecommendation).viewCount || (candidate as any).view_count || 0
@@ -354,7 +355,7 @@ const getFreshRecommendationCandidates = unstable_cache(
           .neq('type', 'event')
           .order('date', { ascending: false, nullsFirst: false })
           .order('created_at', { ascending: false, nullsFirst: false })
-          .limit(90),
+          .limit(120),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Supabase recommendations timeout')), 3000))
       ]) as any
 

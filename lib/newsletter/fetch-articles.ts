@@ -183,15 +183,22 @@ export async function fetchNewsletterContent(
 
   // ── 2. Alberta articles ─────────────────────────────────────────────────────
   // Always fetch auto base (last 7 days first, fall back to all-time if < 3)
+  // Exclude ALL newsletter city locations so city-specific articles don't bleed into this section
+  const albertaFields = 'id, title, excerpt, image_url, image_source, category, location, author, created_at'
+
   let { data: albertaAutoData } = await supabase
     .from('articles')
-    .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
+    .select(albertaFields)
     .eq('status', 'published')
     .neq('type', 'event')
     .or('location.ilike.%alberta%,category.ilike.%alberta%')
     .not('location', 'ilike', '%edmonton%')
     .not('location', 'ilike', '%calgary%')
     .not('location', 'ilike', '%lethbridge%')
+    .not('location', 'ilike', '%red deer%')
+    .not('location', 'ilike', '%grande prairie%')
+    .not('location', 'ilike', '%fort mcmurray%')
+    .not('location', 'ilike', '%medicine hat%')
     .gte('created_at', since)
     .order('created_at', { ascending: false })
     .limit(3)
@@ -199,13 +206,17 @@ export async function fetchNewsletterContent(
   if (!albertaAutoData || albertaAutoData.length < 3) {
     const { data: albertaFallback } = await supabase
       .from('articles')
-      .select('id, title, excerpt, image_url, image_source, category, location, author, created_at')
+      .select(albertaFields)
       .eq('status', 'published')
       .neq('type', 'event')
       .or('location.ilike.%alberta%,category.ilike.%alberta%')
       .not('location', 'ilike', '%edmonton%')
       .not('location', 'ilike', '%calgary%')
       .not('location', 'ilike', '%lethbridge%')
+      .not('location', 'ilike', '%red deer%')
+      .not('location', 'ilike', '%grande prairie%')
+      .not('location', 'ilike', '%fort mcmurray%')
+      .not('location', 'ilike', '%medicine hat%')
       .order('created_at', { ascending: false })
       .limit(3)
     const existing = new Set((albertaAutoData || []).map((a: any) => a.id))
@@ -224,6 +235,10 @@ export async function fetchNewsletterContent(
   } else {
     albertaArticles = autoAlberta
   }
+
+  // Deduplicate: remove any Alberta article that already appears in the city section
+  const cityArticleIds = new Set(cityArticles.map(a => a.id))
+  albertaArticles = albertaArticles.filter(a => !cityArticleIds.has(a.id))
 
   // ── 3. Events ───────────────────────────────────────────────────────────────
   const events: NewsletterEvent[] = (eventsResult.data || []).map((e: any) => {

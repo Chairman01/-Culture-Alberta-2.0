@@ -17,7 +17,7 @@ import {
   searchArticles,
   getArticleDetails,
   loadCurrentCityArticles,
-  loadCurrentAlbertaArticles,
+  loadLatestAlbertaArticles,
   loadLatestCityArticles,
   type NewsletterConfig,
   type ArticlePickerItem,
@@ -497,7 +497,7 @@ export default function NewsletterAdmin() {
 
   async function loadCurrentAlberta() {
     setLoadingCurrent(prev => ({ ...prev, alberta: true }))
-    const articles = await loadCurrentAlbertaArticles()
+    const articles = await loadLatestAlbertaArticles()
     setAlbertaDraft({ ids: articles.map(a => a.id), items: articles, isDirty: true })
     setLoadingCurrent(prev => ({ ...prev, alberta: false }))
   }

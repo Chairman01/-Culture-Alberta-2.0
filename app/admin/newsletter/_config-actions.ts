@@ -103,3 +103,23 @@ export async function loadLatestCityArticles(city: NewsletterCity): Promise<Arti
     .limit(3)
   return (data || []) as ArticlePickerItem[]
 }
+
+// Fetch the newest Alberta-wide articles — ignores current config, excludes all city-specific locations
+export async function loadLatestAlbertaArticles(): Promise<ArticlePickerItem[]> {
+  const { data } = await supabase
+    .from('articles')
+    .select('id, title, excerpt, image_url, image_source, created_at, location')
+    .eq('status', 'published')
+    .neq('type', 'event')
+    .or('location.ilike.%alberta%,category.ilike.%alberta%')
+    .not('location', 'ilike', '%edmonton%')
+    .not('location', 'ilike', '%calgary%')
+    .not('location', 'ilike', '%lethbridge%')
+    .not('location', 'ilike', '%red deer%')
+    .not('location', 'ilike', '%grande prairie%')
+    .not('location', 'ilike', '%fort mcmurray%')
+    .not('location', 'ilike', '%medicine hat%')
+    .order('created_at', { ascending: false })
+    .limit(4)
+  return (data || []) as ArticlePickerItem[]
+}
