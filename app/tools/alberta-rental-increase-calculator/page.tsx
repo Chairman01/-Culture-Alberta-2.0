@@ -65,6 +65,8 @@ export const metadata: Metadata = {
   },
 }
 
+const TODAY = new Date().toISOString().split("T")[0]
+
 const calculatorSchema = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -72,24 +74,63 @@ const calculatorSchema = {
   applicationCategory: "FinanceApplication",
   operatingSystem: "Any",
   url: "https://www.culturealberta.com/tools/alberta-rental-increase-calculator",
+  datePublished: "2025-05-01",
+  dateModified: TODAY,
   description:
     "A free calculator for Alberta tenants and landlords. Check if a rent increase follows the 3-month notice rule and 12-month frequency rule under the Alberta Residential Tenancies Act. Calculates monthly and annual cost increases.",
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "CAD",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "CAD" },
+  publisher: { "@type": "Organization", name: "Culture Alberta", url: "https://www.culturealberta.com" },
+  areaServed: [
+    { "@type": "City", name: "Calgary", containedInPlace: { "@type": "Province", name: "Alberta" } },
+    { "@type": "City", name: "Edmonton", containedInPlace: { "@type": "Province", name: "Alberta" } },
+    { "@type": "Province", name: "Alberta", containedInPlace: { "@type": "Country", name: "Canada" } },
+  ],
+  about: {
+    "@type": "Legislation",
+    name: "Alberta Residential Tenancies Act",
+    identifier: "RSA 2000, c R-17.1",
+    jurisdiction: { "@type": "Province", name: "Alberta" },
   },
-  publisher: {
-    "@type": "Organization",
-    name: "Culture Alberta",
-    url: "https://www.culturealberta.com",
+  keywords: "Alberta rent increase calculator, rent increase notice Alberta, Alberta residential tenancies act, rent increase legal Alberta, how much notice rent increase Alberta, Alberta tenant rights rent",
+  speakable: {
+    "@type": "SpeakableSpecification",
+    cssSelector: ["h1", ".rental-rules-summary"],
   },
-  areaServed: {
-    "@type": "Province",
-    name: "Alberta",
-    containedInPlace: { "@type": "Country", name: "Canada" },
-  },
-  keywords: "Alberta rent increase calculator, rent increase notice Alberta, Alberta residential tenancies act, rent increase legal Alberta",
+}
+
+const howToSchema = {
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  name: "How to Check if an Alberta Rent Increase is Legal",
+  description: "Use this free tool to verify whether a landlord's rent increase in Alberta follows the 3-month notice rule and once-per-year rule under the Residential Tenancies Act.",
+  totalTime: "PT2M",
+  tool: [{ "@type": "HowToTool", name: "Alberta Rental Increase Calculator (free)" }],
+  step: [
+    {
+      "@type": "HowToStep",
+      position: 1,
+      name: "Enter your current rent",
+      text: "Type the amount you currently pay each month.",
+    },
+    {
+      "@type": "HowToStep",
+      position: 2,
+      name: "Enter the proposed new rent",
+      text: "Enter the amount your landlord wants to charge. The calculator will show the monthly and annual difference.",
+    },
+    {
+      "@type": "HowToStep",
+      position: 3,
+      name: "Enter the date written notice was given",
+      text: "The calculator will tell you the earliest legal date the increase can take effect — 3 full calendar months after the notice date.",
+    },
+    {
+      "@type": "HowToStep",
+      position: 4,
+      name: "Enter the proposed start date and last increase date",
+      text: "The tool checks whether the start date respects the 3-month notice requirement and whether at least 12 months have passed since the last increase.",
+    },
+  ],
 }
 
 const breadcrumbSchema = {
@@ -111,7 +152,7 @@ const faqSchema = {
       name: "Is there a rent increase cap in Alberta in 2025?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "No. Alberta has no rent control and no maximum percentage cap on rent increases as of 2025. A landlord can raise rent by any amount, but must provide at least 3 full calendar months' written notice and can only raise rent once every 12 months.",
+        text: "No. Alberta has no rent control and no maximum percentage cap on rent increases as of 2025. A landlord can raise rent by any amount — $50 or $500 — but must provide at least 3 full calendar months' written notice and can only raise rent once in any 12-month period.",
       },
     },
     {
@@ -119,7 +160,7 @@ const faqSchema = {
       name: "How much notice does a landlord need to give for a rent increase in Alberta?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Under the Alberta Residential Tenancies Act, a landlord must provide at least 3 full calendar months' written notice before a rent increase takes effect. For example, if notice is given on May 15, the earliest the increase can take effect is September 1. For mobile home site tenancies, 6 months' written notice is required.",
+        text: "Under the Alberta Residential Tenancies Act (RSA 2000, c R-17.1), a landlord must provide at least 3 full calendar months' written notice before a rent increase takes effect. For example, written notice given on May 15 means the earliest legal start date is September 1. For mobile home site tenancies, 6 months' written notice is required.",
       },
     },
     {
@@ -127,7 +168,15 @@ const faqSchema = {
       name: "Can my landlord raise my rent more than once per year in Alberta?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "No. Alberta law only allows one rent increase in any 12-month period. This applies regardless of what the lease agreement says.",
+        text: "No. Alberta law only permits one rent increase in any 12-month period, regardless of what the lease says. If your landlord attempts a second increase within 12 months, it is not legally enforceable.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "When does a rent increase take effect in Alberta?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "A rent increase in Alberta takes effect on the first day of a rental period that is at least 3 full calendar months after written notice is given. If notice is given April 1, the increase can take effect July 1 at the earliest.",
       },
     },
     {
@@ -135,7 +184,7 @@ const faqSchema = {
       name: "What can I do if my landlord raises rent illegally in Alberta?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "If your landlord gives insufficient notice or raises rent more than once in 12 months, the increase is not enforceable. You can file a complaint with the Residential Tenancy Dispute Resolution Service (RTDRS) or take the matter to Provincial Court (Civil Division).",
+        text: "An illegal rent increase — one with insufficient notice or within 12 months of the last increase — is not enforceable. You have three options: (1) write back to your landlord noting the specific rule that was not followed; (2) file a complaint with the Residential Tenancy Dispute Resolution Service (RTDRS) online for $75; or (3) take the matter to Provincial Court (Civil Division).",
       },
     },
     {
@@ -143,7 +192,23 @@ const faqSchema = {
       name: "Does Alberta have rent control in Calgary or Edmonton?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "No. Neither Calgary nor Edmonton has local rent control. Alberta is a province with no rent control at either the municipal or provincial level as of 2025.",
+        text: "No. Neither Calgary nor Edmonton has local rent control, and Alberta has no provincial rent control legislation as of 2025. The only protections are procedural: 3 months written notice and once-per-year frequency.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How much can a landlord raise rent in Alberta?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "There is no legal maximum. In Alberta, a landlord can raise rent by any dollar amount as long as they give at least 3 full calendar months' written notice and have not raised rent in the past 12 months.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Does verbal notice count for a rent increase in Alberta?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "No. Verbal notice is not valid for a rent increase in Alberta. The Residential Tenancies Act requires written notice specifying the new rent amount and the date it takes effect.",
       },
     },
   ],
@@ -172,6 +237,7 @@ export default async function AlbertaRentalIncreaseCalculatorPage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(calculatorSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <RentalIncreaseCalculatorClient relatedArticles={relatedArticles} />

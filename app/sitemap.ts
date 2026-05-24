@@ -13,7 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, title, created_at, updated_at, status, type, category, categories')
+      .select('id, title, slug, created_at, updated_at, status, type, category, categories')
       .eq('status', 'published')
       .order('created_at', { ascending: false })
 
@@ -158,6 +158,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: baseUrl + '/tools/adap-calculator',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: baseUrl + '/tools/calgary-vs-edmonton-cost-of-living',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: baseUrl + '/tools/alberta-rental-increase-calculator',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: baseUrl + '/tools/stat-holiday-calculator',
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.9,
