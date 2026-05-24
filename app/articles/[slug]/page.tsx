@@ -190,13 +190,15 @@ function scoreArticleRecommendation(current: Article, candidate: Article): numbe
 
   const ageDays = getArticleAgeDays(candidate)
   if (ageDays !== null) {
-    if (ageDays < 3) score += 28
-    else if (ageDays < 7) score += 24
-    else if (ageDays < 14) score += 18
-    else if (ageDays < 30) score += 12
-    else if (ageDays < 60) score += 8
-    else if (ageDays > 180) score -= 24
-    else if (ageDays > 120) score -= 14
+    // Strong recency bias: news articles older than ~10 days are heavily demoted.
+    // Only very high-relevance (evergreen) content can overcome these penalties.
+    if (ageDays < 3) score += 35
+    else if (ageDays < 7) score += 28
+    else if (ageDays < 10) score += 18
+    else if (ageDays < 14) score += 6      // still slightly positive — last two weeks
+    else if (ageDays < 30) score -= 30     // 2–4 weeks: needs strong relevance to show
+    else if (ageDays < 60) score -= 50     // 1–2 months: only high-relevance evergreen
+    else score -= 65                       // 2+ months: essentially excluded
   }
 
   const viewCount = (candidate as ArticleRecommendation).viewCount || (candidate as any).view_count || 0

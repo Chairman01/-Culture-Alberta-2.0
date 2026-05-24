@@ -211,13 +211,21 @@ const COL_KEYWORDS = ["calgary", "edmonton", "housing", "rent", "cost of living"
 async function getCityArticles(): Promise<Article[]> {
   try {
     const all = await getFastArticles()
-    return (all as Article[])
-      .filter(a => {
-        const text = `${a.title} ${a.excerpt || ""} ${(a.tags || []).join(" ")} ${a.category || ""} ${a.location || ""}`.toLowerCase()
-        return COL_KEYWORDS.some(kw => text.includes(kw))
-      })
-      .sort((a, b) => new Date(b.date || b.createdAt).getTime() - new Date(a.date || a.createdAt).getTime())
-      .slice(0, 4)
+    const cutoff30 = Date.now() - 30 * 24 * 60 * 60 * 1000
+    const cutoff90 = Date.now() - 90 * 24 * 60 * 60 * 1000
+
+    const matches = (all as Article[]).filter(a => {
+      const text = `${a.title} ${a.excerpt || ""} ${(a.tags || []).join(" ")} ${a.category || ""} ${a.location || ""}`.toLowerCase()
+      return COL_KEYWORDS.some(kw => text.includes(kw))
+    })
+
+    const sorted = matches.sort((a, b) => new Date(b.date || b.createdAt).getTime() - new Date(a.date || a.createdAt).getTime())
+
+    // Prefer articles from the last 30 days; fall back to 90 days if not enough
+    const recent = sorted.filter(a => new Date(a.date || a.createdAt).getTime() > cutoff30)
+    if (recent.length >= 2) return recent.slice(0, 4)
+
+    return sorted.filter(a => new Date(a.date || a.createdAt).getTime() > cutoff90).slice(0, 4)
   } catch {
     return []
   }
