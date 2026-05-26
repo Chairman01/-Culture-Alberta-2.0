@@ -1,3 +1,4 @@
+import { Metadata } from 'next'
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -6,6 +7,19 @@ import NewsletterSignup from "@/components/newsletter-signup"
 import { Article } from "@/lib/types/article"
 import { ArrowRight, Clock, MapPin } from "lucide-react"
 import { getArticleUrl } from '@/lib/utils/article-url'
+
+export const metadata: Metadata = {
+  title: 'Food & Drink in Alberta | Culture Alberta',
+  description: 'Discover the best restaurants, bars, cafés, and food events in Calgary, Edmonton, and across Alberta. Reviews, guides, and local food stories.',
+  keywords: 'Alberta food, Calgary restaurants, Edmonton restaurants, Alberta bars, Alberta food guide, best restaurants Alberta',
+  alternates: { canonical: 'https://www.culturealberta.com/food-drink' },
+  openGraph: {
+    title: 'Food & Drink in Alberta | Culture Alberta',
+    description: 'Discover the best restaurants, bars, cafés, and food events in Calgary, Edmonton, and across Alberta.',
+    url: 'https://www.culturealberta.com/food-drink',
+    type: 'website',
+  },
+}
 
 // Enable ISR for better performance
 export const revalidate = 300 // 30 seconds

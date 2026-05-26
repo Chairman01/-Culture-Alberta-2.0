@@ -1,3 +1,4 @@
+import { Metadata } from 'next'
 import Link from "next/link"
 import { Search } from "lucide-react"
 
@@ -5,6 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Footer } from "@/components/footer"
+
+export const metadata: Metadata = {
+  title: 'Careers at Culture Alberta | Join Our Team',
+  description: 'Join the Culture Alberta team. We\'re looking for writers, editors, and digital storytellers passionate about Alberta culture, events, and local communities.',
+  alternates: { canonical: 'https://www.culturealberta.com/careers' },
+  openGraph: {
+    title: 'Careers at Culture Alberta',
+    description: 'Join the team helping Albertans discover culture, events, and local experiences.',
+    url: 'https://www.culturealberta.com/careers',
+    type: 'website',
+  },
+}
 
 export default function CareersPage() {
   return (

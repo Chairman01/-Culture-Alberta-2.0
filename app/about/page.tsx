@@ -1,5 +1,18 @@
+import { Metadata } from 'next'
 import Link from "next/link"
 import { MapPin, Mail, Phone, Heart, Users, Calendar, Sparkles } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: 'About Culture Alberta | Alberta\'s Local Culture Guide',
+  description: 'Culture Alberta is your trusted local guide to events, restaurants, arts, and experiences across Calgary, Edmonton, and all of Alberta. Learn about our mission and team.',
+  alternates: { canonical: 'https://www.culturealberta.com/about' },
+  openGraph: {
+    title: 'About Culture Alberta',
+    description: 'Your trusted guide to discovering the best of Alberta\'s culture, events, and local experiences.',
+    url: 'https://www.culturealberta.com/about',
+    type: 'website',
+  },
+}
 
 export default function AboutPage() {
   return (

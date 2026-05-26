@@ -1,12 +1,17 @@
 /**
  * Weekend events orchestrator.
- * Ties together Eventbrite → content filter → Pexels → Claude → Supabase.
+ * Ties together Ticketmaster + city iCal feeds → content filter → Pexels → Claude → Supabase.
+ *
+ * Event sources (merged automatically):
+ *   1. Ticketmaster Discovery API  — major concerts, sports, theatre
+ *   2. City iCal feeds             — festivals, markets, free community events
  *
  * This is the main function to call from the cron endpoint or admin trigger.
  */
 
 import { createClient } from '@supabase/supabase-js'
 import { fetchWeekendEvents, getUpcomingWeekend, CITY_CONFIG } from './eventbrite'
+import { fetchCityFeedEvents, mergeAndDedup } from './city-feeds'
 import { getCityWeekendPhoto } from './pexels'
 import { generateWeekendEventsArticle } from './article-generator'
 import { createSlug } from '@/lib/utils/slug'
@@ -90,15 +95,24 @@ export async function generateWeekendArticleForCity(
 
   console.log(`\n[weekend-events] === Generating article for ${cityLabel} (${label}) ===`)
 
-  // Step 1: Fetch events from Ticketmaster (with content filter applied inside)
-  let events
+  // Step 1: Fetch events from both Ticketmaster and city iCal feeds in parallel.
+  // City feed failures are non-fatal — we fall back to Ticketmaster-only.
+  let ticketmasterEvents
   try {
-    events = await fetchWeekendEvents(city, start, end, 30)
+    ticketmasterEvents = await fetchWeekendEvents(city, start, end, 30)
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err)
     console.error(`[weekend-events] Ticketmaster fetch failed for ${cityLabel}:`, error)
     return { success: false, city, cityLabel, eventsFound: 0, eventsUsed: 0, error }
   }
+
+  // City feed runs concurrently; errors are swallowed inside fetchCityFeedEvents
+  const cityFeedEvents = await fetchCityFeedEvents(city, start, end)
+
+  // Merge: Ticketmaster first (richer data), city feed fills in unique extras
+  const events = mergeAndDedup(ticketmasterEvents, cityFeedEvents)
+
+  console.log(`[weekend-events] ${cityLabel}: ${ticketmasterEvents.length} Ticketmaster + ${cityFeedEvents.length} city feed → ${events.length} total after dedup`)
 
   if (events.length < 3) {
     const error = `Only ${events.length} events found for ${cityLabel} — not enough for an article (minimum 3)`
@@ -213,7 +227,7 @@ export async function generateWeekendArticleForCity(
     articleId: inserted.id,
     articleSlug: slug,
     title: article.title,
-    eventsFound: events.length,
+    eventsFound: ticketmasterEvents.length + cityFeedEvents.length,
     eventsUsed,
   }
 }

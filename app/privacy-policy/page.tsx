@@ -1,3 +1,12 @@
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy | Culture Alberta',
+  description: 'Read the Culture Alberta privacy policy. Learn how we collect, use, and protect your personal information on culturealberta.com.',
+  alternates: { canonical: 'https://www.culturealberta.com/privacy-policy' },
+  robots: 'noindex, follow',
+}
+
 export default function PrivacyPolicy() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">

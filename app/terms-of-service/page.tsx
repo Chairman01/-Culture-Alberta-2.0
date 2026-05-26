@@ -1,3 +1,12 @@
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Terms of Service | Culture Alberta',
+  description: 'Read the Culture Alberta terms of service. Understand the rules and guidelines for using culturealberta.com.',
+  alternates: { canonical: 'https://www.culturealberta.com/terms-of-service' },
+  robots: 'noindex, follow',
+}
+
 export default function TermsOfService() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">

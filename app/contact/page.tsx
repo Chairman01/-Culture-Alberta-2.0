@@ -1,4 +1,17 @@
+import { Metadata } from 'next'
 import { Mail, Phone, MapPin, Clock } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Contact Culture Alberta | Get in Touch',
+  description: 'Contact the Culture Alberta team. Reach out for editorial inquiries, advertising, event submissions, or general questions about our Alberta culture guide.',
+  alternates: { canonical: 'https://www.culturealberta.com/contact' },
+  openGraph: {
+    title: 'Contact Culture Alberta',
+    description: 'Get in touch with the Culture Alberta team for editorial inquiries, advertising, or general questions.',
+    url: 'https://www.culturealberta.com/contact',
+    type: 'website',
+  },
+}
 
 export default function ContactPage() {
   return (

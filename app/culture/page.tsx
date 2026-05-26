@@ -1,3 +1,4 @@
+import { Metadata } from 'next'
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -7,6 +8,19 @@ import { CultureArticles } from "@/components/culture-articles"
 import { Article } from "@/lib/types/article"
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { ArrowRight, Clock, MapPin, Star, Users, Calendar, Tag, Palette, Music, Theater, Landmark, Heart, Sparkles, Globe, Award } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: 'Arts & Culture in Alberta | Culture Alberta',
+  description: 'Explore Alberta arts, culture, music, theatre, galleries, and cultural events across Calgary, Edmonton, and beyond.',
+  keywords: 'Alberta arts, Alberta culture, Calgary arts, Edmonton culture, Alberta theatre, Alberta music, Alberta galleries',
+  alternates: { canonical: 'https://www.culturealberta.com/culture' },
+  openGraph: {
+    title: 'Arts & Culture in Alberta | Culture Alberta',
+    description: 'Explore Alberta arts, culture, music, theatre, galleries, and cultural events across Calgary, Edmonton, and beyond.',
+    url: 'https://www.culturealberta.com/culture',
+    type: 'website',
+  },
+}
 
 // Use dynamic rendering to avoid ISR page size limits (page has large base64 images)
 export const dynamic = 'force-dynamic'

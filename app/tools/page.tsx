@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
-import { Calculator, DollarSign, Calendar, ArrowRight, Wrench, Scale, Clock, Tent } from "lucide-react"
+import { Calculator, DollarSign, Calendar, ArrowRight, Wrench, Scale, Clock, Tent, Home } from "lucide-react"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -97,7 +97,8 @@ const toolsPageSchema = {
     { "@type": "WebApplication", "name": "Alberta Stat Holiday Pay Calculator 2026", "url": "https://www.culturealberta.com/tools/stat-holiday-calculator" },
     { "@type": "WebApplication", "name": "Calgary vs Edmonton Cost of Living 2025", "url": "https://www.culturealberta.com/tools/calgary-vs-edmonton-cost-of-living" },
     { "@type": "WebApplication", "name": "Alberta Rental Increase Calculator 2025", "url": "https://www.culturealberta.com/tools/alberta-rental-increase-calculator" },
-    { "@type": "Dataset", "name": "Alberta Tourism & Recreation Major Projects Tracker", "url": "https://www.culturealberta.com/tools/alberta-major-projects" }
+    { "@type": "Dataset", "name": "Alberta Tourism & Recreation Major Projects Tracker", "url": "https://www.culturealberta.com/tools/alberta-major-projects" },
+    { "@type": "WebApplication", "name": "Alberta Property Tax Calculator 2024", "url": "https://www.culturealberta.com/tools/alberta-property-tax-calculator" }
   ]
 }
 
@@ -351,6 +352,62 @@ export default function ToolsPage() {
                     Browse projects
                   </div>
                   <div className="w-11 h-11 flex items-center justify-center border border-teal-200 rounded-xl text-teal-600 group-hover:bg-teal-50 transition-colors">
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Alberta Property Tax Calculator — featured card */}
+          <Link href="/tools/alberta-property-tax-calculator" className="group block h-full">
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col h-full hover:shadow-xl hover:border-amber-200 transition-all duration-300 cursor-pointer">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 bg-gradient-to-r from-amber-50 to-white border-b border-amber-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                    <Home className="w-5 h-5 text-amber-700" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Alberta</p>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">Property Tax</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full">2024 rates</span>
+                  <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">Free</span>
+                </div>
+              </div>
+              {/* Stats bar */}
+              <div className="mx-6 mt-4 grid grid-cols-3 gap-0 bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Cities</p>
+                  <p className="text-sm font-bold text-gray-900">37</p>
+                  <p className="text-[10px] text-gray-400">compared</p>
+                </div>
+                <div className="text-center py-3 px-2 border-x border-gray-100">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Lowest</p>
+                  <p className="text-sm font-bold text-green-700">6.89</p>
+                  <p className="text-[10px] text-gray-400">Canmore mills</p>
+                </div>
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Highest</p>
+                  <p className="text-sm font-bold text-red-600">14.90</p>
+                  <p className="text-[10px] text-gray-400">High Level mills</p>
+                </div>
+              </div>
+              {/* Content + CTA */}
+              <div className="p-6 flex flex-col flex-1">
+                <h2 className="text-xl font-bold text-gray-900 group-hover:text-amber-700 transition-colors mb-2">Alberta Property Tax Calculator</h2>
+                <p className="text-sm text-gray-500 leading-relaxed flex-1 mb-5">
+                  Estimate your annual property tax for any Alberta municipality. Compare mill rates across 37 cities — Calgary, Edmonton, Red Deer, Canmore, and more. See exactly how your bill breaks down between municipal and education portions.
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center justify-center gap-2 bg-amber-600 group-hover:bg-amber-700 text-white rounded-xl py-3 font-semibold text-sm transition-colors">
+                    <Home className="w-4 h-4" />
+                    Calculate my property tax
+                  </div>
+                  <div className="w-11 h-11 flex items-center justify-center border border-amber-200 rounded-xl text-amber-600 group-hover:bg-amber-50 transition-colors">
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
