@@ -181,7 +181,7 @@ export function processTwitterLinks(content: string): string {
 export function processInstagramAnchors(content: string): string {
   if (!content) return content
 
-  const anchorPattern = /<a[^>]*href=["'](https?:\/\/(?:www\.)?instagram\.com\/(p|reel|tv)\/([A-Za-z0-9_-]+)\/?[^"']*?)["'][^>]*>.*?<\/a>/gi
+  const anchorPattern = /<a[^>]*href=["'](https?:\/\/(?:www\.)?instagram\.com\/(p|reels?|tv)\/([A-Za-z0-9_-]+)\/?[^"']*?)["'][^>]*>.*?<\/a>/gi
 
   return content.replace(anchorPattern, (_match, _url, type, postCode) => {
     const permalink = `https://www.instagram.com/${type}/${postCode}/`
@@ -207,7 +207,7 @@ export function processInstagramLinks(content: string): string {
   if (!content) return content
 
   // Match standalone Instagram URLs not already inside HTML attributes
-  const instagramUrlPattern = /(?<![="'\/])(https?:\/\/(?:www\.)?instagram\.com\/(p|reel|tv)\/([A-Za-z0-9_-]+)(?:\/[^\s<"']*)?)/gi
+  const instagramUrlPattern = /(?<![="'\/])(https?:\/\/(?:www\.)?instagram\.com\/(p|reels?|tv)\/([A-Za-z0-9_-]+)(?:\/[^\s<"']*)?)/gi
 
   return content.replace(instagramUrlPattern, (_match, _url, type, postCode) => {
     const permalink = `https://www.instagram.com/${type}/${postCode}/`
