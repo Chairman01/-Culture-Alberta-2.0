@@ -184,7 +184,10 @@ export function processInstagramAnchors(content: string): string {
   const anchorPattern = /<a[^>]*href=["'](https?:\/\/(?:www\.)?instagram\.com\/(p|reels?|tv)\/([A-Za-z0-9_-]+)\/?[^"']*?)["'][^>]*>.*?<\/a>/gi
 
   return content.replace(anchorPattern, (_match, _url, type, postCode) => {
-    const permalink = `https://www.instagram.com/${type}/${postCode}/`
+    // Normalize 'reels' (plural share URL) to 'reel' (singular embed URL)
+    // Instagram's embed server only handles /reel/ not /reels/
+    const embedType = type === 'reels' ? 'reel' : type
+    const permalink = `https://www.instagram.com/${embedType}/${postCode}/`
 
     return `
       <div class="instagram-embed my-6" style="max-width: 540px; min-height: 640px; margin: 0 auto;">
@@ -210,7 +213,9 @@ export function processInstagramLinks(content: string): string {
   const instagramUrlPattern = /(?<![="'\/])(https?:\/\/(?:www\.)?instagram\.com\/(p|reels?|tv)\/([A-Za-z0-9_-]+)(?:\/[^\s<"']*)?)/gi
 
   return content.replace(instagramUrlPattern, (_match, _url, type, postCode) => {
-    const permalink = `https://www.instagram.com/${type}/${postCode}/`
+    // Normalize 'reels' (plural share URL) to 'reel' (singular embed URL)
+    const embedType = type === 'reels' ? 'reel' : type
+    const permalink = `https://www.instagram.com/${embedType}/${postCode}/`
 
     return `
       <div class="instagram-embed my-6" style="max-width: 540px; min-height: 640px; margin: 0 auto;">
