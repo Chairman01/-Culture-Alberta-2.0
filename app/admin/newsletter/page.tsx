@@ -185,6 +185,7 @@ export default function NewsletterAdmin() {
   const [picker, setPicker] = useState<PickerState>({
     open: false, target: 'featured', query: '', results: [], searching: false,
   })
+  const [pickerCityFilter, setPickerCityFilter] = useState<string>('all')
 
   // Engagement & subscriber filter state
   const [emailEvents, setEmailEvents] = useState<EmailEvent[]>([])
@@ -354,6 +355,7 @@ export default function NewsletterAdmin() {
 
   async function openPicker(target: PickerState['target'], city?: CityKey) {
     // Open immediately and auto-load recent articles
+    setPickerCityFilter('all')
     setPicker({ open: true, target, city, query: '', results: [], searching: true })
     const results = await searchArticles('')
     setPicker(p => ({ ...p, searching: false, results }))
@@ -1259,13 +1261,27 @@ export default function NewsletterAdmin() {
                     </Button>
                   </div>
 
+                  {/* City filter chips */}
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {['all','Edmonton','Calgary','Lethbridge','Medicine Hat','Red Deer','Grande Prairie','Fort McMurray','Alberta'].map(c => (
+                      <button
+                        key={c}
+                        onClick={() => setPickerCityFilter(c)}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${pickerCityFilter === c ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+                      >
+                        {c === 'all' ? 'All' : c}
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="space-y-1 max-h-72 overflow-y-auto">
                     {picker.searching && picker.results.length === 0 ? (
                       <div className="text-center text-sm text-gray-400 py-8">
                         <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-blue-400" />
                         Loading articles…
                       </div>
-                    ) : picker.results.length > 0 ? picker.results.map(art => (
+                    ) : picker.results.filter(art => pickerCityFilter === 'all' || (art.location || '').toLowerCase().includes(pickerCityFilter.toLowerCase())).length > 0
+                      ? picker.results.filter(art => pickerCityFilter === 'all' || (art.location || '').toLowerCase().includes(pickerCityFilter.toLowerCase())).map(art => (
                       <div key={art.id} className="flex items-center justify-between p-2.5 hover:bg-white rounded-lg border border-transparent hover:border-gray-200 transition-colors cursor-pointer group">
                         <div className="flex-1 min-w-0 mr-3">
                           <div className="text-sm font-medium text-gray-900 line-clamp-1">{art.title}</div>
@@ -1282,7 +1298,9 @@ export default function NewsletterAdmin() {
                       </div>
                     )) : (
                       <div className="text-center text-sm text-gray-400 py-6">
-                        No articles found. Try a different search term.
+                        {pickerCityFilter !== 'all'
+                          ? `No ${pickerCityFilter} articles found. Try a different city or search term.`
+                          : 'No articles found. Try a different search term.'}
                       </div>
                     )}
                   </div>
