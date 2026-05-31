@@ -2,7 +2,6 @@ import { Metadata } from 'next'
 import Script from 'next/script'
 
 import { ShopClient } from './shop-client'
-import { SHOP_PRODUCTS } from '@/lib/shop-products'
 
 export const metadata: Metadata = {
   title: 'Alberta Hoodies & City Merch | Culture Alberta Shop',
@@ -34,19 +33,6 @@ export default function ShopPage() {
     name: 'Culture Alberta Shop',
     url: 'https://www.culturealberta.com/shop',
     description: metadata.description,
-    hasPart: SHOP_PRODUCTS.map(product => ({
-      '@type': 'Product',
-      name: product.name,
-      description: product.description,
-      brand: { '@type': 'Brand', name: 'Culture Alberta' },
-      offers: {
-        '@type': 'Offer',
-        price: product.price,
-        priceCurrency: 'CAD',
-        availability: 'https://schema.org/InStock',
-        url: `https://www.culturealberta.com/shop/${product.slug}`,
-      },
-    })),
   }
 
   return (

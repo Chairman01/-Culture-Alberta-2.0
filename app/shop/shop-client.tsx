@@ -1,31 +1,99 @@
 'use client'
 
-import Link from 'next/link'
-import { useMemo, useState } from 'react'
-import { ArrowRight, Check, Minus, Plus, ShoppingBag, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowRight, Minus, Plus, ShoppingBag, X, Check, Loader2 } from 'lucide-react'
 
-import { buildDirectCheckoutUrl, SHOP_CITIES, SHOP_PRODUCTS, ShopProduct } from '@/lib/shop-products'
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type FWVariant = {
+  id: string
+  name: string
+  unitPrice: { value: number; currency: string }
+  stock: { type: 'LIMITED' | 'UNLIMITED'; inStock?: number }
+}
+
+type FWProduct = {
+  id: string
+  name: string
+  slug: string
+  description: string
+  variants: FWVariant[]
+  images?: Array<{ url: string }>
+}
 
 type CartItem = {
-  product: ShopProduct
+  product: FWProduct
+  variant: FWVariant
   quantity: number
 }
 
-function formatPrice(value: number) {
-  return `$${value.toFixed(2)} CAD`
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const STORE_DOMAIN = (
+  process.env.NEXT_PUBLIC_FOURTHWALL_STORE_URL || 'https://culturemedia-shop.fourthwall.com'
+).replace(/\/$/, '')
+
+function formatPrice(value: number, currency = 'CAD') {
+  return `$${value.toFixed(2)} ${currency}`
+}
+
+function getProductPrice(product: FWProduct): number {
+  return product.variants[0]?.unitPrice.value ?? 0
+}
+
+function getProductCurrency(product: FWProduct): string {
+  return product.variants[0]?.unitPrice.currency ?? 'CAD'
+}
+
+function isAvailable(product: FWProduct): boolean {
+  return product.variants.some(
+    v => v.stock.type === 'UNLIMITED' || (v.stock.inStock != null && v.stock.inStock > 0),
+  )
+}
+
+/** Detect city from product name */
+function detectCity(name: string): string {
+  const cities = ['Edmonton', 'Calgary', 'Lethbridge', 'Medicine Hat', 'Red Deer', 'Grande Prairie']
+  return cities.find(c => name.toLowerCase().includes(c.toLowerCase())) ?? 'Alberta'
+}
+
+function buildCheckoutUrl(items: CartItem[]): string {
+  if (!items.length) return STORE_DOMAIN
+  const products = items.map(i => `${i.variant.id}:${i.quantity}`).join(',')
+  return `${STORE_DOMAIN}/cart/checkout?products=${products}&currency=CAD`
+}
+
+// ─── Colour palette per city ──────────────────────────────────────────────────
+
+const CITY_PALETTE: Record<string, { colour: string; accent: string }> = {
+  Edmonton:        { colour: '#101010', accent: '#f4efe6' },
+  Calgary:         { colour: '#151515', accent: '#f7f2e9' },
+  Lethbridge:      { colour: '#0e0e1a', accent: '#e2d9c8' },
+  'Medicine Hat':  { colour: '#160a08', accent: '#ecdcc8' },
+  'Red Deer':      { colour: '#120d0d', accent: '#f0e4e4' },
+  'Grande Prairie':{ colour: '#0a1208', accent: '#d8e8d0' },
+  Alberta:         { colour: '#111111', accent: '#f3f0e8' },
+}
+
+function getPalette(city: string) {
+  return CITY_PALETTE[city] ?? { colour: '#111111', accent: '#f0ede6' }
 }
 
 function getCityTextProps(city: string): { fontSize: number; letterSpacing: number } {
   const len = city.length
-  if (len <= 7) return { fontSize: 34, letterSpacing: 3 }
-  if (len <= 8) return { fontSize: 28, letterSpacing: 2 }
+  if (len <= 7)  return { fontSize: 34, letterSpacing: 3 }
+  if (len <= 8)  return { fontSize: 28, letterSpacing: 2 }
   if (len <= 10) return { fontSize: 24, letterSpacing: 2 }
   if (len <= 11) return { fontSize: 21, letterSpacing: 1 }
   return { fontSize: 17, letterSpacing: 1 }
 }
 
-function HoodieMockup({ product }: { product: ShopProduct }) {
-  const { fontSize, letterSpacing } = getCityTextProps(product.city)
+// ─── Hoodie SVG mockup ────────────────────────────────────────────────────────
+
+function HoodieMockup({ product }: { product: FWProduct }) {
+  const city = detectCity(product.name)
+  const { colour, accent } = getPalette(city)
+  const { fontSize, letterSpacing } = getCityTextProps(city)
 
   return (
     <svg viewBox="0 0 640 760" className="h-full w-full" role="img" aria-label={`${product.name} preview`}>
@@ -35,7 +103,7 @@ function HoodieMockup({ product }: { product: ShopProduct }) {
         </filter>
         <linearGradient id={`cloth-${product.id}`} x1="0" x2="1" y1="0" y2="1">
           <stop offset="0" stopColor="#252525" />
-          <stop offset="0.48" stopColor={product.colour} />
+          <stop offset="0.48" stopColor={colour} />
           <stop offset="1" stopColor="#050505" />
         </linearGradient>
       </defs>
@@ -49,32 +117,37 @@ function HoodieMockup({ product }: { product: ShopProduct }) {
         <path d="M221 498 C222 469 244 455 278 455 L362 455 C396 455 418 469 419 498 L419 602 L221 602 Z" fill="#080808" opacity="0.55" />
         <path d="M139 661 L501 661 L501 690 L139 690 Z" fill="#080808" opacity="0.75" />
       </g>
-      <g fill={product.accent} textAnchor="middle">
+      <g fill={accent} textAnchor="middle">
         <text x="320" y="350" fontFamily="Arial, Helvetica, sans-serif" fontSize="13" fontWeight="700" letterSpacing="8" opacity="0.35">
           CULTURE ALBERTA
         </text>
         <text x="320" y="416" fontFamily="Georgia, 'Times New Roman', serif" fontSize={fontSize} fontWeight="900" letterSpacing={letterSpacing}>
-          {product.city.toUpperCase()}
+          {city.toUpperCase()}
         </text>
         <text x="320" y="472" fontFamily="Georgia, 'Times New Roman', serif" fontSize="48" fontWeight="900" letterSpacing="8">
           FOREVER
         </text>
-        <path d="M286 522 C303 498 337 498 354 522 C337 546 303 546 286 522 Z" fill="none" stroke={product.accent} strokeWidth="5" opacity="0.7" />
-        <path d="M354 522 C371 498 405 498 422 522 C405 546 371 546 354 522 Z" fill="none" stroke={product.accent} strokeWidth="5" opacity="0.7" />
       </g>
     </svg>
   )
 }
+
+// ─── Product card ─────────────────────────────────────────────────────────────
 
 function ProductCard({
   product,
   onAdd,
   onQuickView,
 }: {
-  product: ShopProduct
-  onAdd: (p: ShopProduct) => void
-  onQuickView: (p: ShopProduct) => void
+  product: FWProduct
+  onAdd: (p: FWProduct) => void
+  onQuickView: (p: FWProduct) => void
 }) {
+  const city = detectCity(product.name)
+  const { colour, accent } = getPalette(city)
+  const price = getProductPrice(product)
+  const currency = getProductCurrency(product)
+
   return (
     <article className="group">
       <button
@@ -83,42 +156,28 @@ function ProductCard({
         style={{ aspectRatio: '3/4' }}
         aria-label={`Quick view ${product.name}`}
       >
-        {/* Product colour background */}
         <div
           className="absolute inset-0"
-          style={{
-            background: `linear-gradient(150deg, #242424 0%, ${product.colour} 55%, #070707 100%)`,
-          }}
+          style={{ background: `linear-gradient(150deg, #242424 0%, ${colour} 55%, #070707 100%)` }}
         />
-        {/* Tag badge */}
         <span
           className="absolute left-3 top-3 z-10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em]"
-          style={{ backgroundColor: product.accent, color: '#111' }}
+          style={{ backgroundColor: accent, color: '#111' }}
         >
-          {product.tag}
+          {city}
         </span>
-        {/* Hoodie mockup */}
         <div className="relative h-full transition-transform duration-500 group-hover:scale-[1.04]">
           <HoodieMockup product={product} />
         </div>
       </button>
 
-      {/* Info row below card */}
       <div className="mt-3 flex items-start justify-between gap-3">
         <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.24em] text-black/40">{product.city}</p>
-          <Link
-            href={`/shop/${product.slug}`}
-            className="mt-0.5 block text-[15px] font-black leading-snug tracking-tight text-black hover:underline"
-          >
+          <p className="text-[9px] font-black uppercase tracking-[0.24em] text-black/40">{city}</p>
+          <p className="mt-0.5 text-[15px] font-black leading-snug tracking-tight text-black">
             {product.name}
-          </Link>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="text-sm font-bold text-black">{formatPrice(product.price)}</span>
-            {product.compareAt && (
-              <span className="text-xs text-black/35 line-through">{formatPrice(product.compareAt)}</span>
-            )}
-          </div>
+          </p>
+          <p className="mt-1 text-sm font-bold text-black">{formatPrice(price, currency)}</p>
         </div>
         <button
           onClick={() => onAdd(product)}
@@ -131,21 +190,22 @@ function ProductCard({
   )
 }
 
+// ─── Cart drawer ──────────────────────────────────────────────────────────────
+
 function CartDrawer({
   items,
   onClose,
-  onAdd,
-  onRemove,
+  onIncrement,
+  onDecrement,
 }: {
   items: CartItem[]
   onClose: () => void
-  onAdd: (p: ShopProduct) => void
-  onRemove: (p: ShopProduct) => void
+  onIncrement: (item: CartItem) => void
+  onDecrement: (item: CartItem) => void
 }) {
-  const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
-  const checkoutUrl = buildDirectCheckoutUrl(
-    items.map(item => ({ variantId: item.product.variantId, quantity: item.quantity })),
-  )
+  const subtotal = items.reduce((s, i) => s + i.variant.unitPrice.value * i.quantity, 0)
+  const currency = items[0]?.variant.unitPrice.currency ?? 'CAD'
+  const checkoutUrl = buildCheckoutUrl(items)
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50" role="dialog" aria-modal="true">
@@ -172,42 +232,45 @@ function CartDrawer({
             </div>
           ) : (
             <div className="space-y-5">
-              {items.map(item => (
-                <div key={item.product.id} className="grid grid-cols-[84px_1fr] gap-4">
-                  <div
-                    className="aspect-square p-1.5"
-                    style={{
-                      background: `linear-gradient(150deg, #242424, ${item.product.colour}, #070707)`,
-                    }}
-                  >
-                    <HoodieMockup product={item.product} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-black/40">
-                      {item.product.city}
-                    </p>
-                    <p className="mt-0.5 font-black leading-tight">{item.product.name}</p>
-                    <p className="mt-1 text-sm text-black/55">{formatPrice(item.product.price)}</p>
-                    <div className="mt-3 inline-flex h-9 items-center border border-black/15">
-                      <button
-                        onClick={() => onRemove(item.product)}
-                        className="flex h-full w-9 items-center justify-center transition hover:bg-black hover:text-white"
-                        aria-label="Decrease quantity"
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="w-10 text-center text-sm font-bold">{item.quantity}</span>
-                      <button
-                        onClick={() => onAdd(item.product)}
-                        className="flex h-full w-9 items-center justify-center transition hover:bg-black hover:text-white"
-                        aria-label="Increase quantity"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
+              {items.map(item => {
+                const city = detectCity(item.product.name)
+                const { colour } = getPalette(city)
+                return (
+                  <div key={`${item.product.id}-${item.variant.id}`} className="grid grid-cols-[84px_1fr] gap-4">
+                    <div
+                      className="aspect-square p-1.5"
+                      style={{ background: `linear-gradient(150deg, #242424, ${colour}, #070707)` }}
+                    >
+                      <HoodieMockup product={item.product} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-black/40">{city}</p>
+                      <p className="mt-0.5 font-black leading-tight">{item.product.name}</p>
+                      <p className="mt-0.5 text-xs text-black/50">{item.variant.name}</p>
+                      <p className="mt-1 text-sm text-black/55">
+                        {formatPrice(item.variant.unitPrice.value, item.variant.unitPrice.currency)}
+                      </p>
+                      <div className="mt-3 inline-flex h-9 items-center border border-black/15">
+                        <button
+                          onClick={() => onDecrement(item)}
+                          className="flex h-full w-9 items-center justify-center transition hover:bg-black hover:text-white"
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="w-10 text-center text-sm font-bold">{item.quantity}</span>
+                        <button
+                          onClick={() => onIncrement(item)}
+                          className="flex h-full w-9 items-center justify-center transition hover:bg-black hover:text-white"
+                          aria-label="Increase quantity"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -215,7 +278,7 @@ function CartDrawer({
         <div className="border-t border-black/10 p-5">
           <div className="mb-4 flex items-center justify-between text-sm">
             <span className="text-black/55">Subtotal</span>
-            <span className="font-black">{formatPrice(subtotal)}</span>
+            <span className="font-black">{formatPrice(subtotal, currency)}</span>
           </div>
           <a
             href={checkoutUrl}
@@ -233,24 +296,27 @@ function CartDrawer({
   )
 }
 
+// ─── Product modal ────────────────────────────────────────────────────────────
+
 function ProductModal({
   product,
   onClose,
   onAdd,
 }: {
-  product: ShopProduct
+  product: FWProduct
   onClose: () => void
-  onAdd: (p: ShopProduct) => void
+  onAdd: (p: FWProduct, v: FWVariant) => void
 }) {
+  const city = detectCity(product.name)
+  const { colour, accent } = getPalette(city)
+  const [selectedVariant, setSelectedVariant] = useState<FWVariant>(product.variants[0])
+
   return (
     <div className="fixed inset-0 z-40 overflow-y-auto bg-white" role="dialog" aria-modal="true">
       <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
-        {/* Left – hoodie on dark background */}
         <div
           className="relative flex items-center justify-center p-8 sm:p-14"
-          style={{
-            background: `linear-gradient(150deg, #1e1e1e 0%, ${product.colour} 50%, #070707 100%)`,
-          }}
+          style={{ background: `linear-gradient(150deg, #1e1e1e 0%, ${colour} 50%, #070707 100%)` }}
         >
           <button
             onClick={onClose}
@@ -264,41 +330,58 @@ function ProductModal({
           </div>
         </div>
 
-        {/* Right – product details */}
         <aside className="flex flex-col justify-center px-6 py-10 sm:px-10">
-          <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-black/35">{product.city} merch</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-black/35">{city} merch</p>
           <h2 className="mt-3 text-4xl font-black tracking-tight">{product.name}</h2>
 
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <span className="text-2xl font-black">{formatPrice(product.price)}</span>
-            {product.compareAt && (
-              <span className="text-base text-black/35 line-through">{formatPrice(product.compareAt)}</span>
-            )}
+            <span className="text-2xl font-black">
+              {formatPrice(selectedVariant.unitPrice.value, selectedVariant.unitPrice.currency)}
+            </span>
             <span
               className="px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em]"
-              style={{ backgroundColor: product.accent, color: '#111' }}
+              style={{ backgroundColor: accent, color: '#111' }}
             >
-              {product.tag}
+              City drop
             </span>
           </div>
 
-          <p className="mt-5 leading-7 text-black/60">{product.description}</p>
+          {product.description && (
+            <p className="mt-5 leading-7 text-black/60">{product.description}</p>
+          )}
 
-          <div className="mt-7 grid grid-cols-5 gap-2">
-            {['S', 'M', 'L', 'XL', '2XL'].map(size => (
-              <button
-                key={size}
-                className="h-11 border border-black/15 text-sm font-bold transition hover:border-black"
-              >
-                {size}
-              </button>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-black/40">Size selected at checkout</p>
+          {/* Variant / size selector */}
+          {product.variants.length > 1 && (
+            <div className="mt-6">
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-black/40">Select size</p>
+              <div className="flex flex-wrap gap-2">
+                {product.variants.map(v => {
+                  const inStock =
+                    v.stock.type === 'UNLIMITED' || (v.stock.inStock != null && v.stock.inStock > 0)
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={() => inStock && setSelectedVariant(v)}
+                      disabled={!inStock}
+                      className={`h-11 min-w-[52px] px-3 border text-sm font-bold transition ${
+                        selectedVariant.id === v.id
+                          ? 'border-black bg-black text-white'
+                          : inStock
+                          ? 'border-black/15 hover:border-black'
+                          : 'border-black/10 text-black/25 cursor-not-allowed line-through'
+                      }`}
+                    >
+                      {v.name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <button
             onClick={() => {
-              onAdd(product)
+              onAdd(product, selectedVariant)
               onClose()
             }}
             className="mt-7 flex h-12 w-full items-center justify-center gap-2 bg-black px-5 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-neutral-800"
@@ -325,50 +408,85 @@ function ProductModal({
   )
 }
 
-export function ShopClient({ initialCity = 'All' }: { initialCity?: (typeof SHOP_CITIES)[number] }) {
-  const [city, setCity] = useState<(typeof SHOP_CITIES)[number]>(initialCity)
-  const [activeProduct, setActiveProduct] = useState<ShopProduct | null>(null)
+// ─── Main shop component ──────────────────────────────────────────────────────
+
+const ALL_CITIES = ['All', 'Edmonton', 'Calgary', 'Lethbridge', 'Medicine Hat', 'Red Deer', 'Grande Prairie', 'Alberta'] as const
+
+export function ShopClient({ initialCity = 'All' }: { initialCity?: string }) {
+  const [products, setProducts] = useState<FWProduct[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [city, setCity] = useState<string>(initialCity)
+  const [activeProduct, setActiveProduct] = useState<FWProduct | null>(null)
   const [cartOpen, setCartOpen] = useState(false)
   const [cart, setCart] = useState<CartItem[]>([])
 
-  const products = useMemo(
-    () => SHOP_PRODUCTS.filter(p => city === 'All' || p.city === city),
-    [city],
-  )
+  // Fetch live products from Fourthwall via our API route
+  useEffect(() => {
+    fetch('/api/shop/products')
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load products')
+        return res.json()
+      })
+      .then((data: FWProduct[]) => {
+        // Only show products that have at least one available variant
+        setProducts(data.filter(isAvailable))
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error(err)
+        setError('Could not load products right now.')
+        setLoading(false)
+      })
+  }, [])
 
-  const addToCart = (product: ShopProduct) => {
+  const filtered = useMemo(() => {
+    if (city === 'All') return products
+    return products.filter(p => detectCity(p.name) === city)
+  }, [products, city])
+
+  const addToCart = (product: FWProduct, variant?: FWVariant) => {
+    const v = variant ?? product.variants[0]
     setCart(items => {
-      const existing = items.find(item => item.product.id === product.id)
+      const existing = items.find(i => i.product.id === product.id && i.variant.id === v.id)
       if (existing) {
-        return items.map(item =>
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
+        return items.map(i =>
+          i.product.id === product.id && i.variant.id === v.id
+            ? { ...i, quantity: i.quantity + 1 }
+            : i,
         )
       }
-      return [...items, { product, quantity: 1 }]
+      return [...items, { product, variant: v, quantity: 1 }]
     })
     setCartOpen(true)
   }
 
-  const removeFromCart = (product: ShopProduct) => {
+  const decrementCart = (item: CartItem) => {
     setCart(items =>
-      items.flatMap(item => {
-        if (item.product.id !== product.id) return [item]
-        if (item.quantity <= 1) return []
-        return [{ ...item, quantity: item.quantity - 1 }]
+      items.flatMap(i => {
+        if (i.product.id !== item.product.id || i.variant.id !== item.variant.id) return [i]
+        if (i.quantity <= 1) return []
+        return [{ ...i, quantity: i.quantity - 1 }]
       }),
     )
   }
 
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
+  const cartCount = cart.reduce((s, i) => s + i.quantity, 0)
+
+  // Detect which city filters are actually populated
+  const activeCities = useMemo(() => {
+    const citySet = new Set(products.map(p => detectCity(p.name)))
+    return ALL_CITIES.filter(c => c === 'All' || citySet.has(c))
+  }, [products])
 
   return (
     <main className="min-h-screen bg-white text-black">
-      {/* Slim announcement bar */}
+      {/* Announcement bar */}
       <div className="bg-black px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.24em] text-white/70">
         Edmonton · Calgary · Lethbridge · Medicine Hat · Red Deer · Grande Prairie · Made on demand
       </div>
 
-      {/* Editorial hero */}
+      {/* Hero */}
       <section className="bg-[#0e0e0e] text-white">
         <div className="mx-auto grid max-w-7xl lg:grid-cols-[1fr_420px]">
           <div className="flex flex-col justify-center px-6 py-16 sm:px-10 sm:py-24">
@@ -382,31 +500,31 @@ export function ShopClient({ initialCity = 'All' }: { initialCity?: (typeof SHOP
               Premium hoodies for Edmonton, Calgary, Lethbridge, Medicine Hat, Red Deer, and Grande
               Prairie. Made on demand, shipped across Canada.
             </p>
-            {/* City shortcut buttons */}
             <div className="mt-8 flex flex-wrap gap-2">
-              {(['Edmonton', 'Calgary', 'Lethbridge', 'Medicine Hat', 'Red Deer', 'Grande Prairie'] as const).map(
-                c => (
-                  <button
-                    key={c}
-                    onClick={() => setCity(c)}
-                    className={`h-9 px-4 text-xs font-black uppercase tracking-[0.14em] border transition ${
-                      city === c
-                        ? 'border-white bg-white text-black'
-                        : 'border-white/20 text-white/60 hover:border-white/60 hover:text-white'
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ),
-              )}
+              {(['Edmonton', 'Calgary', 'Lethbridge', 'Medicine Hat', 'Red Deer', 'Grande Prairie'] as const).map(c => (
+                <button
+                  key={c}
+                  onClick={() => setCity(c)}
+                  className={`h-9 px-4 text-xs font-black uppercase tracking-[0.14em] border transition ${
+                    city === c
+                      ? 'border-white bg-white text-black'
+                      : 'border-white/20 text-white/60 hover:border-white/60 hover:text-white'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
             </div>
           </div>
-
-          {/* Featured hoodie */}
+          {/* Featured hoodie — first product loaded */}
           <div className="flex items-center justify-center bg-[#161616] p-6 sm:p-10 lg:p-8">
-            <div className="mx-auto w-full max-w-[280px]">
-              <HoodieMockup product={SHOP_PRODUCTS[0]} />
-            </div>
+            {products[0] ? (
+              <div className="mx-auto w-full max-w-[280px]">
+                <HoodieMockup product={products[0]} />
+              </div>
+            ) : (
+              <div className="h-64 w-64" />
+            )}
           </div>
         </div>
       </section>
@@ -415,7 +533,7 @@ export function ShopClient({ initialCity = 'All' }: { initialCity?: (typeof SHOP
       <div className="sticky top-0 z-30 border-b border-black/10 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5">
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {SHOP_CITIES.map(option => (
+            {activeCities.map(option => (
               <button
                 key={option}
                 onClick={() => setCity(option)}
@@ -447,18 +565,28 @@ export function ShopClient({ initialCity = 'All' }: { initialCity?: (typeof SHOP
           <h2 className="mt-2 text-3xl font-black tracking-tight">
             {city === 'All' ? 'Shop every drop.' : `${city} merch.`}
           </h2>
-          <p className="mt-1 text-sm text-black/40">
-            {products.length} {products.length === 1 ? 'product' : 'products'}
-          </p>
+          {!loading && (
+            <p className="mt-1 text-sm text-black/40">
+              {filtered.length} {filtered.length === 1 ? 'product' : 'products'}
+            </p>
+          )}
         </div>
 
-        {products.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="h-8 w-8 animate-spin text-black/30" />
+          </div>
+        ) : error ? (
+          <div className="py-20 text-center">
+            <p className="text-sm text-black/45">{error}</p>
+          </div>
+        ) : filtered.length > 0 ? (
           <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map(product => (
+            {filtered.map(product => (
               <ProductCard
                 key={product.id}
                 product={product}
-                onAdd={addToCart}
+                onAdd={p => addToCart(p)}
                 onQuickView={setActiveProduct}
               />
             ))}
@@ -473,34 +601,6 @@ export function ShopClient({ initialCity = 'All' }: { initialCity?: (typeof SHOP
         )}
       </section>
 
-      {/* SEO city links */}
-      <section className="border-t border-black/10 bg-[#f8f6f3] px-4 py-12">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-black/35">Browse by city</p>
-              <h2 className="mt-1.5 text-2xl font-black tracking-tight">Shop your city.</h2>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-            {SHOP_PRODUCTS.map(product => (
-              <Link
-                key={product.slug}
-                href={`/shop/${product.slug}`}
-                className="group flex flex-col gap-1.5 border border-black/10 bg-white px-4 py-3 transition hover:border-black/30"
-              >
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-black/35">
-                  {product.type}
-                </span>
-                <span className="text-sm font-black leading-snug text-black group-hover:underline">
-                  {product.keywords[0]}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {activeProduct && (
         <ProductModal
           product={activeProduct}
@@ -512,8 +612,8 @@ export function ShopClient({ initialCity = 'All' }: { initialCity?: (typeof SHOP
         <CartDrawer
           items={cart}
           onClose={() => setCartOpen(false)}
-          onAdd={addToCart}
-          onRemove={removeFromCart}
+          onIncrement={item => addToCart(item.product, item.variant)}
+          onDecrement={decrementCart}
         />
       )}
     </main>
