@@ -25,6 +25,9 @@ interface ArticleFeedProps {
 
 // ---------- constants ----------
 
+// Add article slugs here to pin them at the top (max 4 recommended)
+const PINNED_SLUGS: string[] = []
+
 const PAGE_SIZE = 12
 const NEWSLETTER_INSERT_AFTER = 8 // insert newsletter banner after this many cards
 
@@ -192,9 +195,26 @@ export default function ArticleFeed({ articles }: ArticleFeedProps) {
   const [selectedCity, setSelectedCity] = useState('')
   const [visible, setVisible] = useState(PAGE_SIZE)
 
+  // Separate pinned articles from the main feed
+  const pinnedArticles = useMemo(
+    () =>
+      PINNED_SLUGS.length > 0
+        ? (PINNED_SLUGS.map(slug => articles.find(a => a.slug === slug)).filter(Boolean) as Article[])
+        : [],
+    [articles],
+  )
+
+  const unpinnedArticles = useMemo(
+    () =>
+      PINNED_SLUGS.length > 0
+        ? articles.filter(a => !PINNED_SLUGS.includes(a.slug ?? ''))
+        : articles,
+    [articles],
+  )
+
   const filtered = useMemo(
-    () => articles.filter((a) => matchesCity(a, selectedCity)),
-    [articles, selectedCity]
+    () => unpinnedArticles.filter((a) => matchesCity(a, selectedCity)),
+    [unpinnedArticles, selectedCity]
   )
 
   const shown = filtered.slice(0, visible)
@@ -223,6 +243,21 @@ export default function ArticleFeed({ articles }: ArticleFeedProps) {
 
   return (
     <>
+      {/* ---------- Pinned / Featured articles ---------- */}
+      {pinnedArticles.length > 0 && (
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 pt-4 pb-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-3">
+            Featured
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
+            {pinnedArticles.map(article => (
+              <ArticleCard key={article.id} article={article} />
+            ))}
+          </div>
+          <div className="mt-4 border-b border-gray-100" />
+        </div>
+      )}
+
       {/* ---------- City filter chips ---------- */}
       <div className="sticky top-[52px] z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100">
         <div

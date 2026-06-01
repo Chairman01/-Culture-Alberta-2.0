@@ -119,17 +119,20 @@ function ProductCard({
         <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.03]">
           <ProductImage product={product} fill />
         </div>
+        {/* City badge */}
+        <span className="absolute left-2 top-2 bg-black/80 px-2 py-0.5 text-[8px] font-bold uppercase tracking-[0.2em] text-white/80 backdrop-blur-sm">
+          {city}
+        </span>
       </button>
 
       <div className="mt-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400">{city}</p>
-          <p className="mt-0.5 truncate text-sm font-semibold text-black">{product.name}</p>
-          <p className="mt-0.5 text-sm text-neutral-500">{formatPrice(price, currency)}</p>
+          <p className="truncate text-sm font-semibold text-black leading-snug">{product.name}</p>
+          <p className="mt-1 text-sm font-bold text-black">{formatPrice(price, currency)}</p>
         </div>
         <button
           onClick={() => onAdd(product)}
-          className="mt-[18px] shrink-0 h-8 border border-black px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition hover:bg-black hover:text-white"
+          className="mt-0.5 shrink-0 h-8 border border-black px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition hover:bg-black hover:text-white"
         >
           Add
         </button>
@@ -215,7 +218,7 @@ function CartDrawer({
           )}
         </div>
 
-        <div className="border-t border-neutral-100 p-5">
+        <div className="border-t border-neutral-100 px-5 pt-5 pb-24">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-sm text-neutral-500">Subtotal</span>
             <span className="text-sm font-bold">{formatPrice(subtotal, currency)}</span>
@@ -416,20 +419,35 @@ export function ShopClient({ initialCity = 'All' }: { initialCity?: string }) {
 
   return (
     <main className="min-h-screen bg-white text-black">
-      {/* Announcement bar */}
-      <div className="bg-black px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
-        Made on demand · Shipped across Canada
-      </div>
-
-      {/* Page header */}
-      <header className="border-b border-neutral-100 px-4 py-8 sm:px-6">
+      {/* Editorial hero */}
+      <div className="bg-black px-4 pb-10 pt-12 sm:px-6 sm:pb-14 sm:pt-16">
         <div className="mx-auto max-w-7xl">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-neutral-400">
+          <p className="text-[10px] font-bold uppercase tracking-[0.45em] text-white/40">
             Culture Alberta
           </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Shop</h1>
+          <h1
+            className="mt-3 font-black uppercase leading-none tracking-tight text-white"
+            style={{ fontSize: 'clamp(3rem, 11vw, 6.5rem)' }}
+          >
+            Shop
+          </h1>
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/45">
+            Alberta city apparel. Heavyweight hoodies made on demand, shipped across Canada.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-white/10 pt-5">
+            {['Edmonton', 'Calgary', 'Lethbridge', 'Red Deer', 'Medicine Hat', 'Grande Prairie'].map(
+              c => (
+                <span
+                  key={c}
+                  className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/30"
+                >
+                  {c}
+                </span>
+              ),
+            )}
+          </div>
         </div>
-      </header>
+      </div>
 
       {/* Sticky filter + cart bar */}
       <div className="sticky top-0 z-30 border-b border-neutral-100 bg-white/95 backdrop-blur">
