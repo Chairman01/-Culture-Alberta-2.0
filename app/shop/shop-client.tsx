@@ -51,7 +51,6 @@ function isAvailable(product: FWProduct): boolean {
   )
 }
 
-/** Detect city from product name */
 function detectCity(name: string): string {
   const cities = ['Edmonton', 'Calgary', 'Lethbridge', 'Medicine Hat', 'Red Deer', 'Grande Prairie']
   return cities.find(c => name.toLowerCase().includes(c.toLowerCase())) ?? 'Alberta'
@@ -63,72 +62,34 @@ function buildCheckoutUrl(items: CartItem[]): string {
   return `${STORE_DOMAIN}/cart/checkout?products=${products}&currency=CAD`
 }
 
-// ─── Colour palette per city ──────────────────────────────────────────────────
+// ─── Product image ────────────────────────────────────────────────────────────
 
-const CITY_PALETTE: Record<string, { colour: string; accent: string }> = {
-  Edmonton:        { colour: '#101010', accent: '#f4efe6' },
-  Calgary:         { colour: '#151515', accent: '#f7f2e9' },
-  Lethbridge:      { colour: '#0e0e1a', accent: '#e2d9c8' },
-  'Medicine Hat':  { colour: '#160a08', accent: '#ecdcc8' },
-  'Red Deer':      { colour: '#120d0d', accent: '#f0e4e4' },
-  'Grande Prairie':{ colour: '#0a1208', accent: '#d8e8d0' },
-  Alberta:         { colour: '#111111', accent: '#f3f0e8' },
-}
-
-function getPalette(city: string) {
-  return CITY_PALETTE[city] ?? { colour: '#111111', accent: '#f0ede6' }
-}
-
-function getCityTextProps(city: string): { fontSize: number; letterSpacing: number } {
-  const len = city.length
-  if (len <= 7)  return { fontSize: 34, letterSpacing: 3 }
-  if (len <= 8)  return { fontSize: 28, letterSpacing: 2 }
-  if (len <= 10) return { fontSize: 24, letterSpacing: 2 }
-  if (len <= 11) return { fontSize: 21, letterSpacing: 1 }
-  return { fontSize: 17, letterSpacing: 1 }
-}
-
-// ─── Hoodie SVG mockup ────────────────────────────────────────────────────────
-
-function HoodieMockup({ product }: { product: FWProduct }) {
-  const city = detectCity(product.name)
-  const { colour, accent } = getPalette(city)
-  const { fontSize, letterSpacing } = getCityTextProps(city)
-
+function ProductImage({
+  product,
+  fill = false,
+}: {
+  product: FWProduct
+  fill?: boolean
+}) {
+  const src = product.images?.[0]?.url
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={product.name}
+        className={fill ? 'absolute inset-0 h-full w-full object-cover' : 'h-full w-full object-cover'}
+        loading="lazy"
+      />
+    )
+  }
+  // Fallback placeholder when no photo available
   return (
-    <svg viewBox="0 0 640 760" className="h-full w-full" role="img" aria-label={`${product.name} preview`}>
-      <defs>
-        <filter id={`shadow-${product.id}`} x="-20%" y="-10%" width="140%" height="130%">
-          <feDropShadow dx="0" dy="20" stdDeviation="18" floodOpacity="0.14" />
-        </filter>
-        <linearGradient id={`cloth-${product.id}`} x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stopColor="#252525" />
-          <stop offset="0.48" stopColor={colour} />
-          <stop offset="1" stopColor="#050505" />
-        </linearGradient>
-      </defs>
-      <g filter={`url(#shadow-${product.id})`}>
-        <path d="M205 193 C191 118 233 55 320 55 C407 55 449 118 435 193 C401 171 365 160 320 160 C275 160 239 171 205 193 Z" fill={`url(#cloth-${product.id})`} />
-        <path d="M198 184 L105 237 L62 370 L116 389 L139 318 L139 680 L501 680 L501 318 L524 389 L578 370 L535 237 L442 184 C416 216 376 234 320 236 C264 234 224 216 198 184 Z" fill={`url(#cloth-${product.id})`} />
-        <ellipse cx="320" cy="188" rx="91" ry="45" fill="#070707" opacity="0.92" />
-        <path d="M224 190 C247 171 282 160 320 160 C358 160 393 171 416 190" fill="none" stroke="#292929" strokeWidth="7" strokeLinecap="round" />
-        <path d="M286 190 C281 239 273 288 262 338" stroke="#282828" strokeWidth="5" strokeLinecap="round" />
-        <path d="M354 190 C359 239 367 288 378 338" stroke="#282828" strokeWidth="5" strokeLinecap="round" />
-        <path d="M221 498 C222 469 244 455 278 455 L362 455 C396 455 418 469 419 498 L419 602 L221 602 Z" fill="#080808" opacity="0.55" />
-        <path d="M139 661 L501 661 L501 690 L139 690 Z" fill="#080808" opacity="0.75" />
-      </g>
-      <g fill={accent} textAnchor="middle">
-        <text x="320" y="350" fontFamily="Arial, Helvetica, sans-serif" fontSize="13" fontWeight="700" letterSpacing="8" opacity="0.35">
-          CULTURE ALBERTA
-        </text>
-        <text x="320" y="416" fontFamily="Georgia, 'Times New Roman', serif" fontSize={fontSize} fontWeight="900" letterSpacing={letterSpacing}>
-          {city.toUpperCase()}
-        </text>
-        <text x="320" y="472" fontFamily="Georgia, 'Times New Roman', serif" fontSize="48" fontWeight="900" letterSpacing="8">
-          FOREVER
-        </text>
-      </g>
-    </svg>
+    <div className={`flex items-center justify-center bg-neutral-100 ${fill ? 'absolute inset-0' : 'h-full w-full'}`}>
+      <span className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+        {detectCity(product.name)}
+      </span>
+    </div>
   )
 }
 
@@ -144,7 +105,6 @@ function ProductCard({
   onQuickView: (p: FWProduct) => void
 }) {
   const city = detectCity(product.name)
-  const { colour, accent } = getPalette(city)
   const price = getProductPrice(product)
   const currency = getProductCurrency(product)
 
@@ -152,36 +112,24 @@ function ProductCard({
     <article className="group">
       <button
         onClick={() => onQuickView(product)}
-        className="relative w-full overflow-hidden text-left focus:outline-none"
+        className="relative block w-full overflow-hidden bg-neutral-100 text-left focus:outline-none"
         style={{ aspectRatio: '3/4' }}
-        aria-label={`Quick view ${product.name}`}
+        aria-label={`View ${product.name}`}
       >
-        <div
-          className="absolute inset-0"
-          style={{ background: `linear-gradient(150deg, #242424 0%, ${colour} 55%, #070707 100%)` }}
-        />
-        <span
-          className="absolute left-3 top-3 z-10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em]"
-          style={{ backgroundColor: accent, color: '#111' }}
-        >
-          {city}
-        </span>
-        <div className="relative h-full transition-transform duration-500 group-hover:scale-[1.04]">
-          <HoodieMockup product={product} />
+        <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.03]">
+          <ProductImage product={product} fill />
         </div>
       </button>
 
-      <div className="mt-3 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.24em] text-black/40">{city}</p>
-          <p className="mt-0.5 text-[15px] font-black leading-snug tracking-tight text-black">
-            {product.name}
-          </p>
-          <p className="mt-1 text-sm font-bold text-black">{formatPrice(price, currency)}</p>
+      <div className="mt-3 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400">{city}</p>
+          <p className="mt-0.5 truncate text-sm font-semibold text-black">{product.name}</p>
+          <p className="mt-0.5 text-sm text-neutral-500">{formatPrice(price, currency)}</p>
         </div>
         <button
           onClick={() => onAdd(product)}
-          className="mt-[18px] h-9 shrink-0 px-4 bg-black text-white text-[10px] font-black uppercase tracking-[0.16em] transition hover:bg-neutral-800"
+          className="mt-[18px] shrink-0 h-8 border border-black px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition hover:bg-black hover:text-white"
         >
           Add
         </button>
@@ -208,87 +156,79 @@ function CartDrawer({
   const checkoutUrl = buildCheckoutUrl(items)
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 bg-black/40" role="dialog" aria-modal="true">
       <aside className="ml-auto flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-black/10 px-5 py-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-black/40">Culture Alberta</p>
-            <h2 className="text-xl font-black">Your Cart</h2>
-          </div>
+        <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+          <h2 className="text-base font-bold">Cart</h2>
           <button
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center border border-black/10 transition hover:bg-black hover:text-white"
+            className="flex h-8 w-8 items-center justify-center border border-neutral-200 transition hover:bg-black hover:text-white"
             aria-label="Close cart"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {items.length === 0 ? (
             <div className="py-12 text-center">
-              <ShoppingBag className="mx-auto h-10 w-10 text-black/20" />
-              <p className="mt-3 text-sm text-black/45">Your cart is empty.</p>
+              <ShoppingBag className="mx-auto h-8 w-8 text-neutral-300" />
+              <p className="mt-3 text-sm text-neutral-400">Your cart is empty.</p>
             </div>
           ) : (
             <div className="space-y-5">
-              {items.map(item => {
-                const city = detectCity(item.product.name)
-                const { colour } = getPalette(city)
-                return (
-                  <div key={`${item.product.id}-${item.variant.id}`} className="grid grid-cols-[84px_1fr] gap-4">
-                    <div
-                      className="aspect-square p-1.5"
-                      style={{ background: `linear-gradient(150deg, #242424, ${colour}, #070707)` }}
-                    >
-                      <HoodieMockup product={item.product} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-black/40">{city}</p>
-                      <p className="mt-0.5 font-black leading-tight">{item.product.name}</p>
-                      <p className="mt-0.5 text-xs text-black/50">{item.variant.name}</p>
-                      <p className="mt-1 text-sm text-black/55">
-                        {formatPrice(item.variant.unitPrice.value, item.variant.unitPrice.currency)}
-                      </p>
-                      <div className="mt-3 inline-flex h-9 items-center border border-black/15">
-                        <button
-                          onClick={() => onDecrement(item)}
-                          className="flex h-full w-9 items-center justify-center transition hover:bg-black hover:text-white"
-                          aria-label="Decrease quantity"
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </button>
-                        <span className="w-10 text-center text-sm font-bold">{item.quantity}</span>
-                        <button
-                          onClick={() => onIncrement(item)}
-                          className="flex h-full w-9 items-center justify-center transition hover:bg-black hover:text-white"
-                          aria-label="Increase quantity"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+              {items.map(item => (
+                <div key={`${item.product.id}-${item.variant.id}`} className="grid grid-cols-[72px_1fr] gap-4">
+                  <div className="relative aspect-square overflow-hidden bg-neutral-100">
+                    <ProductImage product={item.product} fill />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-400">
+                      {detectCity(item.product.name)}
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold leading-tight">{item.product.name}</p>
+                    <p className="mt-0.5 text-xs text-neutral-500">{item.variant.name}</p>
+                    <p className="mt-1 text-sm text-neutral-600">
+                      {formatPrice(item.variant.unitPrice.value, item.variant.unitPrice.currency)}
+                    </p>
+                    <div className="mt-2.5 inline-flex h-8 items-center border border-neutral-200">
+                      <button
+                        onClick={() => onDecrement(item)}
+                        className="flex h-full w-8 items-center justify-center transition hover:bg-black hover:text-white"
+                        aria-label="Decrease"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </button>
+                      <span className="w-9 text-center text-sm">{item.quantity}</span>
+                      <button
+                        onClick={() => onIncrement(item)}
+                        className="flex h-full w-8 items-center justify-center transition hover:bg-black hover:text-white"
+                        aria-label="Increase"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
                     </div>
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        <div className="border-t border-black/10 p-5">
-          <div className="mb-4 flex items-center justify-between text-sm">
-            <span className="text-black/55">Subtotal</span>
-            <span className="font-black">{formatPrice(subtotal, currency)}</span>
+        <div className="border-t border-neutral-100 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-sm text-neutral-500">Subtotal</span>
+            <span className="text-sm font-bold">{formatPrice(subtotal, currency)}</span>
           </div>
           <a
             href={checkoutUrl}
-            className="flex h-12 w-full items-center justify-center gap-2 bg-black px-5 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-neutral-800"
+            className="flex h-11 w-full items-center justify-center gap-2 bg-black text-sm font-bold uppercase tracking-[0.12em] text-white transition hover:bg-neutral-800"
           >
             Checkout
             <ArrowRight className="h-4 w-4" />
           </a>
-          <p className="mt-3 text-center text-[10px] text-black/35">
-            Secure checkout powered by Fourthwall
+          <p className="mt-2.5 text-center text-[10px] text-neutral-400">
+            Secure checkout via Fourthwall
           </p>
         </div>
       </aside>
@@ -308,52 +248,41 @@ function ProductModal({
   onAdd: (p: FWProduct, v: FWVariant) => void
 }) {
   const city = detectCity(product.name)
-  const { colour, accent } = getPalette(city)
   const [selectedVariant, setSelectedVariant] = useState<FWVariant>(product.variants[0])
 
   return (
     <div className="fixed inset-0 z-40 overflow-y-auto bg-white" role="dialog" aria-modal="true">
-      <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
-        <div
-          className="relative flex items-center justify-center p-8 sm:p-14"
-          style={{ background: `linear-gradient(150deg, #1e1e1e 0%, ${colour} 50%, #070707 100%)` }}
-        >
+      <div className="mx-auto grid min-h-screen max-w-6xl grid-cols-1 lg:grid-cols-2">
+        {/* Photo */}
+        <div className="relative min-h-[320px] bg-neutral-100 lg:min-h-screen">
           <button
             onClick={onClose}
-            className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center bg-white/10 text-white transition hover:bg-white hover:text-black"
+            className="absolute left-4 top-4 z-10 flex h-9 w-9 items-center justify-center bg-white shadow-sm transition hover:bg-neutral-100"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
           </button>
-          <div className="w-full max-w-sm">
-            <HoodieMockup product={product} />
+          <div className="h-full">
+            <ProductImage product={product} fill />
           </div>
         </div>
 
-        <aside className="flex flex-col justify-center px-6 py-10 sm:px-10">
-          <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-black/35">{city} merch</p>
-          <h2 className="mt-3 text-4xl font-black tracking-tight">{product.name}</h2>
+        {/* Details */}
+        <aside className="flex flex-col justify-center px-6 py-10 sm:px-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-400">{city}</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight">{product.name}</h2>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <span className="text-2xl font-black">
-              {formatPrice(selectedVariant.unitPrice.value, selectedVariant.unitPrice.currency)}
-            </span>
-            <span
-              className="px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em]"
-              style={{ backgroundColor: accent, color: '#111' }}
-            >
-              City drop
-            </span>
-          </div>
+          <p className="mt-3 text-2xl font-bold">
+            {formatPrice(selectedVariant.unitPrice.value, selectedVariant.unitPrice.currency)}
+          </p>
 
           {product.description && (
-            <p className="mt-5 leading-7 text-black/60">{product.description}</p>
+            <p className="mt-4 text-sm leading-7 text-neutral-500">{product.description}</p>
           )}
 
-          {/* Variant / size selector */}
           {product.variants.length > 1 && (
             <div className="mt-6">
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-black/40">Select size</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-400">Size</p>
               <div className="flex flex-wrap gap-2">
                 {product.variants.map(v => {
                   const inStock =
@@ -363,12 +292,12 @@ function ProductModal({
                       key={v.id}
                       onClick={() => inStock && setSelectedVariant(v)}
                       disabled={!inStock}
-                      className={`h-11 min-w-[52px] px-3 border text-sm font-bold transition ${
+                      className={`h-10 min-w-[48px] border px-3 text-sm font-semibold transition ${
                         selectedVariant.id === v.id
                           ? 'border-black bg-black text-white'
                           : inStock
-                          ? 'border-black/15 hover:border-black'
-                          : 'border-black/10 text-black/25 cursor-not-allowed line-through'
+                          ? 'border-neutral-200 hover:border-black'
+                          : 'cursor-not-allowed border-neutral-100 text-neutral-300 line-through'
                       }`}
                     >
                       {v.name}
@@ -384,19 +313,19 @@ function ProductModal({
               onAdd(product, selectedVariant)
               onClose()
             }}
-            className="mt-7 flex h-12 w-full items-center justify-center gap-2 bg-black px-5 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-neutral-800"
+            className="mt-8 flex h-11 w-full items-center justify-center gap-2 bg-black text-sm font-bold uppercase tracking-[0.12em] text-white transition hover:bg-neutral-800"
           >
             <ShoppingBag className="h-4 w-4" />
             Add to cart
           </button>
 
-          <div className="mt-7 space-y-2.5 text-sm text-black/60">
+          <div className="mt-6 space-y-2 text-sm text-neutral-500">
             {[
               'Made on demand — printed after your order',
-              'Secure checkout powered by Fourthwall',
+              'Secure checkout via Fourthwall',
               'Shipped across Canada',
             ].map(item => (
-              <p key={item} className="flex gap-2.5">
+              <p key={item} className="flex gap-2">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-black" />
                 {item}
               </p>
@@ -410,7 +339,16 @@ function ProductModal({
 
 // ─── Main shop component ──────────────────────────────────────────────────────
 
-const ALL_CITIES = ['All', 'Edmonton', 'Calgary', 'Lethbridge', 'Medicine Hat', 'Red Deer', 'Grande Prairie', 'Alberta'] as const
+const ALL_CITIES = [
+  'All',
+  'Edmonton',
+  'Calgary',
+  'Lethbridge',
+  'Medicine Hat',
+  'Red Deer',
+  'Grande Prairie',
+  'Alberta',
+] as const
 
 export function ShopClient({ initialCity = 'All' }: { initialCity?: string }) {
   const [products, setProducts] = useState<FWProduct[]>([])
@@ -421,7 +359,6 @@ export function ShopClient({ initialCity = 'All' }: { initialCity?: string }) {
   const [cartOpen, setCartOpen] = useState(false)
   const [cart, setCart] = useState<CartItem[]>([])
 
-  // Fetch live products from Fourthwall via our API route
   useEffect(() => {
     fetch('/api/shop/products')
       .then(res => {
@@ -429,7 +366,6 @@ export function ShopClient({ initialCity = 'All' }: { initialCity?: string }) {
         return res.json()
       })
       .then((data: FWProduct[]) => {
-        // Only show products that have at least one available variant
         setProducts(data.filter(isAvailable))
         setLoading(false)
       })
@@ -473,7 +409,6 @@ export function ShopClient({ initialCity = 'All' }: { initialCity?: string }) {
 
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0)
 
-  // Detect which city filters are actually populated
   const activeCities = useMemo(() => {
     const citySet = new Set(products.map(p => detectCity(p.name)))
     return ALL_CITIES.filter(c => c === 'All' || citySet.has(c))
@@ -482,65 +417,32 @@ export function ShopClient({ initialCity = 'All' }: { initialCity?: string }) {
   return (
     <main className="min-h-screen bg-white text-black">
       {/* Announcement bar */}
-      <div className="bg-black px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.24em] text-white/70">
-        Edmonton · Calgary · Lethbridge · Medicine Hat · Red Deer · Grande Prairie · Made on demand
+      <div className="bg-black px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
+        Made on demand · Shipped across Canada
       </div>
 
-      {/* Hero */}
-      <section className="bg-[#0e0e0e] text-white">
-        <div className="mx-auto grid max-w-7xl lg:grid-cols-[1fr_420px]">
-          <div className="flex flex-col justify-center px-6 py-16 sm:px-10 sm:py-24">
-            <p className="text-[10px] font-bold uppercase tracking-[0.55em] text-white/30">
-              Culture Alberta Shop
-            </p>
-            <h1 className="mt-4 max-w-2xl text-5xl font-black leading-[1.02] tracking-tight sm:text-6xl">
-              Alberta merch for every city.
-            </h1>
-            <p className="mt-5 max-w-md text-base leading-7 text-white/50">
-              Premium hoodies for Edmonton, Calgary, Lethbridge, Medicine Hat, Red Deer, and Grande
-              Prairie. Made on demand, shipped across Canada.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-2">
-              {(['Edmonton', 'Calgary', 'Lethbridge', 'Medicine Hat', 'Red Deer', 'Grande Prairie'] as const).map(c => (
-                <button
-                  key={c}
-                  onClick={() => setCity(c)}
-                  className={`h-9 px-4 text-xs font-black uppercase tracking-[0.14em] border transition ${
-                    city === c
-                      ? 'border-white bg-white text-black'
-                      : 'border-white/20 text-white/60 hover:border-white/60 hover:text-white'
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* Featured hoodie — first product loaded */}
-          <div className="flex items-center justify-center bg-[#161616] p-6 sm:p-10 lg:p-8">
-            {products[0] ? (
-              <div className="mx-auto w-full max-w-[280px]">
-                <HoodieMockup product={products[0]} />
-              </div>
-            ) : (
-              <div className="h-64 w-64" />
-            )}
-          </div>
+      {/* Page header */}
+      <header className="border-b border-neutral-100 px-4 py-8 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-neutral-400">
+            Culture Alberta
+          </p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Shop</h1>
         </div>
-      </section>
+      </header>
 
       {/* Sticky filter + cart bar */}
-      <div className="sticky top-0 z-30 border-b border-black/10 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5">
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="sticky top-0 z-30 border-b border-neutral-100 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {activeCities.map(option => (
               <button
                 key={option}
                 onClick={() => setCity(option)}
-                className={`shrink-0 h-9 px-3.5 text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap transition ${
+                className={`shrink-0 h-12 border-b-2 px-3 text-xs font-semibold uppercase tracking-[0.12em] whitespace-nowrap transition ${
                   city === option
-                    ? 'bg-black text-white'
-                    : 'bg-black/[0.04] text-black/50 hover:bg-black/[0.08] hover:text-black'
+                    ? 'border-black text-black'
+                    : 'border-transparent text-neutral-400 hover:text-black'
                 }`}
               >
                 {option}
@@ -549,53 +451,48 @@ export function ShopClient({ initialCity = 'All' }: { initialCity?: string }) {
           </div>
           <button
             onClick={() => setCartOpen(true)}
-            className="relative shrink-0 flex h-9 items-center gap-2 bg-black px-4 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-neutral-800"
+            className="relative shrink-0 flex h-8 items-center gap-1.5 border border-neutral-200 px-3 text-xs font-semibold text-black transition hover:bg-black hover:text-white hover:border-black"
           >
-            <ShoppingBag className="h-4 w-4" />
-            Cart
-            {cartCount > 0 && <span className="ml-0.5 text-white/70">({cartCount})</span>}
+            <ShoppingBag className="h-3.5 w-3.5" />
+            {cartCount > 0 ? `Cart (${cartCount})` : 'Cart'}
           </button>
         </div>
       </div>
 
       {/* Product grid */}
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:py-16">
-        <div className="mb-10">
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-black/35">Latest arrivals</p>
-          <h2 className="mt-2 text-3xl font-black tracking-tight">
-            {city === 'All' ? 'Shop every drop.' : `${city} merch.`}
-          </h2>
-          {!loading && (
-            <p className="mt-1 text-sm text-black/40">
-              {filtered.length} {filtered.length === 1 ? 'product' : 'products'}
-            </p>
-          )}
-        </div>
-
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <Loader2 className="h-8 w-8 animate-spin text-black/30" />
+            <Loader2 className="h-6 w-6 animate-spin text-neutral-300" />
           </div>
         ) : error ? (
           <div className="py-20 text-center">
-            <p className="text-sm text-black/45">{error}</p>
+            <p className="text-sm text-neutral-400">{error}</p>
           </div>
         ) : filtered.length > 0 ? (
-          <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map(product => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onAdd={p => addToCart(p)}
-                onQuickView={setActiveProduct}
-              />
-            ))}
-          </div>
+          <>
+            <p className="mb-6 text-xs text-neutral-400">
+              {filtered.length} {filtered.length === 1 ? 'product' : 'products'}
+            </p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
+              {filtered.map(product => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onAdd={p => addToCart(p)}
+                  onQuickView={setActiveProduct}
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <div className="py-20 text-center">
-            <p className="text-sm text-black/45">No products yet for {city}.</p>
-            <button onClick={() => setCity('All')} className="mt-4 text-sm font-bold underline">
-              View all products
+            <p className="text-sm text-neutral-400">No products yet for {city}.</p>
+            <button
+              onClick={() => setCity('All')}
+              className="mt-3 text-xs font-semibold underline"
+            >
+              View all
             </button>
           </div>
         )}

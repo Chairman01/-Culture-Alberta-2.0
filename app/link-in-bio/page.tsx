@@ -1,59 +1,171 @@
+import { Metadata } from 'next'
 import Link from 'next/link'
-import { getFastArticles } from '@/lib/fast-articles'
+import { Instagram, Youtube, Facebook } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import ArticleFeed from './ArticleFeed'
 
-export const revalidate = 300
+export const revalidate = 120
 
-export const metadata = {
-  title: 'Culture Alberta — Link in Bio',
-  description: 'The latest stories from Culture Alberta.',
-  robots: { index: false },
+export const metadata: Metadata = {
+  title: 'Culture Alberta — Latest Alberta News & Stories',
+  description:
+    'The latest news and stories from across Alberta. Breaking stories from Calgary, Edmonton, Lethbridge, Red Deer, Grande Prairie, Fort McMurray, Medicine Hat, and everywhere in between.',
+  openGraph: {
+    title: 'Culture Alberta — Latest Alberta News & Stories',
+    description:
+      'The latest news and stories from across Alberta — Calgary, Edmonton, Lethbridge, Red Deer, Grande Prairie, Fort McMurray, and Medicine Hat.',
+    url: 'https://www.culturealberta.com/link-in-bio',
+    siteName: 'Culture Alberta',
+    type: 'website',
+    locale: 'en_CA',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Culture Alberta — Latest Alberta News & Stories',
+    description: 'The latest news and stories from across Alberta.',
+  },
+  alternates: {
+    canonical: 'https://www.culturealberta.com/link-in-bio',
+  },
+  keywords: [
+    'Alberta news',
+    'Calgary news',
+    'Edmonton news',
+    'Alberta stories',
+    'Culture Alberta',
+    'Lethbridge news',
+    'Grande Prairie news',
+    'Fort McMurray news',
+  ],
+}
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'NewsMediaOrganization',
+  name: 'Culture Alberta',
+  url: 'https://www.culturealberta.com',
+  sameAs: [
+    'https://www.instagram.com/culturealberta._/',
+    'https://www.youtube.com/@CultureAlberta_',
+    'https://www.facebook.com/profile.php?id=100064044099295',
+  ],
+  areaServed: [
+    { '@type': 'City', name: 'Calgary', containedIn: { '@type': 'State', name: 'Alberta' } },
+    { '@type': 'City', name: 'Edmonton', containedIn: { '@type': 'State', name: 'Alberta' } },
+    { '@type': 'City', name: 'Lethbridge', containedIn: { '@type': 'State', name: 'Alberta' } },
+    { '@type': 'City', name: 'Red Deer', containedIn: { '@type': 'State', name: 'Alberta' } },
+    { '@type': 'City', name: 'Grande Prairie', containedIn: { '@type': 'State', name: 'Alberta' } },
+    { '@type': 'City', name: 'Fort McMurray', containedIn: { '@type': 'State', name: 'Alberta' } },
+    { '@type': 'City', name: 'Medicine Hat', containedIn: { '@type': 'State', name: 'Alberta' } },
+  ],
 }
 
 export default async function LinkInBioPage() {
   let articles: any[] = []
 
   try {
-    const all = await getFastArticles()
-    articles = all
-      .filter((a: any) => a.status === 'published' && a.type !== 'event')
-      .sort((a: any, b: any) => {
-        const da = new Date(a.date || a.createdAt || 0).getTime()
-        const db = new Date(b.date || b.createdAt || 0).getTime()
-        return db - da
-      })
-      .slice(0, 200)
+    const { data } = await supabase
+      .from('articles')
+      .select('id, title, slug, image_url, category, categories, created_at, date')
+      .eq('status', 'published')
+      .neq('type', 'event')
+      .order('created_at', { ascending: false })
+      .limit(120)
+
+    articles = (data || []).map((a: any) => ({
+      id: a.id,
+      title: a.title,
+      slug: a.slug,
+      imageUrl: a.image_url,
+      category: a.category || (a.categories?.[0] ?? null),
+      date: a.date || a.created_at,
+    }))
   } catch {
     articles = []
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
-        <span className="text-xl font-bold text-gray-900 tracking-tight">Culture Alberta</span>
-        <Link
-          href="/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm font-medium px-4 py-1.5 rounded-full bg-gray-900 text-white hover:bg-gray-700 transition-colors"
-        >
-          Visit site
-        </Link>
-      </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
-      {/* Intro */}
-      <div className="px-4 py-5 text-center">
-        <p className="text-sm text-gray-500">Alberta&apos;s latest stories</p>
-      </div>
+      <div className="min-h-screen bg-white">
+        {/* Sticky header */}
+        <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+            {/* Logo */}
+            <span className="text-base font-bold text-gray-900 tracking-tight mr-auto">
+              Culture Alberta
+            </span>
 
-      {/* Article feed */}
-      <ArticleFeed articles={articles} />
+            {/* Social icons */}
+            <div className="flex items-center gap-3.5">
+              <a
+                href="https://www.instagram.com/culturealberta._/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow Culture Alberta on Instagram"
+                className="text-gray-400 hover:text-gray-900 transition-colors"
+              >
+                <Instagram size={17} strokeWidth={1.8} />
+              </a>
+              <a
+                href="https://www.youtube.com/@CultureAlberta_"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Culture Alberta on YouTube"
+                className="text-gray-400 hover:text-gray-900 transition-colors"
+              >
+                <Youtube size={17} strokeWidth={1.8} />
+              </a>
+              <a
+                href="https://www.facebook.com/profile.php?id=100064044099295"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Culture Alberta on Facebook"
+                className="text-gray-400 hover:text-gray-900 transition-colors"
+              >
+                <Facebook size={17} strokeWidth={1.8} />
+              </a>
+            </div>
 
-      {/* Footer */}
-      <div className="text-center text-xs text-gray-400 pb-8">
-        <Link href="/" target="_blank" className="hover:underline">culturealberta.com</Link>
+            <Link
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold px-3.5 py-1.5 rounded-full bg-gray-900 text-white hover:bg-gray-700 transition-colors whitespace-nowrap"
+            >
+              Visit site
+            </Link>
+          </div>
+        </header>
+
+        {/* Tagline */}
+        <div className="max-w-6xl mx-auto px-4 pt-4 pb-0">
+          <h1 className="text-sm text-gray-400 font-medium text-center">
+            Alberta&apos;s latest stories
+          </h1>
+        </div>
+
+        {/* Main content — filters + grid */}
+        <main>
+          <ArticleFeed articles={articles} />
+        </main>
+
+        {/* Footer */}
+        <footer className="text-center text-xs text-gray-300 pb-10 pt-4">
+          <Link
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-gray-500 transition-colors"
+          >
+            culturealberta.com
+          </Link>
+        </footer>
       </div>
-    </div>
+    </>
   )
 }

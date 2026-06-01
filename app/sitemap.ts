@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { getAllEvents } from '@/lib/events'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
-export const revalidate = 3600
+export const revalidate = 60
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.culturealberta.com'

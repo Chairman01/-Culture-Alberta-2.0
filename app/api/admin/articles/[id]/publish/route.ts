@@ -58,6 +58,7 @@ export async function PATCH(
     revalidatePath('/calgary')
     revalidatePath('/edmonton')
     revalidatePath('/alberta')
+    revalidatePath('/sitemap.xml')
   } catch { /* non-fatal */ }
 
   // Clear fast cache
