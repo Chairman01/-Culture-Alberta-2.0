@@ -7,8 +7,9 @@ import { Footer } from '@/components/footer'
 export function ConditionalSiteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isAdmin = pathname?.startsWith('/admin')
+  const isLinkInBio = pathname?.startsWith('/link-in-bio')
 
-  if (isAdmin) {
+  if (isAdmin || isLinkInBio) {
     return <>{children}</>
   }
 

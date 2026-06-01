@@ -88,6 +88,12 @@ const nextConfig = {
         destination: '/articles/premier-danielle-smith-signals-alberta-may-explore-halal-insurance-model-at-calgary-eid-celebration',
         permanent: true,
       },
+      // Article slug change: Spruce Grove billboard man article renamed
+      {
+        source: '/articles/a-spruce-grove-man-is-paying-for-billboards-across-edmonton-to-find-a-wife-the-response-has-been-mix',
+        destination: '/articles/this-spruce-grove-man-bought-billboards-across-edmonton-to-find-a-wife',
+        permanent: true,
+      },
       // Redirect common misspellings
       {
         source: '/calagry',
