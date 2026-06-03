@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Plus, Edit, Trash2, Search, RefreshCw, CheckCircle, AlertCircle, Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
+import { Plus, Edit, Trash2, Search, RefreshCw, CheckCircle, AlertCircle, Loader2, ChevronUp, ChevronDown, ChevronsUpDown, Pin, PinOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -38,6 +38,7 @@ interface ExtendedArticle extends Article {
   status?: string;
   createdAt?: string;
   updatedAt?: string;
+  pinned_link_in_bio?: boolean;
 }
 
 // Define a more complete article type
@@ -325,6 +326,33 @@ export default function AdminArticles() {
     }
   }
 
+  const handleTogglePin = async (article: ExtendedArticle) => {
+    const newPinned = !article.pinned_link_in_bio
+    try {
+      const res = await fetch(`/api/admin/articles/${article.id}/pin`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinned: newPinned }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast({ title: 'Could not update pin', description: data.error, variant: 'destructive' })
+        return
+      }
+      setArticles(prev =>
+        prev.map(a => (a.id === article.id ? { ...a, pinned_link_in_bio: newPinned } : a)),
+      )
+      toast({
+        title: newPinned ? 'Article pinned' : 'Article unpinned',
+        description: newPinned
+          ? `"${article.title}" is now pinned to the link-in-bio.`
+          : `"${article.title}" has been unpinned.`,
+      })
+    } catch {
+      toast({ title: 'Error', description: 'Could not update pin.', variant: 'destructive' })
+    }
+  }
+
   const filteredArticles = articles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = category === "all" || article.category === category
@@ -502,6 +530,7 @@ export default function AdminArticles() {
                     {label}<SortIcon col={key} />
                   </th>
                 ))}
+                <th className="text-center p-4 text-sm font-semibold text-gray-700">Pinned</th>
                 <th className="text-right p-4 text-sm font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
@@ -597,6 +626,19 @@ export default function AdminArticles() {
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                         {article.type}
                       </span>
+                    </td>
+                    <td className="p-4 text-center">
+                      <button
+                        onClick={() => handleTogglePin(article)}
+                        title={article.pinned_link_in_bio ? 'Unpin from link-in-bio' : 'Pin to link-in-bio'}
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded transition-colors ${
+                          article.pinned_link_in_bio
+                            ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
+                            : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
+                        }`}
+                      >
+                        {article.pinned_link_in_bio ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
+                      </button>
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">

@@ -1,12 +1,9 @@
 User-Agent: *
 Allow: /
-# NOTE: Do NOT block /_next/static/ — Google needs CSS/JS to render pages properly
-Allow: /api/news-sitemap
+
+# Block admin and internal routes
 Disallow: /admin/
 Disallow: /api/
-Disallow: /_next/data/*
-Disallow: /favicon.ico
-Disallow: /files/*.pdf
 Disallow: /debug/
 Disallow: /debug-simple/
 Disallow: /test
@@ -25,6 +22,10 @@ Disallow: /populate
 Disallow: /populate/
 Disallow: /2
 Disallow: /3
+Disallow: /favicon.ico
+Disallow: /files/*.pdf
+
+# Block low-quality/draft articles
 Disallow: /articles/article-1755471413706-6x340tv5w
 Disallow: /articles/article-1757443668525-it4u5nhfo
 Disallow: /articles/article-1754957054981-fturxi4mi
@@ -48,4 +49,3 @@ Disallow: /articles/redditors-top-romantic-edmonton-spots
 Disallow: /articles/the-5-best-brunch-spots-in-edmonton-you-need-to-try-at-least-once
 
 Sitemap: https://www.culturealberta.com/sitemap.xml
-Sitemap: https://www.culturealberta.com/api/news-sitemap

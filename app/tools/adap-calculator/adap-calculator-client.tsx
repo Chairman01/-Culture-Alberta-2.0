@@ -306,7 +306,7 @@ export default function ADAPCalculatorClient() {
               <label htmlFor="income" className="block text-base font-bold text-gray-800">
                 How much do <em>you</em> earn from work each month?
                 <span className="block text-sm text-gray-500 font-normal mt-0.5">
-                  Gross (before tax) employment income — enter 0 if you don&apos;t work
+                  Net (after-tax) employment income — your take-home pay after income tax, CPP, and EI. Enter 0 if you don&apos;t work.
                 </span>
               </label>
               <div className="relative max-w-xs">
@@ -329,7 +329,7 @@ export default function ADAPCalculatorClient() {
                 <label htmlFor="partner-income" className="block text-base font-bold text-gray-800">
                   How much does your partner earn from work each month?
                   <span className="block text-sm text-gray-500 font-normal mt-0.5">
-                    Gross (before tax) — enter 0 if they don&apos;t work
+                    Net (after-tax) — their take-home pay after income tax, CPP, and EI. Enter 0 if they don&apos;t work.
                   </span>
                 </label>
                 <div className="relative max-w-xs">

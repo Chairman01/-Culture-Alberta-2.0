@@ -39,10 +39,43 @@ function getArticleSchemaType(category?: string, tags?: string[]): 'NewsArticle'
   return 'Article'
 }
 
+// Known author profiles — maps display name → about URL for Bing E-A-T
+const AUTHOR_URLS: Record<string, string> = {
+  'Adam Harrison': 'https://www.culturealberta.com/about#adam-harrison',
+}
+
+function estimateWordCount(content?: string | null): number {
+  if (!content) return 0
+  // Strip HTML tags, then count whitespace-separated tokens
+  const text = content.replace(/<[^>]+>/g, ' ').trim()
+  return text ? text.split(/\s+/).length : 0
+}
+
 export function ArticleStructuredData({ article, baseUrl = 'https://www.culturealberta.com' }: StructuredDataProps) {
   // Generate slug from title for consistent URLs
   const articleSlug = article.slug || createSlug(article.title)
   const schemaType = getArticleSchemaType(article.category, article.tags)
+  const wordCount = estimateWordCount(article.content)
+
+  const authorName = article.author && article.author !== 'Culture Alberta'
+    ? article.author
+    : null
+
+  const authorEntity = authorName
+    ? {
+        "@type": "Person",
+        "name": authorName,
+        ...(AUTHOR_URLS[authorName] ? { "url": AUTHOR_URLS[authorName] } : {}),
+      }
+    : {
+        "@type": "Organization",
+        "name": "Culture Alberta",
+        "url": baseUrl,
+        "logo": {
+          "@type": "ImageObject",
+          "url": `${baseUrl}/images/culture-alberta-logo.svg`,
+        },
+      }
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -50,12 +83,11 @@ export function ArticleStructuredData({ article, baseUrl = 'https://www.culturea
     "headline": article.title,
     "description": article.excerpt || article.content?.substring(0, 160) || `Discover ${article.title} in Alberta`,
     "image": getArticleImageUrl(article.imageUrl, baseUrl),
-    "author": article.author && article.author !== 'Culture Alberta'
-      ? { "@type": "Person", "name": article.author }
-      : { "@type": "Organization", "name": "Culture Alberta", "url": baseUrl },
+    "author": authorEntity,
     "publisher": {
       "@type": "Organization",
       "name": "Culture Alberta",
+      "url": baseUrl,
       "logo": {
         "@type": "ImageObject",
         "url": `${baseUrl}/images/culture-alberta-logo.svg`,
@@ -70,12 +102,20 @@ export function ArticleStructuredData({ article, baseUrl = 'https://www.culturea
       "@id": `${baseUrl}/articles/${articleSlug}`
     },
     "url": `${baseUrl}/articles/${articleSlug}`,
+    "inLanguage": "en-CA",
     "articleSection": article.category || "Culture",
     "keywords": article.tags?.join(', ') || `${article.category}, Alberta, Culture`,
+    ...(wordCount > 0 ? { "wordCount": wordCount } : {}),
     "about": {
       "@type": "Place",
       "name": article.location || "Alberta, Canada"
-    }
+    },
+    "copyrightYear": new Date(article.date || Date.now()).getFullYear(),
+    "copyrightHolder": {
+      "@type": "Organization",
+      "name": "Culture Alberta",
+      "url": baseUrl,
+    },
   }
 
   return (

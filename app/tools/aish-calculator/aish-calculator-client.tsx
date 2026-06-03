@@ -64,14 +64,6 @@ const relatedArticles = [
 ]
 
 // ---------------------------------------------------------------------------
-// 2026 Tax constants (simplified estimate — does not include CPP/EI)
-// ---------------------------------------------------------------------------
-const FED_BPA_ANNUAL = 16129   // federal basic personal amount
-const AB_BPA_ANNUAL = 21003    // Alberta basic personal amount
-const FED_RATE = 0.15          // first federal bracket
-const AB_RATE = 0.10           // Alberta flat rate (first bracket)
-
-// ---------------------------------------------------------------------------
 // Calculation helpers
 // ---------------------------------------------------------------------------
 function fmt(n: number) {
@@ -131,15 +123,8 @@ function calculateAISH(inputs: {
   const netMonthly = Math.max(0, grossMonthly - clawback)
   const annualBenefit = netMonthly * 12
 
-  // Estimated income tax on employment income only (AISH is tax-free)
-  const annualEmployment = householdEmploymentIncome * 12
-  const fedTaxable = Math.max(0, annualEmployment - FED_BPA_ANNUAL)
-  const abTaxable = Math.max(0, annualEmployment - AB_BPA_ANNUAL)
-  const annualTax = fedTaxable * FED_RATE + abTaxable * AB_RATE
-  const monthlyTax = annualTax / 12
-  const afterTaxEmployment = Math.max(0, monthlyEmploymentIncome - monthlyTax)
-
-  const totalMonthlyTakeHome = netMonthly + afterTaxEmployment
+  // User enters net (after-tax) employment income — no re-taxation needed
+  const totalMonthlyTakeHome = netMonthly + householdEmploymentIncome
   const totalAnnualTakeHome = totalMonthlyTakeHome * 12
 
   return {
@@ -152,8 +137,6 @@ function calculateAISH(inputs: {
     netMonthly,
     annualBenefit,
     fullyClawedBack: netMonthly === 0 && grossMonthly > 0,
-    monthlyTax,
-    afterTaxEmployment,
     totalMonthlyTakeHome,
     totalAnnualTakeHome,
   }
@@ -487,7 +470,8 @@ export default function AISHCalculatorPage() {
               {/* Employment income */}
               <div className="space-y-2">
                 <label htmlFor="income" className="block text-sm font-medium text-gray-700">
-                  Monthly employment income
+                  Monthly net (after-tax) employment income
+                  <span className="block text-xs text-gray-400 font-normal mt-0.5">Your take-home pay after income tax, CPP, and EI. Enter 0 if you don&apos;t work.</span>
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-base">$</span>
@@ -512,7 +496,8 @@ export default function AISHCalculatorPage() {
               {maritalStatus !== "single" && (
                 <div className="space-y-2">
                   <label htmlFor="partner-income" className="block text-sm font-medium text-gray-700">
-                    Spouse / partner monthly employment income
+                    Spouse / partner monthly net (after-tax) employment income
+                    <span className="block text-xs text-gray-400 font-normal mt-0.5">Their take-home pay after income tax, CPP, and EI. Enter 0 if they don&apos;t work.</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-base">$</span>
@@ -746,28 +731,13 @@ export default function AISHCalculatorPage() {
                     <span className="font-medium text-gray-900">{fmt(result.netMonthly)}</span>
                   </div>
                   <div className="flex justify-between py-2.5 text-sm">
-                    <span className="text-gray-500">Household employment income (gross)</span>
+                    <span className="text-gray-500">Household employment income (net)</span>
                     <span className="text-gray-700">{fmt(result.householdEmploymentIncome)}</span>
                   </div>
-                  {result.monthlyTax > 0 && (
-                    <div className="flex justify-between py-2.5 text-sm">
-                      <div>
-                        <span className="text-gray-500">Estimated income tax</span>
-                        <p className="text-xs text-gray-400 mt-0.5">Federal + Alberta — does not include CPP/EI</p>
-                      </div>
-                      <span className="text-red-500 font-medium">−{fmt(result.monthlyTax)}</span>
-                    </div>
-                  )}
-                  {result.monthlyTax === 0 && (
-                    <div className="flex justify-between py-2.5 text-sm text-gray-400">
-                      <span>Estimated income tax</span>
-                      <span>$0.00 (below basic personal amount)</span>
-                    </div>
-                  )}
                   <div className="flex justify-between pt-4 pb-1">
                     <div>
-                      <span className="font-bold text-gray-900">Estimated take-home</span>
-                      <p className="text-xs text-gray-400 mt-0.5">AISH + after-tax household employment income</p>
+                      <span className="font-bold text-gray-900">Total monthly income</span>
+                      <p className="text-xs text-gray-400 mt-0.5">AISH + net household employment income</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-bold text-gray-900">{fmt(result.totalMonthlyTakeHome)}</p>
@@ -775,9 +745,6 @@ export default function AISHCalculatorPage() {
                     </div>
                   </div>
                 </div>
-                <p className="text-xs text-gray-400 mt-4 pt-3 border-t border-gray-50 leading-relaxed">
-                  Tax estimate uses 2026 federal (15%) and Alberta (10%) rates on income above the basic personal amounts ({fmt(FED_BPA_ANNUAL / 12)}/mo federal, {fmt(AB_BPA_ANNUAL / 12)}/mo Alberta). CPP contributions and EI premiums are not included — they would reduce take-home slightly.
-                </p>
               </div>
             )}
 

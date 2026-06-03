@@ -62,26 +62,43 @@ const jsonLd = {
 
 export default async function LinkInBioPage() {
   let articles: any[] = []
+  let pinnedArticles: any[] = []
 
   try {
-    const { data } = await supabase
-      .from('articles')
-      .select('id, title, slug, image_url, category, categories, created_at, date')
-      .eq('status', 'published')
-      .neq('type', 'event')
-      .order('created_at', { ascending: false })
-      .limit(120)
+    const [allRes, pinnedRes] = await Promise.all([
+      supabase
+        .from('articles')
+        .select('id, title, slug, image_url, category, categories, created_at, date')
+        .eq('status', 'published')
+        .neq('type', 'event')
+        .order('created_at', { ascending: false })
+        .limit(120),
+      supabase
+        .from('articles')
+        .select('id, title, slug, image_url, category, categories, created_at, date')
+        .eq('status', 'published')
+        .eq('pinned_link_in_bio', true)
+        .neq('type', 'event')
+        .limit(4),
+    ])
 
-    articles = (data || []).map((a: any) => ({
+    const mapArticle = (a: any) => ({
       id: a.id,
       title: a.title,
       slug: a.slug,
       imageUrl: a.image_url,
       category: a.category || (a.categories?.[0] ?? null),
       date: a.date || a.created_at,
-    }))
+    })
+
+    const pinnedIds = new Set((pinnedRes.data || []).map((a: any) => a.id))
+    pinnedArticles = (pinnedRes.data || []).map(mapArticle)
+    articles = (allRes.data || [])
+      .filter((a: any) => !pinnedIds.has(a.id))
+      .map(mapArticle)
   } catch {
     articles = []
+    pinnedArticles = []
   }
 
   return (
@@ -151,7 +168,7 @@ export default async function LinkInBioPage() {
 
         {/* Main content — filters + grid */}
         <main>
-          <ArticleFeed articles={articles} />
+          <ArticleFeed articles={articles} pinnedArticles={pinnedArticles} />
         </main>
 
         {/* Footer */}

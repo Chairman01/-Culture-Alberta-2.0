@@ -21,12 +21,10 @@ interface Article {
 
 interface ArticleFeedProps {
   articles: Article[]
+  pinnedArticles?: Article[]
 }
 
 // ---------- constants ----------
-
-// Add article slugs here to pin them at the top (max 4 recommended)
-const PINNED_SLUGS: string[] = []
 
 const PAGE_SIZE = 12
 const NEWSLETTER_INSERT_AFTER = 8 // insert newsletter banner after this many cards
@@ -191,30 +189,13 @@ function ArticleCard({ article }: { article: Article }) {
 
 // ---------- main feed ----------
 
-export default function ArticleFeed({ articles }: ArticleFeedProps) {
+export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFeedProps) {
   const [selectedCity, setSelectedCity] = useState('')
   const [visible, setVisible] = useState(PAGE_SIZE)
 
-  // Separate pinned articles from the main feed
-  const pinnedArticles = useMemo(
-    () =>
-      PINNED_SLUGS.length > 0
-        ? (PINNED_SLUGS.map(slug => articles.find(a => a.slug === slug)).filter(Boolean) as Article[])
-        : [],
-    [articles],
-  )
-
-  const unpinnedArticles = useMemo(
-    () =>
-      PINNED_SLUGS.length > 0
-        ? articles.filter(a => !PINNED_SLUGS.includes(a.slug ?? ''))
-        : articles,
-    [articles],
-  )
-
   const filtered = useMemo(
-    () => unpinnedArticles.filter((a) => matchesCity(a, selectedCity)),
-    [unpinnedArticles, selectedCity]
+    () => articles.filter((a) => matchesCity(a, selectedCity)),
+    [articles, selectedCity]
   )
 
   const shown = filtered.slice(0, visible)
