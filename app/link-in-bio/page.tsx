@@ -68,14 +68,14 @@ export default async function LinkInBioPage() {
     const [allRes, pinnedRes] = await Promise.all([
       supabase
         .from('articles')
-        .select('id, title, slug, image_url, category, categories, created_at, date, location')
+        .select('id, title, slug, image_url, category, categories, created_at, date, location, excerpt')
         .eq('status', 'published')
         .neq('type', 'event')
         .order('created_at', { ascending: false })
         .limit(120),
       supabase
         .from('articles')
-        .select('id, title, slug, image_url, category, categories, created_at, date, location')
+        .select('id, title, slug, image_url, category, categories, created_at, date, location, excerpt')
         .eq('status', 'published')
         .eq('pinned_link_in_bio', true)
         .neq('type', 'event')
@@ -92,6 +92,7 @@ export default async function LinkInBioPage() {
       categories: a.categories,
       location: a.location,
       date: a.date || a.created_at,
+      excerpt: a.excerpt,
     })
 
     const pinnedIds = new Set((pinnedRes.data || []).map((a: any) => a.id))

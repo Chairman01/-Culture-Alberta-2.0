@@ -17,6 +17,7 @@ interface Article {
   date?: string
   createdAt?: string
   excerpt?: string
+  description?: string
 }
 
 interface ArticleFeedProps {
@@ -82,7 +83,7 @@ function InlineNewsletter() {
   }
 
   return (
-    <div className="col-span-3 md:col-span-4 bg-gray-900 rounded-2xl p-5 text-white">
+    <div className="col-span-1 sm:col-span-2 md:col-span-3 bg-gray-900 rounded-2xl p-5 text-white">
       <div className="flex items-center gap-3 mb-3">
         <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
           <Mail className="w-4 h-4 text-white" />
@@ -131,44 +132,53 @@ function InlineNewsletter() {
   )
 }
 
-// ---------- Instagram-style tile with persistent text overlay ----------
+// ---------- Narcity-style tile: landscape image + text below ----------
 
 function GridTile({ article }: { article: Article }) {
   const href = `/articles/${article.slug || article.id}`
+  const date = formatDate(article.date || article.createdAt)
+  const excerpt = article.excerpt || article.description
 
   return (
     <Link
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group relative aspect-square block overflow-hidden bg-gray-100 rounded-sm"
+      className="group flex flex-col overflow-hidden bg-white"
     >
-      {/* Full-bleed image */}
-      {article.imageUrl ? (
-        <Image
-          src={article.imageUrl}
-          alt={article.title}
-          fill
-          className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
-          sizes="(max-width: 640px) 33vw, 25vw"
-        />
-      ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900" />
-      )}
-
-      {/* Persistent bottom gradient + text */}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-8 pb-2.5 px-2.5">
-        {article.category && (
-          <p className="text-[8px] font-bold uppercase tracking-widest text-white/70 mb-1 leading-none">
-            {article.category}
-          </p>
+      {/* Landscape image — shows full image */}
+      <div className="relative aspect-[16/9] bg-gray-100 overflow-hidden rounded-sm">
+        {article.imageUrl ? (
+          <Image
+            src={article.imageUrl}
+            alt={article.title}
+            fill
+            className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300" />
         )}
-        <p className="text-white text-[11px] font-semibold leading-snug line-clamp-3">
+      </div>
+
+      {/* Text below image */}
+      <div className="pt-2.5 pb-3 px-0.5">
+        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+          {(article.location || article.category) && (
+            <span className="text-[10px] font-bold bg-blue-50 text-blue-700 rounded-full px-2 py-0.5 leading-none">
+              {article.location || article.category}
+            </span>
+          )}
+          {date && <span className="text-[10px] text-gray-400">{date}</span>}
+        </div>
+        <p className="text-[13px] font-bold text-gray-900 leading-snug line-clamp-2 group-hover:text-gray-600 transition-colors">
           {article.title}
         </p>
-        <p className="text-white/60 text-[9px] mt-1 font-medium">
-          Read full article →
-        </p>
+        {excerpt && (
+          <p className="text-[11px] text-gray-500 mt-1 line-clamp-2 leading-snug">
+            {excerpt}
+          </p>
+        )}
       </div>
     </Link>
   )
@@ -281,8 +291,8 @@ export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFe
         </div>
       </div>
 
-      {/* ---------- Instagram-style grid — 3 col mobile, 4 col desktop ---------- */}
-      <div className="max-w-5xl mx-auto px-1 py-1">
+      {/* ---------- Narcity-style grid — 1 col mobile, 2 col tablet, 3 col desktop ---------- */}
+      <div className="max-w-5xl mx-auto px-3 py-2">
         {filtered.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-400 text-sm">No stories found for this city yet.</p>
@@ -295,12 +305,12 @@ export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFe
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-5">
               {gridItems}
             </div>
 
             {shown.length <= NEWSLETTER_INSERT_AFTER && (
-              <div className="px-3 mt-3">
+              <div className="mt-4">
                 <InlineNewsletter />
               </div>
             )}
