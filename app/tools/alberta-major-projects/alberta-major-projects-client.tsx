@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import dynamic from "next/dynamic"
 import { useState, useMemo, useCallback, useEffect } from "react"
 import {
   ArrowLeft,
@@ -24,7 +25,20 @@ import {
   Bell,
   Lightbulb,
   ChevronRight,
+  LayoutGrid,
+  Map,
+  BarChart2,
 } from "lucide-react"
+
+// Dynamically import the map so Leaflet only loads client-side (no SSR)
+const MapViewDynamic = dynamic(() => import("./map-view"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-[600px] bg-gray-50 rounded-xl border border-gray-200 text-gray-400 text-sm">
+      Loading map…
+    </div>
+  ),
+})
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,6 +59,8 @@ export type Project = {
   website?: string
   stage: string
   status?: string
+  lat?: number
+  lng?: number
 }
 
 export type Article = {
@@ -856,6 +872,88 @@ function SpotlightCard({
 }
 
 // ---------------------------------------------------------------------------
+// City card — used in the "By City" dashboard view
+// ---------------------------------------------------------------------------
+function CityCard({
+  cityName,
+  total,
+  cost,
+  byStage,
+  onSelect,
+}: {
+  cityName: string
+  total: number
+  cost: number
+  byStage: Record<string, number>
+  onSelect: () => void
+}) {
+  const uc = byStage["Under Construction"] ?? 0
+  const proposed = byStage["Proposed"] ?? 0
+  const completed = byStage["Completed"] ?? 0
+
+  return (
+    <button
+      onClick={onSelect}
+      className="bg-white rounded-2xl border border-gray-100 p-5 text-left hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 group w-full"
+    >
+      {/* City name + count */}
+      <div className="flex items-start justify-between mb-2">
+        <div>
+          <h3 className="font-bold text-gray-900 text-base leading-tight group-hover:text-teal-700 transition-colors">
+            {cityName}
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {total} project{total !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <MapPin className="w-4 h-4 text-gray-200 shrink-0 group-hover:text-teal-400 transition-colors mt-0.5" />
+      </div>
+
+      {/* Total investment */}
+      {cost > 0 && (
+        <p className="text-2xl font-black text-gray-900 mb-3 leading-none">{fmtCost(cost)}</p>
+      )}
+
+      {/* Stage pills */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {uc > 0 && (
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+            {uc} building
+          </span>
+        )}
+        {proposed > 0 && (
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+            {proposed} proposed
+          </span>
+        )}
+        {completed > 0 && (
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+            {completed} done
+          </span>
+        )}
+      </div>
+
+      {/* Visual proportion bar */}
+      <div className="flex h-1.5 rounded-full overflow-hidden">
+        {uc > 0 && (
+          <div className="bg-blue-500 transition-all" style={{ flex: uc }} />
+        )}
+        {proposed > 0 && (
+          <div className="bg-amber-400 transition-all" style={{ flex: proposed }} />
+        )}
+        {completed > 0 && (
+          <div className="bg-emerald-500 transition-all" style={{ flex: completed }} />
+        )}
+      </div>
+
+      <p className="mt-2.5 text-[11px] text-teal-500 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        View projects <ChevronRight className="w-3 h-3" />
+      </p>
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 export default function AlbertaMajorProjectsClient({
@@ -873,6 +971,7 @@ export default function AlbertaMajorProjectsClient({
   const [sortBy, setSortBy] = useState<"cost" | "city">("cost")
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [updatedProjectIds, setUpdatedProjectIds] = useState<Set<string>>(new Set())
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid")
 
   // ── Detect changed projects using localStorage snapshot ──
   useEffect(() => {
@@ -907,6 +1006,7 @@ export default function AlbertaMajorProjectsClient({
   }, [updatedProjectIds])
 
   const isQueueView = selectedStage === "__queue__"
+  const isCitiesView = selectedStage === "__cities__"
 
   const stageCounts = useMemo(() => {
     const counts: Record<string, number> = { all: projects.length }
@@ -929,6 +1029,24 @@ export default function AlbertaMajorProjectsClient({
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([city]) => city)
   }, [projects])
 
+  const cityStats = useMemo(() => {
+    const map: Record<string, { city: string; total: number; cost: number; byStage: Record<string, number> }> = {}
+    for (const p of projects) {
+      for (const city of p.municipalities ?? []) {
+        if (!map[city]) map[city] = { city, total: 0, cost: 0, byStage: {} }
+        map[city].total++
+        map[city].cost += p.cost ?? 0
+        map[city].byStage[p.stage] = (map[city].byStage[p.stage] ?? 0) + 1
+      }
+    }
+    return Object.values(map).sort((a, b) => {
+      const aUC = a.byStage["Under Construction"] ?? 0
+      const bUC = b.byStage["Under Construction"] ?? 0
+      if (aUC !== bUC) return bUC - aUC
+      return b.cost - a.cost
+    })
+  }, [projects])
+
   const spotlight = useMemo(
     () => projects.filter((p) => p.stage === "Under Construction" && (p.cost ?? 0) >= 50).slice(0, 3),
     [projects]
@@ -941,13 +1059,15 @@ export default function AlbertaMajorProjectsClient({
         .sort((a, b) => (b.cost ?? 0) - (a.cost ?? 0))
     }
 
+    if (isCitiesView) return []
+
     const spotlightIds = new Set(spotlight.map((p) => p.id))
     const q = search.toLowerCase().trim()
 
     return projects
       .filter((p) => {
         if (!selectedStage && !selectedCity && !q && spotlightIds.has(p.id)) return false
-        if (selectedStage && selectedStage !== "__queue__" && p.stage !== selectedStage) return false
+        if (selectedStage && selectedStage !== "__queue__" && selectedStage !== "__cities__" && p.stage !== selectedStage) return false
         if (selectedCity && !(p.municipalities ?? []).includes(selectedCity)) return false
         if (q) {
           const hay = [p.name, p.friendlyName ?? "", ...(p.municipalities ?? []), p.developer ?? ""]
@@ -960,7 +1080,7 @@ export default function AlbertaMajorProjectsClient({
         if (sortBy === "city") return (a.municipalities?.[0] ?? "").localeCompare(b.municipalities?.[0] ?? "")
         return (b.cost ?? 0) - (a.cost ?? 0)
       })
-  }, [projects, selectedStage, selectedCity, search, sortBy, spotlight, articlesByProject, isQueueView])
+  }, [projects, selectedStage, selectedCity, search, sortBy, spotlight, articlesByProject, isQueueView, isCitiesView])
 
   const stats = useMemo(() => ({
     totalCost: projects.reduce((s, p) => s + (p.cost ?? 0), 0),
@@ -976,8 +1096,8 @@ export default function AlbertaMajorProjectsClient({
     setSelectedCity(null)
   }, [])
 
-  const hasFilters = !!search || (!!selectedStage && !isQueueView) || !!selectedCity
-  const showSpotlight = !hasFilters && !isQueueView && spotlight.length > 0
+  const hasFilters = !!search || (!!selectedStage && !isQueueView && !isCitiesView) || !!selectedCity
+  const showSpotlight = !hasFilters && !isQueueView && !isCitiesView && spotlight.length > 0
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
@@ -1110,23 +1230,58 @@ export default function AlbertaMajorProjectsClient({
                 Needs Article
                 <span className="opacity-70">{queueCount}</span>
               </button>
+
+              {/* By City tab */}
+              <button
+                onClick={() => setSelectedStage(isCitiesView ? null : "__cities__")}
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors border flex items-center gap-1 ${
+                  isCitiesView
+                    ? "bg-teal-100 text-teal-700 border-teal-200"
+                    : "bg-gray-50 text-gray-500 border-gray-100 hover:bg-teal-50 hover:text-teal-600 hover:border-teal-100"
+                }`}
+              >
+                <BarChart2 className="w-3 h-3" />
+                By City
+              </button>
             </div>
 
-            {/* Sort */}
-            <div className="ml-auto flex items-center gap-1.5 shrink-0">
-              <span className="text-xs text-gray-400">Sort:</span>
-              <button
-                onClick={() => setSortBy("cost")}
-                className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors ${sortBy === "cost" ? "bg-teal-100 text-teal-700 font-medium" : "text-gray-500 hover:bg-gray-100"}`}
-              >
-                Budget
-              </button>
-              <button
-                onClick={() => setSortBy("city")}
-                className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors ${sortBy === "city" ? "bg-teal-100 text-teal-700 font-medium" : "text-gray-500 hover:bg-gray-100"}`}
-              >
-                City
-              </button>
+            {/* Sort + View toggle */}
+            <div className="ml-auto flex items-center gap-3 shrink-0">
+              {viewMode === "grid" && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-400">Sort:</span>
+                  <button
+                    onClick={() => setSortBy("cost")}
+                    className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors ${sortBy === "cost" ? "bg-teal-100 text-teal-700 font-medium" : "text-gray-500 hover:bg-gray-100"}`}
+                  >
+                    Budget
+                  </button>
+                  <button
+                    onClick={() => setSortBy("city")}
+                    className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors ${sortBy === "city" ? "bg-teal-100 text-teal-700 font-medium" : "text-gray-500 hover:bg-gray-100"}`}
+                  >
+                    City
+                  </button>
+                </div>
+              )}
+
+              {/* Map / Grid view toggle */}
+              <div className="flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5 bg-gray-50">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  title="Grid view"
+                  className={`p-1.5 rounded-md transition-colors ${viewMode === "grid" ? "bg-white shadow-sm text-teal-600" : "text-gray-400 hover:text-gray-600"}`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setViewMode("map")}
+                  title="Map view"
+                  className={`p-1.5 rounded-md transition-colors ${viewMode === "map" ? "bg-white shadow-sm text-teal-600" : "text-gray-400 hover:text-gray-600"}`}
+                >
+                  <Map className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1216,6 +1371,44 @@ export default function AlbertaMajorProjectsClient({
                 </div>
               )}
             </div>
+          </div>
+        ) : isCitiesView ? (
+          /* ── Cities dashboard view ── */
+          <div className="pt-8">
+            <div className="flex items-center gap-3 mb-2">
+              <BarChart2 className="w-5 h-5 text-teal-500" />
+              <h2 className="text-lg font-bold text-gray-900">Projects by City</h2>
+              <span className="text-sm text-gray-400">{cityStats.length} cities with active projects</span>
+            </div>
+            <p className="text-sm text-gray-400 mb-6 ml-8">
+              Click any city to explore its projects. Investment figures are combined across all stages.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {cityStats.map(({ city, total, cost, byStage }) => (
+                <CityCard
+                  key={city}
+                  cityName={city}
+                  total={total}
+                  cost={cost}
+                  byStage={byStage}
+                  onSelect={() => {
+                    setSelectedStage(null)
+                    setSelectedCity(city)
+                    setViewMode("grid")
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ) : viewMode === "map" ? (
+          /* ── Map view ── */
+          <div className="pt-6">
+            <MapViewDynamic
+              projects={filtered.length > 0 ? filtered : projects}
+              articlesByProject={articlesByProject}
+              onSelectProject={handleSelectProject}
+              selectedProjectId={selectedProject?.id}
+            />
           </div>
         ) : (
           <>
