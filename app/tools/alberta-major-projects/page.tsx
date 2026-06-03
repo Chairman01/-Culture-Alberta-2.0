@@ -154,6 +154,11 @@ function parseProject(feature: any): Project | null {
   // Omit cancelled projects from the default view
   if (stage === "Cancelled") return null
 
+  // Extract GeoJSON Point coordinates — [lng, lat]
+  const coords = feature?.geometry?.coordinates
+  const lng = typeof coords?.[0] === "number" ? coords[0] : undefined
+  const lat = typeof coords?.[1] === "number" ? coords[1] : undefined
+
   return {
     id: String(p.id ?? feature.id ?? Math.random()),
     name: p.name ?? "Unnamed Project",
@@ -177,6 +182,8 @@ function parseProject(feature: any): Project | null {
     website: p.website && p.website.startsWith("http") ? p.website : undefined,
     stage,
     status: p.status ?? undefined,
+    lat,
+    lng,
   }
 }
 
