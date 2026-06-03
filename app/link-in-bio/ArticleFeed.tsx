@@ -131,7 +131,7 @@ function InlineNewsletter() {
   )
 }
 
-// ---------- Instagram-style square tile ----------
+// ---------- Instagram-style tile with persistent text overlay ----------
 
 function GridTile({ article }: { article: Article }) {
   const href = `/articles/${article.slug || article.id}`
@@ -149,26 +149,27 @@ function GridTile({ article }: { article: Article }) {
           src={article.imageUrl}
           alt={article.title}
           fill
-          className="object-cover group-hover:scale-[1.04] transition-transform duration-300"
+          className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
           sizes="(max-width: 640px) 33vw, 25vw"
         />
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300" />
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900" />
       )}
 
-      {/* Hover overlay with title */}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors duration-200 flex items-end p-2">
-        <p className="text-white text-[11px] font-semibold leading-snug line-clamp-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      {/* Persistent bottom gradient + text */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-8 pb-2.5 px-2.5">
+        {article.category && (
+          <p className="text-[8px] font-bold uppercase tracking-widest text-white/70 mb-1 leading-none">
+            {article.category}
+          </p>
+        )}
+        <p className="text-white text-[11px] font-semibold leading-snug line-clamp-3">
           {article.title}
         </p>
+        <p className="text-white/60 text-[9px] mt-1 font-medium">
+          Read full article →
+        </p>
       </div>
-
-      {/* Category pill — always visible, top-left */}
-      {article.category && (
-        <span className="absolute top-1.5 left-1.5 text-[8px] font-bold uppercase tracking-wider bg-white/90 text-gray-700 rounded-full px-1.5 py-0.5 backdrop-blur-sm leading-none">
-          {article.category}
-        </span>
-      )}
     </Link>
   )
 }
