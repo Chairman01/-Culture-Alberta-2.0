@@ -926,6 +926,8 @@ export default function AlbertaMajorProjectsClient({
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [updatedProjectIds, setUpdatedProjectIds] = useState<Set<string>>(new Set())
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid")
+  const [citySearch, setCitySearch] = useState("")
+  const [citySortBy, setCitySortBy] = useState<"activity" | "cost" | "name">("activity")
 
   // ── Detect changed projects using localStorage snapshot ──
   useEffect(() => {
@@ -993,13 +995,19 @@ export default function AlbertaMajorProjectsClient({
         map[city].byStage[p.stage] = (map[city].byStage[p.stage] ?? 0) + 1
       }
     }
-    return Object.values(map).sort((a, b) => {
-      const aUC = a.byStage["Under Construction"] ?? 0
-      const bUC = b.byStage["Under Construction"] ?? 0
-      if (aUC !== bUC) return bUC - aUC
-      return b.cost - a.cost
-    })
-  }, [projects])
+    const q = citySearch.toLowerCase().trim()
+    return Object.values(map)
+      .filter(c => !q || c.city.toLowerCase().includes(q))
+      .sort((a, b) => {
+        if (citySortBy === "name") return a.city.localeCompare(b.city)
+        if (citySortBy === "cost") return b.cost - a.cost
+        // "activity" — most under construction first, then cost
+        const aUC = a.byStage["Under Construction"] ?? 0
+        const bUC = b.byStage["Under Construction"] ?? 0
+        if (aUC !== bUC) return bUC - aUC
+        return b.cost - a.cost
+      })
+  }, [projects, citySearch, citySortBy])
 
   const spotlight = useMemo(
     () => projects.filter((p) => p.stage === "Under Construction" && (p.cost ?? 0) >= 50).slice(0, 3),
@@ -1334,25 +1342,64 @@ export default function AlbertaMajorProjectsClient({
               <h2 className="text-lg font-bold text-gray-900">Projects by City</h2>
               <span className="text-sm text-gray-400">{cityStats.length} cities with active projects</span>
             </div>
-            <p className="text-sm text-gray-400 mb-6 ml-8">
+            <p className="text-sm text-gray-400 mb-5 ml-8">
               Click any city to explore its projects. Investment figures are combined across all stages.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {cityStats.map(({ city, total, cost, byStage }) => (
-                <CityCard
-                  key={city}
-                  cityName={city}
-                  total={total}
-                  cost={cost}
-                  byStage={byStage}
-                  onSelect={() => {
-                    setSelectedStage(null)
-                    setSelectedCity(city)
-                    setViewMode("grid")
-                  }}
+
+            {/* ── City search + sort bar ── */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={citySearch}
+                  onChange={e => setCitySearch(e.target.value)}
+                  placeholder="Search cities…"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
                 />
-              ))}
+                {citySearch && (
+                  <button onClick={() => setCitySearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-1.5 bg-white border border-gray-200 rounded-xl p-1 shrink-0">
+                {([["activity", "Most Active"], ["cost", "Highest Investment"], ["name", "A – Z"]] as const).map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => setCitySortBy(val)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${citySortBy === val ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-100"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {cityStats.length === 0 ? (
+              <div className="text-center py-16">
+                <MapPin className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                <p className="text-gray-500 font-semibold">No cities match &quot;{citySearch}&quot;</p>
+                <button onClick={() => setCitySearch("")} className="mt-2 text-sm text-teal-500 hover:text-teal-700 font-medium">Clear search</button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {cityStats.map(({ city, total, cost, byStage }) => (
+                  <CityCard
+                    key={city}
+                    cityName={city}
+                    total={total}
+                    cost={cost}
+                    byStage={byStage}
+                    onSelect={() => {
+                      setSelectedStage(null)
+                      setSelectedCity(city)
+                      setViewMode("grid")
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ) : viewMode === "map" ? (
           /* ── Map view ── */

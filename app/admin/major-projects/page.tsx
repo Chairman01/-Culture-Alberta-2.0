@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -14,10 +14,14 @@ import {
   Search,
   ArrowLeft,
   MapPin,
+  Link2,
+  X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 
 // ---------------------------------------------------------------------------
-// Types (mirrors the main tool)
+// Types
 // ---------------------------------------------------------------------------
 interface Project {
   id: string
@@ -34,6 +38,12 @@ interface Project {
 interface LinkedArticle {
   slug: string
   title: string
+}
+
+interface ArticleOption {
+  slug: string
+  title: string
+  tags: string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -106,17 +116,136 @@ function CopyTagButton({ projectId }: { projectId: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Link Article inline widget
+// ---------------------------------------------------------------------------
+function LinkArticleWidget({
+  project,
+  allArticles,
+  onLinked,
+}: {
+  project: Project
+  allArticles: ArticleOption[]
+  onLinked: (slug: string, projectId: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState("")
+  const [linking, setLinking] = useState<string | null>(null)
+  const [linked, setLinked] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const matches = useMemo(() => {
+    if (!q.trim()) return []
+    const lq = q.toLowerCase()
+    return allArticles
+      .filter(a => a.title.toLowerCase().includes(lq) || a.slug.toLowerCase().includes(lq))
+      .slice(0, 8)
+  }, [q, allArticles])
+
+  async function handleLink(article: ArticleOption) {
+    setLinking(article.slug)
+    try {
+      const res = await fetch(`/api/admin/articles/${article.slug}/tag`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag: `project:${project.id}` }),
+      })
+      if (res.ok) {
+        setLinked(article.slug)
+        onLinked(article.slug, project.id)
+        setTimeout(() => {
+          setOpen(false)
+          setLinked(null)
+          setQ("")
+        }, 1500)
+      }
+    } catch {}
+    setLinking(null)
+  }
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 50)
+  }, [open])
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="inline-flex items-center gap-1 text-xs text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-1 rounded font-medium transition-colors"
+      >
+        <Link2 className="w-3 h-3" />
+        Link article
+        {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+      </button>
+
+      {open && (
+        <div className="absolute z-50 top-full mt-1.5 left-0 w-80 bg-white rounded-xl border border-gray-200 shadow-xl p-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-gray-700">Search existing articles</p>
+            <button onClick={() => { setOpen(false); setQ("") }} className="text-gray-400 hover:text-gray-600">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="relative mb-2">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="Type article title…"
+              className="w-full pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-300 bg-gray-50"
+            />
+          </div>
+          {q.trim() && matches.length === 0 && (
+            <p className="text-xs text-gray-400 py-2 text-center">No articles found</p>
+          )}
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {matches.map(a => (
+              <button
+                key={a.slug}
+                onClick={() => handleLink(a)}
+                disabled={!!linking || !!linked}
+                className="w-full text-left px-2.5 py-2 text-xs rounded-lg hover:bg-teal-50 transition-colors flex items-start gap-2 disabled:opacity-60"
+              >
+                {linked === a.slug ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                ) : linking === a.slug ? (
+                  <div className="w-3.5 h-3.5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin shrink-0 mt-0.5" />
+                ) : (
+                  <Link2 className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
+                )}
+                <span className="line-clamp-2 text-gray-700 leading-tight">{a.title}</span>
+              </button>
+            ))}
+          </div>
+          {!q.trim() && (
+            <p className="text-[11px] text-gray-400 text-center py-1">Start typing to search articles</p>
+          )}
+          <div className="mt-2 pt-2 border-t border-gray-100">
+            <p className="text-[10px] text-gray-400">
+              Or add tag <code className="font-mono bg-gray-100 px-1 rounded">project:{project.id}</code> manually in the article editor
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 export default function AdminMajorProjectsPage() {
   const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
   const [articlesByProject, setArticlesByProject] = useState<Record<string, LinkedArticle[]>>({})
+  const [allArticles, setAllArticles] = useState<ArticleOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<"all" | "linked" | "needs">("all")
   const [stageFilter, setStageFilter] = useState<string | null>(null)
+  const [priorityExpanded, setPriorityExpanded] = useState(true)
 
   // Auth check
   useEffect(() => {
@@ -129,7 +258,7 @@ export default function AdminMajorProjectsPage() {
     async function load() {
       setLoading(true)
       try {
-        // Fetch projects from Alberta API
+        // 1. Fetch projects from Alberta API
         const geoRes = await fetch(ALBERTA_API_URL, { cache: "no-store" })
         const geojson = await geoRes.json()
         const features = Array.isArray(geojson.features) ? geojson.features : Array.isArray(geojson) ? geojson : []
@@ -137,7 +266,7 @@ export default function AdminMajorProjectsPage() {
         const parsed: Project[] = (features as any[]).map((f) => parseProject(f)).filter((p): p is Project => p !== null)
         setProjects(parsed)
 
-        // Fetch linked articles via our own API
+        // 2. Fetch linked articles for these projects
         const projectTags = parsed.map((p) => `project:${p.id}`)
         const artRes = await fetch("/api/admin/major-projects/articles", {
           method: "POST",
@@ -145,7 +274,7 @@ export default function AdminMajorProjectsPage() {
           body: JSON.stringify({ tags: projectTags }),
         })
         if (artRes.ok) {
-          const artData: Array<{ slug: string; title: string; tags: string[] }> = await artRes.json()
+          const artData: ArticleOption[] = await artRes.json()
           const byProject: Record<string, LinkedArticle[]> = {}
           for (const a of artData) {
             for (const tag of a.tags ?? []) {
@@ -158,6 +287,16 @@ export default function AdminMajorProjectsPage() {
           }
           setArticlesByProject(byProject)
         }
+
+        // 3. Fetch all articles for the "Link Article" widget
+        const allArtRes = await fetch("/api/admin/major-projects/articles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tags: [], fetchAll: true }),
+        })
+        if (allArtRes.ok) {
+          setAllArticles(await allArtRes.json())
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load")
       } finally {
@@ -166,6 +305,16 @@ export default function AdminMajorProjectsPage() {
     }
     load()
   }, [])
+
+  // When an article is linked via the widget, update local state immediately
+  function handleArticleLinked(articleSlug: string, projectId: string) {
+    const article = allArticles.find(a => a.slug === articleSlug)
+    if (!article) return
+    setArticlesByProject(prev => ({
+      ...prev,
+      [projectId]: [...(prev[projectId] ?? []), { slug: article.slug, title: article.title }],
+    }))
+  }
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -179,7 +328,6 @@ export default function AdminMajorProjectsPage() {
       }
       return true
     }).sort((a, b) => {
-      // Needs Article first, then by stage order, then cost
       const hasA = !!(articlesByProject[a.id]?.length)
       const hasB = !!(articlesByProject[b.id]?.length)
       if (hasA !== hasB) return hasA ? 1 : -1
@@ -194,20 +342,26 @@ export default function AdminMajorProjectsPage() {
     total: projects.length,
     linked: projects.filter((p) => !!(articlesByProject[p.id]?.length)).length,
     needs: projects.filter((p) => !(articlesByProject[p.id]?.length)).length,
+    ucNeeds: projects.filter((p) => p.stage === "Under Construction" && !(articlesByProject[p.id]?.length)).length,
   }), [projects, articlesByProject])
+
+  // Priority list: Under Construction without articles, sorted by cost
+  const priorityProjects = useMemo(() => {
+    return projects
+      .filter(p => p.stage === "Under Construction" && !(articlesByProject[p.id]?.length))
+      .sort((a, b) => (b.cost ?? 0) - (a.cost ?? 0))
+  }, [projects, articlesByProject])
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
       </div>
     )
   }
 
   if (error) {
-    return (
-      <div className="p-8 text-red-600">Error: {error}</div>
-    )
+    return <div className="p-8 text-red-600">Error: {error}</div>
   }
 
   return (
@@ -235,29 +389,79 @@ export default function AdminMajorProjectsPage() {
           </Link>
         </div>
 
-        {/* Stats */}
+        {/* Stats — clickable to filter */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <button
+            onClick={() => setFilter("all")}
+            className={`bg-white rounded-xl border p-4 text-left transition-all hover:shadow-md ${filter === "all" ? "border-gray-900 ring-1 ring-gray-900" : "border-gray-200"}`}
+          >
             <div className="text-3xl font-black text-gray-900">{stats.total}</div>
             <div className="text-sm text-gray-500 mt-0.5">Total projects</div>
-          </div>
-          <div className="bg-white rounded-xl border border-emerald-200 p-4">
+          </button>
+          <button
+            onClick={() => setFilter("linked")}
+            className={`bg-white rounded-xl border p-4 text-left transition-all hover:shadow-md ${filter === "linked" ? "border-emerald-600 ring-1 ring-emerald-500" : "border-emerald-200"}`}
+          >
             <div className="text-3xl font-black text-emerald-600">{stats.linked}</div>
             <div className="text-sm text-gray-500 mt-0.5 flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Articles linked
             </div>
-          </div>
-          <div className="bg-white rounded-xl border border-rose-200 p-4">
+          </button>
+          <button
+            onClick={() => setFilter("needs")}
+            className={`bg-white rounded-xl border p-4 text-left transition-all hover:shadow-md ${filter === "needs" ? "border-rose-600 ring-1 ring-rose-500" : "border-rose-200"}`}
+          >
             <div className="text-3xl font-black text-rose-600">{stats.needs}</div>
             <div className="text-sm text-gray-500 mt-0.5 flex items-center gap-1">
               <AlertCircle className="w-3.5 h-3.5 text-rose-500" /> Need an article
             </div>
-          </div>
+          </button>
         </div>
+
+        {/* Priority callout — Under Construction projects without articles */}
+        {priorityProjects.length > 0 && filter !== "linked" && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl mb-5 overflow-hidden">
+            <button
+              onClick={() => setPriorityExpanded(e => !e)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left"
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+                <span className="text-sm font-semibold text-amber-800">
+                  {stats.ucNeeds} active build{stats.ucNeeds !== 1 ? "s" : ""} without an article — highest priority
+                </span>
+              </div>
+              {priorityExpanded ? <ChevronUp className="w-4 h-4 text-amber-600" /> : <ChevronDown className="w-4 h-4 text-amber-600" />}
+            </button>
+            {priorityExpanded && (
+              <div className="px-4 pb-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {priorityProjects.map(p => (
+                  <div key={p.id} className="bg-white rounded-lg border border-amber-100 px-3 py-2 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{p.friendlyName || p.name}</p>
+                      <p className="text-[11px] text-gray-400 truncate">{p.municipalities.join(", ")} · {fmtCost(p.cost)}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <CopyTagButton projectId={p.id} />
+                      <a
+                        href="/admin/articles/new"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-0.5 text-[11px] text-white bg-teal-600 hover:bg-teal-700 px-2 py-1 rounded font-medium transition-colors"
+                      >
+                        <FileText className="w-2.5 h-2.5" /> Write
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="bg-white rounded-xl border border-gray-200 p-3 mb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <div className="relative w-full sm:w-56">
+          <div className="relative w-full sm:w-60">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
               type="search"
@@ -301,6 +505,10 @@ export default function AdminMajorProjectsPage() {
               </button>
             ))}
           </div>
+
+          <span className="ml-auto text-xs text-gray-400 hidden sm:block shrink-0">
+            {filtered.length} of {stats.total}
+          </span>
         </div>
 
         {/* Table */}
@@ -367,6 +575,13 @@ export default function AdminMajorProjectsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 flex-wrap">
                           <CopyTagButton projectId={p.id} />
+                          {!hasArticle && allArticles.length > 0 && (
+                            <LinkArticleWidget
+                              project={p}
+                              allArticles={allArticles}
+                              onLinked={handleArticleLinked}
+                            />
+                          )}
                           {!hasArticle && (
                             <a
                               href="/admin/articles/new"
@@ -395,7 +610,7 @@ export default function AdminMajorProjectsPage() {
 
         <p className="text-xs text-gray-400 mt-3 text-center">
           Data from the <a href="https://majorprojects.alberta.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-teal-600">Government of Alberta Major Projects Inventory</a>.
-          To link an article, add the <code className="font-mono">project:ID</code> tag to the article in the CMS.
+          To link an article, add the <code className="font-mono">project:ID</code> tag in the article editor, or use the &quot;Link article&quot; button above.
         </p>
       </div>
     </div>
