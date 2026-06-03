@@ -132,53 +132,44 @@ function InlineNewsletter() {
   )
 }
 
-// ---------- Narcity-style tile: landscape image + text below ----------
+// ---------- Overlay tile: landscape image with text overlaid ----------
 
 function GridTile({ article }: { article: Article }) {
   const href = `/articles/${article.slug || article.id}`
-  const date = formatDate(article.date || article.createdAt)
-  const excerpt = article.excerpt || article.description
 
   return (
     <Link
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex flex-col overflow-hidden bg-white"
+      className="group relative aspect-[4/3] block overflow-hidden bg-gray-100 rounded-sm"
     >
-      {/* Landscape image — shows full image */}
-      <div className="relative aspect-[16/9] bg-gray-100 overflow-hidden rounded-sm">
-        {article.imageUrl ? (
-          <Image
-            src={article.imageUrl}
-            alt={article.title}
-            fill
-            className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300" />
-        )}
-      </div>
+      {/* Full-bleed landscape image */}
+      {article.imageUrl ? (
+        <Image
+          src={article.imageUrl}
+          alt={article.title}
+          fill
+          className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900" />
+      )}
 
-      {/* Text below image */}
-      <div className="pt-2.5 pb-3 px-0.5">
-        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-          {(article.location || article.category) && (
-            <span className="text-[10px] font-bold bg-blue-50 text-blue-700 rounded-full px-2 py-0.5 leading-none">
-              {article.location || article.category}
-            </span>
-          )}
-          {date && <span className="text-[10px] text-gray-400">{date}</span>}
-        </div>
-        <p className="text-[13px] font-bold text-gray-900 leading-snug line-clamp-2 group-hover:text-gray-600 transition-colors">
-          {article.title}
-        </p>
-        {excerpt && (
-          <p className="text-[11px] text-gray-500 mt-1 line-clamp-2 leading-snug">
-            {excerpt}
+      {/* Gradient overlay — bottom portion only */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-12 pb-3 px-3">
+        {(article.location || article.category) && (
+          <p className="text-[9px] font-bold uppercase tracking-widest text-white/80 mb-1 leading-none">
+            {article.location || article.category}
           </p>
         )}
+        <p className="text-white text-[13px] font-bold leading-snug line-clamp-2">
+          {article.title}
+        </p>
+        <p className="text-white/60 text-[10px] mt-1.5 font-medium">
+          Read full article →
+        </p>
       </div>
     </Link>
   )
