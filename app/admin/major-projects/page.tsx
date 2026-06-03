@@ -316,27 +316,38 @@ export default function AdminMajorProjectsPage() {
     }))
   }
 
-  const filtered = useMemo(() => {
+  // Split projects into two lists: covered and needs-article
+  const { coveredProjects, needsProjects } = useMemo(() => {
     const q = search.toLowerCase().trim()
-    return projects.filter((p) => {
+    const stageOrder: Record<string, number> = { "Under Construction": 0, "Proposed": 1, "Completed": 2 }
+
+    const base = projects.filter((p) => {
       if (stageFilter && p.stage !== stageFilter) return false
-      if (filter === "linked" && !(articlesByProject[p.id]?.length)) return false
-      if (filter === "needs" && !!(articlesByProject[p.id]?.length)) return false
       if (q) {
         const hay = [p.name, p.friendlyName ?? "", ...(p.municipalities ?? [])].join(" ").toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
-    }).sort((a, b) => {
-      const hasA = !!(articlesByProject[a.id]?.length)
-      const hasB = !!(articlesByProject[b.id]?.length)
-      if (hasA !== hasB) return hasA ? 1 : -1
-      const stageOrder: Record<string, number> = { "Under Construction": 0, "Proposed": 1, "Completed": 2 }
-      const so = (stageOrder[a.stage] ?? 3) - (stageOrder[b.stage] ?? 3)
-      if (so !== 0) return so
-      return (b.cost ?? 0) - (a.cost ?? 0)
     })
-  }, [projects, articlesByProject, filter, stageFilter, search])
+
+    const covered = base
+      .filter(p => !!(articlesByProject[p.id]?.length))
+      .sort((a, b) => {
+        const so = (stageOrder[a.stage] ?? 3) - (stageOrder[b.stage] ?? 3)
+        return so !== 0 ? so : (b.cost ?? 0) - (a.cost ?? 0)
+      })
+
+    const needs = base
+      .filter(p => !(articlesByProject[p.id]?.length))
+      .sort((a, b) => {
+        const so = (stageOrder[a.stage] ?? 3) - (stageOrder[b.stage] ?? 3)
+        return so !== 0 ? so : (b.cost ?? 0) - (a.cost ?? 0)
+      })
+
+    return { coveredProjects: covered, needsProjects: needs }
+  }, [projects, articlesByProject, stageFilter, search])
+
+  const filtered = filter === "linked" ? coveredProjects : filter === "needs" ? needsProjects : [...coveredProjects, ...needsProjects]
 
   const stats = useMemo(() => ({
     total: projects.length,
@@ -389,110 +400,30 @@ export default function AdminMajorProjectsPage() {
           </Link>
         </div>
 
-        {/* Stats — clickable to filter */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <button
-            onClick={() => setFilter("all")}
-            className={`bg-white rounded-xl border p-4 text-left transition-all hover:shadow-md ${filter === "all" ? "border-gray-900 ring-1 ring-gray-900" : "border-gray-200"}`}
-          >
-            <div className="text-3xl font-black text-gray-900">{stats.total}</div>
-            <div className="text-sm text-gray-500 mt-0.5">Total projects</div>
-          </button>
-          <button
-            onClick={() => setFilter("linked")}
-            className={`bg-white rounded-xl border p-4 text-left transition-all hover:shadow-md ${filter === "linked" ? "border-emerald-600 ring-1 ring-emerald-500" : "border-emerald-200"}`}
-          >
-            <div className="text-3xl font-black text-emerald-600">{stats.linked}</div>
-            <div className="text-sm text-gray-500 mt-0.5 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Articles linked
+        {/* Summary bar */}
+        <div className="flex items-center gap-4 bg-white rounded-xl border border-gray-200 px-5 py-3 mb-6 text-sm">
+          <span className="text-gray-500">{stats.total} total projects</span>
+          <span className="text-gray-200">|</span>
+          <span className="font-semibold text-emerald-600 flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5" /> {stats.linked} covered
+          </span>
+          <span className="text-gray-200">|</span>
+          <span className="font-semibold text-rose-600 flex items-center gap-1">
+            <AlertCircle className="w-3.5 h-3.5" /> {stats.needs} need article
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <input
+                type="search"
+                placeholder="Search…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50 w-44"
+              />
             </div>
-          </button>
-          <button
-            onClick={() => setFilter("needs")}
-            className={`bg-white rounded-xl border p-4 text-left transition-all hover:shadow-md ${filter === "needs" ? "border-rose-600 ring-1 ring-rose-500" : "border-rose-200"}`}
-          >
-            <div className="text-3xl font-black text-rose-600">{stats.needs}</div>
-            <div className="text-sm text-gray-500 mt-0.5 flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5 text-rose-500" /> Need an article
-            </div>
-          </button>
-        </div>
-
-        {/* Priority callout — Under Construction projects without articles */}
-        {priorityProjects.length > 0 && filter !== "linked" && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl mb-5 overflow-hidden">
-            <button
-              onClick={() => setPriorityExpanded(e => !e)}
-              className="w-full flex items-center justify-between px-4 py-3 text-left"
-            >
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-600" />
-                <span className="text-sm font-semibold text-amber-800">
-                  {stats.ucNeeds} active build{stats.ucNeeds !== 1 ? "s" : ""} without an article — highest priority
-                </span>
-              </div>
-              {priorityExpanded ? <ChevronUp className="w-4 h-4 text-amber-600" /> : <ChevronDown className="w-4 h-4 text-amber-600" />}
-            </button>
-            {priorityExpanded && (
-              <div className="px-4 pb-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {priorityProjects.map(p => (
-                  <div key={p.id} className="bg-white rounded-lg border border-amber-100 px-3 py-2 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-gray-900 truncate">{p.friendlyName || p.name}</p>
-                      <p className="text-[11px] text-gray-400 truncate">{p.municipalities.join(", ")} · {fmtCost(p.cost)}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <CopyTagButton projectId={p.id} />
-                      <a
-                        href="/admin/articles/new"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-0.5 text-[11px] text-white bg-teal-600 hover:bg-teal-700 px-2 py-1 rounded font-medium transition-colors"
-                      >
-                        <FileText className="w-2.5 h-2.5" /> Write
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Filters */}
-        <div className="bg-white rounded-xl border border-gray-200 p-3 mb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <div className="relative w-full sm:w-60">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-            <input
-              type="search"
-              placeholder="Search projects, cities…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
-            />
-          </div>
-
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {(["all", "needs", "linked"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
-                  filter === f
-                    ? f === "needs"
-                      ? "bg-rose-100 text-rose-700 border-rose-200"
-                      : f === "linked"
-                        ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                        : "bg-gray-900 text-white border-gray-900"
-                    : "bg-gray-50 text-gray-500 border-gray-100 hover:bg-gray-100"
-                }`}
-              >
-                {f === "all" ? `All (${stats.total})` : f === "needs" ? `Needs Article (${stats.needs})` : `Linked (${stats.linked})`}
-              </button>
-            ))}
-
-            <div className="w-px h-4 bg-gray-200" />
-
+            {/* Stage filter */}
             {["Under Construction", "Proposed", "Completed"].map((s) => (
               <button
                 key={s}
@@ -505,40 +436,110 @@ export default function AdminMajorProjectsPage() {
               </button>
             ))}
           </div>
-
-          <span className="ml-auto text-xs text-gray-400 hidden sm:block shrink-0">
-            {filtered.length} of {stats.total}
-          </span>
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50 text-left">
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Project</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">City</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Stage</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Budget</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Article Status</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filtered.map((p) => {
-                  const articles = articlesByProject[p.id] ?? []
-                  const hasArticle = articles.length > 0
-                  return (
-                    <tr key={p.id} className={`hover:bg-gray-50/70 transition-colors ${!hasArticle ? "bg-rose-50/30" : ""}`}>
+        {/* ── SECTION 1: Covered projects ── */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+            <h2 className="text-base font-bold text-gray-900">Covered — {coveredProjects.length} project{coveredProjects.length !== 1 ? "s" : ""} with articles</h2>
+          </div>
+
+          {coveredProjects.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200 px-5 py-8 text-center text-gray-400 text-sm">
+              No covered projects yet. Use &quot;Link article&quot; or add a <code className="font-mono text-xs bg-gray-100 px-1 rounded">project:ID</code> tag to an article.
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-emerald-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-emerald-50/60 text-left">
+                      <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Project</th>
+                      <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">City</th>
+                      <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Stage</th>
+                      <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Budget</th>
+                      <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Linked Article</th>
+                      <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Tag</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {coveredProjects.map((p) => {
+                      const articles = articlesByProject[p.id] ?? []
+                      return (
+                        <tr key={p.id} className="hover:bg-emerald-50/30 transition-colors">
+                          <td className="px-4 py-3 max-w-xs">
+                            <div className="font-semibold text-gray-900 leading-tight">{p.friendlyName || p.name}</div>
+                            {p.type && <div className="text-xs text-gray-400 mt-0.5">{p.type}</div>}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                              <MapPin className="w-3 h-3 shrink-0" />{p.municipalities.join(", ") || "—"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STAGE_COLORS[p.stage] ?? "bg-gray-100 text-gray-600"}`}>
+                              {p.stage === "Under Construction" ? "Building" : p.stage}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap font-semibold text-gray-700">{fmtCost(p.cost)}</td>
+                          <td className="px-4 py-3">
+                            <div className="space-y-1">
+                              {articles.map((a) => (
+                                <a key={a.slug} href={`/articles/${a.slug}`} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-xs text-emerald-700 hover:text-emerald-900 font-medium">
+                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="line-clamp-1">{a.title}</span>
+                                  <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-60" />
+                                </a>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3"><CopyTagButton projectId={p.id} /></td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── SECTION 2: Needs article ── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="w-5 h-5 text-rose-500" />
+            <h2 className="text-base font-bold text-gray-900">Needs Article — {needsProjects.length} project{needsProjects.length !== 1 ? "s" : ""}</h2>
+            {stats.ucNeeds > 0 && (
+              <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                {stats.ucNeeds} currently building — highest priority
+              </span>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-rose-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-rose-50/40 text-left">
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Project</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">City</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Stage</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Budget</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {needsProjects.map((p) => (
+                    <tr key={p.id} className="hover:bg-rose-50/20 transition-colors">
                       <td className="px-4 py-3 max-w-xs">
                         <div className="font-semibold text-gray-900 leading-tight">{p.friendlyName || p.name}</div>
                         {p.type && <div className="text-xs text-gray-400 mt-0.5">{p.type}</div>}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="flex items-center gap-1 text-xs text-gray-500">
-                          <MapPin className="w-3 h-3 shrink-0" />
-                          {p.municipalities.join(", ") || "—"}
+                          <MapPin className="w-3 h-3 shrink-0" />{p.municipalities.join(", ") || "—"}
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -546,71 +547,36 @@ export default function AdminMajorProjectsPage() {
                           {p.stage === "Under Construction" ? "Building" : p.stage}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap font-semibold text-gray-700">
-                        {fmtCost(p.cost)}
-                      </td>
-                      <td className="px-4 py-3">
-                        {hasArticle ? (
-                          <div className="space-y-1">
-                            {articles.map((a) => (
-                              <a
-                                key={a.slug}
-                                href={`/articles/${a.slug}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs text-emerald-700 hover:text-emerald-900 font-medium"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                                <span className="line-clamp-1">{a.title}</span>
-                                <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-60" />
-                              </a>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs text-rose-600 font-medium">
-                            <AlertCircle className="w-3.5 h-3.5" /> Needs article
-                          </span>
-                        )}
-                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap font-semibold text-gray-700">{fmtCost(p.cost)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 flex-wrap">
                           <CopyTagButton projectId={p.id} />
-                          {!hasArticle && allArticles.length > 0 && (
-                            <LinkArticleWidget
-                              project={p}
-                              allArticles={allArticles}
-                              onLinked={handleArticleLinked}
-                            />
+                          {allArticles.length > 0 && (
+                            <LinkArticleWidget project={p} allArticles={allArticles} onLinked={handleArticleLinked} />
                           )}
-                          {!hasArticle && (
-                            <a
-                              href="/admin/articles/new"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-white bg-teal-600 hover:bg-teal-700 px-2.5 py-1 rounded font-medium transition-colors"
-                            >
-                              <FileText className="w-3 h-3" /> Write
-                            </a>
-                          )}
+                          <a href="/admin/articles/new" target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-white bg-teal-600 hover:bg-teal-700 px-2.5 py-1 rounded font-medium transition-colors">
+                            <FileText className="w-3 h-3" /> Write
+                          </a>
                         </div>
                       </td>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-            {filtered.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Building2 className="w-10 h-10 text-gray-200 mb-3" />
-                <p className="text-gray-500 font-semibold">No projects match your filters</p>
-              </div>
-            )}
+                  ))}
+                </tbody>
+              </table>
+              {needsProjects.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-200 mb-3" />
+                  <p className="text-gray-500 font-semibold">All projects are covered!</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 mt-3 text-center">
+        <p className="text-xs text-gray-400 mt-4 text-center">
           Data from the <a href="https://majorprojects.alberta.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-teal-600">Government of Alberta Major Projects Inventory</a>.
-          To link an article, add the <code className="font-mono">project:ID</code> tag in the article editor, or use the &quot;Link article&quot; button above.
+          To link an article, use the &quot;Link article&quot; button or add a <code className="font-mono">project:ID</code> tag in the article editor.
         </p>
       </div>
     </div>
