@@ -159,18 +159,30 @@ export async function subscribeToNewsletter(email: string, city: string): Promis
   }
 }
 
-// Get all newsletter subscriptions (for admin)
+// Get all newsletter subscriptions (for admin) — paginated to bypass PostgREST 1,000 row cap
 export async function getAllNewsletterSubscriptions(): Promise<NewsletterSubscription[]> {
   try {
     if (!supabase) return []
-    
-    const { data, error } = await supabase
-      .from('newsletter_subscriptions')
-      .select('*')
-      .order('created_at', { ascending: false })
 
-    if (error) throw error
-    return data || []
+    const allData: NewsletterSubscription[] = []
+    const PAGE_SIZE = 1000
+    let page = 0
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('newsletter_subscriptions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+
+      if (error) throw error
+      if (!data || data.length === 0) break
+      allData.push(...data)
+      if (data.length < PAGE_SIZE) break
+      page++
+    }
+
+    return allData
   } catch (error) {
     console.error('Error fetching newsletter subscriptions:', error)
     return []
@@ -257,18 +269,29 @@ export async function getNewsletterStats() {
     
     console.log('Fetching newsletter stats...')
     
-    const { data, error } = await supabase
-      .from('newsletter_subscriptions')
-      .select('status, city')
-
-    if (error) {
-      console.error('Supabase error fetching stats:', error)
-      throw error
+    // Paginate to bypass PostgREST 1,000 row default cap
+    const allRows: { status: string; city: string }[] = []
+    const PAGE_SIZE = 1000
+    let page = 0
+    while (true) {
+      const { data, error } = await supabase
+        .from('newsletter_subscriptions')
+        .select('status, city')
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+      if (error) {
+        console.error('Supabase error fetching stats:', error)
+        throw error
+      }
+      if (!data || data.length === 0) break
+      allRows.push(...data)
+      if (data.length < PAGE_SIZE) break
+      page++
     }
+    const data = allRows
 
-    console.log('Raw newsletter data:', data)
+    console.log('Raw newsletter data count:', data.length)
 
-    const activeData = data?.filter(sub => sub.status === 'active') || []
+    const activeData = data.filter(sub => sub.status === 'active')
 
     // All known city values (matches NEWSLETTER_CITIES in lib/newsletter-cities.ts)
     const KNOWN_CITIES = [
@@ -287,9 +310,9 @@ export async function getNewsletterStats() {
     if (unknownCount > 0) byCity['unknown'] = unknownCount
 
     const stats = {
-      total: data?.length || 0,
+      total: data.length,
       active: activeData.length,
-      unsubscribed: data?.filter(sub => sub.status === 'unsubscribed').length || 0,
+      unsubscribed: data.filter(sub => sub.status === 'unsubscribed').length,
       byCity,
     }
 

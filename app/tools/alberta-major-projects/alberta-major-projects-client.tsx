@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import dynamic from "next/dynamic"
 import { useState, useMemo, useCallback, useEffect } from "react"
 import {
   ArrowLeft,
@@ -15,7 +14,6 @@ import {
   X,
   HardHat,
   CheckCircle2,
-  FileText,
   Users,
   TrendingUp,
   Landmark,
@@ -23,22 +21,10 @@ import {
   Check,
   Sparkles,
   Bell,
-  Lightbulb,
   ChevronRight,
   LayoutGrid,
-  Map,
   BarChart2,
 } from "lucide-react"
-
-// Dynamically import the map so Leaflet only loads client-side (no SSR)
-const MapViewDynamic = dynamic(() => import("./map-view"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center h-[600px] bg-gray-50 rounded-xl border border-gray-200 text-gray-400 text-sm">
-      Loading map…
-    </div>
-  ),
-})
 
 // ---------------------------------------------------------------------------
 // Types
@@ -194,12 +180,12 @@ function getStorySuggestions(project: Project): string[] {
     ideas.push(`What the proposed ${name} means for ${city} residents`)
     ideas.push(`Community reaction to ${city}'s ${cost ? cost + " " : ""}${project.type?.toLowerCase() ?? "project"}`)
   } else if (s === "Completed") {
-    ideas.push(`${name} opens — a first look inside`)
+    ideas.push(`${name} opens: a first look inside`)
     ideas.push(`How ${name} is already changing ${city}`)
   }
 
   if (isPublicFunder(project.developer) && project.cost && project.cost >= 50) {
-    ideas.push(`Who is paying for ${name} — and is it worth it?`)
+    ideas.push(`Who is paying for ${name}, and is it worth it?`)
   }
 
   return ideas.slice(0, 2)
@@ -937,6 +923,119 @@ function CityCard({
 }
 
 // ---------------------------------------------------------------------------
+// Chart view — stage breakdown + investment by city
+// ---------------------------------------------------------------------------
+function ProjectChartView({
+  projects,
+  articlesByProject,
+  onCityClick,
+}: {
+  projects: Project[]
+  articlesByProject: Record<string, Article[]>
+  onCityClick: (city: string) => void
+}) {
+  const stageData = useMemo(() => {
+    const stages = [
+      { key: "Under Construction", label: "Building", color: "bg-blue-500" },
+      { key: "Proposed", label: "Proposed", color: "bg-amber-400" },
+      { key: "Completed", label: "Completed", color: "bg-emerald-500" },
+    ]
+    const totalCost = projects.reduce((s, p) => s + (p.cost ?? 0), 0)
+    return stages.map(({ key, label, color }) => {
+      const ps = projects.filter(p => p.stage === key)
+      const cost = ps.reduce((s, p) => s + (p.cost ?? 0), 0)
+      return {
+        label,
+        color,
+        count: ps.length,
+        cost,
+        linked: ps.filter(p => getArticlesForProject(p.id, articlesByProject).length > 0).length,
+        pct: totalCost > 0 ? (cost / totalCost) * 100 : 0,
+      }
+    })
+  }, [projects, articlesByProject])
+
+  const cityData = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const p of projects) {
+      for (const city of p.municipalities ?? []) {
+        map[city] = (map[city] ?? 0) + (p.cost ?? 0)
+      }
+    }
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([city, cost]) => ({ city, cost }))
+  }, [projects])
+
+  const maxCityCost = Math.max(...cityData.map(c => c.cost), 1)
+
+  return (
+    <div className="pt-8 grid grid-cols-1 lg:grid-cols-2 gap-10">
+      {/* Stage breakdown */}
+      <div>
+        <h2 className="text-base font-bold text-gray-900 mb-0.5">Investment by Stage</h2>
+        <p className="text-xs text-gray-400 mb-5">Combined project investment across all stages.</p>
+        <div className="space-y-5">
+          {stageData.map(({ label, color, count, cost, linked, pct }) => (
+            <div key={label}>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
+                  <span className="text-sm font-semibold text-gray-700">{label}</span>
+                  <span className="text-xs text-gray-400">{count} projects</span>
+                </div>
+                <span className="text-sm font-bold text-gray-900">{fmtCost(cost)}</span>
+              </div>
+              <div className="h-7 bg-gray-100 rounded-lg overflow-hidden relative">
+                <div
+                  className={`h-full ${color} rounded-lg transition-all duration-700 opacity-80`}
+                  style={{ width: `${Math.max(pct, 1)}%` }}
+                />
+                {linked > 0 && (
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-gray-600">
+                    {linked} covered
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Top cities by investment */}
+      <div>
+        <h2 className="text-base font-bold text-gray-900 mb-0.5">Investment by City</h2>
+        <p className="text-xs text-gray-400 mb-5">Top cities by combined project value. Click to filter.</p>
+        <div className="space-y-3">
+          {cityData.map(({ city, cost }) => {
+            const pct = (cost / maxCityCost) * 100
+            return (
+              <button
+                key={city}
+                onClick={() => onCityClick(city)}
+                className="w-full text-left group"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-gray-700 group-hover:text-teal-600 transition-colors">{city}</span>
+                  <span className="text-xs font-bold text-gray-900">{fmtCost(cost)}</span>
+                </div>
+                <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-teal-400 rounded-full transition-all duration-700 group-hover:bg-teal-500"
+                    style={{ width: `${Math.max(pct, 1)}%` }}
+                  />
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 export default function AlbertaMajorProjectsClient({
@@ -951,10 +1050,9 @@ export default function AlbertaMajorProjectsClient({
   const [search, setSearch] = useState("")
   const [selectedStage, setSelectedStage] = useState<string | null>(null)
   const [selectedCity, setSelectedCity] = useState<string | null>(null)
-  const [sortBy, setSortBy] = useState<"cost" | "city">("cost")
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [updatedProjectIds, setUpdatedProjectIds] = useState<Set<string>>(new Set())
-  const [viewMode, setViewMode] = useState<"grid" | "map">("grid")
+  const [viewMode, setViewMode] = useState<"grid" | "chart">("grid")
   const [citySearch, setCitySearch] = useState("")
   const [citySortBy, setCitySortBy] = useState<"activity" | "cost" | "name">("activity")
 
@@ -990,7 +1088,6 @@ export default function AlbertaMajorProjectsClient({
     }
   }, [updatedProjectIds])
 
-  const isQueueView = selectedStage === "__queue__"
   const isCitiesView = selectedStage === "__cities__"
 
   const stageCounts = useMemo(() => {
@@ -998,11 +1095,6 @@ export default function AlbertaMajorProjectsClient({
     for (const p of projects) counts[p.stage] = (counts[p.stage] ?? 0) + 1
     return counts
   }, [projects])
-
-  const queueCount = useMemo(
-    () => projects.filter(p => !getArticlesForProject(p.id, articlesByProject).length).length,
-    [projects, articlesByProject]
-  )
 
   const topCities = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -1045,12 +1137,6 @@ export default function AlbertaMajorProjectsClient({
   )
 
   const filtered = useMemo(() => {
-    if (isQueueView) {
-      return projects
-        .filter(p => !getArticlesForProject(p.id, articlesByProject).length)
-        .sort((a, b) => (b.cost ?? 0) - (a.cost ?? 0))
-    }
-
     if (isCitiesView) return []
 
     const spotlightIds = new Set(spotlight.map((p) => p.id))
@@ -1059,7 +1145,7 @@ export default function AlbertaMajorProjectsClient({
     return projects
       .filter((p) => {
         if (!selectedStage && !selectedCity && !q && spotlightIds.has(p.id)) return false
-        if (selectedStage && selectedStage !== "__queue__" && selectedStage !== "__cities__" && p.stage !== selectedStage) return false
+        if (selectedStage && selectedStage !== "__cities__" && p.stage !== selectedStage) return false
         if (selectedCity && !(p.municipalities ?? []).includes(selectedCity)) return false
         if (q) {
           const hay = [p.name, p.friendlyName ?? "", ...(p.municipalities ?? []), p.developer ?? ""]
@@ -1068,11 +1154,8 @@ export default function AlbertaMajorProjectsClient({
         }
         return true
       })
-      .sort((a, b) => {
-        if (sortBy === "city") return (a.municipalities?.[0] ?? "").localeCompare(b.municipalities?.[0] ?? "")
-        return (b.cost ?? 0) - (a.cost ?? 0)
-      })
-  }, [projects, selectedStage, selectedCity, search, sortBy, spotlight, articlesByProject, isQueueView, isCitiesView])
+      .sort((a, b) => (b.cost ?? 0) - (a.cost ?? 0))
+  }, [projects, selectedStage, selectedCity, search, spotlight, isCitiesView])
 
   const stats = useMemo(() => ({
     totalCost: projects.reduce((s, p) => s + (p.cost ?? 0), 0),
@@ -1088,8 +1171,8 @@ export default function AlbertaMajorProjectsClient({
     setSelectedCity(null)
   }, [])
 
-  const hasFilters = !!search || (!!selectedStage && !isQueueView && !isCitiesView) || !!selectedCity
-  const showSpotlight = !hasFilters && !isQueueView && !isCitiesView && spotlight.length > 0
+  const hasFilters = !!search || (!!selectedStage && !isCitiesView) || !!selectedCity
+  const showSpotlight = !hasFilters && !isCitiesView && spotlight.length > 0
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
@@ -1115,7 +1198,7 @@ export default function AlbertaMajorProjectsClient({
                 are being built across Alberta right now
               </h1>
               <p className="text-gray-500 text-sm leading-relaxed max-w-lg">
-                Hotels, arenas, recreation centres, and event venues — tracked from proposal to
+                Hotels, arenas, recreation centres, and event venues tracked from proposal to
                 completion. Data from the Government of Alberta, updated daily.
               </p>
               <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4">
@@ -1209,20 +1292,6 @@ export default function AlbertaMajorProjectsClient({
                 )
               })}
 
-              {/* Content queue tab */}
-              <button
-                onClick={() => setSelectedStage(isQueueView ? null : "__queue__")}
-                className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors border flex items-center gap-1 ${
-                  isQueueView
-                    ? "bg-rose-100 text-rose-700 border-rose-200"
-                    : "bg-gray-50 text-gray-500 border-gray-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100"
-                }`}
-              >
-                <FileText className="w-3 h-3" />
-                Needs Article
-                <span className="opacity-70">{queueCount}</span>
-              </button>
-
               {/* By City tab */}
               <button
                 onClick={() => setSelectedStage(isCitiesView ? null : "__cities__")}
@@ -1237,48 +1306,27 @@ export default function AlbertaMajorProjectsClient({
               </button>
             </div>
 
-            {/* Sort + View toggle */}
-            <div className="ml-auto flex items-center gap-3 shrink-0">
-              {viewMode === "grid" && !isCitiesView && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-gray-400">Sort:</span>
-                  <button
-                    onClick={() => setSortBy("cost")}
-                    className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors ${sortBy === "cost" ? "bg-teal-100 text-teal-700 font-medium" : "text-gray-500 hover:bg-gray-100"}`}
-                  >
-                    Budget
-                  </button>
-                  <button
-                    onClick={() => setSortBy("city")}
-                    className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors ${sortBy === "city" ? "bg-teal-100 text-teal-700 font-medium" : "text-gray-500 hover:bg-gray-100"}`}
-                  >
-                    City
-                  </button>
-                </div>
-              )}
-
-              {/* Map / Grid view toggle */}
-              <div className="flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5 bg-gray-50">
-                <button
-                  onClick={() => setViewMode("grid")}
-                  title="Grid view"
-                  className={`p-1.5 rounded-md transition-colors ${viewMode === "grid" ? "bg-white shadow-sm text-teal-600" : "text-gray-400 hover:text-gray-600"}`}
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setViewMode("map")}
-                  title="Map view"
-                  className={`p-1.5 rounded-md transition-colors ${viewMode === "map" ? "bg-white shadow-sm text-teal-600" : "text-gray-400 hover:text-gray-600"}`}
-                >
-                  <Map className="w-3.5 h-3.5" />
-                </button>
-              </div>
+            {/* View toggle */}
+            <div className="ml-auto flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5 bg-gray-50 shrink-0">
+              <button
+                onClick={() => setViewMode("grid")}
+                title="Grid view"
+                className={`p-1.5 rounded-md transition-colors ${viewMode === "grid" ? "bg-white shadow-sm text-teal-600" : "text-gray-400 hover:text-gray-600"}`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode("chart")}
+                title="Chart view"
+                className={`p-1.5 rounded-md transition-colors ${viewMode === "chart" ? "bg-white shadow-sm text-teal-600" : "text-gray-400 hover:text-gray-600"}`}
+              >
+                <BarChart2 className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
           {/* City chips */}
-          {topCities.length > 0 && !isQueueView && !isCitiesView && (
+          {topCities.length > 0 && !isCitiesView && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[11px] text-gray-400 shrink-0">Near:</span>
               {topCities.map((city) => (
@@ -1301,70 +1349,8 @@ export default function AlbertaMajorProjectsClient({
 
       <div className="container mx-auto px-4 max-w-7xl pb-20">
 
-        {/* ── Content Queue view ── */}
-        {isQueueView ? (
-          <div className="pt-8">
-            <div className="flex items-center gap-3 mb-2">
-              <FileText className="w-5 h-5 text-rose-500" />
-              <h2 className="text-lg font-bold text-gray-900">Writing Queue</h2>
-              <span className="text-sm text-gray-400">{queueCount} projects still need an article</span>
-            </div>
-            <p className="text-sm text-gray-400 mb-6 ml-8">
-              Click any project for story ideas. Copy the tag, add it to your article in the admin, and it will appear on the project card.
-            </p>
-
-            <div className="space-y-2">
-              {filtered.map((p) => {
-                const cfg = STAGE_CONFIG[p.stage as StageKey] ?? STAGE_CONFIG.Proposed
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => handleSelectProject(p)}
-                    className="flex items-center gap-4 bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm hover:border-teal-100 transition-all cursor-pointer group"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${cfg.badgeClass}`}>
-                          {cfg.label}
-                        </span>
-                        {fmtCost(p.cost) && (
-                          <span className={`text-sm font-black ${cfg.accentText}`}>{fmtCost(p.cost)}</span>
-                        )}
-                        {(p.municipalities ?? []).length > 0 && (
-                          <span className="text-xs text-gray-400 flex items-center gap-0.5">
-                            <MapPin className="w-3 h-3" />{(p.municipalities ?? []).join(", ")}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm font-semibold text-gray-800 group-hover:text-teal-700 transition-colors">
-                        {p.friendlyName || p.name}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                      <CopyTagButton projectId={p.id} />
-                      <a
-                        href="/admin/articles/new"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-medium text-white bg-teal-600 hover:bg-teal-700 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-                      >
-                        <FileText className="w-3 h-3" /> Write
-                      </a>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-300 shrink-0 group-hover:text-teal-400 transition-colors" />
-                  </div>
-                )
-              })}
-              {filtered.length === 0 && (
-                <div className="text-center py-16">
-                  <CheckCircle2 className="w-12 h-12 text-emerald-300 mx-auto mb-3" />
-                  <p className="text-gray-600 font-semibold">All projects have articles!</p>
-                  <p className="text-sm text-gray-400">Great coverage — every project on the tracker is linked to a Culture Alberta article.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : isCitiesView ? (
+        {/* ── View router ── */}
+        {isCitiesView ? (
           /* ── Cities dashboard view ── */
           <div className="pt-8">
             <div className="flex items-center gap-3 mb-2">
@@ -1432,16 +1418,17 @@ export default function AlbertaMajorProjectsClient({
               </div>
             )}
           </div>
-        ) : viewMode === "map" ? (
-          /* ── Map view ── */
-          <div className="pt-6">
-            <MapViewDynamic
-              projects={filtered.length > 0 ? filtered : projects}
-              articlesByProject={articlesByProject}
-              onSelectProject={handleSelectProject}
-              selectedProjectId={selectedProject?.id}
-            />
-          </div>
+        ) : viewMode === "chart" ? (
+          /* ── Chart view ── */
+          <ProjectChartView
+            projects={filtered.length > 0 ? filtered : projects}
+            articlesByProject={articlesByProject}
+            onCityClick={(city) => {
+              setSelectedStage(null)
+              setSelectedCity(city)
+              setViewMode("grid")
+            }}
+          />
         ) : (
           <>
             {/* ── Spotlight section ── */}

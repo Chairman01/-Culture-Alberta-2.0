@@ -225,7 +225,7 @@ export function HomepageStructuredData({ baseUrl = 'https://www.culturealberta.c
           "name": "What cities does Culture Alberta cover?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Culture Alberta covers Edmonton, Calgary, Red Deer, Lethbridge, Medicine Hat, Grande Prairie, and province-wide Alberta stories."
+            "text": "Culture Alberta covers communities across Alberta including Edmonton, Calgary, Red Deer, Lethbridge, Medicine Hat, Grande Prairie, Fort McMurray, Lloydminster, Airdrie, St. Albert, Spruce Grove, Leduc, Camrose, Wetaskiwin, Drumheller, Banff, Jasper, Canmore, Lac La Biche, Fort Saskatchewan, Sherwood Park, Cold Lake, and Brooks."
           }
         },
         {
@@ -296,16 +296,29 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
         "name": "Alberta, Canada",
         "@id": "https://en.wikipedia.org/wiki/Alberta"
       },
-      {
-        "@type": "City",
-        "name": "Calgary",
-        "containedInPlace": "Alberta, Canada"
-      },
-      {
-        "@type": "City",
-        "name": "Edmonton",
-        "containedInPlace": "Alberta, Canada"
-      }
+      { "@type": "City", "name": "Calgary", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Edmonton", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Red Deer", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Lethbridge", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Medicine Hat", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Grande Prairie", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Fort McMurray", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Lloydminster", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Airdrie", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "St. Albert", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Spruce Grove", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Leduc", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Camrose", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Wetaskiwin", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Drumheller", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Banff", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Jasper", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Lac La Biche", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Fort Saskatchewan", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Sherwood Park", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Cold Lake", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Brooks", "containedInPlace": "Alberta, Canada" },
+      { "@type": "City", "name": "Canmore", "containedInPlace": "Alberta, Canada" }
     ],
     "knowsAbout": [
       "Alberta Culture",
@@ -319,7 +332,21 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
       "Food and Dining",
       "Cultural Events",
       "Arts and Music",
-      "Travel and Tourism"
+      "Travel and Tourism",
+      "Red Deer Events",
+      "Lethbridge Culture",
+      "Medicine Hat News",
+      "Grande Prairie Events",
+      "Fort McMurray News",
+      "Lloydminster Culture",
+      "Airdrie Events",
+      "Spruce Grove Community",
+      "Canmore Tourism",
+      "Banff Events",
+      "Drumheller Tourism",
+      "Alberta Major Projects",
+      "Alberta Construction",
+      "Alberta Recreation"
     ],
     "actionableFeedbackPolicy": `${baseUrl}/about#feedback`,
     "correctionsPolicy": `${baseUrl}/about#corrections`,

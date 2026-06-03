@@ -25,6 +25,25 @@ export const metadata: Metadata = {
     "Alberta government projects",
     "Alberta event centre construction",
     "Alberta tourism development 2026",
+    "Red Deer major projects",
+    "Grande Prairie construction",
+    "Fort McMurray development",
+    "Lethbridge major projects",
+    "Medicine Hat construction",
+    "Lloydminster development",
+    "Lac La Biche projects",
+    "Banff construction projects",
+    "Canmore development",
+    "Drumheller projects",
+    "Strathcona County projects",
+    "Alberta arena development",
+    "Alberta hotel construction",
+    "Alberta recreation centre construction",
+    "Alberta YMCA projects",
+    "Alberta event venue construction",
+    "Alberta performing arts centre",
+    "Alberta sports complex",
+    "Alberta aquatic centre",
   ].join(", "),
   alternates: {
     canonical: "https://www.culturealberta.com/tools/alberta-major-projects",
@@ -115,6 +134,53 @@ const breadcrumbSchema = {
       position: 3,
       name: "Alberta Major Projects",
       item: "https://www.culturealberta.com/tools/alberta-major-projects",
+    },
+  ],
+}
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "What major projects are being built in Calgary right now?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Calgary has numerous major tourism and recreation projects underway, including arenas, hotels, YMCA facilities, and recreation centres. The Culture Alberta Major Projects Tracker lists every active project with stage, budget, and timeline details sourced from the Government of Alberta.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "What major construction projects are happening in Edmonton?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Edmonton has several major projects under construction, including performing arts venues like the Winspear Centre expansion, recreation facilities, and hotel developments. Browse the tracker to see all Edmonton projects by stage and investment size.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Which Alberta cities have the most major projects underway?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Calgary and Edmonton lead in total project investment, but projects are active across Grande Prairie, Lethbridge, Red Deer, Fort McMurray, Lloydminster, Lac La Biche, Banff, Canmore, and Strathcona County. Use the By City view to compare cities.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Where does the Alberta Major Projects data come from?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "All data is sourced directly from the Government of Alberta's Major Projects Inventory (majorprojects.alberta.ca). The tracker filters for Tourism and Recreation sector projects valued at $5M or more and updates daily.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How do I track a specific Alberta construction project?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Use the search bar to find a project by name or city, or use the stage filters (Building, Proposed, Completed) to narrow results. Click any project card to see full details including cost, timeline, developer, and related news articles.",
+      },
     },
   ],
 }
@@ -289,6 +355,10 @@ export default async function AlbertaMajorProjectsPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
       <AlbertaMajorProjectsClient
         projects={projects}

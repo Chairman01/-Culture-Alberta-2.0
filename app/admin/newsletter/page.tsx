@@ -197,6 +197,7 @@ export default function NewsletterAdmin() {
   const [campaignRecipientSort, setCampaignRecipientSort] = useState<'action' | 'status' | 'recent' | 'email'>('status')
   const [cityFilter, setCityFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'active' | 'unsubscribed'>('active')
+  const [subscriberSearch, setSubscriberSearch] = useState('')
   const [subscriberSort, setSubscriberSort] = useState<'needs_review' | 'newest' | 'oldest' | 'opens' | 'clicks' | 'email'>('needs_review')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
@@ -1452,23 +1453,24 @@ export default function NewsletterAdmin() {
         )}
 
         {/* ── SUBSCRIBERS / CAMPAIGNS TABS ─────────────────────────────────── */}
-        <div className="flex gap-1 mb-4 border-b">
+        <div className="sticky top-0 z-10 bg-white border-b flex gap-1 mb-4 -mx-6 px-6 shadow-sm">
           <button
             onClick={() => setActiveTab('subscribers')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'subscribers' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'subscribers' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
           >
             <Users className="inline h-4 w-4 mr-1.5" />Subscribers
+            {stats && <span className="ml-1.5 bg-muted text-muted-foreground text-xs rounded-full px-1.5 py-0.5">{stats.active}</span>}
           </button>
           <button
             onClick={() => setActiveTab('campaigns')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'campaigns' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'campaigns' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
           >
             <BarChart2 className="inline h-4 w-4 mr-1.5" />Campaigns
             {campaigns.length > 0 && <span className="ml-1.5 bg-muted text-muted-foreground text-xs rounded-full px-1.5 py-0.5">{campaigns.length}</span>}
           </button>
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'analytics' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'analytics' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
           >
             <TrendingUp className="inline h-4 w-4 mr-1.5" />Analytics
           </button>
@@ -1478,8 +1480,19 @@ export default function NewsletterAdmin() {
           <>
             {/* City + Status filters */}
             <Card className="mb-4">
-              <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><Filter className="h-4 w-4" />Filters</CardTitle></CardHeader>
-              <CardContent>
+              <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><Filter className="h-4 w-4" />Filter &amp; Search</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                {/* Email search */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Search email</label>
+                  <Input
+                    type="text"
+                    placeholder="Type to search by email address…"
+                    value={subscriberSearch}
+                    onChange={e => setSubscriberSearch(e.target.value)}
+                    className="h-8 text-xs max-w-xs"
+                  />
+                </div>
                 <div className="flex flex-wrap gap-4">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">City</label>
@@ -1488,6 +1501,9 @@ export default function NewsletterAdmin() {
                         <button key={c.value} onClick={() => setCityFilter(c.value)}
                           className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${cityFilter === c.value ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}>
                           {c.label}
+                          {c.value !== 'all' && stats?.byCity?.[c.value] != null && (
+                            <span className="ml-1 opacity-70">{stats.byCity[c.value]}</span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -1495,12 +1511,14 @@ export default function NewsletterAdmin() {
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
                     <div className="flex gap-1">
-                      {(['active', 'unsubscribed'] as const).map(s => (
-                        <button key={s} onClick={() => setStatusFilter(s)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}>
-                          {s.charAt(0).toUpperCase() + s.slice(1)}
-                        </button>
-                      ))}
+                      <button onClick={() => setStatusFilter('active')}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === 'active' ? 'bg-green-600 text-white' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}>
+                        Active {stats && <span className="opacity-80">{stats.active}</span>}
+                      </button>
+                      <button onClick={() => setStatusFilter('unsubscribed')}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${statusFilter === 'unsubscribed' ? 'bg-gray-600 text-white' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}>
+                        Unsubscribed {stats && <span className="opacity-80">{stats.unsubscribed}</span>}
+                      </button>
                     </div>
                   </div>
                   <div>
@@ -1536,7 +1554,12 @@ export default function NewsletterAdmin() {
                     </CardDescription>
                   </div>
                   {(() => {
-                    const copyFiltered = subscriptions.filter(s => (cityFilter==='all'||s.city===cityFilter) && s.status===statusFilter)
+                    const searchLowerCopy = subscriberSearch.trim().toLowerCase()
+                  const copyFiltered = subscriptions.filter(s =>
+                    (cityFilter==='all'||s.city===cityFilter) &&
+                    s.status===statusFilter &&
+                    (!searchLowerCopy || s.email.toLowerCase().includes(searchLowerCopy))
+                  )
                     const copyText = copyFiltered.map(s => `${s.email} | ${getCityLabel(s.city)}`).join('\n')
                     return copyFiltered.length > 0 ? (
                       <Button variant="outline" size="sm" onClick={() => copyToClipboard(copyText, 'bulk')} className="flex items-center gap-2">
@@ -1549,8 +1572,13 @@ export default function NewsletterAdmin() {
               </CardHeader>
               <CardContent>
                 {(() => {
+                  const searchLower = subscriberSearch.trim().toLowerCase()
                   const filtered = subscriptions
-                    .filter(s => (cityFilter==='all'||s.city===cityFilter) && s.status===statusFilter)
+                    .filter(s =>
+                      (cityFilter==='all'||s.city===cityFilter) &&
+                      s.status===statusFilter &&
+                      (!searchLower || s.email.toLowerCase().includes(searchLower))
+                    )
                     .sort((a, b) => {
                       const aEng = engagement[a.email]
                       const bEng = engagement[b.email]
@@ -1616,10 +1644,19 @@ export default function NewsletterAdmin() {
                                 <span className="text-[10px] text-gray-400 ml-2 shrink-0 flex items-center gap-1">
                                   <AlertTriangle className="h-3 w-3 text-orange-400" /> bounced — cannot re-add
                                 </span>
+                              ) : sub.status === 'unsubscribed' ? (
+                                <Button
+                                  size="sm"
+                                  className="text-xs h-7 ml-2 flex-shrink-0 bg-green-600 hover:bg-green-700 text-white"
+                                  disabled={updatingEmail===sub.email}
+                                  onClick={() => toggleStatus(sub)}
+                                >
+                                  {updatingEmail===sub.email ? '…' : 'Resubscribe'}
+                                </Button>
                               ) : (
-                                <Button variant="outline" size="sm" className="text-xs h-7 ml-2 flex-shrink-0"
+                                <Button variant="outline" size="sm" className="text-xs h-7 ml-2 flex-shrink-0 text-gray-500 hover:text-red-600 hover:border-red-300"
                                   disabled={updatingEmail===sub.email} onClick={() => toggleStatus(sub)}>
-                                  {updatingEmail===sub.email ? '…' : sub.status==='active' ? 'Unsubscribe' : 'Resubscribe'}
+                                  {updatingEmail===sub.email ? '…' : 'Unsubscribe'}
                                 </Button>
                               )}
                             </div>

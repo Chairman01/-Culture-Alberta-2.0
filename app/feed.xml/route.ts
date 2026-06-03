@@ -1,89 +1,75 @@
-import { supabase } from '@/lib/supabase'
-import { getArticleUrl } from '@/lib/utils/article-url'
+import { NextResponse } from "next/server"
+import { supabase } from "@/lib/supabase"
 
-const BASE_URL = 'https://www.culturealberta.com'
-const FEED_TITLE = 'Culture Alberta'
-const FEED_DESCRIPTION = 'The best culture, events, food & drink in Calgary and Edmonton, Alberta.'
+export const revalidate = 3600 // refresh hourly
+
+const BASE_URL = "https://www.culturealberta.com"
 
 function escapeXml(str: string): string {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;")
 }
 
 export async function GET() {
-  let articles: any[] = []
+  const { data: articles } = await supabase
+    .from("articles")
+    .select("slug, title, excerpt, description, created_at, updated_at, image_url, category, author, tags")
+    .eq("status", "published")
+    .order("created_at", { ascending: false })
+    .limit(50)
 
-  try {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('id, title, excerpt, category, categories, author, created_at, updated_at, image_url, type, status')
-      .eq('status', 'published')
-      .order('created_at', { ascending: false })
-      .limit(50)
-
-    if (!error && data) {
-      articles = data
-    }
-  } catch (err) {
-    console.error('RSS feed: Failed to fetch articles:', err)
-  }
-
-  const buildDate = new Date().toUTCString()
-
-  const items = articles
-    .map((article) => {
-      const url = `${BASE_URL}${getArticleUrl(article)}`
-      const pubDate = new Date(article.created_at).toUTCString()
-      const title = escapeXml(article.title || '')
-      const description = escapeXml(article.excerpt || '')
-      const author = escapeXml(article.author || 'Culture Alberta')
-      const category = article.category || (article.categories?.[0] ?? '')
-
-      const enclosure =
-        article.image_url && article.image_url.startsWith('http')
-          ? `<enclosure url="${escapeXml(article.image_url)}" type="image/jpeg" length="0" />`
-          : ''
+  const items = (articles ?? [])
+    .map((a) => {
+      const url = `${BASE_URL}/articles/${a.slug}`
+      const pubDate = new Date(a.created_at).toUTCString()
+      const description = a.excerpt || a.description || ""
+      const category = a.category || "Culture"
+      const imageUrl = a.image_url || `${BASE_URL}/images/culture-alberta-og.jpg`
 
       return `
     <item>
-      <title>${title}</title>
+      <title>${escapeXml(a.title)}</title>
       <link>${url}</link>
-      <description>${description}</description>
-      <pubDate>${pubDate}</pubDate>
       <guid isPermaLink="true">${url}</guid>
-      <author>${author}</author>
-      ${category ? `<category>${escapeXml(category)}</category>` : ''}
-      ${enclosure}
+      <pubDate>${pubDate}</pubDate>
+      <description>${escapeXml(description)}</description>
+      <category>${escapeXml(category)}</category>
+      ${a.author ? `<author>${escapeXml(a.author)}</author>` : ""}
+      <media:content url="${escapeXml(imageUrl)}" medium="image" />
     </item>`
     })
-    .join('')
+    .join("\n")
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  const rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+  xmlns:atom="http://www.w3.org/2005/Atom"
+  xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
-    <title>${FEED_TITLE}</title>
+    <title>Culture Alberta</title>
     <link>${BASE_URL}</link>
-    <description>${FEED_DESCRIPTION}</description>
+    <description>Alberta events, culture, food, and local news covering Calgary, Edmonton, and communities across Alberta.</description>
     <language>en-ca</language>
-    <lastBuildDate>${buildDate}</lastBuildDate>
+    <managingEditor>hello@culturemedia.ca (Culture Alberta)</managingEditor>
+    <webMaster>hello@culturemedia.ca (Culture Alberta)</webMaster>
+    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${BASE_URL}/feed.xml" rel="self" type="application/rss+xml" />
     <image>
-      <url>${BASE_URL}/images/culture-alberta-og.jpg</url>
-      <title>${FEED_TITLE}</title>
+      <url>${BASE_URL}/images/culture-alberta-logo.svg</url>
+      <title>Culture Alberta</title>
       <link>${BASE_URL}</link>
     </image>
     ${items}
   </channel>
 </rss>`
 
-  return new Response(xml, {
+  return new NextResponse(rss, {
     headers: {
-      'Content-Type': 'application/rss+xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+      "Content-Type": "application/rss+xml; charset=utf-8",
+      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
     },
   })
 }
