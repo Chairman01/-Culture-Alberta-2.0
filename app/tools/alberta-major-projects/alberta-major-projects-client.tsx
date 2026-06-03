@@ -833,17 +833,21 @@ function CityCard({
   total,
   cost,
   byStage,
+  linked,
   onSelect,
 }: {
   cityName: string
   total: number
   cost: number
   byStage: Record<string, number>
+  linked: number
   onSelect: () => void
 }) {
   const uc = byStage["Under Construction"] ?? 0
   const proposed = byStage["Proposed"] ?? 0
   const completed = byStage["Completed"] ?? 0
+  const unlinked = total - linked
+  const coveragePct = total > 0 ? Math.round((linked / total) * 100) : 0
 
   return (
     <button
@@ -888,7 +892,7 @@ function CityCard({
       </div>
 
       {/* Visual proportion bar */}
-      <div className="flex h-1.5 rounded-full overflow-hidden">
+      <div className="flex h-1.5 rounded-full overflow-hidden mb-3">
         {uc > 0 && (
           <div className="bg-blue-500 transition-all" style={{ flex: uc }} />
         )}
@@ -900,7 +904,32 @@ function CityCard({
         )}
       </div>
 
-      <p className="mt-2.5 text-[11px] text-teal-500 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Article coverage */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          {linked > 0 ? (
+            <span className="text-[11px] font-semibold text-teal-600">
+              {linked} article{linked !== 1 ? "s" : ""}
+            </span>
+          ) : null}
+          {unlinked > 0 ? (
+            <span className="text-[11px] text-rose-500 font-medium">
+              {linked > 0 ? "· " : ""}{unlinked} need{unlinked === 1 ? "s" : ""} article
+            </span>
+          ) : (
+            <span className="text-[11px] text-teal-500 font-medium">✓ All covered</span>
+          )}
+        </div>
+        {/* Coverage bar */}
+        <div className="w-12 h-1 bg-gray-100 rounded-full overflow-hidden shrink-0">
+          <div
+            className={`h-full rounded-full transition-all ${coveragePct === 100 ? "bg-teal-400" : coveragePct > 0 ? "bg-teal-300" : "bg-gray-200"}`}
+            style={{ width: `${coveragePct}%` }}
+          />
+        </div>
+      </div>
+
+      <p className="mt-2 text-[11px] text-teal-500 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         View projects <ChevronRight className="w-3 h-3" />
       </p>
     </button>
@@ -986,13 +1015,14 @@ export default function AlbertaMajorProjectsClient({
   }, [projects])
 
   const cityStats = useMemo(() => {
-    const map: Record<string, { city: string; total: number; cost: number; byStage: Record<string, number> }> = {}
+    const map: Record<string, { city: string; total: number; cost: number; byStage: Record<string, number>; linked: number }> = {}
     for (const p of projects) {
       for (const city of p.municipalities ?? []) {
-        if (!map[city]) map[city] = { city, total: 0, cost: 0, byStage: {} }
+        if (!map[city]) map[city] = { city, total: 0, cost: 0, byStage: {}, linked: 0 }
         map[city].total++
         map[city].cost += p.cost ?? 0
         map[city].byStage[p.stage] = (map[city].byStage[p.stage] ?? 0) + 1
+        if (getArticlesForProject(p.id, articlesByProject).length > 0) map[city].linked++
       }
     }
     const q = citySearch.toLowerCase().trim()
@@ -1007,7 +1037,7 @@ export default function AlbertaMajorProjectsClient({
         if (aUC !== bUC) return bUC - aUC
         return b.cost - a.cost
       })
-  }, [projects, citySearch, citySortBy])
+  }, [projects, articlesByProject, citySearch, citySortBy])
 
   const spotlight = useMemo(
     () => projects.filter((p) => p.stage === "Under Construction" && (p.cost ?? 0) >= 50).slice(0, 3),
@@ -1209,7 +1239,7 @@ export default function AlbertaMajorProjectsClient({
 
             {/* Sort + View toggle */}
             <div className="ml-auto flex items-center gap-3 shrink-0">
-              {viewMode === "grid" && (
+              {viewMode === "grid" && !isCitiesView && (
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-gray-400">Sort:</span>
                   <button
@@ -1248,7 +1278,7 @@ export default function AlbertaMajorProjectsClient({
           </div>
 
           {/* City chips */}
-          {topCities.length > 0 && !isQueueView && (
+          {topCities.length > 0 && !isQueueView && !isCitiesView && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[11px] text-gray-400 shrink-0">Near:</span>
               {topCities.map((city) => (
@@ -1384,13 +1414,14 @@ export default function AlbertaMajorProjectsClient({
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {cityStats.map(({ city, total, cost, byStage }) => (
+                {cityStats.map(({ city, total, cost, byStage, linked }) => (
                   <CityCard
                     key={city}
                     cityName={city}
                     total={total}
                     cost={cost}
                     byStage={byStage}
+                    linked={linked}
                     onSelect={() => {
                       setSelectedStage(null)
                       setSelectedCity(city)
