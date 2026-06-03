@@ -467,13 +467,13 @@ function ProjectDetailPanel({
             </div>
           )}
 
-          {/* Article links (multiple) or no-article state */}
-          <div className="px-5 py-5">
-            {linkedArticles.length > 0 ? (
+          {/* Article links */}
+          {linkedArticles.length > 0 && (
+            <div className="px-5 py-5">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                Culture Alberta Coverage
+              </p>
               <div className="space-y-3">
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                  Culture Alberta Coverage ({linkedArticles.length})
-                </p>
                 {linkedArticles.map((article) => (
                   <a
                     key={article.slug}
@@ -503,48 +503,10 @@ function ProjectDetailPanel({
                     </div>
                   </a>
                 ))}
-                <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 mt-2">
-                  <span className="text-[11px] text-gray-400">Link another article:</span>
-                  <CopyTagButton projectId={project.id} />
-                </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Story ideas */}
-                {storySuggestions.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
-                      <Lightbulb className="w-3.5 h-3.5 text-amber-400" /> Story ideas
-                    </p>
-                    {storySuggestions.map((idea, i) => (
-                      <div key={i} className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-2">
-                        <span className="text-amber-500 font-bold text-sm shrink-0">{i + 1}.</span>
-                        <p className="text-sm text-amber-900 leading-snug">{idea}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            </div>
+          )}
 
-                <div className="bg-gray-50 rounded-xl p-4 text-center">
-                  <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-gray-700 mb-1">No article yet</p>
-                  <p className="text-xs text-gray-400 mb-4">Write about this project and tag it to link it here.</p>
-                  <div className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-3 py-2 mb-3">
-                    <span className="text-xs font-mono text-gray-500">project:{project.id}</span>
-                    <CopyTagButton projectId={project.id} />
-                  </div>
-                  <a
-                    href="/admin/articles/new"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors w-full justify-center"
-                  >
-                    <FileText className="w-4 h-4" /> Write an article
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Bottom padding for mobile home-bar */}
           <div className="h-6 sm:h-2" />
@@ -684,7 +646,7 @@ function ProjectCard({
         </div>
       )}
 
-      {/* Article or "no article" footer */}
+      {/* Article footer */}
       {firstArticle ? (
         <div className="mt-auto">
           <a
@@ -694,7 +656,7 @@ function ProjectCard({
             onClick={e => e.stopPropagation()}
             className="flex gap-3 px-4 py-3 border-t border-gray-100 hover:bg-gray-50 transition-colors group/article"
           >
-            {firstArticle.image_url && (
+            {firstArticle.image_url ? (
               <div className="relative w-16 h-12 rounded-xl overflow-hidden shrink-0 bg-gray-100">
                 <Image
                   src={firstArticle.image_url}
@@ -704,7 +666,7 @@ function ProjectCard({
                   sizes="64px"
                 />
               </div>
-            )}
+            ) : null}
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-semibold text-teal-500 uppercase tracking-wide mb-0.5">
                 Read on Culture Alberta
@@ -716,11 +678,7 @@ function ProjectCard({
             <ArrowRight className="w-3.5 h-3.5 text-gray-300 shrink-0 mt-1 group-hover/article:text-teal-400 group-hover/article:translate-x-0.5 transition-all" />
           </a>
         </div>
-      ) : (
-        <div className="mt-auto px-4 py-3 border-t border-gray-100">
-          <p className="text-[10px] text-gray-300 italic">No article — click to see story ideas</p>
-        </div>
-      )}
+      ) : null}
     </article>
   )
 }
@@ -843,7 +801,7 @@ function SpotlightCard({
           onClick={e => e.stopPropagation()}
           className={`flex gap-4 p-4 border-t border-gray-100 hover:${stageCfg.accentBg} transition-colors group/article`}
         >
-          {firstArticle.image_url && (
+          {firstArticle.image_url ? (
             <div className="relative w-20 h-14 rounded-xl overflow-hidden shrink-0 bg-gray-100">
               <Image
                 src={firstArticle.image_url}
@@ -853,7 +811,7 @@ function SpotlightCard({
                 sizes="80px"
               />
             </div>
-          )}
+          ) : null}
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-semibold text-teal-500 uppercase tracking-wide mb-1">Read on Culture Alberta</p>
             <p className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug group-hover/article:text-teal-700 transition-colors">
@@ -862,11 +820,7 @@ function SpotlightCard({
           </div>
           <ArrowRight className="w-4 h-4 text-gray-300 shrink-0 mt-1 group-hover/article:text-teal-400 transition-all" />
         </a>
-      ) : (
-        <div className={`px-6 py-3 border-t border-gray-100 ${stageCfg.accentBg}`}>
-          <p className="text-xs text-gray-400 italic">No article — click for story ideas</p>
-        </div>
-      )}
+      ) : null}
     </article>
   )
 }
