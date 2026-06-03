@@ -82,7 +82,7 @@ function InlineNewsletter() {
   }
 
   return (
-    <div className="col-span-3 bg-gray-900 rounded-2xl p-5 text-white">
+    <div className="col-span-3 md:col-span-4 bg-gray-900 rounded-2xl p-5 text-white">
       <div className="flex items-center gap-3 mb-3">
         <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
           <Mail className="w-4 h-4 text-white" />
@@ -247,9 +247,9 @@ export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFe
     <>
       {/* ---------- Pinned / Featured section ---------- */}
       {pinnedArticles.length > 0 && (
-        <div className="max-w-xl mx-auto px-3 pt-4 pb-2">
+        <div className="max-w-5xl mx-auto px-3 pt-4 pb-2">
           <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-3">Featured</p>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {pinnedArticles.map(article => (
               <FeaturedTile key={article.id} article={article} />
             ))}
@@ -281,8 +281,8 @@ export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFe
         </div>
       </div>
 
-      {/* ---------- 3-col Instagram-style grid ---------- */}
-      <div className="max-w-xl mx-auto px-1 py-1">
+      {/* ---------- Instagram-style grid — 3 col mobile, 4 col desktop ---------- */}
+      <div className="max-w-5xl mx-auto px-1 py-1">
         {filtered.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-400 text-sm">No stories found for this city yet.</p>
@@ -295,7 +295,7 @@ export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFe
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-0.5">
+            <div className="grid grid-cols-3 md:grid-cols-4 gap-1">
               {gridItems}
             </div>
 
