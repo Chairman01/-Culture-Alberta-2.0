@@ -18,7 +18,8 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const { pinned } = await req.json()
+    const body = await req.json()
+    const { pinned, order } = body
 
     if (typeof pinned !== 'boolean') {
       return NextResponse.json({ error: 'pinned must be a boolean' }, { status: 400 })
@@ -26,25 +27,17 @@ export async function PATCH(
 
     const supabase = getSupabaseClient()
 
-    // If pinning, enforce max 4 pinned articles
-    if (pinned) {
-      const { data: existing } = await supabase
-        .from('articles')
-        .select('id')
-        .eq('pinned_link_in_bio', true)
-        .neq('id', id)
-
-      if ((existing?.length ?? 0) >= 4) {
-        return NextResponse.json(
-          { error: 'Maximum 4 articles can be pinned. Unpin one first.' },
-          { status: 400 },
-        )
-      }
+    const updatePayload: Record<string, unknown> = { pinned_link_in_bio: pinned }
+    if (pinned && typeof order === 'number') {
+      updatePayload.link_in_bio_order = order
+    }
+    if (!pinned) {
+      updatePayload.link_in_bio_order = null
     }
 
     const { error } = await supabase
       .from('articles')
-      .update({ pinned_link_in_bio: pinned })
+      .update(updatePayload)
       .eq('id', id)
 
     if (error) {

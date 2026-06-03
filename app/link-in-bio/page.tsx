@@ -68,18 +68,19 @@ export default async function LinkInBioPage() {
     const [allRes, pinnedRes] = await Promise.all([
       supabase
         .from('articles')
-        .select('id, title, slug, image_url, category, categories, created_at, date')
+        .select('id, title, slug, image_url, category, categories, created_at, date, location')
         .eq('status', 'published')
         .neq('type', 'event')
         .order('created_at', { ascending: false })
         .limit(120),
       supabase
         .from('articles')
-        .select('id, title, slug, image_url, category, categories, created_at, date')
+        .select('id, title, slug, image_url, category, categories, created_at, date, location')
         .eq('status', 'published')
         .eq('pinned_link_in_bio', true)
         .neq('type', 'event')
-        .limit(4),
+        .order('link_in_bio_order', { ascending: true, nullsFirst: false })
+        .limit(50),
     ])
 
     const mapArticle = (a: any) => ({
@@ -88,6 +89,8 @@ export default async function LinkInBioPage() {
       slug: a.slug,
       imageUrl: a.image_url,
       category: a.category || (a.categories?.[0] ?? null),
+      categories: a.categories,
+      location: a.location,
       date: a.date || a.created_at,
     })
 

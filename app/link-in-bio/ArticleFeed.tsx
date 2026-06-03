@@ -26,8 +26,8 @@ interface ArticleFeedProps {
 
 // ---------- constants ----------
 
-const PAGE_SIZE = 12
-const NEWSLETTER_INSERT_AFTER = 8 // insert newsletter banner after this many cards
+const PAGE_SIZE = 30
+const NEWSLETTER_INSERT_AFTER = 15 // insert after 15 items (5 rows of 3)
 
 const CITY_FILTERS = [
   { label: 'All Alberta', value: '' },
@@ -82,34 +82,29 @@ function InlineNewsletter() {
   }
 
   return (
-    <div className="bg-gray-900 rounded-2xl p-5 sm:p-6 text-white">
+    <div className="col-span-3 bg-gray-900 rounded-2xl p-5 text-white">
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+        <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
           <Mail className="w-4 h-4 text-white" />
         </div>
         <div>
-          <h2 className="text-sm font-bold leading-tight">Get Alberta news in your inbox</h2>
+          <p className="text-sm font-bold leading-tight">Get Alberta news in your inbox</p>
           <p className="text-xs text-gray-400 mt-0.5">Daily stories from your city, free.</p>
         </div>
       </div>
-
       {status === 'success' ? (
-        <p className="text-sm font-semibold text-green-400 py-1">
-          You&apos;re subscribed! Check your inbox.
-        </p>
+        <p className="text-sm font-semibold text-green-400">You&apos;re subscribed! Check your inbox.</p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
           <select
             value={city}
             onChange={(e) => setCity(e.target.value)}
             required
-            className="flex-1 bg-white/10 text-white text-sm rounded-xl px-3 py-2.5 border border-white/10 focus:outline-none focus:border-white/30 [&>option]:text-gray-900"
+            className="flex-1 bg-white/10 text-white text-sm rounded-xl px-3 py-2.5 border border-white/10 focus:outline-none [&>option]:text-gray-900"
           >
             <option value="">Your city…</option>
             {NEWSLETTER_CITIES.filter((c) => c.value).map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
+              <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
           <input
@@ -118,7 +113,7 @@ function InlineNewsletter() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email address"
             required
-            className="flex-1 bg-white/10 text-white text-sm rounded-xl px-3 py-2.5 border border-white/10 focus:outline-none focus:border-white/30 placeholder:text-gray-500"
+            className="flex-1 bg-white/10 text-white text-sm rounded-xl px-3 py-2.5 border border-white/10 focus:outline-none placeholder:text-gray-500"
           />
           <button
             type="submit"
@@ -129,7 +124,6 @@ function InlineNewsletter() {
           </button>
         </form>
       )}
-
       {status === 'error' && (
         <p className="text-xs text-red-400 mt-2">Something went wrong — please try again.</p>
       )}
@@ -137,9 +131,51 @@ function InlineNewsletter() {
   )
 }
 
-// ---------- article card ----------
+// ---------- Instagram-style square tile ----------
 
-function ArticleCard({ article }: { article: Article }) {
+function GridTile({ article }: { article: Article }) {
+  const href = `/articles/${article.slug || article.id}`
+
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group relative aspect-square block overflow-hidden bg-gray-100 rounded-sm"
+    >
+      {/* Full-bleed image */}
+      {article.imageUrl ? (
+        <Image
+          src={article.imageUrl}
+          alt={article.title}
+          fill
+          className="object-cover group-hover:scale-[1.04] transition-transform duration-300"
+          sizes="(max-width: 640px) 33vw, 25vw"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300" />
+      )}
+
+      {/* Hover overlay with title */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors duration-200 flex items-end p-2">
+        <p className="text-white text-[11px] font-semibold leading-snug line-clamp-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {article.title}
+        </p>
+      </div>
+
+      {/* Category pill — always visible, top-left */}
+      {article.category && (
+        <span className="absolute top-1.5 left-1.5 text-[8px] font-bold uppercase tracking-wider bg-white/90 text-gray-700 rounded-full px-1.5 py-0.5 backdrop-blur-sm leading-none">
+          {article.category}
+        </span>
+      )}
+    </Link>
+  )
+}
+
+// ---------- Pinned featured card (larger, with text below) ----------
+
+function FeaturedTile({ article }: { article: Article }) {
   const href = `/articles/${article.slug || article.id}`
   const date = formatDate(article.date || article.createdAt)
 
@@ -148,40 +184,31 @@ function ArticleCard({ article }: { article: Article }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex flex-col bg-white rounded-xl overflow-hidden border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200 active:scale-[0.98]"
+      className="group flex flex-col overflow-hidden rounded-lg bg-white"
     >
-      {/* Image */}
-      <div className="relative w-full aspect-video bg-gray-100 overflow-hidden">
+      <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
         {article.imageUrl ? (
           <Image
             src={article.imageUrl}
             alt={article.title}
             fill
             className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            sizes="(max-width: 640px) 50vw, 40vw"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
-              No image
-            </span>
-          </div>
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300" />
         )}
-      </div>
-
-      {/* Text */}
-      <div className="p-2.5 flex flex-col gap-1 flex-1">
         {article.category && (
-          <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 truncate leading-none">
+          <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-white/90 text-gray-700 rounded-full px-2 py-0.5 backdrop-blur-sm">
             {article.category}
           </span>
         )}
-        <span className="text-[11px] sm:text-xs font-semibold text-gray-900 leading-snug line-clamp-3 group-hover:text-gray-600 transition-colors">
+      </div>
+      <div className="pt-2 pb-1 px-0.5">
+        <p className="text-[12px] font-semibold text-gray-900 leading-snug line-clamp-2 group-hover:text-gray-600 transition-colors">
           {article.title}
-        </span>
-        {date && (
-          <span className="text-[10px] text-gray-400 mt-auto pt-1 leading-none">{date}</span>
-        )}
+        </p>
+        {date && <p className="text-[10px] text-gray-400 mt-1">{date}</p>}
       </div>
     </Link>
   )
@@ -206,33 +233,24 @@ export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFe
     setVisible(PAGE_SIZE)
   }
 
-  // Build grid items, inserting the newsletter banner after NEWSLETTER_INSERT_AFTER cards
+  // Build 3-col grid items, inserting newsletter banner at NEWSLETTER_INSERT_AFTER
   const gridItems: React.ReactNode[] = []
   shown.forEach((article, index) => {
     if (index === NEWSLETTER_INSERT_AFTER) {
-      gridItems.push(
-        <div
-          key="newsletter-insert"
-          className="col-span-2 sm:col-span-2 md:col-span-3 lg:col-span-4"
-        >
-          <InlineNewsletter />
-        </div>
-      )
+      gridItems.push(<InlineNewsletter key="newsletter-insert" />)
     }
-    gridItems.push(<ArticleCard key={article.id} article={article} />)
+    gridItems.push(<GridTile key={article.id} article={article} />)
   })
 
   return (
     <>
-      {/* ---------- Pinned / Featured articles ---------- */}
+      {/* ---------- Pinned / Featured section ---------- */}
       {pinnedArticles.length > 0 && (
-        <div className="max-w-6xl mx-auto px-3 sm:px-4 pt-4 pb-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-3">
-            Featured
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="max-w-xl mx-auto px-3 pt-4 pb-2">
+          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-3">Featured</p>
+          <div className="grid grid-cols-2 gap-2.5">
             {pinnedArticles.map(article => (
-              <ArticleCard key={article.id} article={article} />
+              <FeaturedTile key={article.id} article={article} />
             ))}
           </div>
           <div className="mt-4 border-b border-gray-100" />
@@ -262,8 +280,8 @@ export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFe
         </div>
       </div>
 
-      {/* ---------- Article grid ---------- */}
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-5">
+      {/* ---------- 3-col Instagram-style grid ---------- */}
+      <div className="max-w-xl mx-auto px-1 py-1">
         {filtered.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-400 text-sm">No stories found for this city yet.</p>
@@ -276,25 +294,23 @@ export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFe
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
+            <div className="grid grid-cols-3 gap-0.5">
               {gridItems}
             </div>
 
-            {/* Newsletter at bottom if fewer than NEWSLETTER_INSERT_AFTER shown */}
             {shown.length <= NEWSLETTER_INSERT_AFTER && (
-              <div className="mt-5">
+              <div className="px-3 mt-3">
                 <InlineNewsletter />
               </div>
             )}
 
-            {/* Load more */}
             {hasMore && (
-              <div className="flex justify-center mt-6">
+              <div className="flex justify-center mt-5 mb-3">
                 <button
                   onClick={() => setVisible((v) => v + PAGE_SIZE)}
                   className="px-7 py-2.5 rounded-full bg-gray-900 text-white text-xs font-semibold hover:bg-gray-700 transition-colors"
                 >
-                  Load more stories
+                  Load more
                 </button>
               </div>
             )}
