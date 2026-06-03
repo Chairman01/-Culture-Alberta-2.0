@@ -812,13 +812,30 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             </div>
           </div>
 
-          {/* Reading Progress Script - Client Side Only */}
+          {/* Reading Progress + Back-nav Script - Client Side Only */}
           <script
             dangerouslySetInnerHTML={{
               __html: `
               (function() {
                 if (typeof window === 'undefined') return;
-                
+
+                // ── Back-navigation guard ──────────────────────────────────
+                // When a reader arrives from an external source (Reddit, Facebook, etc.)
+                // inject the Culture Alberta homepage into the history stack so that
+                // swiping / tapping Back keeps them on the site instead of leaving.
+                (function() {
+                  try {
+                    var ref = document.referrer;
+                    if (ref && ref.indexOf('culturealberta.com') === -1) {
+                      var cur = window.location.href;
+                      var state = window.history.state;
+                      window.history.replaceState({ caBounce: true }, '', '/');
+                      window.history.pushState(state, '', cur);
+                    }
+                  } catch(e) {}
+                })();
+                // ──────────────────────────────────────────────────────────
+
                 // Wait for DOM to be ready
                 if (document.readyState === 'loading') {
                   document.addEventListener('DOMContentLoaded', initReadingProgress);
