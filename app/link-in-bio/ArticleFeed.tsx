@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Mail } from 'lucide-react'
+import { Mail, Search, X } from 'lucide-react'
 import { NEWSLETTER_CITIES } from '@/lib/newsletter-cities'
 
 interface Article {
@@ -220,12 +220,26 @@ function FeaturedTile({ article }: { article: Article }) {
 
 export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFeedProps) {
   const [selectedCity, setSelectedCity] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
   const [visible, setVisible] = useState(PAGE_SIZE)
 
-  const filtered = useMemo(
-    () => articles.filter((a) => matchesCity(a, selectedCity)),
-    [articles, selectedCity]
-  )
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    let result = articles.filter((a) => {
+      if (!matchesCity(a, selectedCity)) return false
+      if (q && !a.title.toLowerCase().includes(q)) return false
+      return true
+    })
+    if (sortOrder === 'oldest') {
+      result = [...result].sort((a, b) => {
+        const da = new Date(a.date || a.createdAt || 0).getTime()
+        const db = new Date(b.date || b.createdAt || 0).getTime()
+        return da - db
+      })
+    }
+    return result
+  }, [articles, selectedCity, searchQuery, sortOrder])
 
   const shown = filtered.slice(0, visible)
   const hasMore = visible < filtered.length
@@ -258,6 +272,36 @@ export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFe
           <div className="mt-4 border-b border-gray-100" />
         </div>
       )}
+
+      {/* ---------- Search bar + sort ---------- */}
+      <div className="max-w-5xl mx-auto px-3 pt-3 pb-1 flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setVisible(PAGE_SIZE) }}
+            placeholder="Search articles…"
+            className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-full bg-gray-50 focus:outline-none focus:border-gray-400 focus:bg-white transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <select
+          value={sortOrder}
+          onChange={(e) => { setSortOrder(e.target.value as 'newest' | 'oldest'); setVisible(PAGE_SIZE) }}
+          className="text-[11px] font-medium border border-gray-200 rounded-full px-3 py-2 bg-gray-50 focus:outline-none focus:border-gray-400 text-gray-600 shrink-0"
+        >
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+        </select>
+      </div>
 
       {/* ---------- City filter chips ---------- */}
       <div className="sticky top-[52px] z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100">

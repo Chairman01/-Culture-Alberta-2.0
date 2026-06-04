@@ -11,21 +11,26 @@ function getSupabase() {
 }
 
 // GET /api/admin/link-in-bio/search?q=...
+// When q is empty, returns 60 most recent articles so admin can browse all
 export async function GET(req: NextRequest) {
   try {
     const q = req.nextUrl.searchParams.get('q')?.trim() || ''
-    if (!q) return NextResponse.json({ articles: [] })
 
     const sb = getSupabase()
-    const { data, error } = await sb
+    let query = sb
       .from('articles')
       .select('id, title, slug, image_url, category, categories, created_at, pinned_link_in_bio, link_in_bio_order')
       .eq('status', 'published')
       .neq('type', 'event')
-      .ilike('title', `%${q}%`)
       .order('created_at', { ascending: false })
-      .limit(20)
 
+    if (q) {
+      query = query.ilike('title', `%${q}%`).limit(30)
+    } else {
+      query = query.limit(60)
+    }
+
+    const { data, error } = await query
     if (error) throw error
     return NextResponse.json({ articles: data || [] })
   } catch (err) {

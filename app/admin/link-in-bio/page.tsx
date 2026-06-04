@@ -61,21 +61,42 @@ export default function LinkInBioAdmin() {
     finally { setIsLoading(false) }
   }
 
-  // ── Search ──────────────────────────────────────────────────────────────────
+  // ── Load all articles for browsing ──────────────────────────────────────────
+
+  async function loadAllArticles() {
+    setIsSearching(true)
+    try {
+      const res = await fetch('/api/admin/link-in-bio/search')
+      const data = await res.json()
+      const pinnedIds = new Set(pinned.map((a: Article) => a.id))
+      setSearchResults((data.articles || []).filter((a: Article) => !pinnedIds.has(a.id)))
+    } catch { /* silent */ }
+    finally { setIsSearching(false) }
+  }
+
+  // Load all articles once pinned list is ready
+  useEffect(() => {
+    if (!isLoading) loadAllArticles()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading])
+
+  // ── Search filter ────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!searchQuery.trim()) { setSearchResults([]); return }
     const timer = setTimeout(async () => {
       setIsSearching(true)
       try {
-        const res = await fetch(`/api/admin/link-in-bio/search?q=${encodeURIComponent(searchQuery)}`)
+        const q = searchQuery.trim()
+        const url = q
+          ? `/api/admin/link-in-bio/search?q=${encodeURIComponent(q)}`
+          : '/api/admin/link-in-bio/search'
+        const res = await fetch(url)
         const data = await res.json()
-        // Exclude already-pinned articles
-        const pinnedIds = new Set(pinned.map(a => a.id))
+        const pinnedIds = new Set(pinned.map((a: Article) => a.id))
         setSearchResults((data.articles || []).filter((a: Article) => !pinnedIds.has(a.id)))
       } catch { /* silent */ }
       finally { setIsSearching(false) }
-    }, 300)
+    }, 250)
     return () => clearTimeout(timer)
   }, [searchQuery, pinned])
 
@@ -297,18 +318,18 @@ export default function LinkInBioAdmin() {
           )}
         </div>
 
-        {/* ── Search to add ────────────────────────────────────────────────── */}
+        {/* ── Browse / search to add ───────────────────────────────────────── */}
         <div>
           <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
             <Search className="h-4 w-4 text-gray-500" />
-            Add an article to pin
+            All articles — click Pin to add
           </h2>
 
-          <div className="relative">
+          <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               type="text"
-              placeholder="Search by title…"
+              placeholder="Filter by title…"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -318,8 +339,12 @@ export default function LinkInBioAdmin() {
             )}
           </div>
 
-          {searchResults.length > 0 && (
-            <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+          {!isSearching && searchQuery.trim() && searchResults.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">
+              No results for &ldquo;{searchQuery}&rdquo;
+            </p>
+          ) : (
+            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100 max-h-[520px] overflow-y-auto">
               {searchResults.map(article => (
                 <div key={article.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors">
                   <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
@@ -356,12 +381,6 @@ export default function LinkInBioAdmin() {
                 </div>
               ))}
             </div>
-          )}
-
-          {searchQuery.trim() && !isSearching && searchResults.length === 0 && (
-            <p className="text-sm text-gray-400 mt-3 text-center py-4">
-              No results for &ldquo;{searchQuery}&rdquo;
-            </p>
           )}
         </div>
 
