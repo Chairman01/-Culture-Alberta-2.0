@@ -142,16 +142,16 @@ function GridTile({ article }: { article: Article }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group relative aspect-[4/3] block overflow-hidden bg-gray-100 rounded-sm"
+      className="group relative aspect-[3/4] block overflow-hidden bg-gray-100 rounded-sm"
     >
-      {/* Full-bleed landscape image */}
+      {/* Full-bleed portrait image */}
       {article.imageUrl ? (
         <Image
           src={article.imageUrl}
           alt={article.title}
           fill
           className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          sizes="(max-width: 640px) 33vw, 25vw"
         />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900" />
