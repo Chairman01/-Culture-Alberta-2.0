@@ -24,6 +24,8 @@ import {
   ChevronRight,
   LayoutGrid,
   BarChart2,
+  List,
+  PieChart,
 } from "lucide-react"
 
 // ---------------------------------------------------------------------------
@@ -923,7 +925,52 @@ function CityCard({
 }
 
 // ---------------------------------------------------------------------------
-// Chart view — stage breakdown + investment by city
+// DonutChart — SVG donut chart (no external deps)
+// ---------------------------------------------------------------------------
+function DonutChart({
+  slices,
+  size = 150,
+  centerLabel,
+}: {
+  slices: { label: string; count: number; hex: string }[]
+  size?: number
+  centerLabel?: string
+}) {
+  const total = slices.reduce((s, d) => s + d.count, 0)
+  if (total === 0) return null
+  const cx = size / 2, cy = size / 2
+  const outerR = size * 0.43, innerR = size * 0.27
+
+  function xy(angleDeg: number, r: number) {
+    const rad = ((angleDeg - 90) * Math.PI) / 180
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+  }
+
+  let start = 0
+  const paths = slices.map((s) => {
+    const sweep = (s.count / total) * 360
+    const end = start + sweep
+    const large = sweep > 180 ? 1 : 0
+    const s1 = xy(start, outerR), e1 = xy(end, outerR)
+    const s2 = xy(end, innerR), e2 = xy(start, innerR)
+    const d = `M${s1.x} ${s1.y} A${outerR} ${outerR} 0 ${large} 1 ${e1.x} ${e1.y} L${s2.x} ${s2.y} A${innerR} ${innerR} 0 ${large} 0 ${e2.x} ${e2.y}Z`
+    start = end
+    return { d, hex: s.hex, label: s.label, count: s.count }
+  })
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {paths.map((p, i) => (
+        <path key={i} d={p.d} fill={p.hex} stroke="white" strokeWidth="1.5" opacity={0.9} />
+      ))}
+      <text x={cx} y={cy - 7} textAnchor="middle" fontSize="16" fontWeight="700" fill="#111827">{total}</text>
+      <text x={cx} y={cy + 8} textAnchor="middle" fontSize="9" fill="#9ca3af">{centerLabel ?? "total"}</text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Chart view — stage breakdown + investment by city + donut charts
 // ---------------------------------------------------------------------------
 function ProjectChartView({
   projects,
@@ -934,19 +981,26 @@ function ProjectChartView({
   articlesByProject: Record<string, Article[]>
   onCityClick: (city: string) => void
 }) {
+  const STAGE_HEX: Record<string, string> = {
+    "Under Construction": "#3b82f6",
+    "Proposed": "#fbbf24",
+    "Completed": "#10b981",
+    "Cancelled": "#9ca3af",
+  }
+  const CITY_PALETTE = ["#0d9488","#0891b2","#6366f1","#f59e0b","#ef4444","#8b5cf6","#ec4899","#14b8a6","#f97316","#84cc16","#06b6d4","#a855f7"]
+
   const stageData = useMemo(() => {
     const stages = [
-      { key: "Under Construction", label: "Building", color: "bg-blue-500" },
-      { key: "Proposed", label: "Proposed", color: "bg-amber-400" },
-      { key: "Completed", label: "Completed", color: "bg-emerald-500" },
+      { key: "Under Construction", label: "Building", color: "bg-blue-500", hex: "#3b82f6" },
+      { key: "Proposed", label: "Proposed", color: "bg-amber-400", hex: "#fbbf24" },
+      { key: "Completed", label: "Completed", color: "bg-emerald-500", hex: "#10b981" },
     ]
     const totalCost = projects.reduce((s, p) => s + (p.cost ?? 0), 0)
-    return stages.map(({ key, label, color }) => {
+    return stages.map(({ key, label, color, hex }) => {
       const ps = projects.filter(p => p.stage === key)
       const cost = ps.reduce((s, p) => s + (p.cost ?? 0), 0)
       return {
-        label,
-        color,
+        label, color, hex,
         count: ps.length,
         cost,
         linked: ps.filter(p => getArticlesForProject(p.id, articlesByProject).length > 0).length,
@@ -968,67 +1022,158 @@ function ProjectChartView({
       .map(([city, cost]) => ({ city, cost }))
   }, [projects])
 
+  const cityCountData = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const p of projects) {
+      for (const city of p.municipalities ?? []) {
+        map[city] = (map[city] ?? 0) + 1
+      }
+    }
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([city, count]) => ({ city, count }))
+  }, [projects])
+
+  const linkedCount = projects.filter(p => getArticlesForProject(p.id, articlesByProject).length > 0).length
+
   const maxCityCost = Math.max(...cityData.map(c => c.cost), 1)
 
   return (
-    <div className="pt-8 grid grid-cols-1 lg:grid-cols-2 gap-10">
-      {/* Stage breakdown */}
-      <div>
-        <h2 className="text-base font-bold text-gray-900 mb-0.5">Investment by Stage</h2>
-        <p className="text-xs text-gray-400 mb-5">Combined project investment across all stages.</p>
-        <div className="space-y-5">
-          {stageData.map(({ label, color, count, cost, linked, pct }) => (
-            <div key={label}>
-              <div className="flex items-center justify-between mb-1.5">
+    <div className="pt-8 space-y-10">
+
+      {/* ── Row 1: Two donut charts ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+
+        {/* Donut: projects by stage */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col items-center">
+          <h3 className="text-sm font-bold text-gray-800 mb-1 self-start">Projects by Stage</h3>
+          <p className="text-xs text-gray-400 mb-4 self-start">{projects.length} total</p>
+          <DonutChart
+            slices={stageData.map(s => ({ label: s.label, count: s.count, hex: s.hex }))}
+            centerLabel="projects"
+          />
+          <div className="mt-4 space-y-1.5 w-full">
+            {stageData.map(s => (
+              <div key={s.label} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
-                  <span className="text-sm font-semibold text-gray-700">{label}</span>
-                  <span className="text-xs text-gray-400">{count} projects</span>
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: s.hex }} />
+                  <span className="text-xs text-gray-600">{s.label}</span>
                 </div>
-                <span className="text-sm font-bold text-gray-900">{fmtCost(cost)}</span>
+                <span className="text-xs font-semibold text-gray-800">{s.count}</span>
               </div>
-              <div className="h-7 bg-gray-100 rounded-lg overflow-hidden relative">
-                <div
-                  className={`h-full ${color} rounded-lg transition-all duration-700 opacity-80`}
-                  style={{ width: `${Math.max(pct, 1)}%` }}
-                />
-                {linked > 0 && (
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-gray-600">
-                    {linked} covered
-                  </span>
-                )}
+            ))}
+          </div>
+        </div>
+
+        {/* Donut: projects by top city */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col items-center">
+          <h3 className="text-sm font-bold text-gray-800 mb-1 self-start">Projects by City</h3>
+          <p className="text-xs text-gray-400 mb-4 self-start">Top 8 cities</p>
+          <DonutChart
+            slices={cityCountData.map((c, i) => ({ label: c.city, count: c.count, hex: CITY_PALETTE[i % CITY_PALETTE.length] }))}
+            centerLabel="projects"
+          />
+          <div className="mt-4 space-y-1.5 w-full">
+            {cityCountData.slice(0, 6).map((c, i) => (
+              <div key={c.city} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: CITY_PALETTE[i % CITY_PALETTE.length] }} />
+                  <span className="text-xs text-gray-600">{c.city}</span>
+                </div>
+                <span className="text-xs font-semibold text-gray-800">{c.count}</span>
               </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Donut: article coverage */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col items-center">
+          <h3 className="text-sm font-bold text-gray-800 mb-1 self-start">Article Coverage</h3>
+          <p className="text-xs text-gray-400 mb-4 self-start">{linkedCount} of {projects.length} covered</p>
+          <DonutChart
+            slices={[
+              { label: "Has article", count: linkedCount, hex: "#0d9488" },
+              { label: "Needs article", count: projects.length - linkedCount, hex: "#f3f4f6" },
+            ]}
+            centerLabel="projects"
+          />
+          <div className="mt-4 space-y-1.5 w-full">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-teal-600 shrink-0" />
+                <span className="text-xs text-gray-600">Has article</span>
+              </div>
+              <span className="text-xs font-semibold text-teal-700">{linkedCount}</span>
             </div>
-          ))}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-gray-200 shrink-0" />
+                <span className="text-xs text-gray-600">Needs article</span>
+              </div>
+              <span className="text-xs font-semibold text-rose-500">{projects.length - linkedCount}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Top cities by investment */}
-      <div>
-        <h2 className="text-base font-bold text-gray-900 mb-0.5">Investment by City</h2>
-        <p className="text-xs text-gray-400 mb-5">Top cities by combined project value. Click to filter.</p>
-        <div className="space-y-3">
-          {cityData.map(({ city, cost }) => {
-            const pct = (cost / maxCityCost) * 100
-            return (
-              <button
-                key={city}
-                onClick={() => onCityClick(city)}
-                className="w-full text-left group"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-700 group-hover:text-teal-600 transition-colors">{city}</span>
-                  <span className="text-xs font-bold text-gray-900">{fmtCost(cost)}</span>
+      {/* ── Row 2: Bar charts ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        {/* Stage breakdown bars */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h2 className="text-base font-bold text-gray-900 mb-0.5">Investment by Stage</h2>
+          <p className="text-xs text-gray-400 mb-5">Combined project investment across all stages.</p>
+          <div className="space-y-5">
+            {stageData.map(({ label, color, count, cost, linked, pct }) => (
+              <div key={label}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
+                    <span className="text-sm font-semibold text-gray-700">{label}</span>
+                    <span className="text-xs text-gray-400">{count} projects</span>
+                  </div>
+                  <span className="text-sm font-bold text-gray-900">{fmtCost(cost)}</span>
                 </div>
-                <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-7 bg-gray-100 rounded-lg overflow-hidden relative">
                   <div
-                    className="h-full bg-teal-400 rounded-full transition-all duration-700 group-hover:bg-teal-500"
+                    className={`h-full ${color} rounded-lg transition-all duration-700 opacity-80`}
                     style={{ width: `${Math.max(pct, 1)}%` }}
                   />
+                  {linked > 0 && (
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-gray-600">
+                      {linked} covered
+                    </span>
+                  )}
                 </div>
-              </button>
-            )
-          })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* City investment bars */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h2 className="text-base font-bold text-gray-900 mb-0.5">Investment by City</h2>
+          <p className="text-xs text-gray-400 mb-5">Top cities by combined project value. Click to filter.</p>
+          <div className="space-y-3">
+            {cityData.map(({ city, cost }) => {
+              const pct = (cost / maxCityCost) * 100
+              return (
+                <button
+                  key={city}
+                  onClick={() => onCityClick(city)}
+                  className="w-full text-left group"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-700 group-hover:text-teal-600 transition-colors">{city}</span>
+                    <span className="text-xs font-bold text-gray-900">{fmtCost(cost)}</span>
+                  </div>
+                  <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-teal-400 rounded-full transition-all duration-700 group-hover:bg-teal-500"
+                      style={{ width: `${Math.max(pct, 1)}%` }}
+                    />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -1050,9 +1195,10 @@ export default function AlbertaMajorProjectsClient({
   const [search, setSearch] = useState("")
   const [selectedStage, setSelectedStage] = useState<string | null>(null)
   const [selectedCity, setSelectedCity] = useState<string | null>(null)
-const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [articleFilter, setArticleFilter] = useState<"all" | "has" | "needs">("all")
   const [updatedProjectIds, setUpdatedProjectIds] = useState<Set<string>>(new Set())
-  const [viewMode, setViewMode] = useState<"grid" | "chart">("grid")
+  const [viewMode, setViewMode] = useState<"grid" | "chart" | "list">("grid")
   const [citySearch, setCitySearch] = useState("")
   const [citySortBy, setCitySortBy] = useState<"activity" | "cost" | "name">("activity")
 
@@ -1076,8 +1222,23 @@ const [selectedProject, setSelectedProject] = useState<Project | null>(null)
     } catch {}
   }, [projects])
 
+  // ── Back navigation: close detail panel instead of leaving page ──
+  useEffect(() => {
+    const onPop = () => {
+      if (selectedProject) {
+        setSelectedProject(null)
+        // Keep a state so the next back doesn't immediately leave
+        window.history.pushState({ panel: false }, "")
+      }
+    }
+    window.addEventListener("popstate", onPop)
+    return () => window.removeEventListener("popstate", onPop)
+  }, [selectedProject])
+
   const handleSelectProject = useCallback((project: Project) => {
     setSelectedProject(project)
+    // Push a history entry so browser back closes the panel
+    window.history.pushState({ panel: true, projectId: project.id }, "")
     // Dismiss the "updated" badge once viewed
     if (updatedProjectIds.has(project.id)) {
       setUpdatedProjectIds(prev => {
@@ -1144,7 +1305,7 @@ const [selectedProject, setSelectedProject] = useState<Project | null>(null)
 
     return projects
       .filter((p) => {
-        if (!selectedStage && !selectedCity && !q && spotlightIds.has(p.id)) return false
+        if (!selectedStage && !selectedCity && !q && articleFilter === "all" && spotlightIds.has(p.id)) return false
         if (selectedStage && selectedStage !== "__cities__" && p.stage !== selectedStage) return false
         if (selectedCity && !(p.municipalities ?? []).includes(selectedCity)) return false
         if (q) {
@@ -1152,10 +1313,12 @@ const [selectedProject, setSelectedProject] = useState<Project | null>(null)
             .join(" ").toLowerCase()
           if (!hay.includes(q)) return false
         }
+        if (articleFilter === "has") return getArticlesForProject(p.id, articlesByProject).length > 0
+        if (articleFilter === "needs") return getArticlesForProject(p.id, articlesByProject).length === 0
         return true
       })
       .sort((a, b) => (b.cost ?? 0) - (a.cost ?? 0))
-  }, [projects, selectedStage, selectedCity, search, spotlight, isCitiesView])
+  }, [projects, selectedStage, selectedCity, search, spotlight, isCitiesView, articleFilter, articlesByProject])
 
   const stats = useMemo(() => ({
     totalCost: projects.reduce((s, p) => s + (p.cost ?? 0), 0),
@@ -1169,9 +1332,10 @@ const [selectedProject, setSelectedProject] = useState<Project | null>(null)
     setSearch("")
     setSelectedStage(null)
     setSelectedCity(null)
+    setArticleFilter("all")
   }, [])
 
-  const hasFilters = !!search || (!!selectedStage && !isCitiesView) || !!selectedCity
+  const hasFilters = !!search || (!!selectedStage && !isCitiesView) || !!selectedCity || articleFilter !== "all"
   const showSpotlight = !hasFilters && !isCitiesView && spotlight.length > 0
 
   return (
@@ -1316,11 +1480,18 @@ const [selectedProject, setSelectedProject] = useState<Project | null>(null)
                 <LayoutGrid className="w-3.5 h-3.5" />
               </button>
               <button
+                onClick={() => setViewMode("list")}
+                title="List view"
+                className={`p-1.5 rounded-md transition-colors ${viewMode === "list" ? "bg-white shadow-sm text-teal-600" : "text-gray-400 hover:text-gray-600"}`}
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+              <button
                 onClick={() => setViewMode("chart")}
                 title="Chart view"
                 className={`p-1.5 rounded-md transition-colors ${viewMode === "chart" ? "bg-white shadow-sm text-teal-600" : "text-gray-400 hover:text-gray-600"}`}
               >
-                <BarChart2 className="w-3.5 h-3.5" />
+                <PieChart className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -1454,8 +1625,8 @@ const [selectedProject, setSelectedProject] = useState<Project | null>(null)
               </section>
             )}
 
-            {/* ── Results count ── */}
-            <div className="flex items-center justify-between pt-4 pb-3">
+            {/* ── Results count + article filter ── */}
+            <div className="flex items-center justify-between pt-4 pb-3 flex-wrap gap-2">
               <p className="text-xs text-gray-400">
                 {hasFilters
                   ? `${filtered.length} of ${projects.length} projects`
@@ -1469,13 +1640,32 @@ const [selectedProject, setSelectedProject] = useState<Project | null>(null)
                 )}
               </p>
               {stats.linked > 0 && (
-                <p className="text-xs text-teal-600 font-medium">
-                  {stats.linked} / {projects.length} linked to articles
-                </p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => setArticleFilter(articleFilter === "has" ? "all" : "has")}
+                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
+                      articleFilter === "has"
+                        ? "bg-teal-600 text-white border-teal-600"
+                        : "text-teal-600 border-teal-200 hover:bg-teal-50"
+                    }`}
+                  >
+                    {stats.linked} with article
+                  </button>
+                  <button
+                    onClick={() => setArticleFilter(articleFilter === "needs" ? "all" : "needs")}
+                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
+                      articleFilter === "needs"
+                        ? "bg-rose-600 text-white border-rose-600"
+                        : "text-rose-500 border-rose-200 hover:bg-rose-50"
+                    }`}
+                  >
+                    {projects.length - stats.linked} need article
+                  </button>
+                </div>
               )}
             </div>
 
-            {/* ── Main grid ── */}
+            {/* ── Main grid / list ── */}
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <Building2 className="w-12 h-12 text-gray-200 mb-4" />
@@ -1484,6 +1674,52 @@ const [selectedProject, setSelectedProject] = useState<Project | null>(null)
                 <button onClick={clearFilters} className="text-sm text-teal-500 hover:text-teal-700 font-medium">
                   Clear all filters
                 </button>
+              </div>
+            ) : viewMode === "list" ? (
+              <div className="rounded-xl border border-gray-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">Project</th>
+                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 hidden sm:table-cell">City</th>
+                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500">Stage</th>
+                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500">Budget</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filtered.map((project) => {
+                      const cfg = STAGE_CONFIG[project.stage as StageKey]
+                      const hasArticle = getArticlesForProject(project.id, articlesByProject).length > 0
+                      return (
+                        <tr
+                          key={project.id}
+                          onClick={() => handleSelectProject(project)}
+                          className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        >
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-gray-900 text-sm leading-snug line-clamp-1">
+                              {project.friendlyName || project.name}
+                            </p>
+                            {hasArticle && (
+                              <span className="text-[10px] text-teal-600 font-medium">✓ Has article</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-xs text-gray-500 hidden sm:table-cell">
+                            {(project.municipalities ?? []).slice(0, 2).join(", ")}
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${cfg?.badgeClass ?? "bg-gray-100 text-gray-600"}`}>
+                              {project.stage === "Under Construction" ? "Building" : project.stage}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-xs font-bold text-gray-700">
+                            {project.cost ? `$${project.cost >= 1000 ? `${(project.cost / 1000).toFixed(1)}B` : `${project.cost}M`}` : "—"}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

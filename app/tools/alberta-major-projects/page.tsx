@@ -83,6 +83,17 @@ export const metadata: Metadata = {
     site: "@culturealberta",
     images: ["https://www.culturealberta.com/images/culture-alberta-og.jpg"],
   },
+  other: {
+    // Geo meta tags for local SEO
+    "geo.region": "CA-AB",
+    "geo.placename": "Alberta, Canada",
+    "geo.position": "53.9333;-116.5765",
+    "ICBM": "53.9333, -116.5765",
+    // DC metadata
+    "DC.title": "Alberta Major Tourism & Recreation Projects Tracker 2026",
+    "DC.coverage": "Alberta, Canada",
+    "DC.language": "en-CA",
+  },
 }
 
 // ---------------------------------------------------------------------------
