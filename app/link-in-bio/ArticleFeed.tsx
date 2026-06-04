@@ -83,7 +83,7 @@ function InlineNewsletter() {
   }
 
   return (
-    <div className="col-span-1 sm:col-span-2 md:col-span-3 bg-gray-900 rounded-2xl p-5 text-white">
+    <div className="col-span-3 bg-gray-900 rounded-2xl p-5 text-white">
       <div className="flex items-center gap-3 mb-3">
         <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
           <Mail className="w-4 h-4 text-white" />
@@ -282,8 +282,8 @@ export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFe
         </div>
       </div>
 
-      {/* ---------- Narcity-style grid — 1 col mobile, 2 col tablet, 3 col desktop ---------- */}
-      <div className="max-w-5xl mx-auto px-3 py-2">
+      {/* ---------- 3-col grid on all screen sizes ---------- */}
+      <div className="max-w-5xl mx-auto px-1.5 py-1.5">
         {filtered.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-400 text-sm">No stories found for this city yet.</p>
@@ -296,12 +296,12 @@ export default function ArticleFeed({ articles, pinnedArticles = [] }: ArticleFe
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-5">
+            <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-3">
               {gridItems}
             </div>
 
             {shown.length <= NEWSLETTER_INSERT_AFTER && (
-              <div className="mt-4">
+              <div className="mt-2">
                 <InlineNewsletter />
               </div>
             )}
