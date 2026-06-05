@@ -72,7 +72,7 @@ export default async function LinkInBioPage() {
         .eq('status', 'published')
         .neq('type', 'event')
         .order('created_at', { ascending: false })
-        .limit(120),
+        .limit(1000),
       supabase
         .from('articles')
         .select('id, title, slug, image_url, category, categories, created_at, date, location, excerpt')
