@@ -22,7 +22,6 @@ export async function GET(req: NextRequest) {
       .from('articles')
       .select('id, title, slug, image_url, category, categories, created_at, pinned_link_in_bio, link_in_bio_order')
       .eq('status', 'published')
-      .neq('type', 'event')
       .order('created_at', { ascending: false })
 
     if (q) {

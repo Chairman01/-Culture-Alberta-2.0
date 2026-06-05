@@ -78,7 +78,6 @@ export default async function LinkInBioPage() {
         .select('id, title, slug, image_url, category, categories, created_at, date, location, excerpt')
         .eq('status', 'published')
         .eq('pinned_link_in_bio', true)
-        .neq('type', 'event')
         .order('link_in_bio_order', { ascending: true, nullsFirst: false })
         .limit(50),
     ])
