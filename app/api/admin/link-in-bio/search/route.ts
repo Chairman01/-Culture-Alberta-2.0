@@ -12,6 +12,7 @@ function getSupabase() {
 
 // GET /api/admin/link-in-bio/search?q=...
 // When q is empty, returns 60 most recent articles so admin can browse all
+// When q is set, searches all articles with no cap so old articles are findable
 export async function GET(req: NextRequest) {
   try {
     const q = req.nextUrl.searchParams.get('q')?.trim() || ''
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (q) {
-      query = query.ilike('title', `%${q}%`).limit(30)
+      query = query.ilike('title', `%${q}%`)
     } else {
       query = query.limit(60)
     }
