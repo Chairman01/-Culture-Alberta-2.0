@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { BarChart2, FileText, Calendar, Award, Mail, MessageSquare, RefreshCw, LogOut, Menu, X, Zap, Pin } from "lucide-react"
+import { BarChart2, FileText, Calendar, Award, Mail, MessageSquare, RefreshCw, LogOut, Menu, X, Zap, Pin, Building2 } from "lucide-react"
 import { Toaster } from "@/components/ui/toaster"
 
 export default function AdminLayout({
@@ -92,6 +92,7 @@ export default function AdminLayout({
     { name: 'Articles', href: '/admin/articles', icon: FileText },
     { name: 'Auto Articles', href: '/admin/automation', icon: Zap },
     { name: 'Events', href: '/admin/events', icon: Calendar },
+    { name: 'Major Projects', href: '/admin/major-projects', icon: Building2 },
     { name: 'Best of Alberta', href: '/admin/best-of', icon: Award },
     { name: 'Comments', href: '/admin/comments', icon: MessageSquare },
     { name: 'Link in Bio', href: '/admin/link-in-bio', icon: Pin },
