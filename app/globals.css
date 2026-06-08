@@ -241,6 +241,17 @@ body {
   }
 }
 
+/* Desktop-only: reserve space for Mediavine display ad slots so they don't
+   push content down when ads load (fixes desktop CLS). Mobile (<1024px) is
+   intentionally untouched since its Core Web Vitals already pass. Kept as plain
+   CSS (outside @layer) so the @media block is emitted reliably. */
+@media (min-width: 1024px) {
+  .content_btf_wrapper,
+  .sidebar_btf_wrapper {
+    min-height: 280px;
+  }
+}
+
 /* Article Content Styles */
 .article-content-wrapper {
   line-height: 1.7;
