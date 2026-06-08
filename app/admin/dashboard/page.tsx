@@ -62,6 +62,9 @@ export default function AdminDashboard() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [autoResults, setAutoResults] = useState<AutomationResponse | null>(null)
 
+  // Major Projects "new/updated" ping
+  const [projectsPending, setProjectsPending] = useState(0)
+
   const handleGenerateWeekendArticles = async () => {
     setIsGenerating(true)
     setAutoResults(null)
@@ -118,6 +121,21 @@ export default function AdminDashboard() {
       router.push('/admin/login')
     }
   }, [router])
+
+  // Fetch the count of new/updated major projects awaiting review (the "ping")
+  useEffect(() => {
+    if (!isAuthenticated) return
+    let cancelled = false
+    fetch('/api/admin/major-projects/pending')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && typeof d?.count === 'number') setProjectsPending(d.count)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated])
 
   if (isLoading) {
     return (
@@ -269,18 +287,35 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-blue-200">
+          <Card className={`relative ${projectsPending > 0 ? 'border-rose-300 ring-1 ring-rose-200' : 'border-blue-200'}`}>
+            {projectsPending > 0 && (
+              <span className="absolute -top-2 -right-2 flex h-6 min-w-6 items-center justify-center px-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
+                <span className="relative inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-rose-600 px-1.5 text-xs font-bold text-white">
+                  {projectsPending > 99 ? '99+' : projectsPending}
+                </span>
+              </span>
+            )}
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Major Projects</CardTitle>
-              <Building2 className="h-4 w-4 text-blue-600" />
+              <Building2 className={`h-4 w-4 ${projectsPending > 0 ? 'text-rose-600' : 'text-blue-600'}`} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">Article Tracker</div>
               <p className="text-xs text-muted-foreground">
-                See which Alberta projects need coverage
+                {projectsPending > 0
+                  ? `${projectsPending} new/updated project${projectsPending !== 1 ? 's' : ''} to review`
+                  : 'See which Alberta projects need coverage'}
               </p>
-              <Button asChild className="mt-4" size="sm" variant="outline">
-                <Link href="/admin/major-projects">View Projects</Link>
+              <Button
+                asChild
+                className="mt-4"
+                size="sm"
+                variant={projectsPending > 0 ? 'default' : 'outline'}
+              >
+                <Link href="/admin/major-projects">
+                  {projectsPending > 0 ? 'Review New Projects' : 'View Projects'}
+                </Link>
               </Button>
             </CardContent>
           </Card>

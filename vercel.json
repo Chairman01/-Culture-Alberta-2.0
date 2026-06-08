@@ -37,6 +37,10 @@
         {
             "path": "/api/cron/weekend-events?city=all&status=draft",
             "schedule": "0 20 * * 4"
+        },
+        {
+            "path": "/api/cron/major-projects-sync",
+            "schedule": "30 13 * * *"
         }
     ]
 }

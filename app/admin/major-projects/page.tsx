@@ -28,11 +28,16 @@ interface Project {
   name: string
   friendlyName?: string
   municipalities: string[]
+  sector: string
   stage: string
   type?: string
   cost?: number
   developer?: string
   website?: string
+  isNew?: boolean
+  isUpdated?: boolean
+  pending?: boolean
+  changeNote?: string
 }
 
 interface LinkedArticle {
@@ -50,36 +55,6 @@ interface ArticleOption {
 // Helpers
 // ---------------------------------------------------------------------------
 const TOURISM_SECTOR = "Tourism / Recreation"
-const ALBERTA_API_URL = "https://majorprojects.alberta.ca/api/MajorProjects?years=1"
-
-function normalizeStage(raw: string): string {
-  if (!raw) return "Proposed"
-  if (raw.startsWith("Under Construction")) return "Under Construction"
-  if (raw.startsWith("Proposed")) return "Proposed"
-  if (raw.startsWith("Completed")) return "Completed"
-  if (raw.startsWith("Cancelled")) return "Cancelled"
-  return raw
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseProject(feature: any): Project | null {
-  const p = feature?.properties
-  if (!p) return null
-  if (p.sector !== TOURISM_SECTOR) return null
-  const stage = normalizeStage(p.StageWithSubStage ?? p.stage ?? "Proposed")
-  if (stage === "Cancelled") return null
-  return {
-    id: String(p.id ?? feature.id ?? ""),
-    name: p.name ?? "Unnamed Project",
-    friendlyName: p.friendlyName && p.friendlyName !== p.name ? p.friendlyName.replace(/-/g, " ") : undefined,
-    municipalities: Array.isArray(p.municipalities) ? p.municipalities : p.municipality ? [p.municipality] : [],
-    stage,
-    type: p.type ?? undefined,
-    cost: typeof p.cost === "number" ? p.cost : p.cost ? parseFloat(p.cost) : undefined,
-    developer: p.developer ?? undefined,
-    website: p.website && p.website.startsWith("http") ? p.website : undefined,
-  }
-}
 
 function fmtCost(cost?: number): string {
   if (!cost) return "—"
@@ -90,6 +65,23 @@ const STAGE_COLORS: Record<string, string> = {
   "Proposed": "bg-amber-100 text-amber-800",
   "Under Construction": "bg-blue-100 text-blue-800",
   "Completed": "bg-emerald-100 text-emerald-800",
+}
+
+// NEW / UPDATED pill shown on projects flagged by the latest sync. The
+// changeNote (e.g. "Stage: Proposed → Under Construction") is surfaced on hover.
+function PendingBadge({ project }: { project: Project }) {
+  if (!project.pending && !project.isNew && !project.isUpdated) return null
+  const isNew = project.isNew
+  return (
+    <span
+      title={project.changeNote || (isNew ? "New project" : "Updated")}
+      className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
+        isNew ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
+      }`}
+    >
+      {isNew ? "New" : "Updated"}
+    </span>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -243,9 +235,11 @@ export default function AdminMajorProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
-  const [filter, setFilter] = useState<"all" | "linked" | "needs">("all")
   const [stageFilter, setStageFilter] = useState<string | null>(null)
-  const [priorityExpanded, setPriorityExpanded] = useState(true)
+  // Category/sector filter — defaults to Tourism (current editorial focus); "all" shows every category
+  const [sectorFilter, setSectorFilter] = useState<string>(TOURISM_SECTOR)
+  const [pendingCount, setPendingCount] = useState(0)
+  const [marking, setMarking] = useState(false)
 
   // Auth check
   useEffect(() => {
@@ -253,40 +247,43 @@ export default function AdminMajorProjectsPage() {
     if (auth !== "true") router.push("/admin/login")
   }, [router])
 
-  // Fetch projects + articles
+  // Fetch projects (via sync — all sectors, with new/updated flags) + articles
   useEffect(() => {
     async function load() {
       setLoading(true)
       try {
-        // 1. Fetch projects from Alberta API
-        const geoRes = await fetch(ALBERTA_API_URL, { cache: "no-store" })
-        const geojson = await geoRes.json()
-        const features = Array.isArray(geojson.features) ? geojson.features : Array.isArray(geojson) ? geojson : []
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const parsed: Project[] = (features as any[]).map((f) => parseProject(f)).filter((p): p is Project => p !== null)
+        // 1. Sync + fetch all tracked projects (all sectors)
+        const syncRes = await fetch("/api/admin/major-projects/sync", { cache: "no-store" })
+        if (!syncRes.ok) throw new Error(`Sync failed (${syncRes.status})`)
+        const sync = await syncRes.json()
+        const parsed: Project[] = Array.isArray(sync.projects) ? sync.projects : []
         setProjects(parsed)
+        setPendingCount(sync?.counts?.pending ?? 0)
 
-        // 2. Fetch linked articles for these projects
+        // 2. Fetch linked articles for these projects (chunk tags to keep query sane)
         const projectTags = parsed.map((p) => `project:${p.id}`)
-        const artRes = await fetch("/api/admin/major-projects/articles", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tags: projectTags }),
-        })
-        if (artRes.ok) {
-          const artData: ArticleOption[] = await artRes.json()
-          const byProject: Record<string, LinkedArticle[]> = {}
-          for (const a of artData) {
-            for (const tag of a.tags ?? []) {
-              if (tag.startsWith("project:")) {
-                const id = tag.slice("project:".length)
-                if (!byProject[id]) byProject[id] = []
-                byProject[id].push({ slug: a.slug, title: a.title })
+        const byProject: Record<string, LinkedArticle[]> = {}
+        for (let i = 0; i < projectTags.length; i += 300) {
+          const chunk = projectTags.slice(i, i + 300)
+          const artRes = await fetch("/api/admin/major-projects/articles", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tags: chunk }),
+          })
+          if (artRes.ok) {
+            const artData: ArticleOption[] = await artRes.json()
+            for (const a of artData) {
+              for (const tag of a.tags ?? []) {
+                if (tag.startsWith("project:")) {
+                  const id = tag.slice("project:".length)
+                  if (!byProject[id]) byProject[id] = []
+                  byProject[id].push({ slug: a.slug, title: a.title })
+                }
               }
             }
           }
-          setArticlesByProject(byProject)
         }
+        setArticlesByProject(byProject)
 
         // 3. Fetch all articles for the "Link Article" widget
         const allArtRes = await fetch("/api/admin/major-projects/articles", {
@@ -306,6 +303,28 @@ export default function AdminMajorProjectsPage() {
     load()
   }, [])
 
+  // Mark all new/updated projects as reviewed → clears the dashboard ping
+  async function handleMarkAllReviewed() {
+    setMarking(true)
+    try {
+      const res = await fetch("/api/admin/major-projects/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+      if (res.ok) {
+        setProjects((prev) =>
+          prev.map((p) => ({ ...p, pending: false, isNew: false, isUpdated: false }))
+        )
+        setPendingCount(0)
+      }
+    } catch {
+      // ignore
+    } finally {
+      setMarking(false)
+    }
+  }
+
   // When an article is linked via the widget, update local state immediately
   function handleArticleLinked(articleSlug: string, projectId: string) {
     const article = allArticles.find(a => a.slug === articleSlug)
@@ -322,6 +341,7 @@ export default function AdminMajorProjectsPage() {
     const stageOrder: Record<string, number> = { "Under Construction": 0, "Proposed": 1, "Completed": 2 }
 
     const base = projects.filter((p) => {
+      if (sectorFilter !== "all" && p.sector !== sectorFilter) return false
       if (stageFilter && p.stage !== stageFilter) return false
       if (q) {
         const hay = [p.name, p.friendlyName ?? "", ...(p.municipalities ?? [])].join(" ").toLowerCase()
@@ -345,23 +365,30 @@ export default function AdminMajorProjectsPage() {
       })
 
     return { coveredProjects: covered, needsProjects: needs }
-  }, [projects, articlesByProject, stageFilter, search])
+  }, [projects, articlesByProject, sectorFilter, stageFilter, search])
 
-  const filtered = filter === "linked" ? coveredProjects : filter === "needs" ? needsProjects : [...coveredProjects, ...needsProjects]
+  // Sectors present in the data, with project counts — drives the category chips.
+  // Ordered by count desc so the biggest categories surface first.
+  const sectors = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const p of projects) {
+      const s = p.sector || "Other"
+      counts[s] = (counts[s] ?? 0) + 1
+    }
+    return Object.entries(counts)
+      .map(([sector, count]) => ({ sector, count }))
+      .sort((a, b) => b.count - a.count)
+  }, [projects])
 
-  const stats = useMemo(() => ({
-    total: projects.length,
-    linked: projects.filter((p) => !!(articlesByProject[p.id]?.length)).length,
-    needs: projects.filter((p) => !(articlesByProject[p.id]?.length)).length,
-    ucNeeds: projects.filter((p) => p.stage === "Under Construction" && !(articlesByProject[p.id]?.length)).length,
-  }), [projects, articlesByProject])
-
-  // Priority list: Under Construction without articles, sorted by cost
-  const priorityProjects = useMemo(() => {
-    return projects
-      .filter(p => p.stage === "Under Construction" && !(articlesByProject[p.id]?.length))
-      .sort((a, b) => (b.cost ?? 0) - (a.cost ?? 0))
-  }, [projects, articlesByProject])
+  const stats = useMemo(() => {
+    const inScope = sectorFilter === "all" ? projects : projects.filter((p) => p.sector === sectorFilter)
+    return {
+      total: inScope.length,
+      linked: inScope.filter((p) => !!(articlesByProject[p.id]?.length)).length,
+      needs: inScope.filter((p) => !(articlesByProject[p.id]?.length)).length,
+      ucNeeds: inScope.filter((p) => p.stage === "Under Construction" && !(articlesByProject[p.id]?.length)).length,
+    }
+  }, [projects, articlesByProject, sectorFilter])
 
   if (loading) {
     return (
@@ -389,15 +416,65 @@ export default function AdminMajorProjectsPage() {
               <Building2 className="w-6 h-6 text-blue-600" />
               Major Projects — Article Tracker
             </h1>
-            <p className="text-sm text-gray-500 mt-0.5">Tourism &amp; Recreation projects from the Alberta Major Projects Inventory</p>
+            <p className="text-sm text-gray-500 mt-0.5">All sectors from the Alberta Major Projects Inventory — filter by category below</p>
           </div>
-          <Link
-            href="/tools/alberta-major-projects"
-            target="_blank"
-            className="ml-auto text-xs text-gray-400 hover:text-teal-600 flex items-center gap-1 transition-colors"
-          >
-            View public tool <ExternalLink className="w-3 h-3" />
-          </Link>
+          <div className="ml-auto flex items-center gap-3">
+            {pendingCount > 0 && (
+              <button
+                onClick={handleMarkAllReviewed}
+                disabled={marking}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+              >
+                {marking ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                )}
+                Mark all reviewed ({pendingCount})
+              </button>
+            )}
+            <Link
+              href="/tools/alberta-major-projects"
+              target="_blank"
+              className="text-xs text-gray-400 hover:text-teal-600 flex items-center gap-1 transition-colors"
+            >
+              View public tool <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Category / sector filter — Tourism is the current editorial focus, but
+            every sector is browsable so future article beats can be planned. */}
+        <div className="bg-white rounded-xl border border-gray-200 px-5 py-3 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</span>
+            <span className="text-xs text-gray-400">— pick a sector to plan article coverage</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setSectorFilter("all")}
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                sectorFilter === "all"
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-gray-50 text-gray-600 border-gray-100 hover:bg-gray-100"
+              }`}
+            >
+              All categories ({projects.length})
+            </button>
+            {sectors.map(({ sector, count }) => (
+              <button
+                key={sector}
+                onClick={() => setSectorFilter(sector)}
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                  sectorFilter === sector
+                    ? "bg-teal-600 text-white border-teal-600"
+                    : "bg-gray-50 text-gray-600 border-gray-100 hover:bg-gray-100"
+                }`}
+              >
+                {sector} ({count})
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Summary bar */}
@@ -469,7 +546,10 @@ export default function AdminMajorProjectsPage() {
                       return (
                         <tr key={p.id} className="hover:bg-emerald-50/30 transition-colors">
                           <td className="px-4 py-3 max-w-xs">
-                            <div className="font-semibold text-gray-900 leading-tight">{p.friendlyName || p.name}</div>
+                            <div className="font-semibold text-gray-900 leading-tight flex items-center gap-1.5">
+                              {p.friendlyName || p.name}
+                              <PendingBadge project={p} />
+                            </div>
                             {p.type && <div className="text-xs text-gray-400 mt-0.5">{p.type}</div>}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
@@ -534,7 +614,10 @@ export default function AdminMajorProjectsPage() {
                   {needsProjects.map((p) => (
                     <tr key={p.id} className="hover:bg-rose-50/20 transition-colors">
                       <td className="px-4 py-3 max-w-xs">
-                        <div className="font-semibold text-gray-900 leading-tight">{p.friendlyName || p.name}</div>
+                        <div className="font-semibold text-gray-900 leading-tight flex items-center gap-1.5">
+                          {p.friendlyName || p.name}
+                          <PendingBadge project={p} />
+                        </div>
                         {p.type && <div className="text-xs text-gray-400 mt-0.5">{p.type}</div>}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
