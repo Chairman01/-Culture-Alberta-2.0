@@ -22,6 +22,47 @@
 const BASE_URL = 'https://www.culturealberta.com'
 const SITEMAP_URL = `${BASE_URL}/sitemap.xml`
 
+// IndexNow host + key. The key is intentionally PUBLIC (it's hosted at
+// https://www.culturealberta.com/<key>.txt for verification), so a hardcoded
+// fallback is safe and means IndexNow works without any Vercel env config.
+// Override with INDEXNOW_KEY only if you also rename public/<key>.txt to match.
+export const INDEXNOW_HOST = 'www.culturealberta.com'
+export const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '212727a642e2a57d8980c5df27bd95f2'
+const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow'
+
+/**
+ * Submit one or more URLs to IndexNow in a single request (Bing, Yandex, etc.).
+ * Accepts up to 10,000 URLs per call. Returns the HTTP status (200/202 = success)
+ * or null on network error. Logs the response. Used by both the per-publish ping
+ * and the bulk backfill script.
+ */
+export async function submitUrlsToIndexNow(urls: string[]): Promise<number | null> {
+  if (!urls.length) return null
+  try {
+    const body = {
+      host: INDEXNOW_HOST,
+      key: INDEXNOW_KEY,
+      keyLocation: `${BASE_URL}/${INDEXNOW_KEY}.txt`,
+      urlList: urls,
+    }
+    const res = await fetch(INDEXNOW_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (res.ok || res.status === 202) {
+      console.log(`✅ IndexNow: submitted ${urls.length} URL(s) (HTTP ${res.status})`)
+    } else {
+      const text = await res.text()
+      console.warn(`⚠️  IndexNow returned ${res.status}: ${text}`)
+    }
+    return res.status
+  } catch (err) {
+    console.warn('⚠️  IndexNow request failed:', err)
+    return null
+  }
+}
+
 /**
  * Notify search engines about a newly published or updated article URL.
  * Call this after an article is successfully created or updated with status='published'.
@@ -45,35 +86,7 @@ export async function notifySearchEngines(articleUrl: string): Promise<void> {
  * Requires INDEXNOW_KEY env var and a verification file at /public/<key>.txt
  */
 async function pingIndexNow(url: string): Promise<void> {
-  const key = process.env.INDEXNOW_KEY
-  if (!key) {
-    console.log('ℹ️  INDEXNOW_KEY not set — skipping IndexNow ping. Add it to your .env for faster Bing indexing.')
-    return
-  }
-
-  try {
-    const body = {
-      host: 'www.culturealberta.com',
-      key,
-      keyLocation: `${BASE_URL}/${key}.txt`,
-      urlList: [url],
-    }
-
-    const res = await fetch('https://api.indexnow.org/indexnow', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-
-    if (res.ok || res.status === 202) {
-      console.log(`✅ IndexNow ping sent (${res.status})`)
-    } else {
-      const text = await res.text()
-      console.warn(`⚠️  IndexNow ping returned ${res.status}: ${text}`)
-    }
-  } catch (err) {
-    console.warn('⚠️  IndexNow ping failed:', err)
-  }
+  await submitUrlsToIndexNow([url])
 }
 
 /**

@@ -11,7 +11,8 @@
     "lint": "next lint",
     "postbuild": "next-sitemap",
     "sync-articles": "node scripts/sync-articles-to-file.js",
-    "auto-sync": "node scripts/auto-sync.js"
+    "auto-sync": "node scripts/auto-sync.js",
+    "indexnow-backfill": "node scripts/indexnow-backfill.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
