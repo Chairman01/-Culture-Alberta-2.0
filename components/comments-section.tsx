@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { CommentForm } from './comment-form'
 import { CommentList } from './comment-list'
+import { ArticleLikeButton } from './article-like-button'
 import { MessageSquare } from 'lucide-react'
 
 interface CommentsSectionProps {
@@ -18,9 +19,12 @@ export function CommentsSection({ articleId }: CommentsSectionProps) {
 
     return (
         <div className="mt-16 pt-12 border-t border-gray-200">
-            <div className="flex items-center gap-3 mb-8">
-                <MessageSquare className="w-7 h-7 text-blue-600" />
-                <h2 className="text-3xl font-bold text-gray-900">Comments</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div className="flex items-center gap-3">
+                    <MessageSquare className="w-7 h-7 text-blue-600" />
+                    <h2 className="text-3xl font-bold text-gray-900">Comments</h2>
+                </div>
+                <ArticleLikeButton articleId={articleId} />
             </div>
 
             <div className="space-y-8">

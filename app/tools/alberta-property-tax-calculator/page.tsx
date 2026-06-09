@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import AlbertaPropertyTaxCalculatorClient from "./alberta-property-tax-calculator-client"
+import { ToolEngagement } from "@/components/tool-engagement"
 
 export const metadata: Metadata = {
   title: "Alberta Property Tax Calculator 2024 | All Municipalities | Free",
@@ -256,7 +257,12 @@ export default function AlbertaPropertyTaxCalculatorPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
       />
-      <AlbertaPropertyTaxCalculatorClient />
+      <div data-tool-root>
+        <AlbertaPropertyTaxCalculatorClient />
+        <div className="max-w-4xl mx-auto px-4 pb-12">
+          <ToolEngagement toolSlug="alberta-property-tax-calculator" />
+        </div>
+      </div>
     </>
   )
 }

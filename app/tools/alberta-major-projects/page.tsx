@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { supabase } from "@/lib/supabase"
 import AlbertaMajorProjectsClient, { type Project, type Article } from "./alberta-major-projects-client"
+import { ToolEngagement } from "@/components/tool-engagement"
 
 // ---------------------------------------------------------------------------
 // Metadata + SEO
@@ -371,11 +372,16 @@ export default async function AlbertaMajorProjectsPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <AlbertaMajorProjectsClient
-        projects={projects}
-        articlesByProject={articlesByProject}
-        lastFetched={lastFetched}
-      />
+      <div data-tool-root>
+        <AlbertaMajorProjectsClient
+          projects={projects}
+          articlesByProject={articlesByProject}
+          lastFetched={lastFetched}
+        />
+        <div className="max-w-4xl mx-auto px-4 pb-12">
+          <ToolEngagement toolSlug="alberta-major-projects" />
+        </div>
+      </div>
     </>
   )
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import CostOfLivingClient from "./cost-of-living-client"
+import { ToolEngagement } from "@/components/tool-engagement"
 import { getFastArticles } from "@/lib/fast-articles"
 import { Article } from "@/lib/types/article"
 
@@ -240,7 +241,12 @@ export default async function CalgaryVsEdmontonPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <CostOfLivingClient relatedArticles={relatedArticles} />
+      <div data-tool-root>
+        <CostOfLivingClient relatedArticles={relatedArticles} />
+        <div className="max-w-4xl mx-auto px-4 pb-12">
+          <ToolEngagement toolSlug="calgary-vs-edmonton-cost-of-living" />
+        </div>
+      </div>
     </>
   )
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import AISHPaymentDatesClient from "./aish-payment-dates-client"
+import { ToolEngagement } from "@/components/tool-engagement"
 
 export const metadata: Metadata = {
   title: "AISH Payment Dates 2026 Alberta | When Does AISH Get Deposited",
@@ -252,7 +253,12 @@ export default function AISHPaymentDatesPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventSchema) }}
       />
-      <AISHPaymentDatesClient />
+      <div data-tool-root>
+        <AISHPaymentDatesClient />
+        <div className="max-w-4xl mx-auto px-4 pb-12">
+          <ToolEngagement toolSlug="aish-payment-dates" />
+        </div>
+      </div>
     </>
   )
 }

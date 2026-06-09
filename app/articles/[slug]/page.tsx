@@ -1,4 +1,4 @@
-import { cache } from 'react'
+import { cache, Fragment } from 'react'
 import { unstable_cache } from 'next/cache'
 import { notFound, redirect } from 'next/navigation'
 import { Calendar, Clock, Bookmark, ArrowLeft, ArrowRight, MapPin, ChevronRight, Calculator } from 'lucide-react'
@@ -153,6 +153,58 @@ function getArticleAgeDays(article: Article): number | null {
   return Number.isFinite(ageDays) ? ageDays : null
 }
 
+// Evergreen / SEO content (guides, how-tos, listicles, "best of") stays relevant
+// regardless of age, so it is exempt from the recency demotion that time-sensitive
+// news (breaking news, crime, events) is subject to.
+const EVERGREEN_TAGS = new Set(['evergreen', 'seo', 'guide', 'guides'])
+const EVERGREEN_TITLE_RE =
+  /\b(guide|how to|how-to|things to do|where to|best places|best things|ultimate|complete guide|tips|what to know|everything you need|step by step)\b/
+
+function isEvergreenLike(article: Article): boolean {
+  const tags = (article.tags || []).map(tag => tag.toLowerCase())
+  if (tags.some(tag => EVERGREEN_TAGS.has(tag))) return true
+
+  const category = (article.category || '').toLowerCase()
+  const categories = (article.categories || []).map(entry => entry.toLowerCase())
+  if (category === 'guide' || categories.includes('guide')) return true
+
+  return EVERGREEN_TITLE_RE.test((article.title || '').toLowerCase())
+}
+
+// Resolve the city an article belongs to (used to blend city-relevant evergreen
+// content into time-sensitive recommendations). Prefers a specific city over the
+// province-wide "alberta" bucket so an Edmonton story matches Edmonton evergreen.
+function getArticleCity(article: Article): string | null {
+  const pool = [
+    (article.category || '').toLowerCase(),
+    (article.location || '').toLowerCase(),
+    ...(article.categories || []).map(entry => entry.toLowerCase()),
+  ].filter(Boolean)
+
+  const matches = pool.filter(value => CITY_CATEGORIES.has(value))
+  if (matches.length === 0) return null
+
+  return matches.find(city => city !== 'alberta') || matches[0]
+}
+
+// Continuous recency contribution. Most published content is already 30+ days old,
+// so the curve has to keep separating articles across MONTHS (not just days) for the
+// newest relevant story to win over an older but equally on-topic one.
+function getRecencyScore(ageDays: number): number {
+  if (ageDays < 3) return 40
+  if (ageDays < 7) return 32
+  if (ageDays < 14) return 24
+  if (ageDays < 21) return 14
+  if (ageDays < 30) return 4
+  if (ageDays < 45) return -10
+  if (ageDays < 60) return -25
+  if (ageDays < 90) return -45
+  if (ageDays < 120) return -65
+  if (ageDays < 180) return -90
+  if (ageDays < 270) return -120
+  return -150
+}
+
 function scoreArticleRecommendation(current: Article, candidate: Article): number {
   let score = 0
   const currentCategory = (current.category || '').toLowerCase()
@@ -190,16 +242,11 @@ function scoreArticleRecommendation(current: Article, candidate: Article): numbe
 
   const ageDays = getArticleAgeDays(candidate)
   if (ageDays !== null) {
-    // Strong recency bias: news articles older than ~10 days are heavily demoted.
-    // Only very high-relevance (evergreen) content can overcome these penalties.
-    if (ageDays < 3) score += 35
-    else if (ageDays < 7) score += 28
-    else if (ageDays < 10) score += 18
-    else if (ageDays < 14) score += 6      // still slightly positive — last two weeks
-    else if (ageDays < 21) score -= 40     // 2–3 weeks: needs strong relevance to show
-    else if (ageDays < 30) score -= 65     // 3–4 weeks: very strong penalty
-    else if (ageDays < 60) score -= 90     // 1–2 months: essentially excluded
-    else score -= 120                      // 2+ months: always excluded
+    // Strong recency bias so the newest relevant story wins. Evergreen / SEO content
+    // (guides, how-tos, "best of" lists) is timeless, so it is never demoted for age —
+    // it keeps the freshness boost when recent but takes no penalty when old.
+    const recency = getRecencyScore(ageDays)
+    score += isEvergreenLike(candidate) ? Math.max(recency, 8) : recency
   }
 
   const viewCount = (candidate as ArticleRecommendation).viewCount || (candidate as any).view_count || 0
@@ -689,6 +736,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     // Load recommendation candidates from Supabase first so new articles can appear quickly.
     // The optimized fallback cache is only a resilience backup.
     let relatedArticles: ArticleRecommendation[] = []
+    // A second, DISTINCT set of recommendations for the "Recommended Reads" sidebar.
+    // It must never overlap the "Keep Reading" grid below.
+    let sidebarArticles: ArticleRecommendation[] = []
     try {
       const freshCandidates = await getFreshRecommendationCandidates()
       const fallbackCandidates = freshCandidates.length >= 12
@@ -713,33 +763,77 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         })
 
       if (recommendationCandidates.length > 0) {
-        relatedArticles = recommendationCandidates
+        const GRID_SIZE = 6
+        const SIDEBAR_SIZE = 3
+        const EVERGREEN_SLOTS = 3
+
+        const keyOf = (article: ArticleRecommendation) =>
+          String(article.id || article.slug || article.title).toLowerCase()
+
+        const byScoreThenRecency = (a: ArticleRecommendation, b: ArticleRecommendation) => {
+          const scoreDiff = ((b as any).recommendationScore || 0) - ((a as any).recommendationScore || 0)
+          if (scoreDiff !== 0) return scoreDiff
+          return getArticleTime(b) - getArticleTime(a)
+        }
+
+        // Score every candidate once, best first.
+        const ranked = recommendationCandidates
           .map(article => ({
             ...article,
             recommendationReason: getRecommendationReason(loadedArticle, article),
             recommendationScore: scoreArticleRecommendation(loadedArticle, article),
           }))
-          .sort((a, b) => {
-            const scoreDiff = ((b as any).recommendationScore || 0) - ((a as any).recommendationScore || 0)
-            if (scoreDiff !== 0) return scoreDiff
-            return getArticleTime(b) - getArticleTime(a)
-          })
-          .map(({ recommendationScore, ...article }: any) => article)
-          .slice(0, 6)
+          .sort(byScoreThenRecency)
 
-        if (relatedArticles.length === 0) {
-          relatedArticles = recommendationCandidates
-            .map(article => ({
-              ...article,
-              recommendationReason: getRecommendationReason(loadedArticle, article),
-            }))
-            .sort((a, b) => getArticleTime(b) - getArticleTime(a))
-            .slice(0, 6)
+        const sourceCity = getArticleCity(loadedArticle)
+        const sourceIsEvergreen = isEvergreenLike(loadedArticle)
+        const usedKeys = new Set<string>()
+        const grid: ArticleRecommendation[] = []
+
+        // Request D: for time-sensitive stories (crime, breaking news — traffic drivers,
+        // not revenue drivers), reserve a few grid slots for city-relevant evergreen
+        // (revenue / SEO drivers) so the reader sees a MIX, not just more crime.
+        if (!sourceIsEvergreen && sourceCity) {
+          const cityEvergreen = ranked.filter(article => {
+            if (!isEvergreenLike(article)) return false
+            const city = getArticleCity(article)
+            return city === sourceCity || city === 'alberta'
+          })
+          for (const article of cityEvergreen) {
+            if (grid.length >= EVERGREEN_SLOTS) break
+            if (usedKeys.has(keyOf(article))) continue
+            usedKeys.add(keyOf(article))
+            grid.push(article)
+          }
         }
+
+        // Fill remaining grid slots with the strongest remaining matches.
+        for (const article of ranked) {
+          if (grid.length >= GRID_SIZE) break
+          if (usedKeys.has(keyOf(article))) continue
+          usedKeys.add(keyOf(article))
+          grid.push(article)
+        }
+
+        relatedArticles = grid
+          .sort(byScoreThenRecency)
+          .map(({ recommendationScore, ...article }: any) => article)
+
+        // Request E: the sidebar shows the next-best matches that are NOT already in the
+        // grid, so the two lists are always disjoint.
+        const sidebar: ArticleRecommendation[] = []
+        for (const article of ranked) {
+          if (sidebar.length >= SIDEBAR_SIZE) break
+          if (usedKeys.has(keyOf(article))) continue
+          usedKeys.add(keyOf(article))
+          sidebar.push(article)
+        }
+        sidebarArticles = sidebar.map(({ recommendationScore, ...article }: any) => article)
       }
     } catch (error) {
       console.warn('Failed to load related articles:', error)
       relatedArticles = []
+      sidebarArticles = []
     }
 
     const formatDate = (dateString: string) => {
@@ -1013,14 +1107,6 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       <ArticleViewCount slug={slug} articleTitle={loadedArticle.title} />
                     </div>
 
-                    {/* Newsletter - Inline at end of article */}
-                    <ArticleNewsletterSignup
-                      articleTitle={loadedArticle.title}
-                      articleCategory={loadedArticle.category}
-                      articleImageUrl={loadedArticle.imageUrl}
-                      variant="inline"
-                    />
-
                     {/* Newsletter - Scroll-triggered split-image popup (appears at 50% read) */}
                     <ArticleNewsletterSignup
                       articleTitle={loadedArticle.title}
@@ -1028,6 +1114,19 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       articleImageUrl={loadedArticle.imageUrl}
                       variant="fixed"
                     />
+
+                    {/* Newsletter signup — sits above the comments */}
+                    <div className="mt-12">
+                      <ArticleNewsletterSignup
+                        articleTitle={loadedArticle.title}
+                        articleCategory={loadedArticle.category}
+                        articleImageUrl={loadedArticle.imageUrl}
+                        variant="inline"
+                      />
+                    </div>
+
+                    {/* Comments Section (article like sits beside the heading) */}
+                    <CommentsSection articleId={loadedArticle.id} />
 
                     {/* More Articles Section */}
                     {relatedArticles.length > 0 && (
@@ -1039,9 +1138,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                           </p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                          {relatedArticles.slice(0, 6).map((relatedArticle) => (
+                          {relatedArticles.slice(0, 6).map((relatedArticle, idx) => (
+                            <Fragment key={relatedArticle.id}>
                             <Link
-                              key={relatedArticle.id}
                               href={getArticleUrl(relatedArticle)}
                               className="group block"
                             >
@@ -1096,13 +1195,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                                 </div>
                               </div>
                             </Link>
+                            </Fragment>
                           ))}
                         </div>
                       </div>
                     )}
-
-                    {/* Comments Section */}
-                    <CommentsSection articleId={loadedArticle.id} />
                   </div>
 
                   {/* Sidebar */}
@@ -1110,49 +1207,50 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     {/* Newsletter Signup */}
                     {/* Newsletter signup removed - using ArticleNewsletterSignup instead */}
 
-                    {/* Latest Articles */}
-                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                      <h3 className="text-xl font-bold mb-1 text-gray-900">Recommended Reads</h3>
-                      <p className="text-sm text-gray-500 mb-4">Closest matches to this article</p>
-                      <div className="space-y-4">
-                        {relatedArticles.slice(0, 3).map((relatedArticle) => (
-                          <Link
-                            key={relatedArticle.id}
-                            href={getArticleUrl(relatedArticle)}
-                            className="group block"
-                          >
-                            <div className="flex gap-3">
-                              <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
-                                {relatedArticle.imageUrl && !relatedArticle.imageUrl.startsWith('data:image') ? (
+                    {/* Recommended Reads (distinct from the "Keep Reading" grid above) */}
+                    {sidebarArticles.length > 0 && (
+                      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h3 className="text-xl font-bold mb-1 text-gray-900">Recommended Reads</h3>
+                        <p className="text-sm text-gray-500 mb-4">Closest matches to this article</p>
+                        <div className="space-y-4">
+                          {sidebarArticles.slice(0, 3).map((sidebarArticle) => (
+                            <Link
+                              key={sidebarArticle.id}
+                              href={getArticleUrl(sidebarArticle)}
+                              className="group flex items-start gap-3"
+                            >
+                              <div className="flex-shrink-0 w-20 h-16 rounded-lg bg-gray-200 relative overflow-hidden">
+                                {sidebarArticle.imageUrl && !sidebarArticle.imageUrl.startsWith('data:image') ? (
                                   <Image
-                                    src={relatedArticle.imageUrl}
-                                    alt={relatedArticle.title}
-                                    width={64}
-                                    height={64}
-                                    className="w-full h-full object-cover"
+                                    src={sidebarArticle.imageUrl}
+                                    alt={sidebarArticle.title}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition-transform duration-300"
                                     loading="lazy"
-                                    sizes="64px"
-                                    quality={60}
+                                    sizes="80px"
+                                    quality={70}
                                   />
                                 ) : (
-                                  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                  <div className="w-full h-full flex items-center justify-center">
                                     <span className="text-gray-400 text-xs">No Image</span>
                                   </div>
                                 )}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
-                                  {relatedArticle.title}
+                              <div className="min-w-0">
+                                {sidebarArticle.category && (
+                                  <span className="text-[11px] font-semibold uppercase tracking-wide text-blue-600">
+                                    {sidebarArticle.category}
+                                  </span>
+                                )}
+                                <h4 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">
+                                  {sidebarArticle.title}
                                 </h4>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {relatedArticle.category}
-                                </p>
                               </div>
-                            </div>
-                          </Link>
-                        ))}
+                            </Link>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Alberta Tools */}
                     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">

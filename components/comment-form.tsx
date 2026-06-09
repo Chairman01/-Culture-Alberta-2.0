@@ -1,245 +1,304 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Send, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Loader2, CheckCircle, AlertCircle, X, User } from 'lucide-react'
+import { useCurrentUser } from '@/lib/use-current-user'
 
 interface CommentFormProps {
     articleId: string
     onCommentSubmitted?: () => void
 }
 
-export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps) {
-    const [authorName, setAuthorName] = useState('')
-    const [authorEmail, setAuthorEmail] = useState('')
-    const [content, setContent] = useState('')
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-    const [nameError, setNameError] = useState('')
-    const [contentError, setContentError] = useState('')
+function initialsOf(name: string): string {
+    const w = name.trim().split(/\s+/)
+    if (w.length >= 2 && w[0] && w[1]) return (w[0][0] + w[1][0]).toUpperCase()
+    return name.trim().substring(0, 2).toUpperCase() || '?'
+}
 
-    // Auto-dismiss success message after 5 seconds
+export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps) {
+    const { user, accessToken } = useCurrentUser()
+    const isLoggedIn = !!user
+
+    const [content, setContent] = useState('')
+    const [focused, setFocused] = useState(false)
+    const [submitting, setSubmitting] = useState(false)
+    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+    const [showGuest, setShowGuest] = useState(false)
+    const [guestName, setGuestName] = useState('')
+    const [guestError, setGuestError] = useState('')
+
+    const [authHref, setAuthHref] = useState({ signin: '/auth/signin', signup: '/auth/signup' })
+
+    // Build sign in/up links that return to this article
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const next = encodeURIComponent(window.location.pathname)
+            setAuthHref({
+                signin: `/auth/signin?next=${next}`,
+                signup: `/auth/signup?next=${next}`,
+            })
+        }
+    }, [])
+
+    // Auto-dismiss success message
     useEffect(() => {
         if (message?.type === 'success') {
-            const timer = setTimeout(() => {
-                setMessage(null)
-            }, 5000)
-            return () => clearTimeout(timer)
+            const t = setTimeout(() => setMessage(null), 5000)
+            return () => clearTimeout(t)
         }
     }, [message])
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const memberName =
+        ((user?.user_metadata as { full_name?: string } | undefined)?.full_name) ||
+        user?.email ||
+        'You'
 
+    const expanded = focused || content.length > 0
+
+    const postComment = async (opts: { authorName?: string; asMember?: boolean }) => {
+        const text = content.trim()
+        setSubmitting(true)
         setMessage(null)
-        setNameError('')
-        setContentError('')
-
-        if (!authorName.trim()) {
-            setNameError('Please enter your name')
-            return
-        }
-
-        if (authorName.trim().length > 100) {
-            setNameError('Name must be less than 100 characters')
-            return
-        }
-
-        if (authorEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authorEmail.trim())) {
-            setMessage({ type: 'error', text: 'Please enter a valid email address or leave it blank.' })
-            return
-        }
-
-        if (!content.trim()) {
-            setContentError('Please enter your comment')
-            return
-        }
-
-        if (content.trim().length < 3) {
-            setContentError('Comment must be at least 3 characters')
-            return
-        }
-
-        if (content.trim().length > 1000) {
-            setContentError('Comment must be less than 1000 characters')
-            return
-        }
-
-        setIsSubmitting(true)
-
         try {
-            const response = await fetch('/api/comments', {
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+            if (opts.asMember && accessToken) headers.Authorization = `Bearer ${accessToken}`
+
+            const res = await fetch('/api/comments', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 body: JSON.stringify({
                     articleId,
-                    authorName: authorName.trim(),
-                    authorEmail: authorEmail.trim() || null,
-                    content: content.trim(),
+                    content: text,
+                    ...(opts.authorName ? { authorName: opts.authorName } : {}),
                 }),
             })
+            const data = await res.json()
 
-            const data = await response.json()
-
-            if (response.ok) {
-                setMessage({
-                    type: 'success',
-                    text: 'Thank you! Your comment has been submitted and will appear after moderation.'
-                })
-
+            if (res.ok) {
                 setContent('')
-                setAuthorEmail('')
+                setFocused(false)
+                setShowGuest(false)
+                setGuestName('')
+                setMessage({ type: 'success', text: 'Your comment has been posted.' })
                 onCommentSubmitted?.()
             } else {
-                setMessage({ type: 'error', text: data.error || 'Failed to submit comment. Please try again.' })
+                const errText = data.error || 'Failed to post comment. Please try again.'
+                setGuestError(errText)
+                setMessage({ type: 'error', text: errText })
             }
-        } catch (error) {
-            console.error('Error submitting comment:', error)
+        } catch {
             setMessage({ type: 'error', text: 'An error occurred. Please check your connection and try again.' })
         } finally {
-            setIsSubmitting(false)
+            setSubmitting(false)
         }
     }
 
-    const charCount = content.length
-    const charLimit = 1000
-    const charPercentage = (charCount / charLimit) * 100
+    const handlePostClick = () => {
+        const text = content.trim()
+        if (text.length < 3) {
+            setMessage({ type: 'error', text: 'Comment must be at least 3 characters.' })
+            return
+        }
+        if (text.length > 1000) {
+            setMessage({ type: 'error', text: 'Comment must be less than 1000 characters.' })
+            return
+        }
+        if (isLoggedIn) {
+            postComment({ asMember: true })
+        } else {
+            setGuestError('')
+            setShowGuest(true)
+        }
+    }
+
+    const handleGuestSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        const name = guestName.trim()
+        if (!name) {
+            setGuestError('Please enter a name.')
+            return
+        }
+        postComment({ authorName: name })
+    }
+
+    const handleCancel = () => {
+        setContent('')
+        setFocused(false)
+        setMessage(null)
+    }
 
     return (
-        <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg p-8 border border-blue-100">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-                <Send className="w-6 h-6 text-blue-600" />
-                Share Your Thoughts
-            </h3>
-            <p className="text-sm text-gray-500 mb-6">No account required. Comments are reviewed before publishing.</p>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                        <label htmlFor="authorName" className="block text-sm font-semibold text-gray-700 mb-2">
-                            Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            id="authorName"
-                            value={authorName}
-                            onChange={(e) => {
-                                setAuthorName(e.target.value)
-                                setNameError('')
-                            }}
-                            className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${nameError ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
-                                }`}
-                            placeholder="Your name"
-                            maxLength={100}
-                            disabled={isSubmitting}
-                        />
-                        {nameError && (
-                            <p className="text-sm text-red-600 flex items-center gap-1 mt-2">
-                                <AlertCircle className="w-4 h-4" />
-                                {nameError}
-                            </p>
-                        )}
+        <div>
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+                <h3 className="text-2xl font-bold text-gray-900">Conversation</h3>
+                {isLoggedIn ? (
+                    <span className="text-sm text-gray-500">
+                        Signed in as <span className="font-semibold text-gray-700">{memberName}</span>
+                    </span>
+                ) : (
+                    <div className="text-xs sm:text-sm font-semibold tracking-wide text-blue-600">
+                        <Link href={authHref.signin} className="hover:underline">LOG IN</Link>
+                        <span className="mx-2 text-gray-300">|</span>
+                        <Link href={authHref.signup} className="hover:underline">SIGN UP</Link>
                     </div>
+                )}
+            </div>
 
-                    <div>
-                        <label htmlFor="authorEmail" className="block text-sm font-semibold text-gray-700 mb-2">
-                            Email <span className="text-gray-400 font-normal">(optional)</span>
-                        </label>
-                        <input
-                            id="authorEmail"
-                            type="email"
-                            value={authorEmail}
-                            onChange={(e) => setAuthorEmail(e.target.value)}
-                            className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-gray-200 bg-white"
-                            placeholder="you@example.com"
-                            maxLength={255}
-                            disabled={isSubmitting}
-                        />
-                    </div>
-                </div>
-
-                {/* Comment Textarea */}
-                <div>
-                    <label htmlFor="content" className="block text-sm font-semibold text-gray-700 mb-2">
-                        Your Comment <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                        id="content"
-                        value={content}
-                        onChange={(e) => {
-                            setContent(e.target.value)
-                            setContentError('')
-                        }}
-                        className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none ${contentError ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
-                            }`}
-                        placeholder="Share your thoughts on this article..."
-                        rows={5}
-                        maxLength={charLimit}
-                        disabled={isSubmitting}
-                    />
-                    <div className="flex justify-between items-center mt-2">
-                        {contentError ? (
-                            <p className="text-sm text-red-600 flex items-center gap-1">
-                                <AlertCircle className="w-4 h-4" />
-                                {contentError}
-                            </p>
-                        ) : (
-                            <span className="text-xs text-gray-500">
-                                All comments are reviewed before being published
-                            </span>
-                        )}
-                        <span
-                            className={`text-sm font-medium ${charPercentage > 90
-                                    ? 'text-red-500'
-                                    : charPercentage > 75
-                                        ? 'text-orange-500'
-                                        : 'text-gray-500'
-                                }`}
-                        >
-                            {charCount} / {charLimit}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Submit Button */}
-                <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                >
-                    {isSubmitting ? (
-                        <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            Submitting...
-                        </>
+            {/* Composer */}
+            <div className="flex gap-3 mt-4">
+                <div className="flex-shrink-0">
+                    {isLoggedIn ? (
+                        <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                            {initialsOf(memberName)}
+                        </div>
                     ) : (
-                        <>
-                            <Send className="w-5 h-5" />
-                            Post Comment
-                        </>
+                        <div className="w-10 h-10 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center">
+                            <User className="w-6 h-6" />
+                        </div>
                     )}
-                </button>
-            </form>
+                </div>
 
-            {/* Success/Error Message */}
+                <div className="flex-1 min-w-0">
+                    <div
+                        className={`rounded-lg bg-white border transition-all ${
+                            expanded ? 'border-gray-300 shadow-sm' : 'border-gray-200'
+                        }`}
+                    >
+                        <textarea
+                            value={content}
+                            onChange={(e) => {
+                                setContent(e.target.value)
+                                if (message) setMessage(null)
+                            }}
+                            onFocus={() => setFocused(true)}
+                            placeholder="Join the discussion…"
+                            rows={expanded ? 3 : 1}
+                            maxLength={1000}
+                            disabled={submitting}
+                            className="w-full px-4 py-3 rounded-lg resize-none focus:outline-none text-gray-800 placeholder-gray-400"
+                        />
+
+                        {expanded && (
+                            <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-gray-100 bg-gray-50 rounded-b-lg">
+                                <span className="text-xs text-gray-400 pl-1">{content.length}/1000</span>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={handleCancel}
+                                        disabled={submitting}
+                                        className="text-sm font-semibold text-gray-500 hover:text-gray-700 px-4 py-2 rounded transition-colors disabled:opacity-50"
+                                    >
+                                        CANCEL
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handlePostClick}
+                                        disabled={submitting || content.trim().length === 0}
+                                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                                        POST
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Inline success / error */}
             {message && (
                 <div
-                    className={`mt-6 p-4 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300 ${message.type === 'success'
-                            ? 'bg-green-50 border-2 border-green-200'
-                            : 'bg-red-50 border-2 border-red-200'
-                        }`}
+                    className={`mt-4 p-3 rounded-lg flex items-start gap-2 text-sm ${
+                        message.type === 'success'
+                            ? 'bg-green-50 border border-green-200 text-green-800'
+                            : 'bg-red-50 border border-red-200 text-red-800'
+                    }`}
                 >
                     {message.type === 'success' ? (
-                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                     ) : (
-                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
                     )}
-                    <p
-                        className={`text-sm font-medium ${message.type === 'success' ? 'text-green-800' : 'text-red-800'
-                            }`}
+                    <span className="font-medium">{message.text}</span>
+                </div>
+            )}
+
+            {/* Guest / sign-in popup */}
+            {showGuest && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-in fade-in duration-200"
+                    onClick={() => !submitting && setShowGuest(false)}
+                    role="dialog"
+                    aria-modal="true"
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
                     >
-                        {message.text}
-                    </p>
+                        <button
+                            type="button"
+                            onClick={() => setShowGuest(false)}
+                            disabled={submitting}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                            aria-label="Close"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">Post your comment</h3>
+                        <p className="text-sm text-gray-500 mb-5">
+                            Comment as a guest — just add a name. Or sign in to comment as a member.
+                        </p>
+
+                        <form onSubmit={handleGuestSubmit} className="space-y-3">
+                            <input
+                                value={guestName}
+                                onChange={(e) => {
+                                    setGuestName(e.target.value)
+                                    setGuestError('')
+                                }}
+                                placeholder="Your name"
+                                maxLength={100}
+                                autoFocus
+                                disabled={submitting}
+                                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            />
+                            {guestError && (
+                                <p className="text-sm text-red-600 flex items-center gap-1">
+                                    <AlertCircle className="w-4 h-4" />
+                                    {guestError}
+                                </p>
+                            )}
+                            <button
+                                type="submit"
+                                disabled={submitting}
+                                className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
+                                Post comment
+                            </button>
+                        </form>
+
+                        <div className="flex items-center gap-3 my-4">
+                            <span className="h-px bg-gray-200 flex-1" />
+                            <span className="text-xs text-gray-400 font-medium">OR</span>
+                            <span className="h-px bg-gray-200 flex-1" />
+                        </div>
+
+                        <div className="flex items-center justify-center gap-4 text-sm">
+                            <Link href={authHref.signin} className="font-semibold text-blue-600 hover:underline">
+                                Log in
+                            </Link>
+                            <span className="text-gray-300">|</span>
+                            <Link href={authHref.signup} className="font-semibold text-blue-600 hover:underline">
+                                Sign up
+                            </Link>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

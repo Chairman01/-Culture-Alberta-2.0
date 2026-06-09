@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { supabase } from "@/lib/supabase"
 import StatHolidayCalculatorClient from "./stat-holiday-calculator-client"
+import { ToolEngagement } from "@/components/tool-engagement"
 
 export const metadata: Metadata = {
   title: "Alberta Stat Holiday Pay Calculator 2026 | Culture Alberta",
@@ -256,7 +257,12 @@ export default async function StatHolidayCalculatorPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <StatHolidayCalculatorClient relatedArticles={dynamicRelated.length > 0 ? dynamicRelated : undefined} />
+      <div data-tool-root>
+        <StatHolidayCalculatorClient relatedArticles={dynamicRelated.length > 0 ? dynamicRelated : undefined} />
+        <div className="max-w-4xl mx-auto px-4 pb-12">
+          <ToolEngagement toolSlug="stat-holiday-calculator" />
+        </div>
+      </div>
     </>
   )
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import AISHCalculatorClient from "./aish-calculator-client"
+import { ToolEngagement } from "@/components/tool-engagement"
 
 export const metadata: Metadata = {
   title: "AISH Calculator Alberta 2026 | Estimate Your Monthly Payment Free",
@@ -236,7 +237,12 @@ export default function AISHCalculatorPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <AISHCalculatorClient />
+      <div data-tool-root>
+        <AISHCalculatorClient />
+        <div className="max-w-4xl mx-auto px-4 pb-12">
+          <ToolEngagement toolSlug="aish-calculator" />
+        </div>
+      </div>
     </>
   )
 }

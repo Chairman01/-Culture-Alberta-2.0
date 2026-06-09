@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
 import { requireAdmin } from '@/lib/admin-auth'
+import { getServiceClient } from '@/lib/supabase-admin'
+
+export const dynamic = 'force-dynamic'
 
 // GET: Fetch all comments (admin only)
 export async function GET(request: NextRequest) {
@@ -8,15 +10,18 @@ export async function GET(request: NextRequest) {
     if (!auth.ok) return auth.response
 
     try {
+        const supabase = getServiceClient()
         const searchParams = request.nextUrl.searchParams
         const status = searchParams.get('status') // 'pending', 'approved', 'rejected', or null for all
         const page = parseInt(searchParams.get('page') || '1')
         const limit = parseInt(searchParams.get('limit') || '50')
         const offset = (page - 1) * limit
 
+        // NOTE: no embedded join — there is no FK between comments.article_id and
+        // articles.id, so an `articles(title)` embed errors. Fetch titles separately.
         let query = supabase
             .from('comments')
-            .select('*, articles(title)', { count: 'exact' })
+            .select('*', { count: 'exact' })
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1)
 
@@ -35,8 +40,30 @@ export async function GET(request: NextRequest) {
             )
         }
 
+        // Resolve article titles in a single query and map onto comments
+        const list = comments || []
+        const articleIds = Array.from(
+            new Set(list.map((c: { article_id: string | null }) => c.article_id).filter(Boolean))
+        ) as string[]
+
+        const titleById: Record<string, string> = {}
+        if (articleIds.length > 0) {
+            const { data: articles } = await supabase
+                .from('articles')
+                .select('id, title')
+                .in('id', articleIds)
+            for (const a of articles || []) {
+                titleById[a.id] = a.title
+            }
+        }
+
+        const withTitles = list.map((c: { article_id: string | null }) => ({
+            ...c,
+            articles: c.article_id ? { title: titleById[c.article_id] ?? null } : null,
+        }))
+
         return NextResponse.json({
-            comments: comments || [],
+            comments: withTitles,
             total: count || 0,
             page,
             limit,
@@ -57,6 +84,7 @@ export async function PATCH(request: NextRequest) {
     if (!auth.ok) return auth.response
 
     try {
+        const supabase = getServiceClient()
         const body = await request.json()
         const { commentId, status } = body
 
@@ -111,6 +139,7 @@ export async function DELETE(request: NextRequest) {
     if (!auth.ok) return auth.response
 
     try {
+        const supabase = getServiceClient()
         const searchParams = request.nextUrl.searchParams
         const commentId = searchParams.get('commentId')
 

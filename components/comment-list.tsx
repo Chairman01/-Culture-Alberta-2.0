@@ -1,58 +1,149 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { CommentItem } from './comment-item'
+import { useCallback, useEffect, useState } from 'react'
+import { CommentItem, type CommentNode } from './comment-item'
 import { Loader2, MessageSquare } from 'lucide-react'
-
-interface Comment {
-    id: string
-    author_name: string
-    content: string
-    created_at: string
-}
+import { getClientId } from '@/lib/anon-client-id'
+import { useCurrentUser } from '@/lib/use-current-user'
 
 interface CommentListProps {
     articleId: string
     refreshTrigger?: number
 }
 
-const COMMENTS_TO_SHOW = 3
+const PAGE_SIZE = 10
 
 export function CommentList({ articleId, refreshTrigger }: CommentListProps) {
-    const [comments, setComments] = useState<Comment[]>([])
+    const [comments, setComments] = useState<CommentNode[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const [loadingMore, setLoadingMore] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [total, setTotal] = useState(0)
+    const [signInHref, setSignInHref] = useState('/auth/signin')
 
-    const fetchComments = async () => {
-        try {
-            setIsLoading(true)
-            setComments([])
-            setError(null)
-
-            const response = await fetch(
-                `/api/comments?articleId=${articleId}&limit=${COMMENTS_TO_SHOW}&offset=0`
-            )
-            const data = await response.json()
-
-            if (response.ok) {
-                const newComments = data.comments || []
-                setComments(newComments)
-                setTotal(data.total || 0)
-            } else {
-                setError(data.error || 'Failed to load comments')
-            }
-        } catch (err) {
-            console.error('Error fetching comments:', err)
-            setError('Failed to load comments')
-        } finally {
-            setIsLoading(false)
-        }
-    }
+    const { user, accessToken } = useCurrentUser()
+    const isLoggedIn = !!user
 
     useEffect(() => {
-        fetchComments()
-    }, [articleId, refreshTrigger])
+        if (typeof window !== 'undefined') {
+            setSignInHref(`/auth/signin?next=${encodeURIComponent(window.location.pathname)}`)
+        }
+    }, [])
+
+    const fetchPage = useCallback(
+        async (offset: number, append: boolean) => {
+            try {
+                if (append) setLoadingMore(true)
+                else setIsLoading(true)
+                setError(null)
+
+                const clientId = getClientId()
+                const response = await fetch(
+                    `/api/comments?articleId=${encodeURIComponent(articleId)}&clientId=${encodeURIComponent(
+                        clientId
+                    )}&limit=${PAGE_SIZE}&offset=${offset}`
+                )
+                const data = await response.json()
+
+                if (response.ok) {
+                    const incoming: CommentNode[] = data.comments || []
+                    setComments((prev) => (append ? [...prev, ...incoming] : incoming))
+                    setTotal(data.total || 0)
+                } else {
+                    setError(data.error || 'Failed to load comments')
+                }
+            } catch (err) {
+                console.error('Error fetching comments:', err)
+                setError('Failed to load comments')
+            } finally {
+                setIsLoading(false)
+                setLoadingMore(false)
+            }
+        },
+        [articleId]
+    )
+
+    useEffect(() => {
+        fetchPage(0, false)
+    }, [fetchPage, refreshTrigger])
+
+    // Optimistic like toggle for a comment or reply
+    const handleToggleLike = useCallback(async (commentId: string) => {
+        const clientId = getClientId()
+
+        const apply = (list: CommentNode[]): CommentNode[] =>
+            list.map((c) => {
+                if (c.id === commentId) {
+                    const liked = !c.liked_by_client
+                    return {
+                        ...c,
+                        liked_by_client: liked,
+                        like_count: Math.max(0, c.like_count + (liked ? 1 : -1)),
+                    }
+                }
+                if (c.replies && c.replies.length) {
+                    return { ...c, replies: apply(c.replies) }
+                }
+                return c
+            })
+
+        setComments((prev) => apply(prev))
+
+        try {
+            const res = await fetch(`/api/comments/${commentId}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId }),
+            })
+            const data = await res.json()
+            if (res.ok) {
+                const reconcile = (list: CommentNode[]): CommentNode[] =>
+                    list.map((c) => {
+                        if (c.id === commentId) {
+                            return { ...c, liked_by_client: data.liked, like_count: data.likeCount }
+                        }
+                        if (c.replies && c.replies.length) {
+                            return { ...c, replies: reconcile(c.replies) }
+                        }
+                        return c
+                    })
+                setComments((prev) => reconcile(prev))
+            }
+        } catch (err) {
+            console.error('Error toggling comment like:', err)
+        }
+    }, [])
+
+    // Post a reply (requires logged-in user)
+    const handleReply = useCallback(
+        async (parentId: string, content: string): Promise<boolean> => {
+            if (!accessToken) return false
+            try {
+                const res = await fetch('/api/comments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                    body: JSON.stringify({ articleId, content, parentId }),
+                })
+                const data = await res.json()
+                if (!res.ok || !data.comment) return false
+
+                const newReply: CommentNode = data.comment
+                setComments((prev) =>
+                    prev.map((c) =>
+                        c.id === parentId ? { ...c, replies: [...(c.replies || []), newReply] } : c
+                    )
+                )
+                return true
+            } catch (err) {
+                console.error('Error posting reply:', err)
+                return false
+            }
+        },
+        [accessToken, articleId]
+    )
 
     if (isLoading) {
         return (
@@ -71,7 +162,7 @@ export function CommentList({ articleId, refreshTrigger }: CommentListProps) {
                 <div className="text-center">
                     <p className="text-red-600 mb-4">{error}</p>
                     <button
-                        onClick={() => fetchComments()}
+                        onClick={() => fetchPage(0, false)}
                         className="text-blue-600 hover:text-blue-700 font-medium underline"
                     >
                         Try again
@@ -88,12 +179,8 @@ export function CommentList({ articleId, refreshTrigger }: CommentListProps) {
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
                         <MessageSquare className="w-8 h-8 text-blue-600" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        No comments yet
-                    </h3>
-                    <p className="text-gray-600">
-                        Be the first to share your thoughts on this article!
-                    </p>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No comments yet</h3>
+                    <p className="text-gray-600">Be the first to share your thoughts on this article!</p>
                 </div>
             </div>
         )
@@ -101,7 +188,6 @@ export function CommentList({ articleId, refreshTrigger }: CommentListProps) {
 
     return (
         <div className="space-y-6">
-            {/* Comment Count Header */}
             <div className="flex items-center gap-2 pb-2 border-b-2 border-gray-200">
                 <MessageSquare className="w-5 h-5 text-blue-600" />
                 <h3 className="text-xl font-bold text-gray-900">
@@ -109,23 +195,30 @@ export function CommentList({ articleId, refreshTrigger }: CommentListProps) {
                 </h3>
             </div>
 
-            {/* Comments List */}
             <div className="space-y-4">
                 {comments.map((comment) => (
                     <CommentItem
                         key={comment.id}
-                        id={comment.id}
-                        authorName={comment.author_name}
-                        content={comment.content}
-                        createdAt={comment.created_at}
+                        comment={comment}
+                        isLoggedIn={isLoggedIn}
+                        signInHref={signInHref}
+                        onToggleLike={handleToggleLike}
+                        onReply={handleReply}
                     />
                 ))}
             </div>
 
-            {total > COMMENTS_TO_SHOW && (
-                <p className="text-sm text-gray-500 text-center pt-2">
-                    Showing the latest {COMMENTS_TO_SHOW} comments
-                </p>
+            {comments.length < total && (
+                <div className="text-center pt-2">
+                    <button
+                        onClick={() => fetchPage(comments.length, true)}
+                        disabled={loadingMore}
+                        className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium underline disabled:opacity-50"
+                    >
+                        {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Load more comments
+                    </button>
+                </div>
             )}
         </div>
     )

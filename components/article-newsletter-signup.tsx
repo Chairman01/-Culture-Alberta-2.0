@@ -198,39 +198,38 @@ export default function ArticleNewsletterSignup({
   if (variant === 'inline') {
     if (step === 'account') {
       return (
-        <div className={`bg-gradient-to-br from-green-50 to-blue-50/50 border border-green-200/80 rounded-2xl p-6 md:p-8 mt-12 shadow-sm ${className}`}>
+        <div className={`bg-gradient-to-br from-green-50 to-blue-50/50 border border-green-200/80 rounded-2xl p-5 md:p-6 shadow-sm ${className}`}>
           {accountCTA}
         </div>
       )
     }
     return (
-      <div className={`bg-gradient-to-br from-slate-50 to-blue-50/50 border border-slate-200/80 rounded-2xl p-6 md:p-8 mt-12 shadow-sm ${className}`}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
+      <div className={`bg-gradient-to-br from-slate-50 to-blue-50/50 border border-slate-200/80 rounded-2xl p-5 md:p-6 shadow-sm ${className}`}>
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
+          <div className="flex items-center gap-3 lg:flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-gray-900 leading-tight">Enjoying this article?</h3>
+              <p className="text-gray-500 text-xs mt-0.5">Get more Alberta stories in your inbox.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">Enjoying this article?</h3>
-            <p className="text-gray-600 text-sm mt-0.5">Get more Alberta stories delivered to your inbox.</p>
-          </div>
+          <form onSubmit={handleSubscribe} className="flex-1 flex flex-col sm:flex-row gap-2">
+            <select value={city} onChange={(e) => setCity(e.target.value)} className="sm:w-40 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" required>
+              {NEWSLETTER_CITIES.map(({ value, label }) => (
+                <option key={value || 'placeholder'} value={value}>{label}</option>
+              ))}
+            </select>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" className="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" required />
+            <button type="submit" disabled={isSubmitting} className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 whitespace-nowrap">
+              {isSubmitting ? "Subscribing..." : "Subscribe — it's free"}
+            </button>
+          </form>
         </div>
-        <form onSubmit={handleSubscribe} className="space-y-3">
-          <select value={city} onChange={(e) => setCity(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" required>
-            {NEWSLETTER_CITIES.map(({ value, label }) => (
-              <option key={value || 'placeholder'} value={value}>{label}</option>
-            ))}
-          </select>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-          {error && <p className="text-red-600 text-xs">{error}</p>}
-          <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all disabled:opacity-50">
-            {isSubmitting ? "Subscribing..." : "Subscribe — it's free"}
-          </button>
-        </form>
-        <div className="mt-3 text-center">
-          <button onClick={handleDismiss} type="button" className="text-xs text-gray-400 hover:text-gray-600">Not interested</button>
-        </div>
+        {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
       </div>
     )
   }

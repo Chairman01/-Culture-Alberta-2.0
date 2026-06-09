@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import RentalIncreaseCalculatorClient from "./rental-increase-calculator-client"
+import { ToolEngagement } from "@/components/tool-engagement"
 import { getFastArticles } from "@/lib/fast-articles"
 import { Article } from "@/lib/types/article"
 
@@ -248,7 +249,12 @@ export default async function AlbertaRentalIncreaseCalculatorPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <RentalIncreaseCalculatorClient relatedArticles={relatedArticles} />
+      <div data-tool-root>
+        <RentalIncreaseCalculatorClient relatedArticles={relatedArticles} />
+        <div className="max-w-4xl mx-auto px-4 pb-12">
+          <ToolEngagement toolSlug="alberta-rental-increase-calculator" />
+        </div>
+      </div>
     </>
   )
 }

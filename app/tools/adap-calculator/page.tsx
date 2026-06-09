@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import ADAPCalculatorClient from "./adap-calculator-client"
+import { ToolEngagement } from "@/components/tool-engagement"
 
 export const metadata: Metadata = {
   title: "ADAP Calculator Alberta 2026 | ADAP vs AISH Payment Comparison",
@@ -266,7 +267,12 @@ export default function ADAPCalculatorPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <ADAPCalculatorClient />
+      <div data-tool-root>
+        <ADAPCalculatorClient />
+        <div className="max-w-4xl mx-auto px-4 pb-12">
+          <ToolEngagement toolSlug="adap-calculator" />
+        </div>
+      </div>
     </>
   )
 }
