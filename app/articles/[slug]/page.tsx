@@ -787,23 +787,34 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
         const sourceCity = getArticleCity(loadedArticle)
         const sourceIsEvergreen = isEvergreenLike(loadedArticle)
+        const sourceIsCrime = getTopicMatches(loadedArticle).has('crime')
+        const isCrimeArticle = (article: ArticleRecommendation) => getTopicMatches(article).has('crime')
         const usedKeys = new Set<string>()
         const grid: ArticleRecommendation[] = []
 
-        // Request D: for time-sensitive stories (crime, breaking news — traffic drivers,
-        // not revenue drivers), reserve a few grid slots for city-relevant evergreen
-        // (revenue / SEO drivers) so the reader sees a MIX, not just more crime.
-        if (!sourceIsEvergreen && sourceCity) {
-          const cityEvergreen = ranked.filter(article => {
-            if (!isEvergreenLike(article)) return false
-            const city = getArticleCity(article)
-            return city === sourceCity || city === 'alberta'
-          })
-          for (const article of cityEvergreen) {
-            if (grid.length >= EVERGREEN_SLOTS) break
-            if (usedKeys.has(keyOf(article))) continue
-            usedKeys.add(keyOf(article))
-            grid.push(article)
+        // Request D: time-sensitive stories (crime, breaking news) are TRAFFIC drivers,
+        // not REVENUE drivers. Recommending only more crime wastes the visit, so reserve
+        // grid slots for NON-CRIME, city-relevant content (the SEO / revenue drivers) to
+        // guarantee a MIX. Preference order: evergreen guides for the same city, then any
+        // non-crime story from the same city, then province-wide, then any non-crime.
+        if (!sourceIsEvergreen) {
+          const reserveTarget = sourceIsCrime ? EVERGREEN_SLOTS : 2
+          const nonCrime = ranked.filter(article => !isCrimeArticle(article))
+          const tiers: ArticleRecommendation[][] = [
+            nonCrime.filter(a => isEvergreenLike(a) && getArticleCity(a) === sourceCity),
+            nonCrime.filter(a => isEvergreenLike(a) && getArticleCity(a) === 'alberta'),
+            nonCrime.filter(a => getArticleCity(a) === sourceCity),
+            nonCrime.filter(a => getArticleCity(a) === 'alberta'),
+            nonCrime,
+          ]
+          for (const tier of tiers) {
+            if (grid.length >= reserveTarget) break
+            for (const article of tier) {
+              if (grid.length >= reserveTarget) break
+              if (usedKeys.has(keyOf(article))) continue
+              usedKeys.add(keyOf(article))
+              grid.push(article)
+            }
           }
         }
 
@@ -820,15 +831,25 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           .map(({ recommendationScore, ...article }: any) => article)
 
         // Request E: the sidebar shows the next-best matches that are NOT already in the
-        // grid, so the two lists are always disjoint.
+        // grid, so the two lists are always disjoint. For crime stories, seed it with one
+        // non-crime pick first so this list isn't wall-to-wall crime either.
         const sidebar: ArticleRecommendation[] = []
+        if (sourceIsCrime) {
+          const nonCrimePick = ranked.find(a => !isCrimeArticle(a) && !usedKeys.has(keyOf(a)))
+          if (nonCrimePick) {
+            usedKeys.add(keyOf(nonCrimePick))
+            sidebar.push(nonCrimePick)
+          }
+        }
         for (const article of ranked) {
           if (sidebar.length >= SIDEBAR_SIZE) break
           if (usedKeys.has(keyOf(article))) continue
           usedKeys.add(keyOf(article))
           sidebar.push(article)
         }
-        sidebarArticles = sidebar.map(({ recommendationScore, ...article }: any) => article)
+        sidebarArticles = sidebar
+          .sort(byScoreThenRecency)
+          .map(({ recommendationScore, ...article }: any) => article)
       }
     } catch (error) {
       console.warn('Failed to load related articles:', error)

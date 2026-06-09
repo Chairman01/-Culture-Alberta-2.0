@@ -204,32 +204,38 @@ export default function ArticleNewsletterSignup({
       )
     }
     return (
-      <div className={`bg-gradient-to-br from-slate-50 to-blue-50/50 border border-slate-200/80 rounded-2xl p-5 md:p-6 shadow-sm ${className}`}>
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
-          <div className="flex items-center gap-3 lg:flex-shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className={`bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-sm ${className}`}>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 lg:gap-10">
+          <div className="flex items-start gap-4 lg:max-w-sm">
+            <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900 leading-tight">Enjoying this article?</h3>
-              <p className="text-gray-500 text-xs mt-0.5">Get more Alberta stories in your inbox.</p>
+              <h3 className="text-lg md:text-xl font-bold text-gray-900 leading-tight">Enjoying this article?</h3>
+              <p className="text-gray-500 text-sm mt-1 leading-relaxed">
+                Get the best of Alberta — culture, food, and events — delivered free.
+              </p>
             </div>
           </div>
-          <form onSubmit={handleSubscribe} className="flex-1 flex flex-col sm:flex-row gap-2">
-            <select value={city} onChange={(e) => setCity(e.target.value)} className="sm:w-40 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" required>
-              {NEWSLETTER_CITIES.map(({ value, label }) => (
-                <option key={value || 'placeholder'} value={value}>{label}</option>
-              ))}
-            </select>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" className="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" required />
-            <button type="submit" disabled={isSubmitting} className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 whitespace-nowrap">
-              {isSubmitting ? "Subscribing..." : "Subscribe — it's free"}
-            </button>
+          <form onSubmit={handleSubscribe} className="w-full lg:w-auto lg:flex-1 lg:max-w-md">
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <select value={city} onChange={(e) => setCity(e.target.value)} className="sm:w-40 px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 transition-all" required>
+                {NEWSLETTER_CITIES.map(({ value, label }) => (
+                  <option key={value || 'placeholder'} value={value}>{label}</option>
+                ))}
+              </select>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" className="flex-1 min-w-0 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 transition-all" required />
+              <button type="submit" disabled={isSubmitting} className="px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 whitespace-nowrap shadow-sm">
+                {isSubmitting ? "Subscribing..." : "Subscribe"}
+              </button>
+            </div>
+            {error
+              ? <p className="text-red-600 text-xs mt-2.5">{error}</p>
+              : <p className="text-gray-400 text-xs mt-2.5">No spam. Unsubscribe anytime.</p>}
           </form>
         </div>
-        {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
       </div>
     )
   }
