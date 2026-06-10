@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
-// News sitemap removed — not a registered news publisher; removed to avoid Bill C-18 implications.
+// The news sitemap has moved to a crawlable path: /news-sitemap.xml
+// (this /api/ path is blocked by robots.txt). Redirect any old references.
 export async function GET() {
-  return new NextResponse(null, { status: 410 })
+  return NextResponse.redirect('https://www.culturealberta.com/news-sitemap.xml', 308)
 }
