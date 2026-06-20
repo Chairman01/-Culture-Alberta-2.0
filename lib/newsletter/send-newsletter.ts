@@ -30,6 +30,15 @@ export function decodeUnsubscribeToken(token: string): { id: string; email: stri
   }
 }
 
+// ── Email validation ──────────────────────────────────────────────────────────
+// Resend's batch API is all-or-nothing: a single malformed `to` rejects the ENTIRE
+// batch, so one bad address would block up to BATCH_SIZE valid recipients. Filter
+// invalid addresses out before batching and report them as skipped.
+function isValidEmail(email: string | null | undefined): boolean {
+  if (!email) return false
+  return /^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$/.test(email.trim())
+}
+
 // ── Subscriber fetching ───────────────────────────────────────────────────────
 async function getActiveSubscribers(city: NewsletterCity): Promise<{ id: string; email: string }[]> {
   const { data, error } = await supabase
@@ -66,19 +75,32 @@ export async function sendCityNewsletter(city: NewsletterCity, options?: SendOpt
     return result
   }
 
+  // 1b. Drop malformed addresses so one bad email can't fail an entire batch.
+  const validSubscribers = subscribers.filter((sub) => isValidEmail(sub.email))
+  const invalidSubscribers = subscribers.filter((sub) => !isValidEmail(sub.email))
+  if (invalidSubscribers.length > 0) {
+    result.skipped += invalidSubscribers.length
+    result.errors.push(
+      `Skipped ${invalidSubscribers.length} invalid email address(es): ${invalidSubscribers.map((sub) => sub.email).join(', ')}`
+    )
+  }
+  if (validSubscribers.length === 0) {
+    return result
+  }
+
   // 2. Fetch content (once for all subscribers)
   let content
   try {
     content = await fetchNewsletterContent(city)
   } catch (err) {
     result.errors.push(`Content fetch failed: ${err instanceof Error ? err.message : 'Unknown'}`)
-    result.failed = subscribers.length
+    result.failed = validSubscribers.length
     return result
   }
 
   // If no articles at all, skip sending
   if (content.cityArticles.length === 0) {
-    result.skipped = subscribers.length
+    result.skipped += validSubscribers.length
     result.errors.push('No content available for this city — skipped sending')
     return result
   }
@@ -86,8 +108,8 @@ export async function sendCityNewsletter(city: NewsletterCity, options?: SendOpt
   const subject = getSubjectLine(city)
 
   // 3. Send in batches using Resend's batch API (one API call per batch, no rate limit issues)
-  for (let i = 0; i < subscribers.length; i += BATCH_SIZE) {
-    const batch = subscribers.slice(i, i + BATCH_SIZE)
+  for (let i = 0; i < validSubscribers.length; i += BATCH_SIZE) {
+    const batch = validSubscribers.slice(i, i + BATCH_SIZE)
 
     const emailPayloads = batch.map((sub) => {
       const token = makeUnsubscribeToken(sub.id, sub.email)
@@ -95,7 +117,7 @@ export async function sendCityNewsletter(city: NewsletterCity, options?: SendOpt
       const html = generateNewsletterHtml(city, content, unsubscribeUrl, options)
       return {
         from: `${FROM_NAME} <${FROM_EMAIL}>`,
-        to: sub.email,
+        to: sub.email.trim(),
         subject,
         html,
         headers: {
@@ -119,7 +141,7 @@ export async function sendCityNewsletter(city: NewsletterCity, options?: SendOpt
     }
 
     // Small pause between batches if sending more than 50 subscribers
-    if (i + BATCH_SIZE < subscribers.length) {
+    if (i + BATCH_SIZE < validSubscribers.length) {
       await new Promise((resolve) => setTimeout(resolve, 500))
     }
   }
