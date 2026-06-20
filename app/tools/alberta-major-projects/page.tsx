@@ -123,7 +123,10 @@ const pageSchema = {
     name: "Alberta Major Projects Inventory",
     url: "https://majorprojects.alberta.ca",
     publisher: {
-      "@type": "GovernmentOrganization",
+      // Google's Dataset structured-data validator only accepts Organization or
+      // Person for `publisher`; the GovernmentOrganization subtype triggers an
+      // "Invalid object type for field publisher" warning in Search Console.
+      "@type": "Organization",
       name: "Government of Alberta",
       url: "https://www.alberta.ca",
     },

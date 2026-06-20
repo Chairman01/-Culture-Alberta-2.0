@@ -46,38 +46,40 @@ function escapeXml(value: string): string {
     .replace(/'/g, '&apos;')
 }
 
-export async function GET() {
-  const cutoff = new Date(Date.now() - MAX_AGE_HOURS * 60 * 60 * 1000).toISOString()
-
-  let articles: any[] = []
+async function fetchPublishedArticles(opts: { sinceCutoff: string | null; limit: number }): Promise<any[]> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('articles')
       .select('id, title, slug, created_at, type, status')
       .eq('status', 'published')
-      .gte('created_at', cutoff)
+      .neq('type', 'event')
       .order('created_at', { ascending: false })
-      .limit(MAX_URLS)
+      .limit(opts.limit)
 
+    if (opts.sinceCutoff) {
+      query = query.gte('created_at', opts.sinceCutoff)
+    }
+
+    const { data, error } = await query
     if (error) {
       console.error('News sitemap: Supabase fetch failed:', error)
-    } else {
-      articles = data || []
+      return []
     }
+    return data || []
   } catch (err) {
     console.error('News sitemap: error fetching articles:', err)
+    return []
   }
+}
 
-  const entries = articles
+function buildEntries(articles: any[]): string[] {
+  return articles
     .filter((a) => a.type !== 'event')
-    .filter((a) => {
-      const slug = a.slug || ''
-      return !BLOCKED_SLUGS.has(slug)
-    })
+    .filter((a) => !BLOCKED_SLUGS.has(a.slug || ''))
     .map((article) => {
       const loc = `${BASE_URL}${getArticleUrl(article)}`
       const pubDate = new Date(article.created_at || Date.now()).toISOString()
-      const title = escapeXml(article.title || '')
+      const title = escapeXml((article.title || '').trim())
       return `  <url>
     <loc>${escapeXml(loc)}</loc>
     <news:news>
@@ -90,12 +92,26 @@ export async function GET() {
     </news:news>
   </url>`
     })
-    .join('\n')
+}
+
+export async function GET() {
+  const cutoff = new Date(Date.now() - MAX_AGE_HOURS * 60 * 60 * 1000).toISOString()
+
+  // Primary: articles from the last 48h, per Google News guidelines.
+  let entries = buildEntries(await fetchPublishedArticles({ sinceCutoff: cutoff, limit: MAX_URLS }))
+
+  // A news sitemap MUST contain at least one <url>; an empty <urlset> makes Google
+  // report "Missing XML tag: url" (Line 5). During publishing gaps (>48h with no new
+  // posts) the primary query is empty, so fall back to the most recent published
+  // articles to keep the sitemap valid and non-empty.
+  if (entries.length === 0) {
+    entries = buildEntries(await fetchPublishedArticles({ sinceCutoff: null, limit: 10 }))
+  }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
-${entries}
+${entries.join('\n')}
 </urlset>`
 
   return new Response(xml, {
