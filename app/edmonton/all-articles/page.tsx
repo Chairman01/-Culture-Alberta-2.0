@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 // Force dynamic rendering to prevent oversized static generation
 export const dynamic = 'force-dynamic'
-export const revalidate = 300
+export const revalidate = 900
 
 interface EdmontonArticle extends Article {
   type?: string;

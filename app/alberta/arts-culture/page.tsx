@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 }
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 300
+export const revalidate = 900
 
 export default async function AlbertaArtsCulturePage() {
   const allArticles = await getAllAlbertaArticles()

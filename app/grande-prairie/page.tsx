@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     },
 }
 
-export const revalidate = 300
+export const revalidate = 900
 
 interface GrandePrairieArticle extends Article {
     type?: string

@@ -79,7 +79,7 @@ export async function generateStaticParams() {
 }
 
 // Enable ISR (Incremental Static Regeneration)
-export const revalidate = 300 // 5 minutes
+export const revalidate = 900 // 15 minutes
 
 // Generate metadata for social media sharing
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

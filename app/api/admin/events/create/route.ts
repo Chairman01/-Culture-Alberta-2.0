@@ -104,7 +104,7 @@ export async function POST(request: Request) {
       
       // Revalidate pages to ensure new event appears immediately
       try {
-        revalidatePath('/', 'layout')
+        revalidatePath('/') // page-scoped, not site-wide — avoids ISR write floods
         revalidatePath('/events')
         console.log('✅ Pages revalidated')
       } catch (revalidateError) {

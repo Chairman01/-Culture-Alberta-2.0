@@ -13,7 +13,7 @@ import { loadOptimizedFallback } from '@/lib/optimized-fallback'
 import { HomepageStructuredData } from '@/components/seo/structured-data'
 
 // ISR: cache for 10 min, revalidate in background — reduces Supabase load during traffic spikes
-export const revalidate = 600
+export const revalidate = 1800
 export const dynamicParams = true // Generate pages on-demand
 
 const logHomeDebug = (...args: unknown[]) => {

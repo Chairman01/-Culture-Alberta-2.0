@@ -52,7 +52,7 @@ export async function PATCH(
 
   // Revalidate pages
   try {
-    revalidatePath('/', 'layout')
+    revalidatePath('/') // page-scoped, not site-wide ('/', 'layout') — avoids ISR write floods
     revalidatePath('/articles')
     if (article.slug) revalidatePath(`/articles/${article.slug}`)
     revalidatePath('/calgary')

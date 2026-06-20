@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 }
 
 // Enable ISR for better performance
-export const revalidate = 300 // 30 seconds
+export const revalidate = 900 // 15 minutes
 
 interface ExtendedArticle extends Article {
   description?: string;

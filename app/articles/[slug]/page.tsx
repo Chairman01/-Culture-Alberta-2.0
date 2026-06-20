@@ -16,9 +16,11 @@ import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { ArticleStructuredData, BreadcrumbStructuredData } from '@/components/seo/structured-data'
 import { ArticleEmbedActivator } from '@/components/article-embed-activator'
 
-// ISR: cache rendered pages for 10 min, revalidate in background.
-// Longer window = fewer Supabase revalidations during traffic spikes.
-export const revalidate = 600
+// ISR: cache rendered pages for 30 min, revalidate in background.
+// Longer window = fewer Supabase revalidations (and ISR writes) during traffic spikes.
+// Publishing/editing an article triggers an on-demand revalidation, so new content
+// still appears immediately — this only relaxes the background re-render timer.
+export const revalidate = 1800
 import { getAllEvents, getEventBySlug } from '@/lib/events'
 import { Metadata } from 'next'
 // import { ArticleReadingFeatures } from '@/components/article-reading-features' // Removed - causing duplicate newsletter
@@ -318,7 +320,7 @@ const getArticleFromDB = unstable_cache(
     return article
   },
   ['article-db'],
-  { revalidate: 600 } // 10 min — matches the increased ISR window below
+  { revalidate: 1800 } // 30 min — matches the ISR window above
 )
 
 // React.cache(): deduplicates within a single request (metadata + page component).
@@ -418,7 +420,7 @@ const getFreshRecommendationCandidates = unstable_cache(
     }
   },
   ['fresh-article-recommendation-candidates'],
-  { revalidate: 300 }
+  { revalidate: 900 }
 )
 
 async function getFullArticleContentById(id: string): Promise<string | null> {

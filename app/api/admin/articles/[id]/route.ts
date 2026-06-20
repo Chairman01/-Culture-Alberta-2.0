@@ -363,7 +363,10 @@ export async function PUT(
 
     // Revalidate pages to ensure updated article appears immediately
     try {
-      revalidatePath('/', 'layout')
+      // Page-scoped, not site-wide: revalidatePath('/', 'layout') invalidated EVERY
+      // cached page on every edit, causing a flood of ISR writes. Refresh only the
+      // pages that actually change.
+      revalidatePath('/')
       revalidatePath('/articles')
       revalidatePath('/alberta')
       revalidatePath('/red-deer')

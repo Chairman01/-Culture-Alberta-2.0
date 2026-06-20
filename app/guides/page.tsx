@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 }
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 300
+export const revalidate = 900
 
 interface PageProps {
   searchParams: Promise<{ city?: string }>

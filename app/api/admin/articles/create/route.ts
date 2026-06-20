@@ -165,8 +165,13 @@ export async function POST(request: NextRequest) {
 
     // Revalidate pages to ensure new article appears immediately
     try {
-      revalidatePath('/', 'layout')
+      // Page-scoped, not site-wide ('/', 'layout') — avoids flooding ISR writes.
+      // Refresh the homepage + the city hubs where a new article surfaces.
+      revalidatePath('/')
       revalidatePath('/articles')
+      revalidatePath('/edmonton')
+      revalidatePath('/calgary')
+      revalidatePath('/alberta')
       revalidatePath(`/articles/${data.slug || articleSlug}`)
       revalidatePath('/sitemap.xml')
       console.log('✅ Pages revalidated')

@@ -4,7 +4,7 @@ import { getArticleUrl } from '@/lib/utils/article-url'
 // Google News sitemap.
 // Lists ONLY published articles from the last 48 hours, per Google News guidelines.
 // Served at /news-sitemap.xml (a crawlable path — NOT under the robots-disallowed /api/).
-export const revalidate = 300 // refresh every 5 minutes
+export const revalidate = 900 // refresh every 15 minutes
 
 const BASE_URL = 'https://www.culturealberta.com'
 const PUBLICATION_NAME = 'Culture Alberta'
