@@ -1,6 +1,6 @@
 import { cache, Fragment } from 'react'
 import { unstable_cache } from 'next/cache'
-import { notFound, redirect } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { Calendar, Clock, Bookmark, ArrowLeft, ArrowRight, MapPin, ChevronRight, Calculator } from 'lucide-react'
 import { ArticleActions } from '@/components/article-actions'
 import Image from 'next/image'
@@ -451,7 +451,13 @@ function isNextNavigationError(error: unknown): boolean {
     ? String((error as { digest?: unknown }).digest)
     : ''
 
-  return digest.startsWith('NEXT_REDIRECT') || digest.startsWith('NEXT_NOT_FOUND')
+  // Next 15 changed notFound()'s digest from 'NEXT_NOT_FOUND' to
+  // 'NEXT_HTTP_ERROR_FALLBACK;404'. Match both so notFound()/redirect() thrown
+  // inside the try are re-thrown cleanly (a proper 404/redirect) instead of being
+  // swallowed by the catch and re-issued — which produced soft-404s (HTTP 200).
+  return digest.startsWith('NEXT_REDIRECT') ||
+    digest.startsWith('NEXT_NOT_FOUND') ||
+    digest.startsWith('NEXT_HTTP_ERROR_FALLBACK')
 }
 
 // Don't pre-render articles at build time — let ISR handle on first request.
@@ -577,7 +583,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const slug = resolvedParams.slug
 
   if (LEGACY_ARTICLE_REDIRECTS[slug]) {
-    redirect(`/articles/${LEGACY_ARTICLE_REDIRECTS[slug]}`)
+    permanentRedirect(`/articles/${LEGACY_ARTICLE_REDIRECTS[slug]}`)
   }
 
   try {
@@ -620,7 +626,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         for (const event of allEvents) {
           const eventSlugFromTitle = createSlug(event.title)
           if (eventSlugFromTitle === eventSlug) {
-            redirect(`/events/${eventSlug}`)
+            permanentRedirect(`/events/${eventSlug}`)
           }
         }
       } catch (error) {
@@ -635,7 +641,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           .eq('old_slug', slug)
           .single()
         if (slugRedirect?.new_slug) {
-          redirect(`/articles/${slugRedirect.new_slug}`)
+          permanentRedirect(`/articles/${slugRedirect.new_slug}`)
         }
       } catch {
         // No redirect found, fall through to notFound
@@ -654,7 +660,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     // to the canonical title-based slug (e.g. /articles/attention-edmonton-...)
     const canonicalSlug = loadedArticle.slug || createSlug(loadedArticle.title)
     if (slug !== canonicalSlug) {
-      redirect(`/articles/${canonicalSlug}`)
+      permanentRedirect(`/articles/${canonicalSlug}`)
     }
 
     // If content is missing or too short, lazily fetch full content from Supabase
