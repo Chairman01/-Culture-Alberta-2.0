@@ -618,22 +618,31 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     if (!loadedArticle) {
       logArticlePage('not-found', { slug })
 
+      // IMPORTANT: permanentRedirect()/redirect() work by THROWING. They must be
+      // called OUTSIDE any try/catch, or the catch swallows the redirect and we
+      // fall through to notFound() (the bug that soft-404'd renamed articles).
+      // So: resolve the target inside the try, then redirect after it.
+
       // Check if this might be an event instead of an article
+      let eventRedirectSlug: string | null = null
       try {
         const allEvents = await getAllEvents()
         const eventSlug = createSlug(slug)
-
         for (const event of allEvents) {
-          const eventSlugFromTitle = createSlug(event.title)
-          if (eventSlugFromTitle === eventSlug) {
-            permanentRedirect(`/events/${eventSlug}`)
+          if (createSlug(event.title) === eventSlug) {
+            eventRedirectSlug = eventSlug
+            break
           }
         }
       } catch (error) {
         console.warn('Failed to check events:', error)
       }
+      if (eventRedirectSlug) {
+        permanentRedirect(`/events/${eventRedirectSlug}`)
+      }
 
       // Check slug_redirects table for renamed articles
+      let renamedRedirectSlug: string | null = null
       try {
         const { data: slugRedirect } = await supabase
           .from('slug_redirects')
@@ -641,10 +650,13 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           .eq('old_slug', slug)
           .single()
         if (slugRedirect?.new_slug) {
-          permanentRedirect(`/articles/${slugRedirect.new_slug}`)
+          renamedRedirectSlug = slugRedirect.new_slug
         }
       } catch {
         // No redirect found, fall through to notFound
+      }
+      if (renamedRedirectSlug) {
+        permanentRedirect(`/articles/${renamedRedirectSlug}`)
       }
 
       notFound()
