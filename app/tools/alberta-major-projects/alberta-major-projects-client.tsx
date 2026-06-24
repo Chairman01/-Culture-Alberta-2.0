@@ -26,6 +26,8 @@ import {
   BarChart2,
   List,
   PieChart,
+  ArrowUpDown,
+  ChevronDown,
 } from "lucide-react"
 
 // ---------------------------------------------------------------------------
@@ -146,6 +148,15 @@ function fmtYear(dateStr?: string): string {
   const year = dateStr.match(/\b(20\d{2})\b/)?.[1]
   return year ?? ""
 }
+
+// Start year as a number for sorting by when a project was announced/started.
+// Returns 0 when no year is present so undated projects sink to the bottom.
+function startYearNum(project: Project): number {
+  const y = (project.schedule ?? "").match(/\b(19|20)\d{2}\b/)?.[0]
+  return y ? parseInt(y, 10) : 0
+}
+
+type SortKey = "cost" | "newest" | "oldest"
 
 const PUBLIC_KEYWORDS = [
   "government of alberta","city of","town of","county of","municipality of",
@@ -1199,6 +1210,7 @@ export default function AlbertaMajorProjectsClient({
   const [articleFilter, setArticleFilter] = useState<"all" | "has" | "needs">("all")
   const [updatedProjectIds, setUpdatedProjectIds] = useState<Set<string>>(new Set())
   const [viewMode, setViewMode] = useState<"grid" | "chart" | "list">("grid")
+  const [sortBy, setSortBy] = useState<SortKey>("cost")
   const [citySearch, setCitySearch] = useState("")
   const [citySortBy, setCitySortBy] = useState<"activity" | "cost" | "name">("activity")
 
@@ -1317,8 +1329,21 @@ export default function AlbertaMajorProjectsClient({
         if (articleFilter === "needs") return getArticlesForProject(p.id, articlesByProject).length === 0
         return true
       })
-      .sort((a, b) => (b.cost ?? 0) - (a.cost ?? 0))
-  }, [projects, selectedStage, selectedCity, search, spotlight, isCitiesView, articleFilter, articlesByProject])
+      .sort((a, b) => {
+        if (sortBy === "newest" || sortBy === "oldest") {
+          const ya = startYearNum(a)
+          const yb = startYearNum(b)
+          // Undated projects always sink to the bottom, regardless of direction
+          if (!ya && !yb) return (b.cost ?? 0) - (a.cost ?? 0)
+          if (!ya) return 1
+          if (!yb) return -1
+          if (ya !== yb) return sortBy === "newest" ? yb - ya : ya - yb
+          // Same year — fall back to biggest budget first
+          return (b.cost ?? 0) - (a.cost ?? 0)
+        }
+        return (b.cost ?? 0) - (a.cost ?? 0)
+      })
+  }, [projects, selectedStage, selectedCity, search, spotlight, isCitiesView, articleFilter, articlesByProject, sortBy])
 
   const stats = useMemo(() => ({
     totalCost: projects.reduce((s, p) => s + (p.cost ?? 0), 0),
@@ -1470,8 +1495,24 @@ export default function AlbertaMajorProjectsClient({
               </button>
             </div>
 
+            {/* Sort by announced date */}
+            <div className="ml-auto relative shrink-0">
+              <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortKey)}
+                title="Sort projects"
+                className="appearance-none pl-8 pr-7 py-2 text-xs font-medium border border-gray-200 rounded-lg bg-gray-50 text-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-300 focus:border-transparent cursor-pointer hover:bg-gray-100 transition-colors"
+              >
+                <option value="cost">Biggest budget</option>
+                <option value="newest">Newest announced</option>
+                <option value="oldest">Oldest announced</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+            </div>
+
             {/* View toggle */}
-            <div className="ml-auto flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5 bg-gray-50 shrink-0">
+            <div className="flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5 bg-gray-50 shrink-0">
               <button
                 onClick={() => setViewMode("grid")}
                 title="Grid view"
