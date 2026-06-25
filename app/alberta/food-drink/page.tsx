@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   description: "Food and drink stories from communities across Alberta. Restaurants, cafes, and culinary experiences.",
 }
 
-export const dynamic = 'force-dynamic'
 export const revalidate = 900
 
 export default async function AlbertaFoodDrinkPage() {

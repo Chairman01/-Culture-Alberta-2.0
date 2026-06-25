@@ -13,8 +13,6 @@ export const metadata: Metadata = {
   description: "Browse all articles about Edmonton, Alberta. Discover the latest news, events, and stories from Alberta's capital city.",
 }
 
-// Force dynamic rendering to prevent oversized static generation
-export const dynamic = 'force-dynamic'
 export const revalidate = 900
 
 interface EdmontonArticle extends Article {

@@ -10,7 +10,6 @@ export const metadata: Metadata = {
   description: "Outdoor adventures and nature stories from communities across Alberta.",
 }
 
-export const dynamic = 'force-dynamic'
 export const revalidate = 900
 
 export default async function AlbertaOutdoorsPage() {

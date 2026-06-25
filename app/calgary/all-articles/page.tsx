@@ -13,8 +13,6 @@ export const metadata: Metadata = {
   description: "Browse all articles about Calgary, Alberta. Discover the latest news, events, and stories from Alberta's largest city.",
 }
 
-// Force dynamic rendering to prevent oversized static generation
-export const dynamic = 'force-dynamic'
 export const revalidate = 900
 
 interface CalgaryArticle extends Article {
