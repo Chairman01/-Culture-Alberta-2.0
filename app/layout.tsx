@@ -5,9 +5,6 @@ import { AuthProvider } from '@/components/auth-provider'
 import { PerformanceOptimizer } from '@/components/seo/performance-optimizer'
 import { CookieConsent } from '@/components/cookie-consent'
 import Script from 'next/script'
-import { Analytics } from '@vercel/analytics/next'
-import { SpeedInsights } from '@vercel/speed-insights/next'
-import { optimizeSpeedInsights } from '@/lib/vercel-optimizations'
 import { Metadata } from 'next'
 import { WebsiteStructuredData, OrganizationStructuredData, LocalBusinessStructuredData } from '@/components/seo/structured-data'
 import { SitelinksData, DEFAULT_NAVIGATION_LINKS } from '@/components/seo/sitelinks-data'
@@ -148,8 +145,6 @@ export default function RootLayout({
               {children}
             </ConditionalSiteLayout>
           </LoadingProvider>
-          <Analytics />
-          <SpeedInsights {...optimizeSpeedInsights()} />
           <PerformanceOptimizer />
           <CookieConsent />
         </AuthProvider>

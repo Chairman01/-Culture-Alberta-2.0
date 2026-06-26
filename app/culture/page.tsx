@@ -22,8 +22,8 @@ export const metadata: Metadata = {
   },
 }
 
-// Use dynamic rendering to avoid ISR page size limits (page has large base64 images)
-export const dynamic = 'force-dynamic'
+// ISR: base64 images were migrated out of content, so pages cache fine now.
+export const revalidate = 900
 
 interface ExtendedArticle extends Article {
   description?: string;

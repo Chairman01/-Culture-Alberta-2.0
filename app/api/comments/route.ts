@@ -12,10 +12,6 @@ function sanitizeSingleLine(value: string, maxLength: number): string {
     return value.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().substring(0, maxLength)
 }
 
-function isValidEmail(email: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
 interface CommentRow {
     id: string
     article_id: string
@@ -138,7 +134,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { articleId, authorName, authorEmail, content, parentId } = body
+        const { articleId, content, parentId } = body
 
         if (!articleId || !content) {
             return NextResponse.json({ error: 'Comment is required' }, { status: 400 })
@@ -283,54 +279,11 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // ---- Top-level anonymous path: name required, shows instantly ----
-        const sanitizedAuthorName = sanitizeSingleLine(String(authorName || ''), 100)
-        if (!sanitizedAuthorName) {
-            return NextResponse.json({ error: 'Name is required' }, { status: 400 })
-        }
-
-        const sanitizedAuthorEmail =
-            typeof authorEmail === 'string' && authorEmail.trim()
-                ? sanitizeSingleLine(authorEmail, 255)
-                : null
-        if (sanitizedAuthorEmail && !isValidEmail(sanitizedAuthorEmail)) {
-            return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 })
-        }
-
-        const { data: comment, error } = await supabase
-            .from('comments')
-            .insert([
-                {
-                    article_id: articleId,
-                    author_name: sanitizedAuthorName,
-                    author_email: sanitizedAuthorEmail,
-                    content: sanitizedContent,
-                    status: 'approved',
-                    ip_address: ipAddress,
-                },
-            ])
-            .select('id, author_name, content, created_at, parent_id, user_id, like_count')
-            .single()
-
-        if (error) {
-            console.error('[comments POST] insert error:', error)
-            return NextResponse.json({ error: 'Failed to submit comment' }, { status: 500 })
-        }
-
-        return NextResponse.json({
-            success: true,
-            comment: {
-                id: comment.id,
-                author_name: comment.author_name,
-                content: comment.content,
-                created_at: comment.created_at,
-                parent_id: comment.parent_id,
-                is_member: false,
-                like_count: comment.like_count ?? 0,
-                liked_by_client: false,
-                replies: [],
-            },
-        })
+        // ---- No valid account: commenting now requires a (free) account ----
+        return NextResponse.json(
+            { error: 'Please create an account or sign in to comment.' },
+            { status: 401 }
+        )
     } catch (error) {
         console.error('[comments POST] unexpected error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

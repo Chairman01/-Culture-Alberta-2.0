@@ -10,7 +10,6 @@ export const metadata: Metadata = {
   description: "Arts and culture stories from communities across Alberta. Music, theater, museums, and more.",
 }
 
-export const dynamic = 'force-dynamic'
 export const revalidate = 900
 
 export default async function AlbertaArtsCulturePage() {
