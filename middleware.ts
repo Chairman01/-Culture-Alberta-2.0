@@ -99,7 +99,11 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      source: '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+      // Skip API, Next internals, and any static asset with a file extension
+      // (images/fonts/manifest/etc. in /public) — those don't need the host
+      // redirect, admin auth, or slug-cleanup logic, and each match is a billed
+      // middleware execution. Pages (no extension) still run through.
+      source: '/((?!api|_next/static|_next/image|.*\\.[^/]+$).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },
