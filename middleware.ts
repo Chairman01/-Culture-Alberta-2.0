@@ -39,6 +39,55 @@ async function verifyAdminJWT(token: string, secret: string): Promise<{ valid: b
 
 const CONTRIBUTOR_ALLOWED = ['/admin/articles']
 
+// ── Renamed-article redirects ──────────────────────────────────────────────
+// When an article's title (and therefore its slug) changes, the admin API saves
+// an old_slug → new_slug row in `slug_redirects`. The article page is supposed to
+// honour these, but its redirect runs INSIDE the ISR-cached render, so a renamed
+// URL can get baked into the full-route cache as a 200 "Article Not Found" page
+// and never reach the redirect. Handling it here — in middleware, which runs at
+// the edge BEFORE the route cache — guarantees a clean 308 for every renamed URL.
+//
+// The whole table is small (one row per rename), so we fetch it once and keep it
+// in module memory for REDIRECT_TTL_MS. That means at most one tiny Supabase
+// request per edge instance every few minutes, not one per article view.
+type SlugRedirectMap = Record<string, string>
+let slugRedirectCache: SlugRedirectMap | null = null
+let slugRedirectCacheAt = 0
+const REDIRECT_TTL_MS = 10 * 60 * 1000 // 10 minutes
+
+async function getSlugRedirects(): Promise<SlugRedirectMap> {
+  const now = Date.now()
+  if (slugRedirectCache && now - slugRedirectCacheAt < REDIRECT_TTL_MS) {
+    return slugRedirectCache
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return slugRedirectCache || {}
+
+  try {
+    const res = await fetch(`${url}/rest/v1/slug_redirects?select=old_slug,new_slug`, {
+      headers: { apikey: key, authorization: `Bearer ${key}` },
+    })
+    if (!res.ok) return slugRedirectCache || {}
+
+    const rows = (await res.json()) as Array<{ old_slug?: string; new_slug?: string }>
+    const map: SlugRedirectMap = {}
+    for (const row of rows) {
+      if (row.old_slug && row.new_slug && row.old_slug !== row.new_slug) {
+        map[row.old_slug] = row.new_slug
+      }
+    }
+    slugRedirectCache = map
+    slugRedirectCacheAt = now
+    return map
+  } catch {
+    // Network/edge failure: fall back to the last good map (or none) and let the
+    // page render — never block an article request on this lookup.
+    return slugRedirectCache || {}
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get('host')?.toLowerCase()
@@ -75,6 +124,18 @@ export async function middleware(request: NextRequest) {
         new URL(`/articles/${cleanSlug}`, request.url),
         { status: 301 }
       )
+    }
+
+    // Renamed article? 308-redirect the old slug to the current one. Runs before
+    // the route cache, so it fixes URLs that got stuck as cached 200 not-found pages.
+    if (rawSlug) {
+      const target = (await getSlugRedirects())[rawSlug]
+      if (target && target !== rawSlug) {
+        return NextResponse.redirect(
+          new URL(`/articles/${target}`, request.url),
+          { status: 308 }
+        )
+      }
     }
   }
 
