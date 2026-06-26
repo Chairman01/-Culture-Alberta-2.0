@@ -25,13 +25,14 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
     const [submitting, setSubmitting] = useState(false)
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-    const [showGuest, setShowGuest] = useState(false)
-    const [guestName, setGuestName] = useState('')
-    const [guestError, setGuestError] = useState('')
+    const [showAuthGate, setShowAuthGate] = useState(false)
 
     const [authHref, setAuthHref] = useState({ signin: '/auth/signin', signup: '/auth/signup' })
 
-    // Build sign in/up links that return to this article
+    const draftKey = `comment-draft:${articleId}`
+
+    // Build sign in/up links that return to this article, and restore any draft
+    // saved before the reader left to create an account.
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const next = encodeURIComponent(window.location.pathname)
@@ -39,8 +40,19 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
                 signin: `/auth/signin?next=${next}`,
                 signup: `/auth/signup?next=${next}`,
             })
+
+            try {
+                const saved = window.sessionStorage.getItem(draftKey)
+                if (saved) {
+                    setContent(saved)
+                    setFocused(true)
+                    window.sessionStorage.removeItem(draftKey)
+                }
+            } catch {
+                /* sessionStorage unavailable — ignore */
+            }
         }
-    }, [])
+    }, [draftKey])
 
     // Auto-dismiss success message
     useEffect(() => {
@@ -57,35 +69,28 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
 
     const expanded = focused || content.length > 0
 
-    const postComment = async (opts: { authorName?: string; asMember?: boolean }) => {
+    const postComment = async () => {
         const text = content.trim()
         setSubmitting(true)
         setMessage(null)
         try {
             const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-            if (opts.asMember && accessToken) headers.Authorization = `Bearer ${accessToken}`
+            if (accessToken) headers.Authorization = `Bearer ${accessToken}`
 
             const res = await fetch('/api/comments', {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({
-                    articleId,
-                    content: text,
-                    ...(opts.authorName ? { authorName: opts.authorName } : {}),
-                }),
+                body: JSON.stringify({ articleId, content: text }),
             })
             const data = await res.json()
 
             if (res.ok) {
                 setContent('')
                 setFocused(false)
-                setShowGuest(false)
-                setGuestName('')
                 setMessage({ type: 'success', text: 'Your comment has been posted.' })
                 onCommentSubmitted?.()
             } else {
                 const errText = data.error || 'Failed to post comment. Please try again.'
-                setGuestError(errText)
                 setMessage({ type: 'error', text: errText })
             }
         } catch {
@@ -106,21 +111,21 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
             return
         }
         if (isLoggedIn) {
-            postComment({ asMember: true })
+            postComment()
         } else {
-            setGuestError('')
-            setShowGuest(true)
+            setShowAuthGate(true)
         }
     }
 
-    const handleGuestSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        const name = guestName.trim()
-        if (!name) {
-            setGuestError('Please enter a name.')
-            return
+    // Stash the in-progress comment so it can be restored after the reader
+    // returns from creating an account / signing in.
+    const saveDraft = () => {
+        try {
+            const text = content.trim()
+            if (text) window.sessionStorage.setItem(draftKey, text)
+        } catch {
+            /* sessionStorage unavailable — ignore */
         }
-        postComment({ authorName: name })
     }
 
     const handleCancel = () => {
@@ -227,11 +232,11 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
                 </div>
             )}
 
-            {/* Guest / sign-in popup */}
-            {showGuest && (
+            {/* Sign-up-required popup */}
+            {showAuthGate && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-in fade-in duration-200"
-                    onClick={() => !submitting && setShowGuest(false)}
+                    onClick={() => !submitting && setShowAuthGate(false)}
                     role="dialog"
                     aria-modal="true"
                 >
@@ -241,47 +246,26 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
                     >
                         <button
                             type="button"
-                            onClick={() => setShowGuest(false)}
-                            disabled={submitting}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                            onClick={() => setShowAuthGate(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
                             aria-label="Close"
                         >
                             <X className="w-5 h-5" />
                         </button>
 
-                        <h3 className="text-xl font-bold text-gray-900 mb-1">Post your comment</h3>
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">Create an account to comment</h3>
                         <p className="text-sm text-gray-500 mb-5">
-                            Comment as a guest — just add a name. Or sign in to comment as a member.
+                            Join the conversation by creating a free account. Your comment is saved and
+                            will be posted as soon as you’re signed in.
                         </p>
 
-                        <form onSubmit={handleGuestSubmit} className="space-y-3">
-                            <input
-                                value={guestName}
-                                onChange={(e) => {
-                                    setGuestName(e.target.value)
-                                    setGuestError('')
-                                }}
-                                placeholder="Your name"
-                                maxLength={100}
-                                autoFocus
-                                disabled={submitting}
-                                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                            />
-                            {guestError && (
-                                <p className="text-sm text-red-600 flex items-center gap-1">
-                                    <AlertCircle className="w-4 h-4" />
-                                    {guestError}
-                                </p>
-                            )}
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                                {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
-                                Post comment
-                            </button>
-                        </form>
+                        <Link
+                            href={authHref.signup}
+                            onClick={saveDraft}
+                            className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors"
+                        >
+                            Create a free account
+                        </Link>
 
                         <div className="flex items-center gap-3 my-4">
                             <span className="h-px bg-gray-200 flex-1" />
@@ -289,15 +273,16 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
                             <span className="h-px bg-gray-200 flex-1" />
                         </div>
 
-                        <div className="flex items-center justify-center gap-4 text-sm">
-                            <Link href={authHref.signin} className="font-semibold text-blue-600 hover:underline">
+                        <p className="text-center text-sm text-gray-600">
+                            Already have an account?{' '}
+                            <Link
+                                href={authHref.signin}
+                                onClick={saveDraft}
+                                className="font-semibold text-blue-600 hover:underline"
+                            >
                                 Log in
                             </Link>
-                            <span className="text-gray-300">|</span>
-                            <Link href={authHref.signup} className="font-semibold text-blue-600 hover:underline">
-                                Sign up
-                            </Link>
-                        </div>
+                        </p>
                     </div>
                 </div>
             )}
