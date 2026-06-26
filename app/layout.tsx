@@ -5,6 +5,7 @@ import { AuthProvider } from '@/components/auth-provider'
 import { PerformanceOptimizer } from '@/components/seo/performance-optimizer'
 import { CookieConsent } from '@/components/cookie-consent'
 import { CityPrompt } from '@/components/city-prompt'
+import { Analytics } from '@vercel/analytics/next'
 import Script from 'next/script'
 import { Metadata } from 'next'
 import { WebsiteStructuredData, OrganizationStructuredData, LocalBusinessStructuredData } from '@/components/seo/structured-data'
@@ -150,6 +151,8 @@ export default function RootLayout({
           <CookieConsent />
           <CityPrompt />
         </AuthProvider>
+        {/* Vercel Web Analytics only — Speed Insights intentionally left off to control cost */}
+        <Analytics />
       </body>
     </html>
   )
