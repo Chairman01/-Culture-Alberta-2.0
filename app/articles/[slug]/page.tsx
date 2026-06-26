@@ -931,6 +931,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                   </div>
                 </div>
                 <ArticleActions
+                  articleId={loadedArticle.id}
                   articleTitle={loadedArticle.title}
                   articleUrl={`/articles/${slug}`}
                 />

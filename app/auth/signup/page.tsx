@@ -6,11 +6,14 @@ import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase-browser'
 import { AuthLayout } from '@/components/auth-layout'
 import { SocialAuthButtons } from '@/components/social-auth-buttons'
+import { CitySelect } from '@/components/city-select'
+import { isValidCity } from '@/lib/alberta-municipalities'
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
+  const [city, setCity] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,12 +23,16 @@ export default function SignUpPage() {
     e.preventDefault()
     setError('')
     setSuccess('')
+    if (!isValidCity(city)) {
+      setError('Please choose your city from the list.')
+      return
+    }
     setLoading(true)
     try {
       const { error } = await supabaseBrowser.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name } }
+        options: { data: { full_name: name, city } }
       })
       if (error) throw error
       setSuccess(`Almost there! We've sent a confirmation link to ${email}. Click it to activate your account, then sign in.`)
@@ -69,6 +76,13 @@ export default function SignUpPage() {
             placeholder="you@example.com"
             required
           />
+        </div>
+        <div>
+          <label htmlFor="city" className="block text-sm font-semibold text-gray-700 mb-1.5">
+            City
+          </label>
+          <CitySelect id="city" value={city} onChange={setCity} disabled={loading} />
+          <p className="mt-1.5 text-xs text-gray-500">So we can show you what’s happening near you.</p>
         </div>
         <div>
           <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-1.5">
