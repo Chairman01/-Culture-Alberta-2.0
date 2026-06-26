@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Share2, Bookmark, Check, Copy, Twitter, Facebook, Linkedin, Mail } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -10,16 +10,35 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/components/auth-provider'
+import { isArticleSaved, saveArticle, unsaveArticle } from '@/lib/saved-articles'
 
 interface ArticleActionsProps {
     articleTitle: string
     articleUrl: string
+    articleId?: string
 }
 
-export function ArticleActions({ articleTitle, articleUrl }: ArticleActionsProps) {
+export function ArticleActions({ articleTitle, articleUrl, articleId }: ArticleActionsProps) {
     const { toast } = useToast()
+    const { user } = useAuth()
+    const router = useRouter()
     const [isSaved, setIsSaved] = useState(false)
+    const [savingBusy, setSavingBusy] = useState(false)
     const [copied, setCopied] = useState(false)
+
+    // Reflect the reader's real saved state once we know who's signed in.
+    useEffect(() => {
+        let active = true
+        if (!user || !articleId) {
+            setIsSaved(false)
+            return
+        }
+        isArticleSaved(articleId)
+            .then((v) => active && setIsSaved(v))
+            .catch(() => {})
+        return () => { active = false }
+    }, [user, articleId])
 
     // Get full URL
     const fullUrl = typeof window !== 'undefined'
@@ -91,16 +110,32 @@ export function ArticleActions({ articleTitle, articleUrl }: ArticleActionsProps
         window.location.href = emailUrl
     }, [articleTitle, fullUrl])
 
-    // Handle save/bookmark
-    const handleSave = useCallback(() => {
-        setIsSaved(!isSaved)
-        toast({
-            title: isSaved ? 'Removed from saved' : 'Saved!',
-            description: isSaved
-                ? 'Article removed from your saved items.'
-                : 'Article saved for later.',
-        })
-    }, [isSaved, toast])
+    // Handle save/bookmark — persists to the reader's profile.
+    const handleSave = useCallback(async () => {
+        if (savingBusy || !articleId) return
+        if (!user) {
+            const next = encodeURIComponent(window.location.pathname)
+            router.push(`/auth/signin?next=${next}`)
+            toast({ title: 'Sign in to save', description: 'Create a free account to save articles to your profile.' })
+            return
+        }
+        setSavingBusy(true)
+        try {
+            if (isSaved) {
+                await unsaveArticle(articleId)
+                setIsSaved(false)
+                toast({ title: 'Removed from saved', description: 'Article removed from your profile.' })
+            } else {
+                await saveArticle(user.id, articleId)
+                setIsSaved(true)
+                toast({ title: 'Saved!', description: 'Find it later under your account.' })
+            }
+        } catch {
+            toast({ title: 'Something went wrong', description: 'Could not update your saved articles.', variant: 'destructive' })
+        } finally {
+            setSavingBusy(false)
+        }
+    }, [savingBusy, articleId, user, isSaved, router, toast])
 
     // Check if native share is supported
     const hasNativeShare = typeof navigator !== 'undefined' && !!navigator.share
@@ -156,10 +191,12 @@ export function ArticleActions({ articleTitle, articleUrl }: ArticleActionsProps
             {/* Save Button */}
             <button
                 onClick={handleSave}
-                className={`flex items-center gap-2 transition-colors ${isSaved
+                disabled={savingBusy}
+                className={`flex items-center gap-2 transition-colors disabled:opacity-50 ${isSaved
                         ? 'text-blue-600 hover:text-blue-700'
                         : 'text-gray-600 hover:text-gray-800'
                     }`}
+                aria-pressed={isSaved}
                 aria-label={isSaved ? 'Remove from saved' : 'Save article'}
             >
                 <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />

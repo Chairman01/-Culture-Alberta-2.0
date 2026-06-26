@@ -7,6 +7,7 @@ import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth-provider"
+import { NotificationsBell } from "@/components/notifications-bell"
 
 export function MainNavigation() {
   const pathname = usePathname()
@@ -94,13 +95,24 @@ export function MainNavigation() {
               <div className="min-w-[44px] min-h-[44px] w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-gray-200 animate-pulse" aria-hidden />
             ) : user ? (
               <div className="flex items-center gap-1">
-                <div
-                  className="flex items-center justify-center min-w-[44px] min-h-[44px] w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-gray-200 bg-gray-50"
+                <NotificationsBell />
+                <Link
+                  href="/account"
+                  className="flex items-center justify-center min-w-[44px] min-h-[44px] w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-gray-200 bg-gray-50 overflow-hidden hover:bg-gray-100 transition-colors"
                   title={user.user_metadata?.full_name || user.email}
-                  aria-label="Account"
+                  aria-label="Your account"
                 >
-                  <User className="w-5 h-5 sm:w-4 sm:h-4 text-gray-600" />
-                </div>
+                  {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={(user.user_metadata.avatar_url || user.user_metadata.picture) as string}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-5 h-5 sm:w-4 sm:h-4 text-gray-600" />
+                  )}
+                </Link>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -217,15 +229,26 @@ export function MainNavigation() {
               {loading ? (
                 <div className="w-9 h-9 rounded-full bg-gray-200 animate-pulse" aria-hidden />
               ) : user ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { signOut(); closeMobileMenu(); }}
-                  className="gap-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/account"
+                    onClick={closeMobileMenu}
+                    className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
+                  >
+                    <User className="w-4 h-4" />
+                    My Account
+                  </Link>
+                  <span className="text-gray-300">|</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { signOut(); closeMobileMenu(); }}
+                    className="gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </Button>
+                </div>
               ) : (
                 <Link href="/auth/signin" onClick={closeMobileMenu} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium">
                   <User className="w-4 h-4" />

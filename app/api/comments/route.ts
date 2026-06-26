@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { sendReplyEmail } from '@/lib/reply-email'
 
 export const dynamic = 'force-dynamic'
 
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
             // Validate the parent exists, is approved, and belongs to this article
             const { data: parent, error: parentErr } = await supabase
                 .from('comments')
-                .select('id, article_id, status, parent_id')
+                .select('id, article_id, status, parent_id, user_id')
                 .eq('id', parentId)
                 .single()
             if (parentErr || !parent || parent.article_id !== articleId || parent.status !== 'approved') {
@@ -210,6 +211,21 @@ export async function POST(request: NextRequest) {
             if (insertErr) {
                 console.error('[comments POST reply] insert error:', insertErr)
                 return NextResponse.json({ error: 'Failed to post reply' }, { status: 500 })
+            }
+
+            // Email the parent author (the in-app notification is created by a DB
+            // trigger). Best-effort: never let an email failure break the reply.
+            if (parent.user_id && parent.user_id !== userData.user.id) {
+                try {
+                    await sendReplyEmail({
+                        recipientUserId: parent.user_id,
+                        actorName: displayName,
+                        excerpt: sanitizedContent,
+                        articleId: articleId,
+                    })
+                } catch (mailErr) {
+                    console.error('[comments POST reply] email error:', mailErr)
+                }
             }
 
             return NextResponse.json({

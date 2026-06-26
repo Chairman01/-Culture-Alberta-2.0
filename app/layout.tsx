@@ -4,6 +4,7 @@ import { LoadingProvider } from '@/components/loading-context'
 import { AuthProvider } from '@/components/auth-provider'
 import { PerformanceOptimizer } from '@/components/seo/performance-optimizer'
 import { CookieConsent } from '@/components/cookie-consent'
+import { CityPrompt } from '@/components/city-prompt'
 import Script from 'next/script'
 import { Metadata } from 'next'
 import { WebsiteStructuredData, OrganizationStructuredData, LocalBusinessStructuredData } from '@/components/seo/structured-data'
@@ -147,6 +148,7 @@ export default function RootLayout({
           </LoadingProvider>
           <PerformanceOptimizer />
           <CookieConsent />
+          <CityPrompt />
         </AuthProvider>
       </body>
     </html>
