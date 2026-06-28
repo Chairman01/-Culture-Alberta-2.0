@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft } from 'lucide-react'
-import { getAllCityArticlesWithFallback } from '@/lib/fallback-articles'
+import { getAlbertaCityArticles } from '@/lib/alberta-cities'
 import { isRegularArticle } from '@/lib/utils/article-filters'
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { Article } from '@/lib/types/article'
@@ -27,7 +27,7 @@ function formatDate(dateString: string): string {
 }
 
 export async function CityAllArticles({ config }: { config: CityPageConfig }) {
-    const all = (await getAllCityArticlesWithFallback(config.slug)) as CityArticle[]
+    const all = (await getAlbertaCityArticles(config.eventLocation)) as CityArticle[]
     const articles = all
         .filter((item) => item.type !== 'event' && item.type !== 'Event')
         .filter(isRegularArticle)

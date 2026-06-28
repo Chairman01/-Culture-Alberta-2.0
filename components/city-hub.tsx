@@ -5,7 +5,7 @@ import NewsletterSignup from '@/components/newsletter-signup'
 import { SearchBar } from '@/components/search-bar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
-import { getCityArticlesWithFallback } from '@/lib/fallback-articles'
+import { getAlbertaCityArticles } from '@/lib/alberta-cities'
 import { getTrendingByViews } from '@/lib/trending-articles'
 import { getEventsByLocation } from '@/lib/events'
 import { Article } from '@/lib/types/article'
@@ -20,13 +20,14 @@ interface CityArticle extends Article {
 
 async function getCityData(config: CityPageConfig) {
     try {
-        const cityArticles = (await getCityArticlesWithFallback(config.slug)) as CityArticle[]
+        const cityArticles = ((await getAlbertaCityArticles(config.eventLocation)) as CityArticle[])
+            // Events live on the events page, not the city article grid.
+            .filter((a) => a.type !== 'event' && a.type !== 'Event')
 
-        const sortedArticles = cityArticles.filter(isRegularArticle).sort((a, b) => {
-            const dateA = new Date(a.date || a.createdAt || 0).getTime()
-            const dateB = new Date(b.date || b.createdAt || 0).getTime()
-            return dateB - dateA
-        })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ts = (a: any) =>
+            new Date(a.date || a.createdAt || a.created_at || a.updatedAt || a.updated_at || 0).getTime()
+        const sortedArticles = cityArticles.filter(isRegularArticle).sort((a, b) => ts(b) - ts(a))
 
         const eventsRaw = await getEventsByLocation(config.eventLocation)
         const now = new Date()
