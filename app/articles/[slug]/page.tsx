@@ -805,6 +805,28 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           }))
           .sort(byScoreThenRecency)
 
+        // Hard ~2-week recency window: only recommend fresh stories, EXCEPT
+        // evergreen/SEO content and the top-traffic (high-RPM) performers, which
+        // stay relevant when older. Anything else that's stale is kept only as a
+        // last-resort top-up below, so the section is never left empty.
+        const RECENT_DAYS = 14
+        const MAX_CRIME_RECS = 2
+        const viewOf = (a: ArticleRecommendation) =>
+          (a as { viewCount?: number; view_count?: number }).viewCount ||
+          (a as { viewCount?: number; view_count?: number }).view_count || 0
+        const sortedViews = ranked.map(viewOf).filter((v) => v > 0).sort((a, b) => b - a)
+        const highViewCut = sortedViews.length
+          ? Math.max(300, sortedViews[Math.floor(sortedViews.length * 0.2)] || 0)
+          : 300
+        const isFreshEnough = (a: ArticleRecommendation) => {
+          const age = getArticleAgeDays(a)
+          return (age !== null && age <= RECENT_DAYS) || isEvergreenLike(a) || viewOf(a) >= highViewCut
+        }
+        const prioritized = [
+          ...ranked.filter(isFreshEnough),
+          ...ranked.filter((a) => !isFreshEnough(a)),
+        ]
+
         const sourceCity = getArticleCity(loadedArticle)
         const sourceIsEvergreen = isEvergreenLike(loadedArticle)
         const sourceIsCrime = getTopicMatches(loadedArticle).has('crime')
@@ -819,7 +841,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         // non-crime story from the same city, then province-wide, then any non-crime.
         if (!sourceIsEvergreen) {
           const reserveTarget = sourceIsCrime ? EVERGREEN_SLOTS : 2
-          const nonCrime = ranked.filter(article => !isCrimeArticle(article))
+          const nonCrime = prioritized.filter(article => !isCrimeArticle(article))
           const tiers: ArticleRecommendation[][] = [
             nonCrime.filter(a => isEvergreenLike(a) && getArticleCity(a) === sourceCity),
             nonCrime.filter(a => isEvergreenLike(a) && getArticleCity(a) === 'alberta'),
@@ -838,8 +860,19 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           }
         }
 
-        // Fill remaining grid slots with the strongest remaining matches.
-        for (const article of ranked) {
+        // Fill remaining grid slots with the strongest remaining matches, capping
+        // crime stories at MAX_CRIME_RECS so a city's feed isn't wall-to-wall crime.
+        let crimeInGrid = grid.filter(isCrimeArticle).length
+        for (const article of prioritized) {
+          if (grid.length >= GRID_SIZE) break
+          if (usedKeys.has(keyOf(article))) continue
+          if (isCrimeArticle(article) && crimeInGrid >= MAX_CRIME_RECS) continue
+          usedKeys.add(keyOf(article))
+          grid.push(article)
+          if (isCrimeArticle(article)) crimeInGrid++
+        }
+        // Last-resort top-up (ignores the crime cap) so the grid is never short.
+        for (const article of prioritized) {
           if (grid.length >= GRID_SIZE) break
           if (usedKeys.has(keyOf(article))) continue
           usedKeys.add(keyOf(article))
@@ -855,13 +888,13 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         // non-crime pick first so this list isn't wall-to-wall crime either.
         const sidebar: ArticleRecommendation[] = []
         if (sourceIsCrime) {
-          const nonCrimePick = ranked.find(a => !isCrimeArticle(a) && !usedKeys.has(keyOf(a)))
+          const nonCrimePick = prioritized.find(a => !isCrimeArticle(a) && !usedKeys.has(keyOf(a)))
           if (nonCrimePick) {
             usedKeys.add(keyOf(nonCrimePick))
             sidebar.push(nonCrimePick)
           }
         }
-        for (const article of ranked) {
+        for (const article of prioritized) {
           if (sidebar.length >= SIDEBAR_SIZE) break
           if (usedKeys.has(keyOf(article))) continue
           usedKeys.add(keyOf(article))
