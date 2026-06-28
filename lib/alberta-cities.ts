@@ -223,6 +223,22 @@ export async function getAlbertaProvinceWideArticles(): Promise<Article[]> {
 }
 
 /**
+ * Generic: get articles for any Alberta community by name (e.g. 'Red Deer',
+ * 'Lethbridge', 'Fort McMurray'). Reuses the same location/category/title/tag
+ * matching as the Alberta page sections — works live from Supabase (with the
+ * fallback baked into getAllAlbertaArticles). Used by the shared city hub pages.
+ */
+export async function getAlbertaCityArticles(cityName: string): Promise<Article[]> {
+    try {
+        const albertaArticles = await getAllAlbertaArticles()
+        return filterByLocation(albertaArticles, cityName)
+    } catch (error) {
+        console.error(`❌ Failed to load ${cityName} articles:`, error)
+        return []
+    }
+}
+
+/**
  * Get Red Deer articles
  */
 export async function getRedDeerArticles(): Promise<Article[]> {
