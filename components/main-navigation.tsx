@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { Menu, X, User, LogOut } from "lucide-react"
+import { Menu, X, User, LogOut, ChevronDown } from "lucide-react"
+import { CITY_PAGES } from "@/lib/city-pages"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
 
@@ -59,15 +60,36 @@ export function MainNavigation() {
           >
             Calgary
           </Link>
-          <Link
-            href="/alberta"
-            className={`text-sm font-medium transition-colors ${isAlberta
-              ? "text-amber-700 hover:text-amber-800"
-              : "text-gray-600 hover:text-gray-900"
-              }`}
-          >
-            Alberta
-          </Link>
+          <div className="relative group">
+            <Link
+              href="/alberta"
+              className={`inline-flex items-center gap-1 text-sm font-medium transition-colors ${isAlberta
+                ? "text-amber-700 hover:text-amber-800"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
+            >
+              Alberta
+              <ChevronDown className="w-3.5 h-3.5 transition-transform group-hover:rotate-180" />
+            </Link>
+            {/* Hover dropdown — other Alberta municipalities */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 hidden group-hover:block z-50">
+              <div className="w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2">
+                <Link href="/alberta" className="block px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50">
+                  All of Alberta
+                </Link>
+                <div className="my-1 border-t border-gray-100" />
+                {Object.values(CITY_PAGES).map((c) => (
+                  <Link
+                    key={c.slug}
+                    href={`/${c.slug}`}
+                    className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    {c.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
           <Link href="/food-drink" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Food & Drink
           </Link>
@@ -181,6 +203,19 @@ export function MainNavigation() {
             >
               Alberta
             </Link>
+            {/* Other municipalities, nested under Alberta */}
+            <div className="flex flex-col border-l-2 border-gray-100 ml-2 pl-3">
+              {Object.values(CITY_PAGES).map((c) => (
+                <Link
+                  key={c.slug}
+                  href={`/${c.slug}`}
+                  onClick={closeMobileMenu}
+                  className="text-sm font-medium text-gray-500 hover:text-gray-800 py-2.5 min-h-[40px] flex items-center touch-manipulation"
+                >
+                  {c.name}
+                </Link>
+              ))}
+            </div>
             <Link
               href="/food-drink"
               onClick={closeMobileMenu}
