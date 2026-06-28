@@ -90,6 +90,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.9,
     },
+    // Secondary Alberta city hubs (+ their all-articles pages)
+    ...['red-deer', 'lethbridge', 'medicine-hat', 'grande-prairie', 'fort-mcmurray'].flatMap((slug) => [
+      {
+        url: baseUrl + '/' + slug,
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+      },
+      {
+        url: baseUrl + '/' + slug + '/all-articles',
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.6,
+      },
+    ]),
     {
       url: baseUrl + '/culture',
       lastModified: new Date(),
