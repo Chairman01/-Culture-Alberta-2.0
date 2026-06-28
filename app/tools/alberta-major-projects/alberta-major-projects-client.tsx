@@ -1198,10 +1198,12 @@ export default function AlbertaMajorProjectsClient({
   projects,
   articlesByProject,
   lastFetched,
+  liveUnavailable,
 }: {
   projects: Project[]
   articlesByProject: Record<string, Article[]>
   lastFetched?: string
+  liveUnavailable?: boolean
 }) {
   const [search, setSearch] = useState("")
   const [selectedStage, setSelectedStage] = useState<string | null>(null)
@@ -1427,11 +1429,25 @@ export default function AlbertaMajorProjectsClient({
                   Alberta Major Projects Inventory
                 </a>
               </div>
-              {lastFetched && <p className="text-xs text-gray-400">Updated {lastFetched}</p>}
+              {lastFetched && (
+                <p className="text-xs text-gray-400">
+                  {liveUnavailable ? 'Last synced' : 'Updated'} {lastFetched}
+                </p>
+              )}
             </div>
           </div>
         </div>
       </header>
+
+      {liveUnavailable && (
+        <div className="max-w-6xl mx-auto px-4 mt-4">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Live updates from the Government of Alberta are temporarily unavailable, so
+            we&rsquo;re showing the most recent synced data{lastFetched ? ` (${lastFetched})` : ''}.
+            Map locations and exact timelines may be missing until the live feed is back.
+          </div>
+        </div>
+      )}
 
       {/* ── Sticky filters ── */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
