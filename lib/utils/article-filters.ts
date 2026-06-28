@@ -1,15 +1,16 @@
 import { Article } from '@/lib/types/article'
 
+// Classification is driven by the EXPLICIT category/categories/tags an editor sets
+// — never by the title or body. A news story that merely mentions a neighbourhood
+// (e.g. "...what the bylaw means for the neighbourhood") must stay a regular
+// article, not get pulled into the Neighbourhoods section.
 export function isNeighborhoodArticle(article: Article & { type?: string }): boolean {
+  const matches = (v?: string) =>
+    !!v && (v.toLowerCase().includes('neighborhood') || v.toLowerCase().includes('neighbourhood'))
   return !!(
-    article.category?.toLowerCase().includes('neighborhood') ||
-    article.category?.toLowerCase().includes('neighbourhood') ||
-    article.categories?.some(cat => cat.toLowerCase().includes('neighborhood')) ||
-    article.categories?.some(cat => cat.toLowerCase().includes('neighbourhood')) ||
-    article.tags?.some(tag => tag.toLowerCase().includes('neighborhood')) ||
-    article.tags?.some(tag => tag.toLowerCase().includes('neighbourhood')) ||
-    article.title?.toLowerCase().includes('neighbourhood') ||
-    article.title?.toLowerCase().includes('neighborhood')
+    matches(article.category) ||
+    article.categories?.some(matches) ||
+    article.tags?.some(matches)
   )
 }
 
