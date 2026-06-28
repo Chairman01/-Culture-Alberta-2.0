@@ -277,10 +277,14 @@ export default async function AlbertaMajorProjectsPage() {
   // ------------------------------------------------------------------
   let projects: Project[] = []
   let lastFetched: string | undefined
+  let liveUnavailable = false
 
   try {
+    // Fail fast if Alberta's API hangs (it can during outages) so we fall back
+    // to the Supabase snapshot quickly instead of blocking the page render.
     const res = await fetch(ALBERTA_API_URL, {
       next: { revalidate: 86400 }, // refresh once per day
+      signal: AbortSignal.timeout(8000),
     })
 
     if (res.ok) {
@@ -314,7 +318,85 @@ export default async function AlbertaMajorProjectsPage() {
       })
     }
   } catch {
-    // API unreachable — silently show empty state
+    // API unreachable — fall back to the last synced snapshot below
+  }
+
+  // ------------------------------------------------------------------
+  // 1b. Fallback: if the live Alberta API returned nothing (outage or
+  //     shape change), render the most recent snapshot we synced into
+  //     Supabase so the page never blanks. Only runs when projects is
+  //     empty, so it adds no cost in normal operation.
+  // ------------------------------------------------------------------
+  if (projects.length === 0) {
+    liveUnavailable = true
+    try {
+      const { data } = await supabase
+        .from("major_projects_seen")
+        .select(
+          "project_id, name, friendly_name, municipalities, sector, type, cost, developer, website, stage, last_changed_at"
+        )
+        .eq("sector", TOURISM_SECTOR)
+        .limit(500)
+
+      if (data && data.length > 0) {
+        projects = data
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((r: any): Project | null => {
+            const stage = normalizeStage(String(r.stage ?? "Proposed"))
+            if (stage === "Cancelled") return null
+            return {
+              id: String(r.project_id),
+              name: r.name ?? "Unnamed Project",
+              friendlyName:
+                r.friendly_name && r.friendly_name !== r.name
+                  ? String(r.friendly_name).replace(/-/g, " ")
+                  : undefined,
+              municipalities: Array.isArray(r.municipalities) ? r.municipalities : [],
+              sector: r.sector ?? "",
+              type: r.type ?? undefined,
+              cost:
+                typeof r.cost === "number"
+                  ? r.cost
+                  : r.cost
+                    ? parseFloat(String(r.cost))
+                    : undefined,
+              developer: r.developer ?? undefined,
+              website:
+                r.website && String(r.website).startsWith("http") ? r.website : undefined,
+              stage,
+              lat: undefined,
+              lng: undefined,
+            }
+          })
+          .filter((p): p is Project => p !== null)
+          .sort((a, b) => {
+            const stageOrder: Record<string, number> = {
+              "Under Construction": 0,
+              Proposed: 1,
+              Completed: 2,
+            }
+            const stageA = stageOrder[a.stage] ?? 3
+            const stageB = stageOrder[b.stage] ?? 3
+            if (stageA !== stageB) return stageA - stageB
+            return (b.cost ?? 0) - (a.cost ?? 0)
+          })
+
+        // Stamp "last synced" from the freshest row.
+        const newest = data.reduce((max: number, r: { last_changed_at?: string | null }) => {
+          const t = r.last_changed_at ? new Date(r.last_changed_at).getTime() : 0
+          return t > max ? t : max
+        }, 0)
+        if (newest > 0) {
+          lastFetched = new Date(newest).toLocaleDateString("en-CA", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        }
+      }
+    } catch {
+      // Supabase also unavailable — fall through to the empty state.
+    }
   }
 
   // ------------------------------------------------------------------
@@ -380,6 +462,7 @@ export default async function AlbertaMajorProjectsPage() {
           projects={projects}
           articlesByProject={articlesByProject}
           lastFetched={lastFetched}
+          liveUnavailable={liveUnavailable}
         />
         <div className="max-w-4xl mx-auto px-4 pb-12">
           <ToolEngagement toolSlug="alberta-major-projects" />
