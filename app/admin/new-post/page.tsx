@@ -23,9 +23,42 @@ export default function NewPostPage() {
   const [excerpt, setExcerpt] = useState("")
   const [content, setContent] = useState("")
   const [tags, setTags] = useState("")
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([])
+  const [suggesting, setSuggesting] = useState(false)
   const [imageUrl, setImageUrl] = useState("")
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+
+  const tagList = tags.split(',').map(t => t.trim()).filter(Boolean)
+
+  const addTag = (tag: string) => {
+    const t = tag.trim().toLowerCase()
+    if (!t || tagList.map(x => x.toLowerCase()).includes(t)) return
+    setTags(tagList.length ? `${tags.replace(/,\s*$/, '')}, ${t}` : t)
+  }
+
+  const suggestTags = async () => {
+    if (!title && !content) {
+      toast({ title: "Add a title first", description: "Enter a title or some content so AI can suggest tags.", variant: "destructive" })
+      return
+    }
+    setSuggesting(true)
+    try {
+      const res = await fetch('/api/admin/suggest-tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, category }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to suggest tags')
+      setSuggestedTags(data.tags || [])
+      if (!data.tags?.length) toast({ title: "No suggestions", description: "AI couldn't suggest tags — add your own." })
+    } catch (err) {
+      toast({ title: "Suggestion failed", description: err instanceof Error ? err.message : 'Try again.', variant: "destructive" })
+    } finally {
+      setSuggesting(false)
+    }
+  }
 
   const handleImageSelect = (url: string) => {
     setImageUrl(url)
@@ -55,6 +88,15 @@ export default function NewPostPage() {
       return
     }
 
+    if (tagList.length < 3) {
+      toast({
+        title: "Add at least 3 tags",
+        description: "Tags improve SEO and recommendations. Use “Suggest tags” for ideas.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSaving(true)
 
     try {
@@ -73,7 +115,7 @@ export default function NewPostPage() {
           content,
           imageUrl,
           author: "Admin",
-          tags: tags.split(',').map(tag => tag.trim()),
+          tags: tagList,
           type: "article",
           status: "published",
           // Add trending flags (default to false)
@@ -202,13 +244,46 @@ export default function NewPostPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tags">Tags (comma-separated)</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="tags">
+                    Tags (comma-separated){" "}
+                    <span className={tagList.length >= 3 ? "text-green-600" : "text-red-600"}>
+                      — at least 3 required ({tagList.length})
+                    </span>
+                  </Label>
+                  <Button type="button" variant="outline" size="sm" onClick={suggestTags} disabled={suggesting}>
+                    {suggesting ? "Suggesting…" : "✨ Suggest tags"}
+                  </Button>
+                </div>
                 <Input
                   id="tags"
                   placeholder="Enter tags separated by commas"
                   value={tags}
                   onChange={(e) => setTags(e.target.value)}
                 />
+                {suggestedTags.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="text-xs text-muted-foreground">Suggestions (click to add):</span>
+                    {suggestedTags.map((t) => {
+                      const added = tagList.map(x => x.toLowerCase()).includes(t.toLowerCase())
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => addTag(t)}
+                          disabled={added}
+                          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                            added
+                              ? "bg-green-50 border-green-200 text-green-700 cursor-default"
+                              : "bg-white border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-300"
+                          }`}
+                        >
+                          {added ? `✓ ${t}` : `+ ${t}`}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
