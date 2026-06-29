@@ -37,15 +37,9 @@ export default function SignUpPage() {
       if (error) throw error
 
       if (data.session) {
-        // Email confirmation is OFF — Supabase signs the user in immediately,
-        // so send them straight into the site (back to where they came from).
-        // Fire the one-time welcome email (keepalive lets it finish through the redirect).
-        fetch('/api/welcome-email', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${data.session.access_token}` },
-          keepalive: true,
-        }).catch(() => {})
-
+        // Email confirmation is OFF — Supabase signs the user in immediately, so
+        // send them straight into the site (the welcome email is handled globally
+        // by <WelcomeMailer/> once they're authenticated).
         let next = '/'
         try {
           next = new URLSearchParams(window.location.search).get('next') || '/'

@@ -9,26 +9,13 @@ export default function AuthCallbackPage() {
   const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
 
-  // Fire the one-time welcome email for a freshly-authenticated user.
-  // Idempotent server-side (a `welcomed` flag), so calling it on every OAuth
-  // callback is safe — it only actually sends on the first sign-up.
-  const fireWelcomeEmail = (token?: string) => {
-    if (!token) return
-    fetch('/api/welcome-email', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      keepalive: true,
-    }).catch(() => {})
-  }
-
   useEffect(() => {
     const handleCallback = async () => {
       const code = searchParams.get('code')
       if (code) {
         try {
-          const { data, error } = await supabaseBrowser.auth.exchangeCodeForSession(code)
+          const { error } = await supabaseBrowser.auth.exchangeCodeForSession(code)
           if (error) throw error
-          fireWelcomeEmail(data.session?.access_token)
           router.replace('/')
           router.refresh()
         } catch (err) {
@@ -40,8 +27,6 @@ export default function AuthCallbackPage() {
         if (hashParams) {
           // Give Supabase client a moment to process the hash
           await new Promise(r => setTimeout(r, 500))
-          const { data } = await supabaseBrowser.auth.getSession()
-          fireWelcomeEmail(data.session?.access_token)
           router.replace('/')
           router.refresh()
         } else {
