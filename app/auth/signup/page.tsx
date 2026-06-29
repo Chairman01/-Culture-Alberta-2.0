@@ -29,14 +29,29 @@ export default function SignUpPage() {
     }
     setLoading(true)
     try {
-      const { error } = await supabaseBrowser.auth.signUp({
+      const { data, error } = await supabaseBrowser.auth.signUp({
         email,
         password,
         options: { data: { full_name: name, city } }
       })
       if (error) throw error
-      setSuccess(`Almost there! We've sent a confirmation link to ${email}. Click it to activate your account, then sign in.`)
-      router.refresh()
+
+      if (data.session) {
+        // Email confirmation is OFF — Supabase signs the user in immediately,
+        // so send them straight into the site (back to where they came from).
+        let next = '/'
+        try {
+          next = new URLSearchParams(window.location.search).get('next') || '/'
+        } catch {
+          /* window unavailable — fall back to home */
+        }
+        router.push(next)
+        router.refresh()
+      } else {
+        // Email confirmation is ON — a confirmation link was emailed.
+        setSuccess(`Almost there! We've sent a confirmation link to ${email}. Click it to activate your account, then sign in.`)
+        router.refresh()
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to sign up')
     } finally {
