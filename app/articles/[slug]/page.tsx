@@ -13,6 +13,7 @@ import { getArticleUrl } from '@/lib/utils/article-url'
 import { createSlug } from '@/lib/utils/slug'
 import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
+import { PreferredSourceCTA } from '@/components/preferred-source-cta'
 import { ArticleStructuredData, BreadcrumbStructuredData } from '@/components/seo/structured-data'
 import { ArticleEmbedActivator } from '@/components/article-embed-activator'
 
@@ -1181,6 +1182,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       )}
                       <ArticleViewCount slug={slug} articleTitle={loadedArticle.title} />
                     </div>
+
+                    {/* End-of-article CTA: add Culture Alberta as a Google preferred source */}
+                    <PreferredSourceCTA />
 
                     {/* Newsletter - Scroll-triggered split-image popup (appears at 50% read) */}
                     <ArticleNewsletterSignup
