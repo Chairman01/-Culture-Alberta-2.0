@@ -23,8 +23,8 @@ export function PreferredSourceCTA() {
                             Love Alberta stories? Put us at the top.
                         </p>
                         <p className="text-sm text-slate-300 mt-1">
-                            Make Culture Alberta a preferred source on Google and our stories will
-                            rise to the top of your news feed.
+                            Make Culture Alberta a preferred source on Google so you never miss
+                            an Alberta story.
                         </p>
                     </div>
                 </div>
