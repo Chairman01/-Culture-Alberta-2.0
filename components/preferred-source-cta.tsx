@@ -1,24 +1,23 @@
-import Image from 'next/image'
-
 /**
  * End-of-article call to action inviting readers to make Culture Alberta a
  * "preferred source" on Google — which surfaces our stories higher in their
  * Google News / Discover feed. Links to Google's preferred-source page.
+ *
+ * The wordmark is rendered as text (not the SVG logo) so it always shows the
+ * full "CULTURE ALBERTA" crisply — the SVG logos depend on a web font that
+ * doesn't load inside an <img>, which clipped the text.
  */
 export function PreferredSourceCTA() {
     return (
         <aside className="my-10 rounded-2xl bg-gradient-to-r from-blue-700 to-blue-600 text-white px-6 py-6 sm:px-8 sm:py-7 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-5 lg:gap-6">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="w-14 h-14 rounded-xl bg-white flex items-center justify-center flex-shrink-0 p-2">
-                        <Image
-                            src="/images/culture-alberta-logo.svg"
-                            alt="Culture Alberta"
-                            width={48}
-                            height={48}
-                            className="w-full h-full object-contain"
-                        />
+                    {/* Culture Alberta wordmark */}
+                    <div className="flex flex-col items-center justify-center leading-[0.95] bg-black rounded-xl px-4 py-2.5 flex-shrink-0 font-extrabold tracking-tight text-white">
+                        <span className="text-xs sm:text-sm">CULTURE</span>
+                        <span className="text-lg sm:text-xl">ALBERTA</span>
                     </div>
+
                     <div className="min-w-0">
                         <p className="text-lg sm:text-xl font-bold leading-tight">
                             Love Alberta stories? Put us at the top.
