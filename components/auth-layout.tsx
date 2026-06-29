@@ -13,20 +13,21 @@ interface AuthLayoutProps {
 export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   return (
     <div className="min-h-screen flex">
-      {/* Left panel - Alberta collage (smaller to show full image) */}
-      <div className="hidden lg:flex lg:w-[32%] relative bg-gray-100 overflow-hidden min-h-screen items-center justify-center">
-        <div className="absolute inset-0 flex items-center justify-center p-4">
+      {/* Left panel - Alberta collage */}
+      <div className="hidden lg:flex lg:w-[38%] relative bg-gradient-to-br from-slate-100 via-white to-blue-50 overflow-hidden min-h-screen items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center p-8">
           <Image
             src="/images/alberta-collage.png"
             alt="Culture Alberta - Alberta's culture, events, and experiences"
-            width={400}
-            height={520}
-            className="object-contain opacity-95 drop-shadow-2xl"
+            width={460}
+            height={600}
+            className="object-contain drop-shadow-2xl"
             priority
-            sizes="(max-width: 1024px) 0vw, 32vw"
+            sizes="(max-width: 1024px) 0vw, 38vw"
           />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 pointer-events-none" />
+        {/* Light scrims only top/bottom so the white link + badge stay readable */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/35 pointer-events-none" />
         <div className="absolute inset-0 flex flex-col justify-between p-8 pointer-events-auto">
           <Link href="/" className="inline-flex items-center gap-2 text-white/90 hover:text-white transition-colors w-fit drop-shadow-lg">
             <ArrowLeft className="w-4 h-4" />
