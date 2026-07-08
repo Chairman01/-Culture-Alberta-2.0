@@ -9,6 +9,7 @@ import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/admin-auth'
 import { notifySearchEngines } from '@/lib/indexing'
+import { postArticleToSocial } from '@/lib/social'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +33,7 @@ export async function PATCH(
   // Fetch current article to get the slug and confirm it exists
   const { data: article, error: fetchError } = await supabase
     .from('articles')
-    .select('id, slug, status, title')
+    .select('id, slug, status, title, excerpt, image_url')
     .eq('id', id)
     .single()
 
@@ -70,6 +71,17 @@ export async function PATCH(
   // Notify search engines
   if (article.slug) {
     notifySearchEngines(`/articles/${article.slug}`).catch(() => {})
+  }
+
+  // Auto-post to social platforms (non-blocking; deduped per article+platform)
+  if (article.slug) {
+    postArticleToSocial({
+      id: article.id,
+      title: article.title,
+      slug: article.slug,
+      excerpt: article.excerpt,
+      imageUrl: article.image_url,
+    }).catch((err) => console.warn('⚠️ Social posting failed (non-fatal):', err))
   }
 
   return NextResponse.json({ success: true, slug: article.slug })

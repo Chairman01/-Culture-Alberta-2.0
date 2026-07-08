@@ -4,6 +4,7 @@ import { quickSyncArticle } from '@/lib/auto-sync'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
+import { postArticleToSocial } from '@/lib/social'
 import { requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 
@@ -185,6 +186,14 @@ export async function POST(request: NextRequest) {
       notifySearchEngines(`/articles/${data.slug || articleSlug}`).catch(err =>
         console.warn('⚠️ Search engine notification failed (non-fatal):', err)
       )
+      // Auto-post to social platforms (non-blocking; deduped per article+platform)
+      postArticleToSocial({
+        id: data.id,
+        title: data.title,
+        slug: data.slug || articleSlug,
+        excerpt: data.excerpt,
+        imageUrl: data.image_url,
+      }).catch(err => console.warn('⚠️ Social posting failed (non-fatal):', err))
     }
 
     return NextResponse.json({
