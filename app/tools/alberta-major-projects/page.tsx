@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { supabase } from "@/lib/supabase"
 import AlbertaMajorProjectsClient, { type Project, type Article } from "./alberta-major-projects-client"
 import { ToolEngagement } from "@/components/tool-engagement"
+import { ToolFaq } from "@/components/tool-faq"
 
 // ---------------------------------------------------------------------------
 // Metadata + SEO
@@ -465,6 +466,10 @@ export default async function AlbertaMajorProjectsPage() {
           liveUnavailable={liveUnavailable}
         />
         <div className="max-w-4xl mx-auto px-4 pb-12">
+          <ToolFaq
+            title="Alberta Major Projects — Frequently Asked Questions"
+            items={faqSchema.mainEntity.map((q) => ({ q: q.name, a: q.acceptedAnswer.text }))}
+          />
           <ToolEngagement toolSlug="alberta-major-projects" />
         </div>
       </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import CostOfLivingClient from "./cost-of-living-client"
 import { ToolEngagement } from "@/components/tool-engagement"
+import { ToolFaq } from "@/components/tool-faq"
 import { getFastArticles } from "@/lib/fast-articles"
 import { Article } from "@/lib/types/article"
 
@@ -244,6 +245,10 @@ export default async function CalgaryVsEdmontonPage() {
       <div data-tool-root>
         <CostOfLivingClient relatedArticles={relatedArticles} />
         <div className="max-w-4xl mx-auto px-4 pb-12">
+          <ToolFaq
+            title="Calgary vs Edmonton — Frequently Asked Questions"
+            items={faqSchema.mainEntity.map((q) => ({ q: q.name, a: q.acceptedAnswer.text }))}
+          />
           <ToolEngagement toolSlug="calgary-vs-edmonton-cost-of-living" />
         </div>
       </div>

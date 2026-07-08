@@ -51,9 +51,9 @@ export const metadata: Metadata = {
         alt: 'Culture Alberta - Your Guide to Alberta\'s Culture',
       },
       {
-        url: 'https://www.culturealberta.com/images/culture-alberta-logo.svg',
-        width: 1200,
-        height: 1200,
+        url: 'https://www.culturealberta.com/images/ca-logo.png',
+        width: 192,
+        height: 192,
         alt: 'Culture Alberta Logo',
       },
     ],

@@ -12,7 +12,8 @@ export default function robots(): MetadataRoute.Robots {
         // NOTE: Do NOT block /_next/static/ - Google needs CSS/JS to render pages properly
         '/_next/data/*',
         // Utility files
-        '/favicon.ico',
+        // NOTE: /favicon.ico must NOT be blocked — Bing/Yahoo/Google fetch it to
+        // show the site logo next to search results; blocking it = generic globe icon
         '/files/*.pdf',
         // Broken/edge case URLs — NOTE: removed '/articles/e' (too broad, was blocking /articles/edmonton-* URLs)
         '/debug/',

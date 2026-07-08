@@ -94,7 +94,7 @@ const schema = {
     url: "https://www.culturealberta.com",
     logo: {
       "@type": "ImageObject",
-      url: "https://www.culturealberta.com/images/culture-alberta-logo.svg",
+      url: "https://www.culturealberta.com/images/ca-logo.png",
     },
   },
   areaServed: {

@@ -73,7 +73,7 @@ export function ArticleStructuredData({ article, baseUrl = 'https://www.culturea
         "url": baseUrl,
         "logo": {
           "@type": "ImageObject",
-          "url": `${baseUrl}/images/culture-alberta-logo.svg`,
+          "url": `${baseUrl}/images/ca-logo.png`,
         },
       }
 
@@ -90,9 +90,9 @@ export function ArticleStructuredData({ article, baseUrl = 'https://www.culturea
       "url": baseUrl,
       "logo": {
         "@type": "ImageObject",
-        "url": `${baseUrl}/images/culture-alberta-logo.svg`,
-        "width": 1200,
-        "height": 1200
+        "url": `${baseUrl}/images/ca-logo.png`,
+        "width": 192,
+        "height": 192
       }
     },
     "datePublished": article.date,
@@ -148,9 +148,9 @@ export function WebsiteStructuredData({ baseUrl = 'https://www.culturealberta.co
       "name": "Culture Alberta",
       "logo": {
         "@type": "ImageObject",
-        "url": `${baseUrl}/images/culture-alberta-logo.svg`,
-        "width": 1200,
-        "height": 1200
+        "url": `${baseUrl}/images/ca-logo.png`,
+        "width": 192,
+        "height": 192
       }
     }
   }
@@ -261,12 +261,12 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
     "url": baseUrl,
     "logo": {
       "@type": "ImageObject",
-      "url": `${baseUrl}/images/culture-alberta-logo.svg`,
-      "width": 1200,
-      "height": 1200
+      "url": `${baseUrl}/images/ca-logo.png`,
+      "width": 192,
+      "height": 192
     },
     "image": [
-      `${baseUrl}/images/culture-alberta-logo.svg`,
+      `${baseUrl}/images/ca-logo.png`,
       `${baseUrl}/images/culture-alberta-og.jpg`
     ],
     "sameAs": [
@@ -442,7 +442,7 @@ export function LocalBusinessStructuredData({ baseUrl = 'https://www.culturealbe
     "url": baseUrl,
     "logo": {
       "@type": "ImageObject",
-      "url": `${baseUrl}/images/culture-alberta-logo.svg`
+      "url": `${baseUrl}/images/ca-logo.png`
     },
     "address": {
       "@type": "PostalAddress",

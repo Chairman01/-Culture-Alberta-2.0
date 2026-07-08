@@ -56,7 +56,7 @@ const relatedArticles = [
   },
   {
     href: "/articles/alberta-adap-application-2026-how-to-apply-what-it-pays-and-who-qualifies",
-    image: "/images/adap-logo.svg",
+    image: "https://itdmwpbsnviassgqfhxk.supabase.co/storage/v1/object/public/Article-image/article-1779172830621-oe9thn.jpg",
     title: "Alberta ADAP Application 2026: How to Apply, What It Pays, and Who Qualifies",
     description:
       "Who qualifies for ADAP/AISH, what the program pays, asset limits, and how to start your application.",
@@ -878,24 +878,20 @@ export default function AISHCalculatorPage() {
                 <Newspaper className="w-4 h-4 text-gray-400" />
                 <p className="text-sm font-bold text-gray-900">Related Reading</p>
               </div>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {relatedArticles.map((article) => (
                   <Link
                     key={article.href}
                     href={article.href}
-                    className={`group bg-white rounded-2xl border overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col ${
-                      article.image.endsWith('.svg')
-                        ? 'border-blue-100 hover:border-blue-200'
-                        : 'border-gray-200 hover:border-emerald-200'
-                    }`}
+                    className="group bg-white rounded-2xl border border-gray-200 hover:border-emerald-200 overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col"
                   >
-                    <div className={`relative w-full h-32 overflow-hidden shrink-0 ${article.image.endsWith('.svg') ? 'bg-blue-50 border-b border-blue-100' : 'bg-gray-100'}`}>
+                    <div className="relative w-full aspect-video overflow-hidden shrink-0 bg-gray-100">
                       <Image
                         src={article.image}
                         alt={article.title}
                         fill
-                        className={`${article.image.endsWith('.svg') ? 'object-contain p-4' : 'object-cover group-hover:scale-105'} transition-transform duration-300`}
-                        sizes="(max-width: 1024px) 100vw, 480px"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 640px) 100vw, 480px"
                       />
                     </div>
                     <div className="p-4 flex items-start justify-between gap-3 flex-1">
