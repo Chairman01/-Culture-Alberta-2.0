@@ -23,7 +23,7 @@ const organizationSchema = {
   "url": "https://www.culturealberta.com",
   "logo": {
     "@type": "ImageObject",
-    "url": "https://www.culturealberta.com/images/culture-alberta-logo.svg",
+    "url": "https://www.culturealberta.com/images/ca-logo.png",
   },
   "description": "Alberta's independent culture, events, and lifestyle guide covering Calgary, Edmonton, and communities across Alberta.",
   "foundingDate": "2024",

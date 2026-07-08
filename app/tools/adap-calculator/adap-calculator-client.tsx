@@ -550,18 +550,18 @@ export default function ADAPCalculatorClient() {
                 <Newspaper className="w-4 h-4 text-gray-400" />
                 <p className="text-sm font-bold text-gray-900">Related Reading</p>
               </div>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Link
                   href="/articles/alberta-adap-application-2026-how-to-apply-what-it-pays-and-who-qualifies"
                   className="group bg-white rounded-2xl border border-blue-100 hover:border-blue-200 overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col"
                 >
-                  <div className="relative w-full h-32 overflow-hidden bg-blue-50 border-b border-blue-100 shrink-0 flex items-center justify-center">
+                  <div className="relative w-full aspect-video overflow-hidden bg-gray-100 shrink-0">
                     <Image
-                      src="/images/adap-logo.svg"
-                      alt="ADAP – Alberta Disability Assistance Program"
-                      width={100}
-                      height={60}
-                      className="object-contain transition-transform duration-300 group-hover:scale-105"
+                      src="https://itdmwpbsnviassgqfhxk.supabase.co/storage/v1/object/public/Article-image/article-1779172830621-oe9thn.jpg"
+                      alt="Alberta ADAP Application 2026: How to Apply, What It Pays, and Who Qualifies"
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      sizes="(max-width: 640px) 100vw, 480px"
                     />
                   </div>
                   <div className="p-4 flex items-start justify-between gap-3 flex-1">
@@ -580,13 +580,13 @@ export default function ADAPCalculatorClient() {
                   href="/articles/aish-payments-in-alberta-2026-how-much-you-get-when-it-arrives-and-whats-changing-in-july"
                   className="group bg-white rounded-2xl border border-gray-200 hover:border-blue-200 overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col"
                 >
-                  <div className="relative w-full h-32 overflow-hidden bg-gray-100 shrink-0">
+                  <div className="relative w-full aspect-video overflow-hidden bg-gray-100 shrink-0">
                     <Image
                       src="https://itdmwpbsnviassgqfhxk.supabase.co/storage/v1/object/public/Article-image/article-1776632299965-2pipcg.jpg"
                       alt="AISH Payments in Alberta 2026"
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 1024px) 100vw, 480px"
+                      sizes="(max-width: 640px) 100vw, 480px"
                     />
                   </div>
                   <div className="p-4 flex items-start justify-between gap-3 flex-1">
@@ -603,7 +603,7 @@ export default function ADAPCalculatorClient() {
                 </Link>
                 <Link
                   href="/tools/aish-calculator"
-                  className="group bg-white rounded-2xl border border-gray-200 hover:border-blue-200 hover:shadow-lg transition-all p-4 flex items-center justify-between gap-4"
+                  className="group bg-white rounded-2xl border border-gray-200 hover:border-blue-200 hover:shadow-lg transition-all p-4 flex items-center justify-between gap-4 sm:col-span-2"
                 >
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-0.5">Tool</p>

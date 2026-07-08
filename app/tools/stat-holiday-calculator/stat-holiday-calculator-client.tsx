@@ -639,7 +639,7 @@ export default function StatHolidayCalculatorClient({
                 }`}
               >
                 {a.image && (
-                  <div className="relative w-full h-40 overflow-hidden bg-gray-100 shrink-0">
+                  <div className="relative w-full aspect-video overflow-hidden bg-gray-100 shrink-0">
                     <Image
                       src={a.image}
                       alt={a.title}

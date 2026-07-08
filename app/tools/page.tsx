@@ -1,13 +1,13 @@
 import Link from "next/link"
 import Image from "next/image"
-import { Calculator, DollarSign, Calendar, ArrowRight, Wrench, Scale, Clock, Tent, Home } from "lucide-react"
+import { Calculator, DollarSign, Calendar, ArrowRight, Wrench, Scale, Clock, Tent, Home, Zap } from "lucide-react"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
   title: "Alberta Tools & Calculators | Free for Albertans | Culture Alberta",
   description:
-    "Free tools and calculators built for Albertans. Calculate AISH payments, compare income with ADAP, damage deposits, stat holiday pay, and more. No sign-up required.",
-  keywords: "Alberta calculators, AISH calculator Alberta, ADAP calculator Alberta, Alberta government tools, damage deposit calculator Alberta, stat holiday pay Alberta, Alberta benefits calculator, AISH income comparison, free tools Alberta",
+    "Free tools and calculators built for Albertans. Check Alberta Energy Rebate eligibility, calculate AISH payments, compare income with ADAP, stat holiday pay, and more. No sign-up required.",
+  keywords: "Alberta calculators, Alberta energy rebate eligibility checker, AISH calculator Alberta, ADAP calculator Alberta, Alberta government tools, damage deposit calculator Alberta, stat holiday pay Alberta, Alberta benefits calculator, AISH income comparison, free tools Alberta",
   alternates: {
     canonical: "https://www.culturealberta.com/tools",
   },
@@ -92,6 +92,7 @@ const toolsPageSchema = {
   "publisher": { "@type": "Organization", "name": "Culture Alberta", "url": "https://www.culturealberta.com" },
   "about": { "@type": "AdministrativeArea", "name": "Alberta", "containedInPlace": { "@type": "Country", "name": "Canada" } },
   "hasPart": [
+    { "@type": "WebApplication", "name": "Alberta Energy Rebate Eligibility Checker", "url": "https://www.culturealberta.com/tools/alberta-energy-rebate-checker" },
     { "@type": "WebApplication", "name": "AISH Calculator Alberta 2026", "url": "https://www.culturealberta.com/tools/aish-calculator" },
     { "@type": "WebApplication", "name": "AISH Payment Dates 2026 Alberta", "url": "https://www.culturealberta.com/tools/aish-payment-dates" },
     { "@type": "WebApplication", "name": "ADAP Calculator Alberta 2026", "url": "https://www.culturealberta.com/tools/adap-calculator" },
@@ -139,6 +140,62 @@ export default function ToolsPage() {
       {/* Tools Grid */}
       <main className="container mx-auto px-4 max-w-5xl py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Alberta Energy Rebate Checker — featured card */}
+          <Link href="/tools/alberta-energy-rebate-checker" className="group block h-full">
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col h-full hover:shadow-xl hover:border-sky-200 transition-all duration-300 cursor-pointer">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 bg-gradient-to-r from-sky-50 to-white border-b border-sky-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-sky-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-sky-600 uppercase tracking-wide">Alberta</p>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">Energy Rebate</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-sky-700 bg-sky-100 px-2.5 py-1 rounded-full">Applications open</span>
+                  <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">Free</span>
+                </div>
+              </div>
+              {/* Stats bar */}
+              <div className="mx-6 mt-4 grid grid-cols-3 gap-0 bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Rebate</p>
+                  <p className="text-sm font-bold text-sky-700">$100</p>
+                  <p className="text-[10px] text-gray-400">payment</p>
+                </div>
+                <div className="text-center py-3 px-2 border-x border-gray-100">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Income limit</p>
+                  <p className="text-sm font-bold text-gray-900">$225K</p>
+                  <p className="text-[10px] text-gray-400">2025 return</p>
+                </div>
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Check takes</p>
+                  <p className="text-sm font-bold text-gray-900">30 sec</p>
+                  <p className="text-[10px] text-gray-400">6 questions</p>
+                </div>
+              </div>
+              {/* Content + CTA */}
+              <div className="p-6 flex flex-col flex-1">
+                <h2 className="text-xl font-bold text-gray-900 group-hover:text-sky-700 transition-colors mb-2">Alberta Energy Rebate Eligibility Checker</h2>
+                <p className="text-sm text-gray-500 leading-relaxed flex-1 mb-5">
+                  See if you qualify for the $100 rebate with the same six questions the official application asks — then follow the step-by-step walkthrough to apply without getting rejected.
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center justify-center gap-2 bg-sky-600 group-hover:bg-sky-700 text-white rounded-xl py-3 font-semibold text-sm transition-colors">
+                    <Zap className="w-4 h-4" />
+                    Check if I qualify
+                  </div>
+                  <div className="w-11 h-11 flex items-center justify-center border border-sky-200 rounded-xl text-sky-600 group-hover:bg-sky-50 transition-colors">
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+
           {/* AISH Calculator — featured card with calculator screen */}
           <Link href="/tools/aish-calculator" className="group block h-full">
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col h-full hover:shadow-xl hover:border-emerald-200 transition-all duration-300 cursor-pointer">

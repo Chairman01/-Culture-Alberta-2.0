@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import ADAPCalculatorClient from "./adap-calculator-client"
 import { ToolEngagement } from "@/components/tool-engagement"
+import { ToolFaq } from "@/components/tool-faq"
 
 export const metadata: Metadata = {
   title: "ADAP Calculator Alberta 2026 | ADAP vs AISH Payment Comparison",
@@ -101,7 +102,7 @@ const calculatorSchema = {
     url: "https://www.culturealberta.com",
     logo: {
       "@type": "ImageObject",
-      url: "https://www.culturealberta.com/images/culture-alberta-logo.svg",
+      url: "https://www.culturealberta.com/images/ca-logo.png",
     },
   },
   areaServed: {
@@ -270,6 +271,10 @@ export default function ADAPCalculatorPage() {
       <div data-tool-root>
         <ADAPCalculatorClient />
         <div className="max-w-4xl mx-auto px-4 pb-12">
+          <ToolFaq
+            title="ADAP vs AISH — Frequently Asked Questions"
+            items={faqSchema.mainEntity.map((q) => ({ q: q.name, a: q.acceptedAnswer.text }))}
+          />
           <ToolEngagement toolSlug="adap-calculator" />
         </div>
       </div>
