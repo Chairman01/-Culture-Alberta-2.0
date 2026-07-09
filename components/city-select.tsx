@@ -71,7 +71,9 @@ export function CitySelect({ id, value, onChange, disabled, placeholder = 'Start
                         setQuery(v)
                         setOpen(true)
                         // Typing invalidates the committed selection until they pick.
-                        if (v !== value) onChange(isValidCity(v) ? v : '')
+                        // isValidCity trims before matching, so commit the trimmed
+                        // value — otherwise "Leduc " (trailing space) gets stored.
+                        if (v !== value) onChange(isValidCity(v) ? v.trim() : '')
                     }}
                     className="w-full pl-11 pr-10 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-gray-400"
                 />

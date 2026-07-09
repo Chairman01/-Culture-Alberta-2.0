@@ -39,7 +39,7 @@ export function CityPrompt() {
         setSaving(true)
         setError('')
         try {
-            const { error: updErr } = await supabaseBrowser.auth.updateUser({ data: { city } })
+            const { error: updErr } = await supabaseBrowser.auth.updateUser({ data: { city: city.trim() } })
             if (updErr) throw updErr
             // onAuthStateChange (USER_UPDATED) refreshes `user`, which hides this gate.
         } catch (err) {

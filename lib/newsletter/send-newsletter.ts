@@ -8,7 +8,14 @@ import {
   type NewsletterCity,
 } from './template'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy so importing this module never throws — Resend's constructor rejects a
+// missing key, which breaks `next build` page-data collection in environments
+// without RESEND_API_KEY (e.g. local builds).
+let _resend: Resend | null = null
+function getResend(): Resend {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY)
+  return _resend
+}
 const FROM_EMAIL = 'news@culturemedia.ca'
 const FROM_NAME = 'Culture Alberta'
 const SITE_URL = 'https://www.culturealberta.com'
@@ -128,7 +135,7 @@ export async function sendCityNewsletter(city: NewsletterCity, options?: SendOpt
     })
 
     try {
-      const { data: batchData, error: batchError } = await resend.batch.send(emailPayloads)
+      const { data: batchData, error: batchError } = await getResend().batch.send(emailPayloads)
       if (batchError) {
         result.failed += batch.length
         result.errors.push(`Batch error: ${batchError.message}`)
@@ -195,7 +202,7 @@ export async function sendCityNewsletterToEmail(
   const html = generateNewsletterHtml(city, content, unsubscribeUrl, options)
 
   try {
-    const { error: sendError } = await resend.emails.send({
+    const { error: sendError } = await getResend().emails.send({
       from: `${FROM_NAME} <${FROM_EMAIL}>`,
       to: toEmail,
       subject,

@@ -32,7 +32,7 @@ export default function SignUpPage() {
       const { data, error } = await supabaseBrowser.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name, city } }
+        options: { data: { full_name: name, city: city.trim() } }
       })
       if (error) throw error
 
