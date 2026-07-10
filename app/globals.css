@@ -254,6 +254,7 @@ body {
 
 /* Article Content Styles */
 .article-content-wrapper {
+  font-size: 1.125rem; /* 18px body text for readability */
   line-height: 1.7;
   color: #374151;
 }

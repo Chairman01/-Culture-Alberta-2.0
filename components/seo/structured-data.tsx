@@ -366,6 +366,53 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
   )
 }
 
+// ItemList structured data for listicle articles ("N things to do in ...").
+// Gives Google an explicit machine-readable list — eligible for carousel/rich
+// results, and keeps the SERP entry pointing at us rather than being fully
+// absorbed into an AI Overview.
+const LISTICLE_TITLE_RE = /^\d+\s+.*\bthings to do\b/i
+const LIST_ITEM_RE = /<h3[^>]*>(?:\s*<a[^>]*href="([^"]+)"[^>]*>)?([^<]+)(?:<\/a>\s*)?<\/h3>/gi
+const NON_ITEM_HEADINGS = new Set(["editor's pick", 'editors pick', 'faq', 'related reading'])
+
+export function ListicleStructuredData({ article, baseUrl = 'https://www.culturealberta.com' }: StructuredDataProps) {
+  if (!article.title || !LISTICLE_TITLE_RE.test(article.title) || !article.content) return null
+
+  const items: Array<{ name: string; url?: string }> = []
+  let match: RegExpExecArray | null
+  LIST_ITEM_RE.lastIndex = 0
+  while ((match = LIST_ITEM_RE.exec(article.content)) !== null) {
+    const name = match[2].replace(/&amp;/g, '&').trim()
+    if (!name || NON_ITEM_HEADINGS.has(name.toLowerCase())) continue
+    items.push({ name, ...(match[1] ? { url: match[1] } : {}) })
+  }
+
+  if (items.length < 3) return null
+
+  const articleSlug = article.slug || createSlug(article.title)
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": article.title,
+    "description": article.excerpt || undefined,
+    "url": `${baseUrl}/articles/${articleSlug}`,
+    "numberOfItems": items.length,
+    "itemListOrder": "https://schema.org/ItemListUnordered",
+    "itemListElement": items.map((item, i) => ({
+      "@type": "ListItem",
+      "position": i + 1,
+      "name": item.name,
+      ...(item.url ? { "url": item.url } : {}),
+    })),
+  }
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  )
+}
+
 // Breadcrumb structured data for article pages
 interface BreadcrumbProps {
   articleTitle: string

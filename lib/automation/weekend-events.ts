@@ -11,7 +11,10 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { fetchWeekendEvents, getUpcomingWeekend, CITY_CONFIG } from './eventbrite'
-import { fetchCityFeedEvents, mergeAndDedup } from './city-feeds'
+import { mergeAndDedup } from './city-feeds'
+import { fetchOpenDataEvents } from './open-data'
+import { enrichEventsWithInstagram } from './instagram-enrich'
+import { targetEventCount } from './article-generator'
 import { getCityWeekendPhoto } from './pexels'
 import { generateWeekendEventsArticle } from './article-generator'
 import { createSlug } from '@/lib/utils/slug'
@@ -95,24 +98,26 @@ export async function generateWeekendArticleForCity(
 
   console.log(`\n[weekend-events] === Generating article for ${cityLabel} (${label}) ===`)
 
-  // Step 1: Fetch events from both Ticketmaster and city iCal feeds in parallel.
-  // City feed failures are non-fatal — we fall back to Ticketmaster-only.
-  let ticketmasterEvents
-  try {
-    ticketmasterEvents = await fetchWeekendEvents(city, start, end, 30)
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err)
-    console.error(`[weekend-events] Ticketmaster fetch failed for ${cityLabel}:`, error)
-    return { success: false, city, cityLabel, eventsFound: 0, eventsUsed: 0, error }
+  // Step 1: Fetch events from Ticketmaster and municipal open data in parallel.
+  // Either source failing is non-fatal — the article can run on the other one.
+  const [tmResult, openDataEvents] = await Promise.all([
+    fetchWeekendEvents(city, start, end, 30).then(
+      events => ({ events, error: null as string | null }),
+      err => ({ events: [] as Awaited<ReturnType<typeof fetchWeekendEvents>>, error: err instanceof Error ? err.message : String(err) })
+    ),
+    // Errors are swallowed inside fetchOpenDataEvents (returns [])
+    fetchOpenDataEvents(city, start, end),
+  ])
+
+  const ticketmasterEvents = tmResult.events
+  if (tmResult.error) {
+    console.error(`[weekend-events] Ticketmaster fetch failed for ${cityLabel} (continuing with open data):`, tmResult.error)
   }
 
-  // City feed runs concurrently; errors are swallowed inside fetchCityFeedEvents
-  const cityFeedEvents = await fetchCityFeedEvents(city, start, end)
+  // Merge: Ticketmaster first (richer data), open data fills in unique extras
+  const events = mergeAndDedup(ticketmasterEvents, openDataEvents)
 
-  // Merge: Ticketmaster first (richer data), city feed fills in unique extras
-  const events = mergeAndDedup(ticketmasterEvents, cityFeedEvents)
-
-  console.log(`[weekend-events] ${cityLabel}: ${ticketmasterEvents.length} Ticketmaster + ${cityFeedEvents.length} city feed → ${events.length} total after dedup`)
+  console.log(`[weekend-events] ${cityLabel}: ${ticketmasterEvents.length} Ticketmaster + ${openDataEvents.length} open data → ${events.length} total after dedup`)
 
   if (events.length < 3) {
     const error = `Only ${events.length} events found for ${cityLabel} — not enough for an article (minimum 3)`
@@ -120,7 +125,15 @@ export async function generateWeekendArticleForCity(
     return { success: false, city, cityLabel, eventsFound: events.length, eventsUsed: 0, error }
   }
 
-  const eventsUsed = Math.min(events.length, 12)
+  const eventsUsed = targetEventCount(city, events.length)
+
+  // Step 1b: Discover organizer Instagram profiles from event websites
+  // (fail-soft — events without one simply skip the Instagram line)
+  try {
+    await enrichEventsWithInstagram(events, eventsUsed + 4)
+  } catch (err) {
+    console.warn('[weekend-events] Instagram enrichment failed (non-fatal):', err)
+  }
 
   // Step 2: Get and upload a cover photo
   let imageUrl: string | undefined
@@ -227,7 +240,7 @@ export async function generateWeekendArticleForCity(
     articleId: inserted.id,
     articleSlug: slug,
     title: article.title,
-    eventsFound: ticketmasterEvents.length + cityFeedEvents.length,
+    eventsFound: ticketmasterEvents.length + openDataEvents.length,
     eventsUsed,
   }
 }

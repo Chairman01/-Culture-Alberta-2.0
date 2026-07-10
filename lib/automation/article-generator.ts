@@ -18,10 +18,39 @@ const CITY_LABELS: Record<string, string> = {
   'fort-mcmurray':  'Fort McMurray',
 }
 
+/**
+ * How many events to include in an article for a given city.
+ *
+ * Calgary/Edmonton get longer lists (up to 20): competing weekend guides in
+ * these markets run 17-27 items and have trended longer year over year, and
+ * longer lists mean more scroll depth and more in-content ad impressions.
+ * Smaller cities stay at 12 — their feeds rarely support more, and padding
+ * a thin list reads worse than a short one.
+ */
+const BIG_LIST_CITIES = new Set(['calgary', 'edmonton'])
+
+export function targetEventCount(city: string, available: number): number {
+  const cap = BIG_LIST_CITIES.has(city) ? 20 : 12
+  return Math.min(available, cap)
+}
+
+/**
+ * Rotating title adjective, Daily Hive-style ("27 awesome things to do...").
+ * Deterministic by ISO week so re-runs for the same weekend produce the same
+ * title, but consecutive weekends don't repeat.
+ */
+const TITLE_ADJECTIVES = ['awesome', 'outstanding', 'fantastic', 'superb', 'great']
+
+export function weekendTitleAdjective(date: Date = new Date()): string {
+  const weekMs = 7 * 24 * 60 * 60 * 1000
+  const week = Math.floor(date.getTime() / weekMs)
+  return TITLE_ADJECTIVES[week % TITLE_ADJECTIVES.length]
+}
+
 function buildEventList(events: EventbriteEvent[]): string {
   return events
     .map((e, i) => {
-      return [
+      const lines = [
         `Event ${i + 1}:`,
         `  Title: ${e.title}`,
         `  Description: ${e.shortDescription || 'No description provided'}`,
@@ -31,7 +60,9 @@ function buildEventList(events: EventbriteEvent[]): string {
         `  Cost: ${e.price}`,
         `  URL: ${e.url}`,
         `  Category: ${e.categoryName}`,
-      ].join('\n')
+      ]
+      if (e.instagramUrl) lines.push(`  Instagram: ${e.instagramUrl}`)
+      return lines.join('\n')
     })
     .join('\n\n')
 }
@@ -42,17 +73,21 @@ function buildPrompt(
   events: EventbriteEvent[]
 ): string {
   const cityLabel = CITY_LABELS[city] || city
-  const count = Math.min(events.length, 12)
-  const eventList = buildEventList(events.slice(0, 14)) // Feed up to 14, Claude picks best 12
+  const count = targetEventCount(city, events.length)
+  const eventList = buildEventList(events.slice(0, count + 4)) // Feed a few extra, Claude picks the best
 
   return `You are writing a weekend events guide for culturealberta.com, a local Alberta news and culture site.
 
 TASK: Write a weekend events guide for ${cityLabel} for the weekend of ${weekendLabel}.
 
 VOICE AND STYLE:
-- Straight-talking and locally knowledgeable. Not hype-y.
-- Never use: "amazing", "epic", "incredible", "fantastic", "exciting", "vibrant", "there's something for everyone"
-- Add one genuinely useful detail per event that the listing alone doesn't tell you (parking tip, crowd expectation, what to bring, what's new this year, etc.)
+- Straight-talking and locally knowledgeable, like a friend who actually goes to these things. Not hype-y.
+- Never use: "amazing", "epic", "incredible", "fantastic", "exciting", "vibrant", "bustling", "hidden gem", "nestled", "there's something for everyone", "look no further", "whether you're X or Y", "get ready to", "grab your"
+- Do not start two event descriptions the same way. Mix it up: some lead with the event, some with the venue, some with a practical tip, some with who it's for.
+- Vary sentence length. Short sentences are fine. So are fragments, occasionally.
+- Add one genuinely useful detail per event that the listing alone doesn't tell you (parking tip, crowd expectation, what to bring, what's new this year, etc.). If you don't have a real detail, say less rather than padding.
+- Never write a summary sentence that restates the event name ("This event is a great way to..."). Get straight to what it is and why someone would go.
+- Contractions are good. Rhetorical questions, exclamation marks, and "fun fact" asides are not.
 - The article is family-friendly and appropriate for a general audience
 
 FORMAT — follow this exactly:
@@ -69,6 +104,7 @@ Then list ${count} events using this format for each:
 **When:** [day, date, time]
 **Where:** [venue name, address]
 **Cost:** [price or Free]
+**Instagram:** [@handle](Instagram URL)   ← include this line ONLY if the event data has an Instagram field; derive @handle from the URL path
 
 ---
 
@@ -131,7 +167,7 @@ function markdownToHtml(md: string): string {
 
 function buildExcerpt(city: string, weekendLabel: string, count: number): string {
   const cityLabel = CITY_LABELS[city] || city
-  return `${count} things to do in ${cityLabel} this weekend (${weekendLabel}), from outdoor festivals and markets to live music and community events.`
+  return `Still figuring out your plans for ${weekendLabel}? Here are ${count} things worth checking out in ${cityLabel} this weekend.`
 }
 
 export async function generateWeekendEventsArticle(
@@ -146,7 +182,7 @@ export async function generateWeekendEventsArticle(
     throw new Error(`No events available for ${city} this weekend — skipping article generation`)
   }
 
-  const count = Math.min(events.length, 12)
+  const count = targetEventCount(city, events.length)
   const cityLabel = CITY_LABELS[city] || city
 
   const client = new Anthropic({ apiKey })
@@ -171,7 +207,7 @@ export async function generateWeekendEventsArticle(
 
   const html = markdownToHtml(rawText)
 
-  const title = `${count} Things to Do in ${cityLabel} This Weekend (${weekendLabel})`
+  const title = `${count} ${weekendTitleAdjective()} things to do in ${cityLabel} this weekend: ${weekendLabel}`
   const excerpt = buildExcerpt(city, weekendLabel, count)
 
   console.log(`[article-generator] Article generated: "${title}"`)

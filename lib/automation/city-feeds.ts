@@ -22,13 +22,10 @@ import type { EventbriteEvent } from './eventbrite'
 // ---------------------------------------------------------------------------
 
 const CITY_ICAL_FEEDS: Record<string, string | null> = {
-  // Calgary: City of Calgary public event calendar
-  // Verify at: https://www.calgary.ca/events.html → look for "Subscribe"
-  calgary: 'https://www.calgary.ca/content/dam/www/csps/abs/documents/events-calendar.ics',
-
-  // Edmonton: City of Edmonton events calendar
-  // Verify at: https://www.edmonton.ca/programs_services/events → "Add to Calendar"
-  edmonton: 'https://www.edmonton.ca/events.ics',
+  // Calgary + Edmonton now come from Socrata open-data APIs (lib/automation/open-data.ts).
+  // The iCal URLs previously listed here had gone 404.
+  calgary: null,
+  edmonton: null,
 
   // Smaller cities — add iCal URLs if they publish feeds
   lethbridge: null,

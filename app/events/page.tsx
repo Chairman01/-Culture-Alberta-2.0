@@ -1,13 +1,14 @@
 import { Metadata } from "next"
 import { loadOptimizedFallback } from '@/lib/optimized-fallback'
+import { fetchUpcomingOpenDataEvents } from '@/lib/automation/open-data'
 import EventsClient from "./events-client"
 
 export const metadata: Metadata = {
-  title: 'Cultural Events in Alberta | Festivals, Performances & More',
-  description: 'Discover cultural events, festivals, and performances happening across Alberta. Find events in Calgary, Edmonton, and beyond.',
+  title: 'Alberta Events Calendar | Things to Do in Calgary & Edmonton',
+  description: 'Upcoming events, festivals, markets, and performances across Alberta — updated from City of Calgary and City of Edmonton event listings.',
   openGraph: {
-    title: 'Cultural Events in Alberta | Culture Alberta',
-    description: 'Discover cultural events, festivals, and performances happening across Alberta.',
+    title: 'Alberta Events Calendar | Culture Alberta',
+    description: 'Upcoming events, festivals, markets, and performances across Alberta — updated from City of Calgary and City of Edmonton event listings.',
     type: 'website',
   },
 }
@@ -86,10 +87,45 @@ async function getEvents() {
   }
 }
 
-export default async function EventsPage() {
-  const events = await getEvents()
+/** Events from Calgary + Edmonton open-data portals, mapped to the page's shape. */
+async function getMunicipalEvents() {
+  try {
+    const openDataEvents = await fetchUpcomingOpenDataEvents(60)
+    return openDataEvents.map(e => {
+      const cityName = e.city === 'edmonton' ? 'Edmonton' : 'Calgary'
+      return {
+        id: e.id,
+        title: e.title,
+        excerpt: e.shortDescription || '',
+        description: e.description || '',
+        category: e.categoryName || 'Community',
+        location: e.venueName ? `${e.venueName}, ${cityName}` : cityName,
+        date: e.startDate,
+        displayDate: e.startFormatted,
+        imageUrl: '',
+        author: `City of ${cityName}`,
+        websiteUrl: e.url,
+        external: true,
+      }
+    })
+  } catch (error) {
+    console.warn('⚠️ Open-data events failed to load (non-fatal):', error)
+    return []
+  }
+}
 
-  // Sort by date (closest first)
+export default async function EventsPage() {
+  const [curated, municipal] = await Promise.all([getEvents(), getMunicipalEvents()])
+
+  // Hide events that have already happened (keep today's)
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - 1)
+  const events = [...curated, ...municipal].filter(e => {
+    const d = new Date(e.date || 0)
+    return isNaN(d.getTime()) || d >= cutoff
+  })
+
+  // Sort by date (soonest first)
   events.sort((a, b) => {
     const dateA = new Date(a.date || 0).getTime()
     const dateB = new Date(b.date || 0).getTime()
@@ -103,9 +139,9 @@ export default async function EventsPage() {
           <div className="container mx-auto max-w-7xl px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">Cultural Events</h1>
+                <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">Alberta Events Calendar</h1>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                  Discover cultural events, festivals, and performances happening across Alberta.
+                  What&apos;s on in Calgary, Edmonton, and across Alberta — updated from official city event listings and our own picks.
                 </p>
               </div>
             </div>

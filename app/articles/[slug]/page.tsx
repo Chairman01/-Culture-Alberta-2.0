@@ -14,7 +14,7 @@ import { createSlug } from '@/lib/utils/slug'
 import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { PreferredSourceCTA } from '@/components/preferred-source-cta'
-import { ArticleStructuredData, BreadcrumbStructuredData } from '@/components/seo/structured-data'
+import { ArticleStructuredData, BreadcrumbStructuredData, ListicleStructuredData } from '@/components/seo/structured-data'
 import { ArticleEmbedActivator } from '@/components/article-embed-activator'
 
 // ISR: cache rendered pages for 30 min, revalidate in background.
@@ -939,6 +939,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       <>
         {/* Structured Data for Google Rich Snippets */}
         <ArticleStructuredData article={loadedArticle} />
+        <ListicleStructuredData article={loadedArticle} />
         <BreadcrumbStructuredData
           articleTitle={loadedArticle.title}
           articleCategory={loadedArticle.category}

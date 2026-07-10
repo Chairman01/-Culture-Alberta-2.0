@@ -71,6 +71,7 @@ export interface EventbriteEvent {
   price: string           // e.g. "$15–$45" or "Free"
   categoryName: string
   imageUrl: string | null
+  instagramUrl?: string | null  // organizer's Instagram profile, discovered from their website
 }
 
 function formatDate(localDate: string, localTime: string | undefined, timezone = 'America/Edmonton'): string {
@@ -219,8 +220,11 @@ export function getUpcomingWeekend(): { start: Date; end: Date; label: string } 
   sunday.setDate(friday.getDate() + 2)
   sunday.setHours(23, 59, 59, 999)
 
-  const monthName = friday.toLocaleString('en-CA', { month: 'long' })
-  const label = `${monthName} ${friday.getDate()}-${sunday.getDate()}`
+  const fridayMonth = friday.toLocaleString('en-CA', { month: 'long' })
+  const sundayMonth = sunday.toLocaleString('en-CA', { month: 'long' })
+  const label = fridayMonth === sundayMonth
+    ? `${fridayMonth} ${friday.getDate()} to ${sunday.getDate()}`
+    : `${fridayMonth} ${friday.getDate()} to ${sundayMonth} ${sunday.getDate()}`
 
   return { start: friday, end: sunday, label }
 }

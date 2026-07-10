@@ -15,10 +15,14 @@ interface Event {
     category: string
     location: string
     date: string
+    displayDate?: string   // pre-formatted date/time text (municipal open-data events)
     imageUrl: string
     author: string
     websiteUrl?: string
+    external?: boolean     // true for open-data events that have no detail page on our site
 }
+
+const PAGE_SIZE = 30
 
 interface EventsClientProps {
     events: Event[]
@@ -29,6 +33,7 @@ export default function EventsClient({ events }: EventsClientProps) {
     const [selectedDate, setSelectedDate] = useState("all")
     const [selectedCategory, setSelectedCategory] = useState("all")
     const [selectedTags, setSelectedTags] = useState<string[]>([])
+    const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
     const handleTagClick = (tag: string) => {
         setSelectedTags(prev =>
@@ -85,13 +90,15 @@ export default function EventsClient({ events }: EventsClientProps) {
 
     const filteredEvents = events.filter(filterEvents)
 
-    // Sort: featured events pinned first, then newest event date first
+    // Sort: featured events pinned first, then soonest event date first
     const sortedEvents = [...filteredEvents].sort((a, b) => {
         const aFeatured = (a as any).featured ? 1 : 0
         const bFeatured = (b as any).featured ? 1 : 0
         if (bFeatured !== aFeatured) return bFeatured - aFeatured
-        return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+        return new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
     })
+
+    const visibleEvents = sortedEvents.slice(0, visibleCount)
 
     const formatEventDate = (dateString: string) => {
         if (!dateString) return 'Date TBA'
@@ -232,21 +239,27 @@ export default function EventsClient({ events }: EventsClientProps) {
             {/* Events Grid */}
             <div className="md:w-3/4 w-full flex flex-col items-center justify-center">
                 <div className="grid gap-8 w-full">
-                    {sortedEvents.map((event) => (
+                    {visibleEvents.map((event) => (
                         <div
                             key={event.id}
                             className="flex flex-col overflow-hidden rounded-lg border bg-background shadow-sm md:flex-row"
                         >
                             <div className="md:w-1/3">
-                                <img
-                                    src={event.imageUrl || ""}
-                                    alt={event.title}
-                                    className="h-full w-full object-cover"
-                                    onError={(e) => {
-                                        const img = e.target as HTMLImageElement
-                                        img.src = ""
-                                    }}
-                                />
+                                {event.imageUrl ? (
+                                    <img
+                                        src={event.imageUrl}
+                                        alt={event.title}
+                                        className="h-full w-full object-cover"
+                                        onError={(e) => {
+                                            const img = e.target as HTMLImageElement
+                                            img.src = ""
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="flex h-full min-h-[140px] w-full items-center justify-center bg-muted">
+                                        <Calendar className="h-10 w-10 text-muted-foreground/50" />
+                                    </div>
+                                )}
                             </div>
                             <div className="flex flex-1 flex-col justify-between p-6">
                                 <div className="space-y-2">
@@ -254,7 +267,7 @@ export default function EventsClient({ events }: EventsClientProps) {
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
                                         <div className="flex items-center gap-1">
                                             <Calendar className="h-4 w-4" />
-                                            <span>{formatEventDate(event.date || '')}</span>
+                                            <span>{event.displayDate || formatEventDate(event.date || '')}</span>
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <MapPin className="h-4 w-4" />
@@ -265,21 +278,43 @@ export default function EventsClient({ events }: EventsClientProps) {
                                     <p className="text-muted-foreground">{(event.excerpt || event.description || '').replace(/<[^>]*>?/g, '').trim()}</p>
                                 </div>
                                 <div className="mt-4 flex items-center justify-between">
-                                    <Link href={getEventUrl(event as any)}>
-                                        <Button variant="outline">View Details</Button>
-                                    </Link>
-                                    {event.websiteUrl ? (
-                                        <a href={event.websiteUrl} target="_blank" rel="noopener noreferrer">
-                                            <Button>Register</Button>
-                                        </a>
+                                    {event.external ? (
+                                        event.websiteUrl ? (
+                                            <a href={event.websiteUrl} target="_blank" rel="noopener noreferrer">
+                                                <Button variant="outline">Event Website</Button>
+                                            </a>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">Listed by {event.author}</span>
+                                        )
                                     ) : (
-                                        <Button disabled>Register</Button>
+                                        <>
+                                            <Link href={getEventUrl(event as any)}>
+                                                <Button variant="outline">View Details</Button>
+                                            </Link>
+                                            {event.websiteUrl ? (
+                                                <a href={event.websiteUrl} target="_blank" rel="noopener noreferrer">
+                                                    <Button>Register</Button>
+                                                </a>
+                                            ) : (
+                                                <Button disabled>Register</Button>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>
                         </div>
                     ))}
                 </div>
+                {sortedEvents.length > visibleCount && (
+                    <div className="mt-8 flex justify-center">
+                        <Button
+                            variant="outline"
+                            onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+                        >
+                            Show more events ({sortedEvents.length - visibleCount} remaining)
+                        </Button>
+                    </div>
+                )}
             </div>
         </div>
     )
