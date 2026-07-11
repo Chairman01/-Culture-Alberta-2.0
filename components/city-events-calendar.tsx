@@ -2,10 +2,10 @@ import Link from 'next/link'
 import { fetchUpcomingOpenDataEvents } from '@/lib/automation/open-data'
 import { getEventsByLocation } from '@/lib/events'
 import { EventsStructuredData, type StructuredEvent } from '@/components/seo/structured-data'
-import { EventsMonthCalendar, type CalendarEvent } from '@/components/events-month-calendar'
 
 /**
- * Dynamic "Upcoming events" calendar section for city hub pages.
+ * Compact "Upcoming events" section for city hub pages — two rows of cards
+ * matching the /events listing style, with a link to the full calendar.
  *
  * Server component: merges the city's municipal open-data feed (Calgary and
  * Edmonton) with our curated events table, values-filtered at the source.
@@ -83,21 +83,47 @@ async function getCityEvents(citySlug: string, cityLabel: string, limit: number)
     .slice(0, limit)
 }
 
+const BADGE_COLORS: Array<{ match: RegExp; classes: string }> = [
+  { match: /festival/i, classes: 'bg-red-700 text-white' },
+  { match: /sport/i, classes: 'bg-orange-600 text-white' },
+  { match: /outdoor/i, classes: 'bg-amber-700 text-white' },
+  { match: /art/i, classes: 'bg-blue-700 text-white' },
+  { match: /communit|programming/i, classes: 'bg-purple-700 text-white' },
+  { match: /recreation|leisure/i, classes: 'bg-teal-700 text-white' },
+]
+
+function badgeClass(category?: string): string {
+  if (!category) return 'bg-gray-600 text-white'
+  return BADGE_COLORS.find(b => b.match.test(category))?.classes || 'bg-gray-600 text-white'
+}
+
+function dateRangeLabel(start: string, end?: string): string {
+  const fmt = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' })
+    } catch {
+      return iso
+    }
+  }
+  if (!end || end.slice(0, 10) === start.slice(0, 10)) return fmt(start)
+  return `${fmt(start)} - ${fmt(end)}`
+}
+
+// Two rows of cards on desktop (4 per row)
+const MAX_CARDS = 8
+
 export async function CityEventsCalendar({
   citySlug,
   cityLabel,
-  limit = 120,
 }: {
   citySlug: string
   cityLabel: string
-  limit?: number
 }) {
-  const events = await getCityEvents(citySlug, cityLabel, limit)
+  const events = await getCityEvents(citySlug, cityLabel, MAX_CARDS)
 
   if (events.length === 0) return null
 
-  // Cap the JSON-LD payload; the interactive calendar still gets everything
-  const structuredEvents: StructuredEvent[] = events.slice(0, 25).map(e => ({
+  const structuredEvents: StructuredEvent[] = events.map(e => ({
     name: e.name,
     startDate: e.startDate,
     endDate: e.endDate,
@@ -106,17 +132,6 @@ export async function CityEventsCalendar({
     url: e.url,
     description: e.description,
     category: e.category,
-  }))
-
-  const calendarEvents: CalendarEvent[] = events.map(e => ({
-    id: e.id,
-    name: e.name,
-    start: e.startDate.slice(0, 10),
-    end: e.endDate ? e.endDate.slice(0, 10) : undefined,
-    timeLabel: e.dateLabel,
-    venue: e.venueName,
-    category: e.category,
-    url: e.url,
   }))
 
   return (
@@ -136,14 +151,46 @@ export async function CityEventsCalendar({
           </p>
         </div>
         <Link href="/events" className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
-          Full events calendar →
+          See all events →
         </Link>
       </div>
 
-      <EventsMonthCalendar events={calendarEvents} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {events.map(event => (
+          <div key={event.id} className="flex flex-col rounded-md border bg-white p-5 shadow-sm">
+            <h3 className="text-lg font-bold leading-snug mb-2 border-b border-blue-400 pb-3">
+              {event.url ? (
+                <a
+                  href={event.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-700 hover:text-blue-900 hover:underline"
+                >
+                  {event.name}
+                </a>
+              ) : (
+                <span className="text-gray-900">{event.name}</span>
+              )}
+            </h3>
+            <p className="text-sm text-gray-800 mb-1">
+              <strong>Date:</strong> {dateRangeLabel(event.startDate, event.endDate)}
+            </p>
+            <p className="text-sm text-gray-800 mb-3">
+              <strong>Location:</strong> {event.venueName || cityLabel}
+            </p>
+            {event.category && (
+              <div className="mt-auto">
+                <span className={`rounded px-2.5 py-1 text-xs font-semibold ${badgeClass(event.category)}`}>
+                  {event.category}
+                </span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
       <Link href="/events" className="mt-4 inline-flex sm:hidden items-center gap-1 text-sm font-medium text-blue-600">
-        Full events calendar →
+        See all events →
       </Link>
     </section>
   )
