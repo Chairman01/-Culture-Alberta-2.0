@@ -366,13 +366,6 @@ export async function CityHub({ config }: { config: CityPageConfig }) {
                         </div>
                     </section>
 
-                    {/* Dynamic events calendar — curated events (+ open data for cities that have it), with Event JSON-LD */}
-                    <section className="w-full">
-                        <div className="container mx-auto px-4 md:px-6">
-                            <CityEventsCalendar citySlug={config.slug} cityLabel={config.eventLocation} />
-                        </div>
-                    </section>
-
                     {/* Neighborhoods */}
                     <section className="w-full py-6">
                         <div className="container mx-auto px-4 md:px-6">
@@ -446,6 +439,13 @@ export async function CityHub({ config }: { config: CityPageConfig }) {
                                     </div>
                                 )}
                             </div>
+                        </div>
+                    </section>
+
+                    {/* Dynamic events calendar — curated events (+ open data for cities that have it), with Event JSON-LD */}
+                    <section className="w-full">
+                        <div className="container mx-auto px-4 md:px-6">
+                            <CityEventsCalendar citySlug={config.slug} cityLabel={config.eventLocation} />
                         </div>
                     </section>
                 </main>

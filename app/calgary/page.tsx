@@ -653,13 +653,6 @@ export default async function CalgaryPage() {
             </div>
           </section>
 
-          {/* Dynamic events calendar — municipal open data + curated events, with Event JSON-LD */}
-          <section className="w-full">
-            <div className="container mx-auto px-4 md:px-6">
-              <CityEventsCalendar citySlug="calgary" cityLabel="Calgary" />
-            </div>
-          </section>
-
           {/* Calgary Neighborhoods Section */}
           <section className="w-full py-6">
             <div className="container mx-auto px-4 md:px-6">
@@ -755,6 +748,13 @@ export default async function CalgaryPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </section>
+
+          {/* Dynamic events calendar — municipal open data + curated events, with Event JSON-LD */}
+          <section className="w-full">
+            <div className="container mx-auto px-4 md:px-6">
+              <CityEventsCalendar citySlug="calgary" cityLabel="Calgary" />
             </div>
           </section>
         </main>
