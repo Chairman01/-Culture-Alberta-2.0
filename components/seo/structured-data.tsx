@@ -413,6 +413,77 @@ export function ListicleStructuredData({ article, baseUrl = 'https://www.culture
   )
 }
 
+// Event structured data — makes event listings eligible for Google/Bing
+// event rich results. Emits an ItemList of schema.org Event objects.
+export interface StructuredEvent {
+  name: string
+  startDate: string        // ISO 8601
+  endDate?: string
+  venueName?: string
+  city: string             // e.g. "Edmonton"
+  url?: string             // organizer page (external) — omitted if absent
+  description?: string
+  category?: string
+}
+
+export function EventsStructuredData({
+  events,
+  pageUrl,
+  listName,
+  baseUrl = 'https://www.culturealberta.com',
+}: {
+  events: StructuredEvent[]
+  pageUrl: string
+  listName: string
+  baseUrl?: string
+}) {
+  if (!events.length) return null
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": listName,
+    "url": pageUrl.startsWith('http') ? pageUrl : `${baseUrl}${pageUrl}`,
+    "numberOfItems": events.length,
+    "itemListElement": events.map((e, i) => ({
+      "@type": "ListItem",
+      "position": i + 1,
+      "item": {
+        "@type": "Event",
+        "name": e.name,
+        "startDate": e.startDate,
+        ...(e.endDate ? { "endDate": e.endDate } : {}),
+        "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+        "eventStatus": "https://schema.org/EventScheduled",
+        ...(e.description ? { "description": e.description.slice(0, 300) } : {}),
+        "location": {
+          "@type": "Place",
+          "name": e.venueName || e.city,
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": e.city,
+            "addressRegion": "AB",
+            "addressCountry": "CA",
+          },
+        },
+        ...(e.url ? { "url": e.url } : {}),
+        "organizer": {
+          "@type": "Organization",
+          "name": e.venueName || `City of ${e.city}`,
+          ...(e.url ? { "url": e.url } : {}),
+        },
+      },
+    })),
+  }
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  )
+}
+
 // Breadcrumb structured data for article pages
 interface BreadcrumbProps {
   articleTitle: string

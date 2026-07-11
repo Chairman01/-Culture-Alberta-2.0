@@ -8,6 +8,7 @@ import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getAlbertaCityArticles } from '@/lib/alberta-cities'
 import { getTrendingByViews } from '@/lib/trending-articles'
 import { getEventsByLocation } from '@/lib/events'
+import { CityEventsCalendar } from '@/components/city-events-calendar'
 import { Article } from '@/lib/types/article'
 import { isNeighborhoodArticle, isGuideArticle, isRegularArticle } from '@/lib/utils/article-filters'
 import type { CityPageConfig } from '@/lib/city-pages'
@@ -362,6 +363,13 @@ export async function CityHub({ config }: { config: CityPageConfig }) {
                                     })()}
                                 </TabsContent>
                             </Tabs>
+                        </div>
+                    </section>
+
+                    {/* Dynamic events calendar — curated events (+ open data for cities that have it), with Event JSON-LD */}
+                    <section className="w-full">
+                        <div className="container mx-auto px-4 md:px-6">
+                            <CityEventsCalendar citySlug={config.slug} cityLabel={config.eventLocation} />
                         </div>
                     </section>
 

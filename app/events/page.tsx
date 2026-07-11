@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { loadOptimizedFallback } from '@/lib/optimized-fallback'
 import { fetchUpcomingOpenDataEvents } from '@/lib/automation/open-data'
+import { EventsStructuredData, type StructuredEvent } from '@/components/seo/structured-data'
 import EventsClient from "./events-client"
 
 export const metadata: Metadata = {
@@ -132,9 +133,32 @@ export default async function EventsPage() {
     return dateA - dateB
   })
 
+  // schema.org Event ItemList — eligibility for Google/Bing event rich results
+  const structuredEvents: StructuredEvent[] = events.slice(0, 50).map(e => {
+    const author = (e as any).author || ''
+    const loc = (e.location || '').toLowerCase()
+    const city = author.startsWith('City of ')
+      ? author.slice('City of '.length)
+      : loc.includes('edmonton') ? 'Edmonton' : loc.includes('calgary') ? 'Calgary' : 'Alberta'
+    return {
+      name: e.title,
+      startDate: e.date,
+      venueName: e.location,
+      city,
+      url: (e as any).websiteUrl || undefined,
+      description: e.excerpt || undefined,
+      category: e.category,
+    }
+  })
+
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
+        <EventsStructuredData
+          events={structuredEvents}
+          pageUrl="/events"
+          listName="Upcoming events in Alberta — Calgary, Edmonton and beyond"
+        />
         <section className="w-full py-16 md:py-24 lg:py-32 bg-muted/40">
           <div className="container mx-auto max-w-7xl px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">

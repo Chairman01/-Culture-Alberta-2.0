@@ -39,9 +39,11 @@ const BLOCKED_KEYWORDS: string[] = [
   'nightclub', 'night club', 'rave', 'after dark',
   'adults only', 'adults-only', '18+', '19+',
 
-  // Music festivals and concerts (editorial choice — not promoted in articles)
-  'music festival', 'concert', 'live music', 'music fest',
-  'dj set', 'edm night',
+  // Music festivals and concerts (editorial choice — not promoted)
+  'music festival', 'concert', 'live music', 'music fest', 'music series',
+  'dj set', 'edm night', 'rockin', 'rock fest', 'folk fest', 'jamboree',
+  'jazz festival', 'blues festival', 'punk', 'hip hop', 'hip-hop',
+  'album release', 'anniversary release', 'listening party',
 
   // Cannabis
   'cannabis', '420 ',
@@ -88,7 +90,19 @@ export function isEventBlocked(event: FilterableEvent): boolean {
   if (hasException) return false
 
   // Check blocked keywords
-  return BLOCKED_KEYWORDS.some(keyword => textToCheck.includes(keyword.toLowerCase()))
+  if (BLOCKED_KEYWORDS.some(keyword => textToCheck.includes(keyword.toLowerCase()))) {
+    return true
+  }
+
+  // Music-category events are blocked UNLESS the text shows it's actually
+  // theatre/comedy/etc. (city feeds lump those under "Music & Performing Arts")
+  const category = (event.categoryName ?? '').toLowerCase()
+  if (category.includes('music')) {
+    const NON_MUSIC_PERFORMING_ARTS = ['comedy', 'improv', 'theatre', 'theater', 'fashion', 'film', 'dance', 'circus', 'magic', 'storytelling', 'poetry']
+    return !NON_MUSIC_PERFORMING_ARTS.some(w => textToCheck.includes(w))
+  }
+
+  return false
 }
 
 /**

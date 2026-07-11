@@ -9,6 +9,7 @@ import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getCityArticlesWithFallback } from '@/lib/fallback-articles'
 import { getTrendingByViews } from '@/lib/trending-articles'
 import { getEventsByLocation } from '@/lib/events'
+import { CityEventsCalendar } from '@/components/city-events-calendar'
 import { Article } from '@/lib/types/article'
 import { isNeighborhoodArticle, isGuideArticle, isRegularArticle } from '@/lib/utils/article-filters'
 import { Metadata } from 'next'
@@ -653,6 +654,13 @@ export default async function EdmontonPage() {
                   })()}
                 </TabsContent>
               </Tabs>
+            </div>
+          </section>
+
+          {/* Dynamic events calendar — municipal open data + curated events, with Event JSON-LD */}
+          <section className="w-full">
+            <div className="container mx-auto px-4 md:px-6">
+              <CityEventsCalendar citySlug="edmonton" cityLabel="Edmonton" />
             </div>
           </section>
 

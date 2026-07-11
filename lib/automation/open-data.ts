@@ -18,6 +18,7 @@
  */
 
 import type { EventbriteEvent } from './eventbrite'
+import { filterEvents } from './content-filter'
 
 const EDMONTON_ENDPOINT = 'https://data.edmonton.ca/resource/64u3-c7bh.json'
 const CALGARY_ENDPOINT = 'https://data.calgary.ca/resource/n625-9k5x.json'
@@ -293,23 +294,26 @@ export async function fetchCalgaryOpenDataEvents(
  * Fetch open-data events for one city within a date window.
  * Returns [] for cities without an open-data feed and on any failure,
  * so callers can safely merge with other sources.
+ * The editorial values filter is applied here so every surface
+ * (articles, /events, city pages) inherits it automatically.
  */
 export async function fetchOpenDataEvents(
   city: string,
   start: Date,
   end: Date
 ): Promise<EventbriteEvent[]> {
-  if (city === 'edmonton') return fetchEdmontonOpenDataEvents(start, end)
-  if (city === 'calgary') return fetchCalgaryOpenDataEvents(start, end)
+  if (city === 'edmonton') return filterEvents(await fetchEdmontonOpenDataEvents(start, end))
+  if (city === 'calgary') return filterEvents(await fetchCalgaryOpenDataEvents(start, end))
   return []
 }
 
 /**
- * Fetch upcoming open-data events for both cities (for the /events calendar).
- * Window: today through `daysAhead` days from now.
+ * Fetch upcoming open-data events (for the /events calendar and city pages).
+ * Window: today through `daysAhead` days from now. Values-filtered.
  */
 export async function fetchUpcomingOpenDataEvents(
-  daysAhead = 60
+  daysAhead = 60,
+  city?: 'calgary' | 'edmonton'
 ): Promise<OpenDataEvent[]> {
   const start = new Date()
   start.setUTCHours(0, 0, 0, 0)
@@ -317,11 +321,11 @@ export async function fetchUpcomingOpenDataEvents(
   end.setUTCDate(end.getUTCDate() + daysAhead)
 
   const [edmonton, calgary] = await Promise.all([
-    fetchEdmontonOpenDataEvents(start, end),
-    fetchCalgaryOpenDataEvents(start, end),
+    city === 'calgary' ? Promise.resolve([]) : fetchEdmontonOpenDataEvents(start, end),
+    city === 'edmonton' ? Promise.resolve([]) : fetchCalgaryOpenDataEvents(start, end),
   ])
 
-  return [...edmonton, ...calgary].sort((a, b) =>
+  return filterEvents([...edmonton, ...calgary]).sort((a, b) =>
     a.startDate.localeCompare(b.startDate)
   )
 }
