@@ -21,6 +21,7 @@ export interface BrowserEvent {
   city: 'Edmonton' | 'Calgary'
   category: string
   url?: string
+  manual?: boolean        // created in our admin — always pinned first
 }
 
 const PAGE_SIZE = 12
@@ -62,18 +63,33 @@ export default function EventsBrowser({ events }: { events: BrowserEvent[] }) {
 
   const filtered = useMemo(() => {
     const kw = keyword.trim().toLowerCase()
-    return events.filter(e => {
+    const today = todayStr()
+    const matches = events.filter(e => {
       if (city !== 'all' && e.city !== city) return false
       if (eventType !== 'all' && e.category !== eventType) return false
-      // Date-range overlap: event [start, end] intersects filter [from, to]
-      const end = e.end || e.start
-      if (fromDate && end < fromDate) return false
-      if (toDate && e.start > toDate) return false
+      // Date-range overlap: event [start, end] intersects filter [from, to].
+      // Our own (manual) events are exempt so they stay visible even after
+      // they've happened — they're the priority content on this page.
+      if (!e.manual) {
+        const end = e.end || e.start
+        if (fromDate && end < fromDate) return false
+        if (toDate && e.start > toDate) return false
+      }
       if (kw) {
         const haystack = `${e.name} ${e.venue || ''} ${e.category} ${e.city}`.toLowerCase()
         if (!haystack.includes(kw)) return false
       }
       return true
+    })
+
+    // Manual events pinned first: upcoming soonest-first, then recent past;
+    // automated events follow in date order.
+    const rank = (e: BrowserEvent) => (e.manual ? ((e.end || e.start) >= today ? 0 : 1) : 2)
+    return matches.sort((a, b) => {
+      const r = rank(a) - rank(b)
+      if (r !== 0) return r
+      // Past manual events: most recent first; everything else: soonest first
+      return rank(a) === 1 ? b.start.localeCompare(a.start) : a.start.localeCompare(b.start)
     })
   }, [events, keyword, city, eventType, fromDate, toDate])
 
@@ -197,10 +213,18 @@ export default function EventsBrowser({ events }: { events: BrowserEvent[] }) {
                 )}
               </p>
               <div className="mt-auto flex flex-wrap items-center gap-2">
+                {event.manual && (
+                  <span className="rounded bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
+                    Culture Alberta
+                  </span>
+                )}
                 <span className={`rounded px-2.5 py-1 text-xs font-semibold ${badgeClass(event.category)}`}>
                   {event.category}
                 </span>
                 <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">{event.city}</span>
+                {event.manual && (event.end || event.start) < todayStr() && (
+                  <span className="rounded bg-gray-200 px-2 py-1 text-xs text-gray-600">Recently held</span>
+                )}
               </div>
             </div>
           ))}

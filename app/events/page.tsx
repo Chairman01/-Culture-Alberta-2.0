@@ -54,20 +54,22 @@ async function getBrowserEvents(): Promise<BrowserEvent[]> {
     console.warn('⚠️ Open-data events failed to load:', error)
   }
 
-  // Curated events from our own events table (Edmonton/Calgary, upcoming only)
+  // Curated events from our own events table (Edmonton/Calgary).
+  // These take priority over automated feed events: all upcoming ones plus
+  // the 3 most recent past ones are included and pinned first in the browser.
   try {
     const { getAllEvents } = await import('@/lib/events')
     const curated = await getAllEvents()
     const today = new Date().toISOString().slice(0, 10)
+    const mapped: BrowserEvent[] = []
     for (const e of curated) {
       const start = (e as any).event_date
       const loc = (e.location || '').toLowerCase()
       const city = loc.includes('calgary') ? 'Calgary' : loc.includes('edmonton') ? 'Edmonton' : null
       if (!start || !city) continue
       const end = (e as any).event_end_date
-      if ((end || start).slice(0, 10) < today) continue
       const slug = (e as any).slug
-      events.push({
+      mapped.push({
         id: e.id,
         name: e.title,
         start: start.slice(0, 10),
@@ -77,8 +79,15 @@ async function getBrowserEvents(): Promise<BrowserEvent[]> {
         city: city as BrowserEvent['city'],
         category: e.category || 'Community',
         url: slug ? `/events/${slug}` : (e as any).website_url || undefined,
+        manual: true,
       })
     }
+    const upcoming = mapped.filter(e => (e.end || e.start) >= today)
+    const recentPast = mapped
+      .filter(e => (e.end || e.start) < today)
+      .sort((a, b) => b.start.localeCompare(a.start))
+      .slice(0, 3)
+    events.push(...upcoming, ...recentPast)
   } catch (error) {
     console.warn('⚠️ Curated events failed to load (non-fatal):', error)
   }
