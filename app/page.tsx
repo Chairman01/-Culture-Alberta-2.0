@@ -466,15 +466,49 @@ export default async function HomeStatic() {
   logHomeDebug('Events found:', eventPosts.length)
   logHomeDebug('Events:', eventPosts.map(p => ({ title: p.title, category: p.category, categories: p.categories })))
 
+  // Manual events (created in our admin) ALWAYS take priority over automated
+  // city-feed events. Upcoming manual events come first (soonest first); if
+  // there aren't enough, the most recent past manual events fill in, and only
+  // remaining slots go to automated open-data events.
   const now = new Date()
-  const eventCandidates = [...eventPosts, ...rawEventPosts]
+  const manualEvents = [...eventPosts, ...rawEventPosts]
     .filter((event, index, arr) => arr.findIndex(item => item.id === event.id) === index)
-    .filter(event => {
-      const eventDate = new Date(getPostDate(event))
-      return !isNaN(eventDate.getTime()) && eventDate >= now
-    })
+    .filter(event => !isNaN(new Date(getPostDate(event)).getTime()))
+  const upcomingManual = manualEvents
+    .filter(event => new Date(getPostDate(event)) >= now)
     .sort((a, b) => new Date(getPostDate(a)).getTime() - new Date(getPostDate(b)).getTime())
-  const upcomingEvents = eventCandidates.slice(0, 3)
+  const pastManual = manualEvents
+    .filter(event => new Date(getPostDate(event)) < now)
+    .sort((a, b) => new Date(getPostDate(b)).getTime() - new Date(getPostDate(a)).getTime())
+  const manualPicks = [...upcomingManual, ...pastManual]
+    .slice(0, 3)
+    .map(event => ({ ...event, isManualEvent: true }))
+
+  let automatedEventCards: Article[] = []
+  if (manualPicks.length < 3) {
+    try {
+      const { fetchUpcomingOpenDataEvents } = await import('@/lib/automation/open-data')
+      const openData = await fetchUpcomingOpenDataEvents(30)
+      automatedEventCards = openData.slice(0, 3 - manualPicks.length).map(e => ({
+        id: e.id,
+        title: e.title,
+        excerpt: e.shortDescription || [e.venueName, e.startFormatted].filter(Boolean).join(' · '),
+        content: '',
+        category: e.categoryName || 'Events',
+        categories: ['Events'],
+        location: e.city === 'calgary' ? 'Calgary' : 'Edmonton',
+        author: `City of ${e.city === 'calgary' ? 'Calgary' : 'Edmonton'}`,
+        imageUrl: '',
+        date: e.startDate,
+        type: 'event',
+        externalEventUrl: e.url || '',
+      })) as unknown as Article[]
+    } catch (error) {
+      console.warn('⚠️ Automated events for homepage failed (non-fatal):', error)
+    }
+  }
+
+  const upcomingEvents = [...manualPicks, ...automatedEventCards]
 
   return (
     <>
@@ -731,16 +765,38 @@ export default async function HomeStatic() {
                         </div>
                       </div>
                       <div className="p-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 mb-2">
                           <span className="rounded-full bg-gray-100 px-3 py-1.5 font-medium">{event.location || 'Alberta'}</span>
+                          {(event as any).isManualEvent ? (
+                            <span className="rounded-full bg-blue-600 text-white px-3 py-1.5 font-medium">Culture Alberta</span>
+                          ) : (
+                            <span className="rounded-full bg-gray-100 px-3 py-1.5 font-medium">{event.category}</span>
+                          )}
+                          {(event as any).isManualEvent && new Date(getPostDate(event)) < new Date() && (
+                            <span className="rounded-full bg-gray-200 text-gray-600 px-3 py-1.5 font-medium">Recently held</span>
+                          )}
                         </div>
                         <h3 className="font-display font-bold text-xl leading-tight mb-2">{getPostTitle(event)}</h3>
                         <p className="font-body text-sm text-gray-600 line-clamp-2 mb-3">{getPostExcerpt(event)}</p>
-                        <Link href={getEventUrl(event)}>
-                          <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
-                            View Details
-                          </button>
-                        </Link>
+                        {(event as any).externalEventUrl ? (
+                          <a href={(event as any).externalEventUrl} target="_blank" rel="noopener noreferrer">
+                            <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
+                              Event Website
+                            </button>
+                          </a>
+                        ) : (event as any).isManualEvent ? (
+                          <Link href={getEventUrl(event)}>
+                            <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
+                              View Details
+                            </button>
+                          </Link>
+                        ) : (
+                          <Link href="/events">
+                            <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded text-sm hover:bg-gray-50 transition-colors font-body">
+                              See All Events
+                            </button>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   ))
