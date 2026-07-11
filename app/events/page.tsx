@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { loadOptimizedFallback } from '@/lib/optimized-fallback'
 import { fetchUpcomingOpenDataEvents } from '@/lib/automation/open-data'
 import { EventsStructuredData, type StructuredEvent } from '@/components/seo/structured-data'
+import { EventsMonthCalendar, type CalendarEvent } from '@/components/events-month-calendar'
 import EventsClient from "./events-client"
 
 export const metadata: Metadata = {
@@ -151,6 +152,17 @@ export default async function EventsPage() {
     }
   })
 
+  const calendarEvents: CalendarEvent[] = events.map(e => ({
+    id: e.id,
+    name: e.title,
+    start: (e.date || '').slice(0, 10),
+    end: undefined,
+    timeLabel: (e as any).displayDate,
+    venue: e.location,
+    category: e.category,
+    url: (e as any).websiteUrl || undefined,
+  })).filter(e => e.start)
+
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
@@ -184,6 +196,11 @@ export default async function EventsPage() {
                   </li>
                 ))}
               </ul>
+            </div>
+
+            {/* Month calendar — compact overview with per-day drill-down */}
+            <div className="mb-12 flex justify-center">
+              <EventsMonthCalendar events={calendarEvents} />
             </div>
 
             {/* Client-side interactive component */}

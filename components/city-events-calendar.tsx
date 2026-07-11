@@ -1,8 +1,8 @@
 import Link from 'next/link'
-import { Calendar, MapPin, ExternalLink } from 'lucide-react'
 import { fetchUpcomingOpenDataEvents } from '@/lib/automation/open-data'
 import { getEventsByLocation } from '@/lib/events'
 import { EventsStructuredData, type StructuredEvent } from '@/components/seo/structured-data'
+import { EventsMonthCalendar, type CalendarEvent } from '@/components/events-month-calendar'
 
 /**
  * Dynamic "Upcoming events" calendar section for city hub pages.
@@ -26,18 +26,6 @@ interface DisplayEvent {
   category?: string
   url?: string
   description?: string
-}
-
-function formatDateBadge(iso: string): { day: string; month: string } {
-  try {
-    const d = new Date(iso)
-    return {
-      day: d.toLocaleDateString('en-CA', { day: 'numeric', timeZone: 'UTC' }),
-      month: d.toLocaleDateString('en-CA', { month: 'short', timeZone: 'UTC' }),
-    }
-  } catch {
-    return { day: '', month: '' }
-  }
 }
 
 async function getCityEvents(citySlug: string, cityLabel: string, limit: number): Promise<DisplayEvent[]> {
@@ -98,7 +86,7 @@ async function getCityEvents(citySlug: string, cityLabel: string, limit: number)
 export async function CityEventsCalendar({
   citySlug,
   cityLabel,
-  limit = 10,
+  limit = 120,
 }: {
   citySlug: string
   cityLabel: string
@@ -108,7 +96,8 @@ export async function CityEventsCalendar({
 
   if (events.length === 0) return null
 
-  const structuredEvents: StructuredEvent[] = events.map(e => ({
+  // Cap the JSON-LD payload; the interactive calendar still gets everything
+  const structuredEvents: StructuredEvent[] = events.slice(0, 25).map(e => ({
     name: e.name,
     startDate: e.startDate,
     endDate: e.endDate,
@@ -117,6 +106,17 @@ export async function CityEventsCalendar({
     url: e.url,
     description: e.description,
     category: e.category,
+  }))
+
+  const calendarEvents: CalendarEvent[] = events.map(e => ({
+    id: e.id,
+    name: e.name,
+    start: e.startDate.slice(0, 10),
+    end: e.endDate ? e.endDate.slice(0, 10) : undefined,
+    timeLabel: e.dateLabel,
+    venue: e.venueName,
+    category: e.category,
+    url: e.url,
   }))
 
   return (
@@ -140,47 +140,7 @@ export async function CityEventsCalendar({
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {events.map(event => (
-          <div key={event.id} className="flex items-start gap-4 rounded-lg border bg-white p-4 shadow-sm">
-            <div className="flex flex-col items-center justify-center rounded-md bg-blue-50 px-3 py-2 min-w-[56px]">
-              <span className="text-xs font-semibold uppercase text-blue-600">
-                {formatDateBadge(event.startDate).month}
-              </span>
-              <span className="text-xl font-bold text-blue-800 leading-none">
-                {formatDateBadge(event.startDate).day}
-              </span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-gray-900 leading-snug line-clamp-2">
-                {event.url ? (
-                  <a href={event.url} target="_blank" rel="noopener noreferrer" className="hover:text-blue-700">
-                    {event.name}
-                  </a>
-                ) : (
-                  event.name
-                )}
-              </h3>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {event.dateLabel}
-                </span>
-                {event.venueName && (
-                  <span className="flex items-center gap-1 min-w-0">
-                    <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate max-w-[180px]">{event.venueName}</span>
-                  </span>
-                )}
-                {event.category && (
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5">{event.category}</span>
-                )}
-                {event.url && <ExternalLink className="h-3 w-3" />}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <EventsMonthCalendar events={calendarEvents} />
 
       <Link href="/events" className="mt-4 inline-flex sm:hidden items-center gap-1 text-sm font-medium text-blue-600">
         Full events calendar →
