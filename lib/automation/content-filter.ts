@@ -23,10 +23,28 @@ const BLOCKED_KEYWORDS: string[] = [
   'trans day', 'transgender celebration',
   'gay bar', 'lesbian bar',
 
-  // Gambling
-  'casino night', 'poker night', 'poker tournament',
+  // Gambling — including events HELD at casinos (venue name is checked too)
+  'casino', 'poker night', 'poker tournament',
   'slot machine', 'blackjack night',
-  'gambling',
+  'gambling', 'bingo',
+
+  // Alcohol-centred events and venues
+  'brewery', 'brewpub', 'brew fest', 'beerfest', 'beer festival', 'beer garden',
+  'beer tasting', 'wine tasting', 'winery', 'wine festival', 'wine night',
+  'distillery', 'taproom', 'cocktail', 'mixology', 'happy hour',
+  'pub crawl', 'bar crawl', 'oktoberfest', 'booze',
+  'whisky', 'whiskey tasting',
+
+  // Nightlife / adults-only
+  'nightclub', 'night club', 'rave', 'after dark',
+  'adults only', 'adults-only', '18+', '19+',
+
+  // Music festivals and concerts (editorial choice — not promoted in articles)
+  'music festival', 'concert', 'live music', 'music fest',
+  'dj set', 'edm night',
+
+  // Cannabis
+  'cannabis', '420 ',
 
   // Occult / esoteric (optional — remove if too broad for your audience)
   'tarot reading', 'psychic fair', 'witchcraft', 'wicca', 'seance',
@@ -49,6 +67,7 @@ export interface FilterableEvent {
   title: string
   description?: string
   categoryName?: string
+  venueName?: string
 }
 
 /**
@@ -59,6 +78,7 @@ export function isEventBlocked(event: FilterableEvent): boolean {
     event.title,
     event.description ?? '',
     event.categoryName ?? '',
+    event.venueName ?? '',
   ]
     .join(' ')
     .toLowerCase()

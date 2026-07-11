@@ -12,6 +12,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { fetchWeekendEvents, getUpcomingWeekend, CITY_CONFIG } from './eventbrite'
 import { mergeAndDedup } from './city-feeds'
+import { filterEvents } from './content-filter'
 import { fetchOpenDataEvents } from './open-data'
 import { enrichEventsWithInstagram } from './instagram-enrich'
 import { targetEventCount } from './article-generator'
@@ -114,8 +115,10 @@ export async function generateWeekendArticleForCity(
     console.error(`[weekend-events] Ticketmaster fetch failed for ${cityLabel} (continuing with open data):`, tmResult.error)
   }
 
-  // Merge: Ticketmaster first (richer data), open data fills in unique extras
-  const events = mergeAndDedup(ticketmasterEvents, openDataEvents)
+  // Merge: Ticketmaster first (richer data), open data fills in unique extras.
+  // filterEvents applies the editorial values filter to BOTH sources
+  // (Ticketmaster results were pre-filtered, open data was not).
+  const events = filterEvents(mergeAndDedup(ticketmasterEvents, openDataEvents))
 
   console.log(`[weekend-events] ${cityLabel}: ${ticketmasterEvents.length} Ticketmaster + ${openDataEvents.length} open data → ${events.length} total after dedup`)
 

@@ -13,9 +13,10 @@ import { filterEvents, type FilterableEvent } from './content-filter'
 
 const BASE_URL = 'https://app.ticketmaster.com/discovery/v2'
 
-// Ticketmaster segment/classification names to include
+// Ticketmaster segment/classification names to include.
+// 'Music' is deliberately excluded — concerts and music festivals are not
+// promoted in weekend articles (editorial values; see content-filter.ts).
 const ALLOWED_CLASSIFICATIONS = [
-  'Music',
   'Arts & Theatre',
   'Sports',
   'Family',

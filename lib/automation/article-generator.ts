@@ -117,6 +117,7 @@ After all events, add this exact section:
 *Know an event we missed? Tag us [@culturealberta](https://instagram.com/culturealberta) or email hello@culturealberta.com.*
 
 RULES:
+- Do NOT include or promote music festivals, concerts, or any event centred on alcohol (bars, breweries, tastings, beer gardens), gambling or casinos, nightclubs or nightlife, or adults-only programming. If such an event appears in the data, skip it and use another. When describing an event that passes, never highlight drinking as part of the appeal.
 - Only include events from the list I provide
 - Do not invent events, venues, dates, or prices
 - If an event description is thin, acknowledge it briefly and link to the full details
