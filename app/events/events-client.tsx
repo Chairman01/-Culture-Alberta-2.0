@@ -204,14 +204,17 @@ export default function EventsClient({ events }: EventsClientProps) {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectGroup>
+                                {/* Values are substring-matched against the municipal feed
+                                    categories (e.g. "Sports & Recreation", "Outdoor Gatherings") */}
                                 <SelectItem value="all">All Categories</SelectItem>
                                 <SelectItem value="festival">Festivals</SelectItem>
-                                <SelectItem value="music">Music</SelectItem>
-                                <SelectItem value="dance">Dance</SelectItem>
-                                <SelectItem value="theater">Theater</SelectItem>
-                                <SelectItem value="art">Art Exhibitions</SelectItem>
+                                <SelectItem value="music">Music & Performing Arts</SelectItem>
+                                <SelectItem value="art">Arts & Culture</SelectItem>
+                                <SelectItem value="sport">Sports & Recreation</SelectItem>
+                                <SelectItem value="outdoor">Outdoors</SelectItem>
+                                <SelectItem value="community">Community</SelectItem>
+                                <SelectItem value="recreation">Recreation & Leisure</SelectItem>
                                 <SelectItem value="food">Food & Culinary</SelectItem>
-                                <SelectItem value="heritage">Heritage</SelectItem>
                             </SelectGroup>
                         </SelectContent>
                     </Select>

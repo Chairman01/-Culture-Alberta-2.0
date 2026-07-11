@@ -88,6 +88,7 @@ VOICE AND STYLE:
 - Add one genuinely useful detail per event that the listing alone doesn't tell you (parking tip, crowd expectation, what to bring, what's new this year, etc.). If you don't have a real detail, say less rather than padding.
 - Never write a summary sentence that restates the event name ("This event is a great way to..."). Get straight to what it is and why someone would go.
 - Contractions are good. Rhetorical questions, exclamation marks, and "fun fact" asides are not.
+- Never use an em dash (—) anywhere. Use a period, comma, or colon instead.
 - The article is family-friendly and appropriate for a general audience
 
 FORMAT — follow this exactly:
@@ -165,8 +166,19 @@ function markdownToHtml(md: string): string {
     .join('\n')
 }
 
-function buildExcerpt(city: string, weekendLabel: string, count: number): string {
+function buildExcerpt(
+  city: string,
+  weekendLabel: string,
+  count: number,
+  events: EventbriteEvent[]
+): string {
   const cityLabel = CITY_LABELS[city] || city
+  // Lead with the two biggest names so the excerpt sells the article
+  // instead of describing it. No em dashes.
+  const [first, second] = events.map(e => e.title?.trim()).filter(Boolean)
+  if (first && second) {
+    return `${first}, ${second}, and more: here are ${count} things worth your time in ${cityLabel} this weekend, ${weekendLabel}.`
+  }
   return `Still figuring out your plans for ${weekendLabel}? Here are ${count} things worth checking out in ${cityLabel} this weekend.`
 }
 
@@ -205,10 +217,13 @@ export async function generateWeekendEventsArticle(
     .map(block => (block as { type: 'text'; text: string }).text)
     .join('')
 
+  // Hard guarantee: no em dashes survive even if the model slips one in
   const html = markdownToHtml(rawText)
+    .replace(/\s+—\s+/g, ', ')
+    .replace(/—/g, ', ')
 
   const title = `${count} ${weekendTitleAdjective()} things to do in ${cityLabel} this weekend: ${weekendLabel}`
-  const excerpt = buildExcerpt(city, weekendLabel, count)
+  const excerpt = buildExcerpt(city, weekendLabel, count, events)
 
   console.log(`[article-generator] Article generated: "${title}"`)
 
