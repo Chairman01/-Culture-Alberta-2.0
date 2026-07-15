@@ -424,7 +424,24 @@ export interface StructuredEvent {
   url?: string             // organizer page (external) — omitted if absent
   description?: string
   category?: string
+  image?: string           // event image (absolute or site-relative)
+  price?: number           // known ticket price; 0 = free. Omit when unknown.
+  currency?: string
+  organizerName?: string
+  organizerUrl?: string
 }
+
+// Official municipal sites — organizer fallback for open-data feed events
+const CITY_SITES: Record<string, string> = {
+  edmonton: 'https://www.edmonton.ca',
+  calgary: 'https://www.calgary.ca',
+}
+
+// SVG is not accepted for structured-data images, so fallbacks must be raster
+const CITY_FALLBACK_IMAGES: Record<string, string> = {
+  calgary: '/images/calgary-culture.jpg',
+}
+const DEFAULT_EVENT_IMAGE = '/images/culture-alberta-og.jpg'
 
 export function EventsStructuredData({
   events,
@@ -439,41 +456,74 @@ export function EventsStructuredData({
 }) {
   if (!events.length) return null
 
+  const absoluteUrl = (u: string) => (u.startsWith('http') ? u : `${baseUrl}${u}`)
+  const pageUrlAbs = absoluteUrl(pageUrl)
+
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     "name": listName,
-    "url": pageUrl.startsWith('http') ? pageUrl : `${baseUrl}${pageUrl}`,
+    "url": pageUrlAbs,
     "numberOfItems": events.length,
-    "itemListElement": events.map((e, i) => ({
-      "@type": "ListItem",
-      "position": i + 1,
-      "item": {
-        "@type": "Event",
-        "name": e.name,
-        "startDate": e.startDate,
-        ...(e.endDate ? { "endDate": e.endDate } : {}),
-        "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
-        "eventStatus": "https://schema.org/EventScheduled",
-        ...(e.description ? { "description": e.description.slice(0, 300) } : {}),
-        "location": {
-          "@type": "Place",
-          "name": e.venueName || e.city,
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": e.city,
-            "addressRegion": "AB",
-            "addressCountry": "CA",
+    "itemListElement": events.map((e, i) => {
+      const eventUrl = e.url ? absoluteUrl(e.url) : undefined
+      const cityKey = e.city.toLowerCase()
+      const organizerName = e.organizerName || e.venueName || `City of ${e.city}`
+      const organizerUrl = e.organizerUrl
+        ? absoluteUrl(e.organizerUrl)
+        : eventUrl || CITY_SITES[cityKey] || baseUrl
+      const description = e.description?.slice(0, 300)
+        || `${e.name} — ${e.category ? `${e.category.toLowerCase()} event` : 'event'} in ${e.city}, Alberta${e.venueName ? `, at ${e.venueName}` : ''}.`
+      const image = absoluteUrl(e.image || CITY_FALLBACK_IMAGES[cityKey] || DEFAULT_EVENT_IMAGE)
+
+      return {
+        "@type": "ListItem",
+        "position": i + 1,
+        "item": {
+          "@type": "Event",
+          "name": e.name,
+          "startDate": e.startDate,
+          ...(e.endDate ? { "endDate": e.endDate } : {}),
+          "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+          "eventStatus": "https://schema.org/EventScheduled",
+          "description": description,
+          "image": image,
+          "location": {
+            "@type": "Place",
+            "name": e.venueName || e.city,
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": e.city,
+              "addressRegion": "AB",
+              "addressCountry": "CA",
+            },
           },
+          ...(eventUrl ? { "url": eventUrl } : {}),
+          // Community events rarely have a named act; the presenting
+          // organization is the performer in Google's Event schema sense.
+          "performer": {
+            "@type": "PerformingGroup",
+            "name": organizerName,
+          },
+          "organizer": {
+            "@type": "Organization",
+            "name": organizerName,
+            "url": organizerUrl,
+          },
+          // Only emitted when the price is actually known — a fabricated
+          // "free" on a paid event is misleading structured data.
+          ...(typeof e.price === 'number' ? {
+            "offers": {
+              "@type": "Offer",
+              "price": e.price,
+              "priceCurrency": e.currency || "CAD",
+              "url": eventUrl || pageUrlAbs,
+              "availability": "https://schema.org/InStock",
+            },
+          } : {}),
         },
-        ...(e.url ? { "url": e.url } : {}),
-        "organizer": {
-          "@type": "Organization",
-          "name": e.venueName || `City of ${e.city}`,
-          ...(e.url ? { "url": e.url } : {}),
-        },
-      },
-    })),
+      }
+    }),
   }
 
   return (

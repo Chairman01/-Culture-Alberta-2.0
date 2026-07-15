@@ -22,6 +22,13 @@ export interface BrowserEvent {
   category: string
   url?: string
   manual?: boolean        // created in our admin — always pinned first
+  // Schema.org Event fields (not rendered in the browser UI)
+  description?: string
+  image?: string
+  price?: number
+  currency?: string
+  organizerName?: string
+  organizerUrl?: string
 }
 
 const PAGE_SIZE = 12

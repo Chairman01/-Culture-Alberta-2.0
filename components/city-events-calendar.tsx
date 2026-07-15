@@ -26,6 +26,11 @@ interface DisplayEvent {
   category?: string
   url?: string
   description?: string
+  image?: string
+  price?: number
+  currency?: string
+  organizerName?: string
+  organizerUrl?: string
 }
 
 async function getCityEvents(citySlug: string, cityLabel: string, limit: number): Promise<DisplayEvent[]> {
@@ -46,6 +51,7 @@ async function getCityEvents(citySlug: string, cityLabel: string, limit: number)
           category: e.categoryName,
           url: e.url || undefined,
           description: e.shortDescription || undefined,
+          image: e.imageUrl || undefined,
         })
       }
     } catch {
@@ -71,7 +77,12 @@ async function getCityEvents(citySlug: string, cityLabel: string, limit: number)
         venueName: (e as any).venue || undefined,
         category: e.category || undefined,
         url: (e as any).website_url || undefined,
-        description: e.excerpt || undefined,
+        description: e.excerpt || e.description || undefined,
+        image: (e as any).image_url || undefined,
+        price: typeof (e as any).price === 'number' ? (e as any).price : undefined,
+        currency: (e as any).currency || undefined,
+        organizerName: (e as any).organizer || undefined,
+        organizerUrl: (e as any).website_url || undefined,
       })
     }
   } catch {
@@ -132,6 +143,11 @@ export async function CityEventsCalendar({
     url: e.url,
     description: e.description,
     category: e.category,
+    image: e.image,
+    price: e.price,
+    currency: e.currency,
+    organizerName: e.organizerName,
+    organizerUrl: e.organizerUrl,
   }))
 
   return (

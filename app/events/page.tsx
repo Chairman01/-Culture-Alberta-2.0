@@ -48,6 +48,8 @@ async function getBrowserEvents(): Promise<BrowserEvent[]> {
         city: (e.city === 'calgary' ? 'Calgary' : 'Edmonton') as BrowserEvent['city'],
         category: e.categoryName || 'Community',
         url: e.url || undefined,
+        description: e.shortDescription || undefined,
+        image: e.imageUrl || undefined,
       })
     }
   } catch (error) {
@@ -80,6 +82,12 @@ async function getBrowserEvents(): Promise<BrowserEvent[]> {
         category: e.category || 'Community',
         url: slug ? `/events/${slug}` : (e as any).website_url || undefined,
         manual: true,
+        description: e.excerpt || e.description || undefined,
+        image: (e as any).image_url || undefined,
+        price: typeof (e as any).price === 'number' ? (e as any).price : undefined,
+        currency: (e as any).currency || undefined,
+        organizerName: (e as any).organizer || undefined,
+        organizerUrl: (e as any).website_url || undefined,
       })
     }
     const upcoming = mapped.filter(e => (e.end || e.start) >= today)
@@ -107,6 +115,12 @@ export default async function EventsPage() {
     city: e.city,
     url: e.url,
     category: e.category,
+    description: e.description,
+    image: e.image,
+    price: e.price,
+    currency: e.currency,
+    organizerName: e.organizerName,
+    organizerUrl: e.organizerUrl,
   }))
 
   return (
