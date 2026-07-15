@@ -183,6 +183,135 @@ function buildExcerpt(
   return `Still figuring out your plans for ${weekendLabel}? Here are ${count} things worth checking out in ${cityLabel} this weekend.`
 }
 
+// ---------------------------------------------------------------------------
+// Weekly jobs article ("Who's Hiring in {City} This Week")
+// ---------------------------------------------------------------------------
+
+export interface JobsArticleJob {
+  title: string
+  company: string
+  category: string
+  salaryText: string | null
+  employmentType: string | null
+  snippet: string | null
+  postingPath: string   // internal path, e.g. /jobs/posting/{slug}
+  postedLabel: string | null
+}
+
+function buildJobsList(jobs: JobsArticleJob[]): string {
+  return jobs
+    .map((j, i) => {
+      const lines = [
+        `Job ${i + 1}:`,
+        `  Title: ${j.title}`,
+        `  Company: ${j.company}`,
+        `  Category: ${j.category}`,
+        `  Salary: ${j.salaryText || 'Not listed'}`,
+        `  Type: ${j.employmentType || 'Not listed'}`,
+        `  Posted: ${j.postedLabel || 'Recently'}`,
+        `  Internal URL: ${j.postingPath}`,
+        `  Summary: ${j.snippet || 'No summary provided'}`,
+      ]
+      return lines.join('\n')
+    })
+    .join('\n\n')
+}
+
+function buildJobsPrompt(cityLabel: string, weekLabel: string, jobs: JobsArticleJob[], citySlug: string): string {
+  return `You are writing a weekly hiring roundup for culturealberta.com, a local Alberta news and culture site.
+
+TASK: Write a "Who's Hiring in ${cityLabel} This Week" jobs roundup for the week of ${weekLabel}.
+
+VOICE AND STYLE:
+- Straight-talking and practical, like a friend passing along a lead. Not hype-y, not corporate.
+- Never use: "amazing", "exciting", "incredible", "opportunity of a lifetime", "dream job", "look no further", "whether you're X or Y", "get ready to", "there's something for everyone"
+- Vary sentence length. Short sentences are fine.
+- For each job add one genuinely useful observation when the data supports it (pay relative to the field, whether the employer hires often, what the role likely involves). If you have nothing real to say, say less.
+- Contractions are good. Rhetorical questions and exclamation marks are not.
+- Never use an em dash (—) anywhere. Use a period, comma, or colon instead.
+- Family-friendly, publishable as-is.
+
+FORMAT — follow this exactly:
+
+Start with ONE intro paragraph (3-4 sentences) about this week's ${cityLabel} job market based ONLY on the data below (how many openings, which sectors dominate, any salary standouts). No invented statistics.
+
+Group the jobs by category. For each category:
+
+### [Category Name]
+
+Then for each job in that category:
+
+**[Job Title](Internal URL)** at [Company]
+[1-2 sentences: what the role is and the one useful observation. Mention the salary if listed.]
+
+---
+
+After the last job, STOP. Do not write a closing paragraph or sign-off — one is appended automatically.
+
+RULES:
+- Only include jobs from the list I provide. Do not invent jobs, companies, salaries, or details.
+- Use the exact Internal URL from each job's data for its link. Never link anywhere else for a job.
+- Salaries must match the data exactly. If salary says "Not listed", do not mention pay for that job.
+- Do not include or promote any role centred on alcohol, gambling, cannabis, nightlife, or adults-only businesses (none should be in the data; skip any that slipped through).
+- Include ALL ${jobs.length} jobs provided (unless one violates the rule above).
+
+HERE ARE THE JOBS FOR ${cityLabel.toUpperCase()} (${weekLabel}):
+
+${buildJobsList(jobs)}
+
+Write the full article now.`
+}
+
+export async function generateJobsArticle(
+  citySlug: string,
+  cityLabel: string,
+  weekLabel: string,
+  jobs: JobsArticleJob[]
+): Promise<GeneratedArticle> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY env var is not set')
+  if (jobs.length === 0) throw new Error(`No jobs available for ${cityLabel} — skipping article generation`)
+
+  const client = new Anthropic({ apiKey })
+
+  console.log(`[article-generator] Generating jobs article for ${cityLabel} with ${jobs.length} jobs...`)
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 4000,
+    messages: [{ role: 'user', content: buildJobsPrompt(cityLabel, weekLabel, jobs, citySlug) }],
+  })
+
+  const rawText = message.content
+    .filter(block => block.type === 'text')
+    .map(block => (block as { type: 'text'; text: string }).text)
+    .join('')
+
+  // Deterministic closing CTA — every roundup reliably points readers at the
+  // jobs board to apply, independent of what the model writes.
+  const closingCta = `
+<hr>
+<h3><a href="/jobs/${citySlug}">Apply to these jobs here</a></h3>
+<p>Every opening above is on our <a href="/jobs/${citySlug}">${cityLabel} jobs board</a>, updated daily with new ${cityLabel} openings. <strong><a href="/auth/signup?next=/jobs/${citySlug}">Create a free account</a></strong> to apply, save jobs, and track every application in one place.</p>`
+
+  const html = markdownToHtml(rawText)
+    .replace(/\s+—\s+/g, ', ')
+    .replace(/—/g, ', ')
+    + closingCta
+
+  const title = `Who's Hiring in ${cityLabel} This Week: ${jobs.length} New Jobs (${weekLabel})`
+
+  const withSalary = jobs.filter(j => j.salaryText)
+  const topCompanies = [...new Set(jobs.map(j => j.company))].slice(0, 2)
+  const excerpt = topCompanies.length >= 2
+    ? `${topCompanies[0]}, ${topCompanies[1]}, and more are hiring in ${cityLabel} this week. Here are ${jobs.length} new openings${withSalary.length > 0 ? ', with pay listed where employers shared it' : ''}.`
+    : `${jobs.length} new job openings in ${cityLabel} this week, updated from employer listings.`
+
+  console.log(`[article-generator] Jobs article generated: "${title}"`)
+
+  return { title, content: html, excerpt }
+}
+
 export async function generateWeekendEventsArticle(
   city: string,
   weekendLabel: string,

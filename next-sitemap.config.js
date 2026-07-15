@@ -124,7 +124,7 @@ export default {
     }
 
     // Main category pages get high priority
-    if (['/articles', '/events', '/best-of', '/calgary', '/edmonton', '/wiki'].includes(path)) {
+    if (['/articles', '/events', '/jobs', '/jobs/calgary', '/jobs/edmonton', '/best-of', '/calgary', '/edmonton', '/wiki'].includes(path)) {
       priority = 0.9;
       changefreq = 'daily';
     }

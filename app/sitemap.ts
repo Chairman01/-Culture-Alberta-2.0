@@ -1,6 +1,7 @@
 ﻿import { MetadataRoute } from 'next'
 import { supabase } from '@/lib/supabase'
 import { getAllEvents } from '@/lib/events'
+import { getActiveJobSlugs } from '@/lib/jobs'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
 export const revalidate = 3600
@@ -30,6 +31,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Fetch events
   const events = await getAllEvents()
 
+  // Fetch active (non-expired) job postings — expired jobs must drop out
+  // of the sitemap per Google's job-posting policy
+  const jobSlugs = await getActiveJobSlugs()
+
   // Create sitemap entries for articles
   const articleEntries: MetadataRoute.Sitemap = articles.map((article) => ({
     url: `${baseUrl}${getArticleUrl(article)}`,
@@ -44,6 +49,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(event.updated_at || event.created_at || new Date()),
     changeFrequency: 'daily', // Events change more often
     priority: 0.7,
+  }))
+
+  // Create sitemap entries for active job postings
+  const jobEntries: MetadataRoute.Sitemap = jobSlugs.map((job) => ({
+    url: `${baseUrl}/jobs/posting/${job.slug}`,
+    lastModified: new Date(job.updated_at || new Date()),
+    changeFrequency: 'daily',
+    priority: 0.6,
   }))
 
   // Static routes
@@ -65,6 +78,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9, // Increased priority for events landing
+    },
+    {
+      url: baseUrl + '/jobs',
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.8,
+    },
+    {
+      url: baseUrl + '/jobs/calgary',
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.8,
+    },
+    {
+      url: baseUrl + '/jobs/edmonton',
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.8,
     },
     {
       url: baseUrl + '/alberta',
@@ -221,6 +252,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ]
 
-  return [...staticRoutes, ...articleEntries, ...eventEntries]
+  return [...staticRoutes, ...articleEntries, ...eventEntries, ...jobEntries]
 }
 

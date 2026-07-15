@@ -5,13 +5,15 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
     Loader2, MapPin, Mail, CalendarDays, Pencil, Check, X,
-    MessageSquare, Bookmark, Trash2,
+    MessageSquare, Bookmark, Trash2, Briefcase,
 } from 'lucide-react'
 import { useAuth } from '@/components/auth-provider'
 import { supabaseBrowser } from '@/lib/supabase-browser'
 import { CitySelect } from '@/components/city-select'
 import { isValidCity } from '@/lib/alberta-municipalities'
 import { listSavedArticles, unsaveArticle, type SavedArticleCard } from '@/lib/saved-articles'
+import { listSavedJobs, unsaveJob, updateSavedJobStatus, type SavedJobCard } from '@/lib/saved-jobs'
+import type { SavedJobStatus } from '@/lib/types/job'
 
 function initialsOf(name: string): string {
     const w = name.trim().split(/\s+/)
@@ -106,7 +108,7 @@ export default function AccountPage() {
     }
 
     // --- tabs ---
-    const [tab, setTab] = useState<'comments' | 'saved'>('comments')
+    const [tab, setTab] = useState<'comments' | 'saved' | 'jobs'>('comments')
 
     if (loading || !user) {
         return (
@@ -227,10 +229,11 @@ export default function AccountPage() {
             <div className="mt-8 flex items-center gap-1 border-b border-gray-200">
                 <TabButton active={tab === 'comments'} onClick={() => setTab('comments')} icon={<MessageSquare className="w-4 h-4" />} label="My comments" />
                 <TabButton active={tab === 'saved'} onClick={() => setTab('saved')} icon={<Bookmark className="w-4 h-4" />} label="Saved articles" />
+                <TabButton active={tab === 'jobs'} onClick={() => setTab('jobs')} icon={<Briefcase className="w-4 h-4" />} label="My jobs" />
             </div>
 
             <div className="mt-6">
-                {tab === 'comments' ? <MyComments userId={user.id} /> : <SavedArticles />}
+                {tab === 'comments' ? <MyComments userId={user.id} /> : tab === 'saved' ? <SavedArticles /> : <MyJobs />}
             </div>
         </div>
     )
@@ -309,6 +312,127 @@ function MyComments({ userId }: { userId: string }) {
                 </li>
             ))}
         </ul>
+    )
+}
+
+const JOB_STATUS_OPTIONS: Array<{ value: SavedJobStatus; label: string }> = [
+    { value: 'saved', label: 'Saved' },
+    { value: 'applied', label: 'Applied' },
+    { value: 'interviewing', label: 'Interviewing' },
+    { value: 'offer', label: 'Offer' },
+    { value: 'rejected', label: 'Rejected' },
+]
+
+const JOB_STATUS_STYLES: Record<SavedJobStatus, string> = {
+    saved: 'bg-gray-100 text-gray-700',
+    applied: 'bg-blue-100 text-blue-800',
+    interviewing: 'bg-amber-100 text-amber-800',
+    offer: 'bg-green-100 text-green-800',
+    rejected: 'bg-red-100 text-red-700',
+}
+
+function MyJobs() {
+    const [items, setItems] = useState<SavedJobCard[] | null>(null)
+    const [busy, setBusy] = useState<string | null>(null)
+
+    useEffect(() => {
+        let active = true
+        listSavedJobs()
+            .then((v) => active && setItems(v))
+            .catch(() => active && setItems([]))
+        return () => { active = false }
+    }, [])
+
+    const setStatus = async (jobId: string, status: SavedJobStatus) => {
+        setBusy(jobId)
+        try {
+            await updateSavedJobStatus(jobId, status)
+            setItems((prev) => (prev || []).map((x) => (x.jobId === jobId ? { ...x, trackStatus: status } : x)))
+        } finally {
+            setBusy(null)
+        }
+    }
+
+    const remove = async (jobId: string) => {
+        setBusy(jobId)
+        try {
+            await unsaveJob(jobId)
+            setItems((prev) => (prev || []).filter((x) => x.jobId !== jobId))
+        } finally {
+            setBusy(null)
+        }
+    }
+
+    if (items === null) return <Loader2 className="w-5 h-5 animate-spin text-gray-400 mx-auto my-8" />
+    if (items.length === 0) {
+        return (
+            <div className="text-center py-12 text-gray-500">
+                <div className="flex justify-center mb-3 text-gray-300"><Briefcase className="w-10 h-10" /></div>
+                <p className="text-sm">No jobs tracked yet. Tap “Save job” on any posting to track it here.</p>
+                <Link href="/jobs" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
+                    Browse the jobs board →
+                </Link>
+            </div>
+        )
+    }
+
+    const counts = items.reduce<Record<string, number>>((acc, x) => {
+        acc[x.trackStatus] = (acc[x.trackStatus] || 0) + 1
+        return acc
+    }, {})
+
+    return (
+        <div>
+            <div className="mb-4 flex flex-wrap gap-2 text-xs">
+                {JOB_STATUS_OPTIONS.filter((o) => counts[o.value]).map((o) => (
+                    <span key={o.value} className={`rounded-full px-2.5 py-1 font-medium ${JOB_STATUS_STYLES[o.value]}`}>
+                        {counts[o.value]} {o.label.toLowerCase()}
+                    </span>
+                ))}
+            </div>
+            <ul className="space-y-3">
+                {items.map((j) => (
+                    <li key={j.jobId} className="bg-white border border-gray-200 rounded-xl p-4">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <Link href={`/jobs/posting/${j.slug}`} className="font-semibold text-gray-900 hover:text-blue-700 hover:underline line-clamp-2">
+                                    {j.title}
+                                </Link>
+                                <p className="mt-0.5 text-sm text-gray-600">{j.company} · {j.city}</p>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Saved {formatDate(j.savedAt)}
+                                    {j.jobStatus === 'expired' && (
+                                        <span className="ml-2 rounded bg-gray-200 px-1.5 py-0.5 text-gray-600">Posting expired</span>
+                                    )}
+                                </p>
+                            </div>
+                            <div className="flex flex-shrink-0 items-center gap-2">
+                                <select
+                                    value={j.trackStatus}
+                                    onChange={(e) => setStatus(j.jobId, e.target.value as SavedJobStatus)}
+                                    disabled={busy === j.jobId}
+                                    className={`rounded-md border-0 px-2.5 py-1.5 text-xs font-semibold ${JOB_STATUS_STYLES[j.trackStatus]} disabled:opacity-50`}
+                                    aria-label="Application status"
+                                >
+                                    {JOB_STATUS_OPTIONS.map((o) => (
+                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={() => remove(j.jobId)}
+                                    disabled={busy === j.jobId}
+                                    className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                                    aria-label="Remove from tracker"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </li>
+                ))}
+            </ul>
+        </div>
     )
 }
 

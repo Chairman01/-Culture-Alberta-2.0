@@ -41,6 +41,14 @@
         {
             "path": "/api/cron/major-projects-sync",
             "schedule": "30 13 * * *"
+        },
+        {
+            "path": "/api/cron/sync-jobs?city=all",
+            "schedule": "0 13 * * *"
+        },
+        {
+            "path": "/api/cron/weekly-jobs?city=all&status=draft",
+            "schedule": "0 14 * * 1"
         }
     ]
 }

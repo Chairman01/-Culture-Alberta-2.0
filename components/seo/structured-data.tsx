@@ -534,6 +534,115 @@ export function EventsStructuredData({
   )
 }
 
+// JobPosting structured data — Google for Jobs eligibility.
+//
+// GUARD (load-bearing for Google policy): only render this for MANUAL jobs
+// with a full description_html. Aggregator-sourced jobs only have snippets,
+// and JobPosting markup without the complete description risks a sitewide
+// manual action. Callers must also never render it for expired jobs.
+import type { Job } from '@/lib/types/job'
+
+const JOB_CITY_LABEL: Record<string, string> = {
+  calgary: 'Calgary',
+  edmonton: 'Edmonton',
+}
+
+export function JobPostingStructuredData({
+  job,
+  baseUrl = 'https://www.culturealberta.com',
+}: {
+  job: Job
+  baseUrl?: string
+}) {
+  if (!job.is_manual || !job.description_html || job.status !== 'active') return null
+  if (job.valid_through && new Date(job.valid_through).getTime() < Date.now()) return null
+
+  const cityLabel = JOB_CITY_LABEL[job.city] || job.city
+  const salaryUnit = (n: number) => (n < 200 ? 'HOUR' : 'YEAR')
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "JobPosting",
+    "title": job.title,
+    "description": job.description_html,
+    "datePosted": job.posted_at || job.created_at,
+    ...(job.valid_through ? { "validThrough": job.valid_through } : {}),
+    ...(job.employment_type ? { "employmentType": job.employment_type } : {}),
+    "hiringOrganization": {
+      "@type": "Organization",
+      "name": job.company,
+    },
+    "jobLocation": {
+      "@type": "Place",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": cityLabel,
+        "addressRegion": "AB",
+        "addressCountry": "CA",
+      },
+    },
+    ...(job.salary_min || job.salary_max ? {
+      "baseSalary": {
+        "@type": "MonetaryAmount",
+        "currency": "CAD",
+        "value": {
+          "@type": "QuantitativeValue",
+          ...(job.salary_min ? { "minValue": job.salary_min } : {}),
+          ...(job.salary_max ? { "maxValue": job.salary_max } : {}),
+          "unitText": salaryUnit(job.salary_max || job.salary_min || 0),
+        },
+      },
+    } : {}),
+    "directApply": false,
+    "url": `${baseUrl}/jobs/posting/${job.slug}`,
+  }
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  )
+}
+
+// ItemList of job posting pages for the /jobs index and city hub pages.
+// Deliberately links pages rather than embedding JobPosting objects —
+// Google wants JobPosting markup only on the detail page itself.
+export function JobsItemListStructuredData({
+  jobs,
+  pageUrl,
+  listName,
+  baseUrl = 'https://www.culturealberta.com',
+}: {
+  jobs: Array<{ slug: string; title: string }>
+  pageUrl: string
+  listName: string
+  baseUrl?: string
+}) {
+  if (!jobs.length) return null
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": listName,
+    "url": pageUrl.startsWith('http') ? pageUrl : `${baseUrl}${pageUrl}`,
+    "numberOfItems": jobs.length,
+    "itemListElement": jobs.slice(0, 100).map((j, i) => ({
+      "@type": "ListItem",
+      "position": i + 1,
+      "name": j.title,
+      "url": `${baseUrl}/jobs/posting/${j.slug}`,
+    })),
+  }
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  )
+}
+
 // Breadcrumb structured data for article pages
 interface BreadcrumbProps {
   articleTitle: string

@@ -96,6 +96,9 @@ export function MainNavigation() {
           <Link href="/events" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Events
           </Link>
+          <Link href="/jobs" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+            Jobs
+          </Link>
           <Link href="/culture" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Culture
           </Link>
@@ -229,6 +232,13 @@ export function MainNavigation() {
               className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
             >
               Events
+            </Link>
+            <Link
+              href="/jobs"
+              onClick={closeMobileMenu}
+              className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
+            >
+              Jobs
             </Link>
             <Link
               href="/culture"

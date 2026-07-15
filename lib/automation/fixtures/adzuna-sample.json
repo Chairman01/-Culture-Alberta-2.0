@@ -1,0 +1,126 @@
+[
+  [
+    {
+      "id": "fix-cgy-001",
+      "title": "Registered Nurse - Medicine Unit",
+      "description": "Alberta Health Services is hiring a Registered Nurse for the medicine unit at Foothills Medical Centre. Full-time position with rotating shifts. You will provide direct patient care, collaborate with a multidisciplinary team, and support patient education. BScN and active CRNA registration required.",
+      "created": "2026-07-12T14:00:00Z",
+      "company": { "display_name": "Alberta Health Services" },
+      "location": { "display_name": "Calgary, Alberta", "area": ["Canada", "Alberta", "Calgary"] },
+      "category": { "label": "Healthcare & Nursing Jobs", "tag": "healthcare-nursing-jobs" },
+      "salary_min": 76000,
+      "salary_max": 98000,
+      "salary_is_predicted": "0",
+      "redirect_url": "https://www.adzuna.ca/land/ad/fix-cgy-001",
+      "contract_time": "full_time"
+    },
+    {
+      "id": "fix-cgy-002",
+      "title": "Software Developer, Payments Platform",
+      "description": "Join a growing Calgary fintech building payment infrastructure for Canadian credit unions. You will work with TypeScript, PostgreSQL and AWS. Hybrid schedule, 3 days in the Beltline office. 3+ years experience shipping production web services required.",
+      "created": "2026-07-13T09:30:00Z",
+      "company": { "display_name": "Helcim" },
+      "location": { "display_name": "Calgary, Alberta", "area": ["Canada", "Alberta", "Calgary"] },
+      "category": { "label": "IT Jobs", "tag": "it-jobs" },
+      "salary_min": 95000,
+      "salary_max": 120000,
+      "salary_is_predicted": "1",
+      "redirect_url": "https://www.adzuna.ca/land/ad/fix-cgy-002",
+      "contract_time": "full_time"
+    },
+    {
+      "id": "fix-cgy-003",
+      "title": "Casino Dealer",
+      "description": "Deal blackjack and poker at a busy casino on the Calgary Trail. Evening and weekend availability required.",
+      "created": "2026-07-11T18:00:00Z",
+      "company": { "display_name": "Ace Gaming Group" },
+      "location": { "display_name": "Calgary, Alberta", "area": ["Canada", "Alberta", "Calgary"] },
+      "category": { "label": "Hospitality & Catering Jobs", "tag": "hospitality-catering-jobs" },
+      "redirect_url": "https://www.adzuna.ca/land/ad/fix-cgy-003",
+      "contract_time": "part_time"
+    },
+    {
+      "id": "fix-cgy-004",
+      "title": "Heavy Equipment Technician",
+      "description": "Finning Canada is seeking a certified Heavy Equipment Technician for our Calgary branch. Diagnose, service and repair Caterpillar equipment. Journeyperson certification or 4th year apprentice standing required. Tool allowance, RRSP matching, and overtime available.",
+      "created": "2026-07-14T08:00:00Z",
+      "company": { "display_name": "Finning Canada" },
+      "location": { "display_name": "Calgary, Alberta", "area": ["Canada", "Alberta", "Calgary"] },
+      "category": { "label": "Trade & Construction Jobs", "tag": "trade-construction-jobs" },
+      "salary_min": 45,
+      "salary_max": 52,
+      "salary_is_predicted": "0",
+      "redirect_url": "https://www.adzuna.ca/land/ad/fix-cgy-004",
+      "contract_time": "full_time"
+    },
+    {
+      "id": "fix-cgy-005",
+      "title": "Barista - Downtown Location",
+      "description": "Independent coffee shop on Stephen Avenue looking for an experienced barista. Latte art skills a plus. Morning availability required, no evening shifts.",
+      "created": "2026-07-10T12:00:00Z",
+      "company": { "display_name": "Monogram Coffee" },
+      "location": { "display_name": "Calgary, Alberta", "area": ["Canada", "Alberta", "Calgary"] },
+      "category": { "label": "Hospitality & Catering Jobs", "tag": "hospitality-catering-jobs" },
+      "salary_min": 17,
+      "salary_max": 19,
+      "salary_is_predicted": "0",
+      "redirect_url": "https://www.adzuna.ca/land/ad/fix-cgy-005",
+      "contract_time": "part_time"
+    }
+  ],
+  [
+    {
+      "id": "fix-edm-001",
+      "title": "Elementary School Teacher",
+      "description": "Edmonton Public Schools is hiring elementary teachers for the 2026-27 school year. Alberta teaching certificate required. Positions available across the city with full benefits and pension.",
+      "created": "2026-07-13T15:00:00Z",
+      "company": { "display_name": "Edmonton Public Schools" },
+      "location": { "display_name": "Edmonton, Alberta", "area": ["Canada", "Alberta", "Edmonton"] },
+      "category": { "label": "Teaching Jobs", "tag": "teaching-jobs" },
+      "salary_min": 64000,
+      "salary_max": 102000,
+      "salary_is_predicted": "0",
+      "redirect_url": "https://www.adzuna.ca/land/ad/fix-edm-001",
+      "contract_time": "full_time"
+    },
+    {
+      "id": "fix-edm-002",
+      "title": "Warehouse Associate - Nisku",
+      "description": "Distribution centre in Nisku seeking warehouse associates for day and afternoon shifts. Forklift certification an asset but training provided. Steel-toed boots required. Weekly pay and shift premiums.",
+      "created": "2026-07-14T10:00:00Z",
+      "company": { "display_name": "Canadian Tire Distribution" },
+      "location": { "display_name": "Edmonton, Alberta", "area": ["Canada", "Alberta", "Edmonton"] },
+      "category": { "label": "Logistics & Warehouse Jobs", "tag": "logistics-warehouse-jobs" },
+      "salary_min": 21,
+      "salary_max": 24,
+      "salary_is_predicted": "0",
+      "redirect_url": "https://www.adzuna.ca/land/ad/fix-edm-002",
+      "contract_time": "full_time"
+    },
+    {
+      "id": "fix-edm-003",
+      "title": "Bartender - Whyte Ave Nightclub",
+      "description": "High-volume nightclub on Whyte Avenue hiring bartenders for weekend nights. ProServe required.",
+      "created": "2026-07-12T20:00:00Z",
+      "company": { "display_name": "Midnight Lounge" },
+      "location": { "display_name": "Edmonton, Alberta", "area": ["Canada", "Alberta", "Edmonton"] },
+      "category": { "label": "Hospitality & Catering Jobs", "tag": "hospitality-catering-jobs" },
+      "redirect_url": "https://www.adzuna.ca/land/ad/fix-edm-003",
+      "contract_time": "part_time"
+    },
+    {
+      "id": "fix-edm-004",
+      "title": "Accounts Payable Clerk",
+      "description": "Established Edmonton construction firm seeks an accounts payable clerk. Process vendor invoices, reconcile statements, and support month-end close. 2+ years AP experience and strong Excel skills required. Hybrid after probation.",
+      "created": "2026-07-11T09:00:00Z",
+      "company": { "display_name": "PCL Constructors" },
+      "location": { "display_name": "Edmonton, Alberta", "area": ["Canada", "Alberta", "Edmonton"] },
+      "category": { "label": "Accounting & Finance Jobs", "tag": "accounting-finance-jobs" },
+      "salary_min": 52000,
+      "salary_max": 60000,
+      "salary_is_predicted": "1",
+      "redirect_url": "https://www.adzuna.ca/land/ad/fix-edm-004",
+      "contract_time": "full_time"
+    }
+  ]
+]
