@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Search } from 'lucide-react'
+import { Search, MapPin, Clock, X } from 'lucide-react'
 
 /**
  * Client-side jobs browser — filter/paginate over the full server-fetched
- * list, mirroring app/events/events-browser.tsx.
+ * list. Prominent search bar, quick category chips, featured/new badges.
  */
 
 export interface BrowserJob {
@@ -17,7 +17,7 @@ export interface BrowserJob {
   city: 'Calgary' | 'Edmonton'
   category: string
   salaryText?: string
-  postedAt?: string       // ISO — for the posted-within filter
+  postedAt?: string       // ISO — for the posted-within filter + New badge
   postedLabel?: string    // "July 12, 2026"
   employmentType?: string // "Full-time" etc.
   snippet?: string
@@ -26,26 +26,13 @@ export interface BrowserJob {
 }
 
 const PAGE_SIZE = 12
-
-const BADGE_COLORS: Array<{ match: RegExp; classes: string }> = [
-  { match: /health|nursing|care/i, classes: 'bg-red-700 text-white' },
-  { match: /it\b|software|engineering/i, classes: 'bg-blue-700 text-white' },
-  { match: /trade|construction|maintenance/i, classes: 'bg-amber-700 text-white' },
-  { match: /teach|education/i, classes: 'bg-purple-700 text-white' },
-  { match: /account|finance|legal/i, classes: 'bg-teal-700 text-white' },
-  { match: /logistics|warehouse|driving/i, classes: 'bg-orange-600 text-white' },
-  { match: /hospitality|catering|retail/i, classes: 'bg-emerald-700 text-white' },
-]
-
-function badgeClass(category: string): string {
-  return BADGE_COLORS.find(b => b.match.test(category))?.classes || 'bg-gray-600 text-white'
-}
+const NEW_WITHIN_MS = 48 * 60 * 60 * 1000
 
 const POSTED_WITHIN_OPTIONS = [
-  { value: 'all', label: 'Any time', days: 0 },
-  { value: '1', label: 'Last 24 hours', days: 1 },
-  { value: '7', label: 'Last 7 days', days: 7 },
-  { value: '14', label: 'Last 14 days', days: 14 },
+  { value: 'all', label: 'Any time' },
+  { value: '1', label: 'Last 24 hours' },
+  { value: '7', label: 'Last 7 days' },
+  { value: '14', label: 'Last 14 days' },
 ] as const
 
 export default function JobsBrowser({
@@ -62,10 +49,27 @@ export default function JobsBrowser({
   const [hasSalary, setHasSalary] = useState(false)
   const [page, setPage] = useState(1)
 
-  const categories = useMemo(
-    () => [...new Set(jobs.map(j => j.category).filter(Boolean))].sort(),
-    [jobs]
-  )
+  // Top categories with counts, for the quick-filter chips
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const j of jobs) {
+      if (j.category) counts.set(j.category, (counts.get(j.category) || 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])
+  }, [jobs])
+
+  const filtersActive =
+    keyword.trim() !== '' || city !== initialCity || category !== 'all' ||
+    postedWithin !== 'all' || hasSalary
+
+  const clearFilters = () => {
+    setKeyword('')
+    setCity(initialCity)
+    setCategory('all')
+    setPostedWithin('all')
+    setHasSalary(false)
+    setPage(1)
+  }
 
   const filtered = useMemo(() => {
     const kw = keyword.trim().toLowerCase()
@@ -102,122 +106,179 @@ export default function JobsBrowser({
   const showingTo = Math.min(safePage * PAGE_SIZE, filtered.length)
 
   const resetPage = () => setPage(1)
+  const isNew = (j: BrowserJob) =>
+    j.postedAt && Date.now() - new Date(j.postedAt).getTime() < NEW_WITHIN_MS
 
   return (
     <div>
-      {/* Filter bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-        <div>
-          <label htmlFor="job-keyword" className="block text-sm font-semibold text-gray-800 mb-1">Search By Keyword</label>
-          <div className="relative">
-            <input
-              id="job-keyword"
-              type="text"
-              value={keyword}
-              onChange={e => { setKeyword(e.target.value); resetPage() }}
-              placeholder="Job title, company..."
-              className="w-full rounded-md border border-gray-300 px-3 py-2 pr-9 text-sm focus:border-blue-500 focus:outline-none"
-            />
-            <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
-          </div>
-        </div>
-        <div>
-          <label htmlFor="job-city" className="block text-sm font-semibold text-gray-800 mb-1">City</label>
-          <select
-            id="job-city"
-            value={city}
-            onChange={e => { setCity(e.target.value); resetPage() }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white focus:border-blue-500 focus:outline-none"
-          >
-            <option value="all">Edmonton &amp; Calgary</option>
-            <option value="Edmonton">Edmonton</option>
-            <option value="Calgary">Calgary</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="job-category" className="block text-sm font-semibold text-gray-800 mb-1">Category</label>
-          <select
-            id="job-category"
-            value={category}
-            onChange={e => { setCategory(e.target.value); resetPage() }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white focus:border-blue-500 focus:outline-none"
-          >
-            <option value="all">All Categories</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="job-posted" className="block text-sm font-semibold text-gray-800 mb-1">Posted Within</label>
-          <select
-            id="job-posted"
-            value={postedWithin}
-            onChange={e => { setPostedWithin(e.target.value); resetPage() }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white focus:border-blue-500 focus:outline-none"
-          >
-            {POSTED_WITHIN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
-        <div className="flex items-end pb-2">
-          <label htmlFor="job-salary" className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-gray-800">
-            <input
-              id="job-salary"
-              type="checkbox"
-              checked={hasSalary}
-              onChange={e => { setHasSalary(e.target.checked); resetPage() }}
-              className="h-4 w-4 rounded border-gray-300"
-            />
-            With salary info
-          </label>
-        </div>
+      {/* Prominent search bar */}
+      <div className="relative mb-4">
+        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        <input
+          type="search"
+          value={keyword}
+          onChange={e => { setKeyword(e.target.value); resetPage() }}
+          placeholder="Search job title, company, or keyword…"
+          aria-label="Search jobs"
+          className="w-full rounded-xl border-2 border-gray-200 py-3.5 pl-12 pr-4 text-base shadow-sm focus:border-blue-500 focus:outline-none"
+        />
       </div>
 
+      {/* Filter row */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <select
+          value={city}
+          onChange={e => { setCity(e.target.value); resetPage() }}
+          aria-label="City"
+          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        >
+          <option value="all">All of Alberta</option>
+          <option value="Calgary">Calgary</option>
+          <option value="Edmonton">Edmonton</option>
+        </select>
+        <select
+          value={category}
+          onChange={e => { setCategory(e.target.value); resetPage() }}
+          aria-label="Category"
+          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        >
+          <option value="all">All categories</option>
+          {categoryCounts.map(([c, n]) => <option key={c} value={c}>{c} ({n})</option>)}
+        </select>
+        <select
+          value={postedWithin}
+          onChange={e => { setPostedWithin(e.target.value); resetPage() }}
+          aria-label="Posted within"
+          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        >
+          {POSTED_WITHIN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
+          <input
+            type="checkbox"
+            checked={hasSalary}
+            onChange={e => { setHasSalary(e.target.checked); resetPage() }}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          Pay listed
+        </label>
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            <X className="h-3.5 w-3.5" /> Clear filters
+          </button>
+        )}
+      </div>
+
+      {/* Quick category chips */}
+      {categoryCounts.length > 1 && (
+        <div className="mb-5 flex flex-wrap gap-2">
+          {categoryCounts.slice(0, 8).map(([c, n]) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => { setCategory(category === c ? 'all' : c); resetPage() }}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                category === c
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-700'
+              }`}
+            >
+              {c} · {n}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Result count */}
-      <p className="text-sm text-gray-600 mb-4">
-        Showing {showingFrom}-{showingTo} Jobs out of {filtered.length} Jobs
+      <p className="mb-4 text-sm text-gray-600">
+        {filtered.length === jobs.length
+          ? `${jobs.length} open ${jobs.length === 1 ? 'job' : 'jobs'} in Alberta`
+          : `Showing ${showingFrom}-${showingTo} of ${filtered.length} matching jobs`}
       </p>
 
-      {/* Card grid */}
-      {pageJobs.length === 0 ? (
-        <p className="py-16 text-center text-gray-500">
-          No jobs match your filters. Try clearing the keyword or widening the categories.
-        </p>
+      {/* Card grid / empty states */}
+      {jobs.length === 0 ? (
+        <div className="py-16 text-center">
+          <p className="text-lg font-semibold text-gray-700">New jobs are being added</p>
+          <p className="mt-2 text-sm text-gray-500">
+            The board updates daily with new Calgary and Edmonton openings — check back soon.
+          </p>
+        </div>
+      ) : pageJobs.length === 0 ? (
+        <div className="py-16 text-center">
+          <p className="text-gray-600">No jobs match your filters.</p>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="mt-3 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
+          >
+            Clear all filters
+          </button>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {pageJobs.map(job => (
-            <div key={job.id} className="flex flex-col rounded-md border bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-bold leading-snug mb-1">
-                <Link
-                  href={`/jobs/posting/${job.slug}`}
-                  className="text-blue-700 hover:text-blue-900 hover:underline"
-                >
+            <Link
+              key={job.id}
+              href={`/jobs/posting/${job.slug}`}
+              className={`group flex flex-col rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md ${
+                job.featured ? 'border-blue-300 ring-1 ring-blue-200' : 'border-gray-200'
+              }`}
+            >
+              <div className="mb-1 flex items-start justify-between gap-2">
+                <h3 className="text-lg font-bold leading-snug text-gray-900 group-hover:text-blue-700">
                   {job.title}
-                </Link>
-              </h3>
-              <p className="text-sm font-medium text-gray-700 mb-2 border-b border-blue-400 pb-3">{job.company}</p>
-              {job.salaryText && (
-                <p className="text-sm text-gray-800 mb-1"><strong>Salary:</strong> {job.salaryText}</p>
-              )}
-              {job.postedLabel && (
-                <p className="text-sm text-gray-800 mb-1"><strong>Posted:</strong> {job.postedLabel}</p>
-              )}
-              {job.snippet && (
-                <p className="text-sm text-gray-600 mb-3 line-clamp-3">{job.snippet}</p>
-              )}
-              <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
+                </h3>
+                {isNew(job) && !job.featured && (
+                  <span className="mt-0.5 flex-shrink-0 rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+                    New
+                  </span>
+                )}
                 {job.featured && (
-                  <span className="rounded bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
+                  <span className="mt-0.5 flex-shrink-0 rounded bg-blue-600 px-2 py-0.5 text-xs font-semibold text-white">
                     Featured
                   </span>
                 )}
-                <span className={`rounded px-2.5 py-1 text-xs font-semibold ${badgeClass(job.category)}`}>
-                  {job.category}
+              </div>
+              <p className="text-sm font-medium text-gray-700">{job.company}</p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" /> {job.city}
                 </span>
-                <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">{job.city}</span>
+                {job.postedLabel && (
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" /> {job.postedLabel}
+                  </span>
+                )}
+              </div>
+
+              {job.salaryText && (
+                <p className="mt-2">
+                  <span className="rounded bg-emerald-50 px-2 py-1 text-sm font-semibold text-emerald-800">
+                    {job.salaryText}
+                  </span>
+                </p>
+              )}
+
+              {job.snippet && (
+                <p className="mt-2 text-sm text-gray-600 line-clamp-2">{job.snippet}</p>
+              )}
+
+              <div className="mt-auto flex flex-wrap items-center gap-2 pt-3">
+                <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">{job.category}</span>
                 {job.employmentType && (
                   <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">{job.employmentType}</span>
                 )}
+                <span className="ml-auto text-sm font-semibold text-blue-600 group-hover:underline">
+                  View &amp; apply →
+                </span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

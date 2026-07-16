@@ -62,7 +62,8 @@ export default async function CityJobsPage({ params }: { params: Promise<{ city:
                 Also hiring: <Link href={`/jobs/${otherCity}`} className="underline hover:text-gray-900">{JOB_CITY_LABELS[otherCity]} jobs</Link>
                 {' '}· <Link href="/jobs" className="underline hover:text-gray-900">All Alberta jobs</Link>
               </p>
-              <AdzunaAttribution />
+              {/* Required by Adzuna's API terms whenever their listings are shown */}
+              {jobs.some(j => j.source === 'adzuna') && <AdzunaAttribution />}
             </div>
           </div>
         </section>

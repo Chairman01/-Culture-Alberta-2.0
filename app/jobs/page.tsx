@@ -52,7 +52,8 @@ export default async function JobsPage() {
                 You apply on the employer&apos;s own site — we never collect resumes. Listings come from
                 employer job feeds and our own curation; always confirm details on the employer&apos;s posting.
               </p>
-              <AdzunaAttribution />
+              {/* Required by Adzuna's API terms whenever their listings are shown */}
+              {jobs.some(j => j.source === 'adzuna') && <AdzunaAttribution />}
             </div>
           </div>
         </section>
