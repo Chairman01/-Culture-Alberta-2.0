@@ -1,10 +1,16 @@
 /**
  * Weekend events orchestrator.
- * Ties together Ticketmaster + city iCal feeds → content filter → Pexels → Claude → Supabase.
+ * Ties together Ticketmaster + keyless city calendars → content filter → Pexels → Claude → Supabase.
  *
  * Event sources (merged automatically):
- *   1. Ticketmaster Discovery API  — major concerts, sports, theatre
- *   2. City iCal feeds             — festivals, markets, free community events
+ *   1. Ticketmaster Discovery API  — major sports, theatre, family (only when a key is set)
+ *   2. City calendar sources       — festivals, markets, free community events:
+ *        Calgary / Edmonton     → Socrata open data (lib/automation/open-data.ts)
+ *        Red Deer / Med Hat     → The Events Calendar (Tribe) REST
+ *        Fort McMurray          → Modern Events Calendar REST
+ *        Lethbridge             → Modern Events Calendar (JSON-LD)
+ *        Grande Prairie         → Drupal FullCalendar
+ *      All of the above are dispatched by fetchWeekendCityEvents (lib/automation/city-events.ts).
  *
  * This is the main function to call from the cron endpoint or admin trigger.
  */
@@ -13,12 +19,13 @@ import { createClient } from '@supabase/supabase-js'
 import { fetchWeekendEvents, getUpcomingWeekend, CITY_CONFIG } from './eventbrite'
 import { mergeAndDedup } from './city-feeds'
 import { filterEvents } from './content-filter'
-import { fetchOpenDataEvents } from './open-data'
+import { fetchWeekendCityEvents } from './city-events'
 import { enrichEventsWithInstagram } from './instagram-enrich'
 import { targetEventCount } from './article-generator'
 import { getCityWeekendPhoto } from './pexels'
 import { generateWeekendEventsArticle } from './article-generator'
 import { createSlug } from '@/lib/utils/slug'
+import { notifySearchEngines } from '@/lib/indexing'
 import { revalidatePath } from 'next/cache'
 
 // City → CMS location/category mapping
@@ -56,6 +63,11 @@ const CITY_TO_CMS: Record<string, {
     location: 'Fort McMurray',
     category: 'Alberta',
     categories: ['Fort McMurray', 'Events', 'Alberta'],
+  },
+  'red-deer': {
+    location: 'Red Deer',
+    category: 'Alberta',
+    categories: ['Red Deer', 'Events', 'Alberta'],
   },
 }
 
@@ -99,28 +111,31 @@ export async function generateWeekendArticleForCity(
 
   console.log(`\n[weekend-events] === Generating article for ${cityLabel} (${label}) ===`)
 
-  // Step 1: Fetch events from Ticketmaster and municipal open data in parallel.
-  // Either source failing is non-fatal — the article can run on the other one.
-  const [tmResult, openDataEvents] = await Promise.all([
+  // Step 1: Fetch events from Ticketmaster and the city's keyless calendar
+  // source in parallel. Either failing is non-fatal — the article runs on the
+  // other. Ticketmaster only ever adds anything when TICKETMASTER_API_KEY is
+  // set; without it, fetchWeekendCityEvents (open data for Calgary/Edmonton,
+  // tourism-calendar adapters for every other city) is the source of record.
+  const [tmResult, cityEvents] = await Promise.all([
     fetchWeekendEvents(city, start, end, 30).then(
       events => ({ events, error: null as string | null }),
       err => ({ events: [] as Awaited<ReturnType<typeof fetchWeekendEvents>>, error: err instanceof Error ? err.message : String(err) })
     ),
-    // Errors are swallowed inside fetchOpenDataEvents (returns [])
-    fetchOpenDataEvents(city, start, end),
+    // Errors are swallowed inside fetchWeekendCityEvents (returns [])
+    fetchWeekendCityEvents(city, start, end),
   ])
 
   const ticketmasterEvents = tmResult.events
   if (tmResult.error) {
-    console.error(`[weekend-events] Ticketmaster fetch failed for ${cityLabel} (continuing with open data):`, tmResult.error)
+    console.warn(`[weekend-events] Ticketmaster unavailable for ${cityLabel} (continuing on the city calendar source):`, tmResult.error)
   }
 
-  // Merge: Ticketmaster first (richer data), open data fills in unique extras.
-  // filterEvents applies the editorial values filter to BOTH sources
-  // (Ticketmaster results were pre-filtered, open data was not).
-  const events = filterEvents(mergeAndDedup(ticketmasterEvents, openDataEvents))
+  // Merge: Ticketmaster first (richer data when present), city calendar fills in
+  // unique extras. filterEvents re-applies the editorial values filter across
+  // the merged set (both sources are individually filtered too).
+  const events = filterEvents(mergeAndDedup(ticketmasterEvents, cityEvents))
 
-  console.log(`[weekend-events] ${cityLabel}: ${ticketmasterEvents.length} Ticketmaster + ${openDataEvents.length} open data → ${events.length} total after dedup`)
+  console.log(`[weekend-events] ${cityLabel}: ${ticketmasterEvents.length} Ticketmaster + ${cityEvents.length} city calendar → ${events.length} total after dedup`)
 
   if (events.length < 3) {
     const error = `Only ${events.length} events found for ${cityLabel} — not enough for an article (minimum 3)`
@@ -222,6 +237,18 @@ export async function generateWeekendArticleForCity(
 
   console.log(`[weekend-events] Article saved: ${inserted.id} (status: ${publishStatus})`)
 
+  // Step 6b: If we published straight to live (cron with status=published, or
+  // the admin "Live" option), ping IndexNow so Bing/Yandex crawl it within
+  // minutes. Drafts skip this — the publish route fires the ping when the admin
+  // publishes. Non-fatal.
+  if (publishStatus === 'published') {
+    try {
+      await notifySearchEngines(`/articles/${slug}`)
+    } catch (err) {
+      console.warn('[weekend-events] Search-engine notify failed (non-fatal):', err)
+    }
+  }
+
   // Step 7: Revalidate relevant pages
   try {
     revalidatePath('/', 'layout')
@@ -243,7 +270,7 @@ export async function generateWeekendArticleForCity(
     articleId: inserted.id,
     articleSlug: slug,
     title: article.title,
-    eventsFound: ticketmasterEvents.length + openDataEvents.length,
+    eventsFound: ticketmasterEvents.length + cityEvents.length,
     eventsUsed,
   }
 }
@@ -262,6 +289,7 @@ export async function generateWeekendArticlesForAllCities(
     'medicine-hat',
     'grande-prairie',
     'fort-mcmurray',
+    'red-deer',
   ]
 
   const results: WeekendEventsResult[] = []

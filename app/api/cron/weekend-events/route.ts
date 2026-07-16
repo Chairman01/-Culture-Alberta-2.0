@@ -8,7 +8,7 @@
  *
  * Query params:
  *   ?city=calgary          → single city
- *   ?city=all              → all 6 cities (default)
+ *   ?city=all              → all 7 cities (default)
  *   ?status=published      → publish immediately (default: draft)
  *
  * Examples:
@@ -33,6 +33,7 @@ const VALID_CITIES = [
   'medicine-hat',
   'grande-prairie',
   'fort-mcmurray',
+  'red-deer',
 ]
 
 function isAuthorized(req: NextRequest): boolean {

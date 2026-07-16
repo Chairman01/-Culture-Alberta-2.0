@@ -16,6 +16,7 @@ const CITY_LABELS: Record<string, string> = {
   'medicine-hat':   'Medicine Hat',
   'grande-prairie': 'Grande Prairie',
   'fort-mcmurray':  'Fort McMurray',
+  'red-deer':       'Red Deer',
 }
 
 /**
@@ -167,6 +168,18 @@ function markdownToHtml(md: string): string {
     .join('\n')
 }
 
+/**
+ * Clamp a meta description to a Google-safe length (~160 chars) at a word
+ * boundary. The excerpt doubles as the SERP snippet, so an overrun gets
+ * truncated mid-word by the search engine otherwise.
+ */
+function clampMeta(text: string, max = 160): string {
+  if (text.length <= max) return text
+  const cut = text.slice(0, max - 1)
+  const lastSpace = cut.lastIndexOf(' ')
+  return (lastSpace > 40 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:]+$/, '') + '…'
+}
+
 function buildExcerpt(
   city: string,
   weekendLabel: string,
@@ -178,9 +191,138 @@ function buildExcerpt(
   // instead of describing it. No em dashes.
   const [first, second] = events.map(e => e.title?.trim()).filter(Boolean)
   if (first && second) {
-    return `${first}, ${second}, and more: here are ${count} things worth your time in ${cityLabel} this weekend, ${weekendLabel}.`
+    return clampMeta(`${first}, ${second}, and more: here are ${count} things worth your time in ${cityLabel} this weekend, ${weekendLabel}.`)
   }
-  return `Still figuring out your plans for ${weekendLabel}? Here are ${count} things worth checking out in ${cityLabel} this weekend.`
+  return clampMeta(`Still figuring out your plans for ${weekendLabel}? Here are ${count} things worth checking out in ${cityLabel} this weekend.`)
+}
+
+// ---------------------------------------------------------------------------
+// Weekend weather article ("Alberta Weekend Weather Forecast")
+// ---------------------------------------------------------------------------
+
+export interface WeatherDay {
+  date: string        // "2026-07-17"
+  dayName: string     // "Friday"
+  conditions: string  // "Light drizzle", "Partly cloudy", ...
+  tMax: number        // °C
+  tMin: number
+  precipProb: number  // %
+  windMax: number     // km/h
+  uvMax: number
+}
+
+export interface CityWeekendForecast {
+  city: string        // slug, e.g. 'red-deer'
+  cityLabel: string   // 'Red Deer'
+  hubPath: string     // '/red-deer'
+  days: WeatherDay[]
+}
+
+function buildForecastList(forecasts: CityWeekendForecast[]): string {
+  return forecasts
+    .map(f => {
+      const days = f.days
+        .map(d =>
+          `  ${d.dayName} (${d.date}): ${d.conditions}, high ${Math.round(d.tMax)}C / low ${Math.round(d.tMin)}C, ` +
+          `${d.precipProb}% chance of precipitation, wind up to ${Math.round(d.windMax)} km/h, UV index ${Math.round(d.uvMax)}`
+        )
+        .join('\n')
+      return `${f.cityLabel} (link the city name to ${f.hubPath}):\n${days}`
+    })
+    .join('\n\n')
+}
+
+function buildWeatherPrompt(weekendLabel: string, forecasts: CityWeekendForecast[]): string {
+  return `You are writing a weekend weather outlook for culturealberta.com, a local Alberta news and culture site.
+
+TASK: Write an Alberta weekend weather forecast article for the weekend of ${weekendLabel}, covering these ${forecasts.length} cities in this order: ${forecasts.map(f => f.cityLabel).join(', ')}.
+
+VOICE AND STYLE:
+- Straight-talking and practical, like a friend telling you whether to pack a jacket. Not a TV weather person.
+- Never use: "amazing", "epic", "incredible", "gorgeous", "stunning", "perfect weather", "Mother Nature", "weather gods", "look no further", "get ready to", "grab your"
+- Vary sentence length. Short sentences are fine.
+- Every city gets one practical planning takeaway grounded in the data (patio-worthy Saturday, sunscreen before noon UV, wind that ruins a picnic blanket, an indoor backup day). Do not repeat the same takeaway phrasing across cities.
+- Temperatures in Celsius with the degree symbol (e.g. 29°C). Round to whole numbers.
+- Contractions are good. Rhetorical questions and exclamation marks are not.
+- Never use an em dash (—) anywhere. Use a period, comma, or colon instead.
+- Family-friendly, publishable as-is.
+
+FORMAT — follow this exactly:
+
+Start with ONE intro paragraph (3-4 sentences) summarizing the overall pattern across the province this weekend: who gets the warmest day, where rain is most likely, anything province-wide worth knowing. Base it ONLY on the data below.
+
+Then one section per city, in the order given:
+
+### [City Name](city hub path)
+
+[3-4 sentences covering Friday through Sunday: temperatures, sky conditions, rain chance where it matters, wind or UV only when notable. End with the practical planning takeaway.]
+
+After the last city, add this exact closing line:
+
+*Looking for something to do once you've checked the sky? Browse our [Alberta events calendar](/events) for what's on this weekend.*
+
+RULES:
+- Use ONLY the forecast data provided. Do not invent conditions, temperatures, or probabilities.
+- Numbers must match the data (rounded to whole numbers is fine).
+- Link each city heading to its hub path exactly as given.
+- If two cities have near-identical forecasts, say so briefly for the second one instead of repeating the details.
+- Forecasts can change: do not present anything as certain. Words like "expected", "likely", "forecast to" are good.
+
+HERE IS THE FORECAST DATA (${weekendLabel}):
+
+${buildForecastList(forecasts)}
+
+Write the full article now.`
+}
+
+export async function generateWeatherArticle(
+  weekendLabel: string,
+  forecasts: CityWeekendForecast[]
+): Promise<GeneratedArticle> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY env var is not set')
+  if (forecasts.length === 0) throw new Error('No city forecasts available — skipping weather article')
+
+  const client = new Anthropic({ apiKey })
+
+  console.log(`[article-generator] Generating weather article for ${forecasts.length} cities...`)
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 4000,
+    messages: [{ role: 'user', content: buildWeatherPrompt(weekendLabel, forecasts) }],
+  })
+
+  const rawText = message.content
+    .filter(block => block.type === 'text')
+    .map(block => (block as { type: 'text'; text: string }).text)
+    .join('')
+
+  const html = markdownToHtml(rawText)
+    .replace(/\s+—\s+/g, ', ')
+    .replace(/—/g, ', ')
+
+  // SEO title: exact query ("Alberta weekend weather forecast") + dated range.
+  const title = `Alberta Weekend Weather Forecast: ${weekendLabel}`
+
+  // Deterministic excerpt from the data: warmest city + biggest rain risk.
+  const peaks = forecasts.map(f => ({
+    label: f.cityLabel,
+    max: Math.max(...f.days.map(d => d.tMax)),
+    rain: Math.max(...f.days.map(d => d.precipProb)),
+  }))
+  const warmest = peaks.reduce((a, b) => (b.max > a.max ? b : a))
+  const wettest = peaks.reduce((a, b) => (b.rain > a.rain ? b : a))
+  const rainPart = wettest.rain >= 40
+    ? ` and ${wettest.label} carries the highest rain risk`
+    : ''
+  const excerpt = clampMeta(
+    `Highs near ${Math.round(warmest.max)}°C in ${warmest.label}${rainPart}: your city-by-city Alberta weather forecast for the weekend of ${weekendLabel}.`
+  )
+
+  console.log(`[article-generator] Weather article generated: "${title}"`)
+
+  return { title, content: html, excerpt }
 }
 
 // ---------------------------------------------------------------------------
@@ -352,7 +494,11 @@ export async function generateWeekendEventsArticle(
     .replace(/\s+—\s+/g, ', ')
     .replace(/—/g, ', ')
 
-  const title = `${count} ${weekendTitleAdjective()} things to do in ${cityLabel} this weekend: ${weekendLabel}`
+  // SEO title: lead with the number and the exact high-volume query
+  // ("things to do in {City} this weekend"), then the dated range in parens so
+  // the headline reads as current. Culture Alberta's metadata layer appends the
+  // "| Culture Alberta" brand suffix, so we keep the title itself keyword-first.
+  const title = `${count} Things to Do in ${cityLabel} This Weekend (${weekendLabel})`
   const excerpt = buildExcerpt(city, weekendLabel, count, events)
 
   console.log(`[article-generator] Article generated: "${title}"`)

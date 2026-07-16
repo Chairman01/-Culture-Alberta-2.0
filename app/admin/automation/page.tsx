@@ -12,22 +12,32 @@ import {
   Zap,
   Edit,
   Trash2,
-  ExternalLink,
   RefreshCw,
   Eye,
   Wifi,
   WifiOff,
   AlertTriangle,
+  CalendarDays,
+  CloudSun,
+  BriefcaseBusiness,
 } from 'lucide-react'
 
-const AUTOMATION_CITIES = [
-  { value: 'all', label: 'All 6 Cities' },
+const EVENT_CITIES = [
+  { value: 'all', label: 'All 7 Cities' },
   { value: 'calgary', label: 'Calgary' },
   { value: 'edmonton', label: 'Edmonton' },
+  { value: 'red-deer', label: 'Red Deer' },
   { value: 'lethbridge', label: 'Lethbridge' },
   { value: 'medicine-hat', label: 'Medicine Hat' },
   { value: 'grande-prairie', label: 'Grande Prairie' },
   { value: 'fort-mcmurray', label: 'Fort McMurray' },
+]
+
+// Jobs data only exists for Calgary + Edmonton (see lib/jobs.ts JOB_CITIES)
+const JOB_CITIES = [
+  { value: 'all', label: 'Calgary + Edmonton' },
+  { value: 'calgary', label: 'Calgary' },
+  { value: 'edmonton', label: 'Edmonton' },
 ]
 
 interface DraftArticle {
@@ -44,12 +54,15 @@ interface DraftArticle {
 
 interface AutomationResult {
   success: boolean
-  city: string
+  city?: string
   cityLabel: string
   title?: string
   articleSlug?: string
-  eventsFound: number
-  eventsUsed: number
+  eventsFound?: number
+  eventsUsed?: number
+  jobsFound?: number
+  jobsUsed?: number
+  citiesCovered?: number
   error?: string
 }
 
@@ -61,6 +74,177 @@ interface AutomationResponse {
 }
 
 type ActionState = 'idle' | 'publishing' | 'deleting' | 'done'
+type SaveAs = 'draft' | 'published'
+
+/** What kind of auto article a draft is, derived from its tags. */
+function draftKind(tags: string[] | null): { label: string; className: string } {
+  const t = (tags || []).map(x => x.toLowerCase())
+  if (t.includes('weather')) return { label: 'Weather', className: 'bg-sky-100 text-sky-700' }
+  if (t.includes('jobs')) return { label: 'Jobs', className: 'bg-amber-100 text-amber-800' }
+  return { label: 'Events', className: 'bg-blue-100 text-blue-700' }
+}
+
+function resultDetail(r: AutomationResult): string {
+  if (r.eventsUsed !== undefined && r.eventsUsed > 0) return ` (${r.eventsUsed} events)`
+  if (r.jobsUsed !== undefined && r.jobsUsed > 0) return ` (${r.jobsUsed} jobs)`
+  if (r.citiesCovered !== undefined) return ` (${r.citiesCovered} cities)`
+  return ''
+}
+
+function friendlyError(error?: string): string {
+  if (!error) return 'Unknown error'
+  if (error.includes('401') || error.includes('InvalidApiKey')) {
+    return 'Ticketmaster key invalid (optional source). The city calendars still work: try again.'
+  }
+  return error
+}
+
+/**
+ * One generator section (Events / Weather / Jobs). Owns its own city + save-as
+ * + results state; parent passes the endpoint and gets pinged to reload drafts.
+ */
+function GeneratorCard({
+  icon,
+  title,
+  description,
+  endpoint,
+  cityOptions,
+  schedule,
+  accent,
+  onGenerated,
+  children,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+  endpoint: string
+  cityOptions?: Array<{ value: string; label: string }>
+  schedule: string
+  accent: string
+  onGenerated: () => Promise<void>
+  children?: React.ReactNode
+}) {
+  const [city, setCity] = useState('all')
+  const [saveAs, setSaveAs] = useState<SaveAs>('draft')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [results, setResults] = useState<AutomationResponse | null>(null)
+
+  const handleGenerate = async () => {
+    setIsGenerating(true)
+    setResults(null)
+    try {
+      const body: Record<string, string> = { status: saveAs }
+      if (cityOptions) body.city = city
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data: AutomationResponse = await res.json()
+      setResults(data)
+      if (data.summary?.succeeded > 0) await onGenerated()
+    } catch {
+      setResults({
+        success: false,
+        publishStatus: saveAs,
+        results: [],
+        summary: { attempted: 0, succeeded: 0, failed: 1 },
+      })
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  return (
+    <Card className={`border-dashed border-2 ${accent}`}>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          {icon}
+          {title}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap items-end gap-3 mb-3">
+          {cityOptions && (
+            <div>
+              <label className="text-xs font-medium block mb-1 text-muted-foreground">City</label>
+              <select
+                value={city}
+                onChange={e => setCity(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm bg-background"
+                disabled={isGenerating}
+              >
+                {cityOptions.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div>
+            <label className="text-xs font-medium block mb-1 text-muted-foreground">Save As</label>
+            <select
+              value={saveAs}
+              onChange={e => setSaveAs(e.target.value as SaveAs)}
+              className="border rounded-md px-3 py-2 text-sm bg-background"
+              disabled={isGenerating}
+            >
+              <option value="draft">Draft — review before publishing</option>
+              <option value="published">Live — publish immediately</option>
+            </select>
+          </div>
+          <Button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            size="sm"
+          >
+            {isGenerating
+              ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</>
+              : <><Zap className="mr-2 h-4 w-4" />Generate Now</>
+            }
+          </Button>
+          <span className="text-xs text-muted-foreground pb-2">{schedule}</span>
+        </div>
+
+        {children}
+
+        {isGenerating && (
+          <p className="text-xs text-muted-foreground">
+            Fetching data and writing with Claude. This can take 1–3 minutes...
+          </p>
+        )}
+
+        {results && (
+          <div className="mt-3 space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">
+              {results.summary.succeeded}/{results.summary.attempted} succeeded
+              {results.publishStatus === 'draft' && ' — new drafts added below'}
+            </p>
+            {results.results.map((r, i) => (
+              <div
+                key={r.city || r.cityLabel || i}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
+                  r.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                }`}
+              >
+                {r.success
+                  ? <CheckCircle className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                  : <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                }
+                <span className="font-medium">{r.cityLabel}:</span>
+                {r.success
+                  ? <span>{r.title}{resultDetail(r)}</span>
+                  : <span className="text-red-700">{friendlyError(r.error)}</span>
+                }
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function AutomationPage() {
   const router = useRouter()
@@ -69,13 +253,7 @@ export default function AutomationPage() {
   const [articleStates, setArticleStates] = useState<Record<string, ActionState>>({})
   const [published, setPublished] = useState<Record<string, boolean>>({})
 
-  // Generate panel state
-  const [autoCity, setAutoCity] = useState('all')
-  const [autoStatus, setAutoStatus] = useState<'draft' | 'published'>('draft')
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [genResults, setGenResults] = useState<AutomationResponse | null>(null)
-
-  // API key test state
+  // Ticketmaster key test (optional enrichment source for the events generator)
   const [isTesting, setIsTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string; fix?: string; keyPreview?: string } | null>(null)
 
@@ -144,31 +322,6 @@ export default function AutomationPage() {
     }
   }
 
-  const handleGenerate = async () => {
-    setIsGenerating(true)
-    setGenResults(null)
-    try {
-      const res = await fetch('/api/admin/automation/weekend-events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: autoCity, status: autoStatus }),
-      })
-      const data: AutomationResponse = await res.json()
-      setGenResults(data)
-      // Reload drafts after generation
-      if (data.summary.succeeded > 0) await loadDrafts()
-    } catch {
-      setGenResults({
-        success: false,
-        publishStatus: autoStatus,
-        results: [],
-        summary: { attempted: 0, succeeded: 0, failed: 1 },
-      })
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 
@@ -179,68 +332,30 @@ export default function AutomationPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Auto Articles</h1>
         <p className="text-muted-foreground mt-1">
-          Review AI-generated weekend event articles before they go live. Runs automatically every Thursday.
+          Generate AI-written articles and review them before they go live.
+          Events and weather run automatically on Thursdays, jobs on Mondays.
         </p>
       </div>
 
-      {/* Generate panel */}
-      <Card className="mb-8 border-dashed border-2 border-blue-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Zap className="h-4 w-4 text-blue-500" />
-            Generate New Articles
-          </CardTitle>
-          <CardDescription>
-            Pulls from Ticketmaster, sources a photo, and writes with Claude. Saves as draft by default.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-end gap-3 mb-3">
-            <div>
-              <label className="text-xs font-medium block mb-1 text-muted-foreground">City</label>
-              <select
-                value={autoCity}
-                onChange={e => setAutoCity(e.target.value)}
-                className="border rounded-md px-3 py-2 text-sm bg-background"
-                disabled={isGenerating}
-              >
-                {AUTOMATION_CITIES.map(c => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1 text-muted-foreground">Save As</label>
-              <select
-                value={autoStatus}
-                onChange={e => setAutoStatus(e.target.value as 'draft' | 'published')}
-                className="border rounded-md px-3 py-2 text-sm bg-background"
-                disabled={isGenerating}
-              >
-                <option value="draft">Draft — review before publishing</option>
-                <option value="published">Live — publish immediately</option>
-              </select>
-            </div>
-            <Button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              size="sm"
-            >
-              {isGenerating
-                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</>
-                : <><Zap className="mr-2 h-4 w-4" />Generate Now</>
-              }
-            </Button>
-          </div>
-
-          {/* Test API Key button */}
+      <div className="space-y-6 mb-8">
+        {/* 1. Weekend events */}
+        <GeneratorCard
+          icon={<CalendarDays className="h-4 w-4 text-blue-500" />}
+          title="Weekend Events"
+          description="Pulls each city's public event calendar, sources a photo, and writes a things-to-do guide per city."
+          endpoint="/api/admin/automation/weekend-events"
+          cityOptions={EVENT_CITIES}
+          schedule="Auto: Thursdays 2pm MST"
+          accent="border-blue-200"
+          onGenerated={loadDrafts}
+        >
+          {/* Ticketmaster is an optional extra source for the events pipeline */}
           <div className="flex items-center gap-3 mb-3 pt-1 border-t">
             <Button
               variant="outline"
               size="sm"
               onClick={handleTestKey}
-              disabled={isTesting || isGenerating}
+              disabled={isTesting}
               className="text-xs"
             >
               {isTesting
@@ -248,7 +363,7 @@ export default function AutomationPage() {
                 : <><Wifi className="h-3.5 w-3.5 mr-1" />Test API Key</>
               }
             </Button>
-            <span className="text-xs text-muted-foreground">Verify your Ticketmaster key before generating</span>
+            <span className="text-xs text-muted-foreground">Optional: Ticketmaster adds major-venue events when a key is set</span>
           </div>
 
           {testResult && (
@@ -277,46 +392,31 @@ export default function AutomationPage() {
               </div>
             </div>
           )}
+        </GeneratorCard>
 
-          {isGenerating && (
-            <p className="text-xs text-muted-foreground">
-              Fetching events, sourcing photos, and writing with Claude. This takes 1–3 minutes per city...
-            </p>
-          )}
+        {/* 2. Weekend weather */}
+        <GeneratorCard
+          icon={<CloudSun className="h-4 w-4 text-sky-500" />}
+          title="Weekend Weather"
+          description="One province-wide forecast article covering all 7 cities, city by city, from Open-Meteo data. No API key needed."
+          endpoint="/api/admin/automation/weather"
+          schedule="Auto: Thursdays 1:45pm MST"
+          accent="border-sky-200"
+          onGenerated={loadDrafts}
+        />
 
-          {genResults && (
-            <div className="mt-3 space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">
-                {genResults.summary.succeeded}/{genResults.summary.attempted} succeeded
-                {genResults.publishStatus === 'draft' && ' — new drafts added below'}
-              </p>
-              {genResults.results.map(r => (
-                <div
-                  key={r.city}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
-                    r.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-                  }`}
-                >
-                  {r.success
-                    ? <CheckCircle className="h-3.5 w-3.5 text-green-600 shrink-0" />
-                    : <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                  }
-                  <span className="font-medium">{r.cityLabel}:</span>
-                  {r.success
-                    ? <span>{r.title} ({r.eventsUsed} events)</span>
-                    : <span className="text-red-700">
-                        {r.error?.includes('401') || r.error?.includes('InvalidApiKey')
-                          ? 'Invalid API key — click "Test API Key" above to diagnose'
-                          : r.error
-                        }
-                      </span>
-                  }
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* 3. Weekly jobs */}
+        <GeneratorCard
+          icon={<BriefcaseBusiness className="h-4 w-4 text-amber-600" />}
+          title="Jobs Update"
+          description="Who's Hiring This Week roundup from the jobs board (needs at least 8 new postings in the past 7 days)."
+          endpoint="/api/admin/automation/weekly-jobs"
+          cityOptions={JOB_CITIES}
+          schedule="Auto: Mondays 8am MST"
+          accent="border-amber-200"
+          onGenerated={loadDrafts}
+        />
+      </div>
 
       {/* Draft articles list */}
       <div className="flex items-center justify-between mb-4">
@@ -345,8 +445,8 @@ export default function AutomationPage() {
             <Zap className="h-8 w-8 mx-auto mb-3 opacity-30" />
             <p className="font-medium">No drafts pending review</p>
             <p className="text-sm mt-1">
-              Automated articles are generated every Thursday at 2pm MST,
-              or use the panel above to generate now.
+              Events and weather generate Thursdays, jobs Mondays,
+              or use the panels above to generate now.
             </p>
           </CardContent>
         </Card>
@@ -355,6 +455,7 @@ export default function AutomationPage() {
           {drafts.map(article => {
             const state = stateOf(article.id)
             const isPublished = published[article.id]
+            const kind = draftKind(article.tags)
 
             return (
               <Card
@@ -380,7 +481,10 @@ export default function AutomationPage() {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start gap-2 mb-1">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 shrink-0">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium shrink-0 ${kind.className}`}>
+                          {kind.label}
+                        </span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 shrink-0">
                           {article.location}
                         </span>
                         <span className="text-xs text-muted-foreground">

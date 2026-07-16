@@ -21,6 +21,7 @@ const VALID_CITIES = [
   'medicine-hat',
   'grande-prairie',
   'fort-mcmurray',
+  'red-deer',
   'all',
 ]
 

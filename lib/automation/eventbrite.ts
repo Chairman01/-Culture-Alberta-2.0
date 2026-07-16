@@ -55,6 +55,11 @@ const CITY_CONFIG: Record<string, { query: string; label: string; stateCode: str
     label: 'Fort McMurray',
     stateCode: 'AB',
   },
+  'red-deer': {
+    query: 'Red Deer',
+    label: 'Red Deer',
+    stateCode: 'AB',
+  },
 }
 
 export interface EventbriteEvent {
@@ -223,9 +228,13 @@ export function getUpcomingWeekend(): { start: Date; end: Date; label: string } 
 
   const fridayMonth = friday.toLocaleString('en-CA', { month: 'long' })
   const sundayMonth = sunday.toLocaleString('en-CA', { month: 'long' })
+  const year = sunday.getFullYear()
+  // Include the year so search engines read the guide as current-dated and the
+  // long-tail "...this weekend July 2026" query matches. Same-month weekends
+  // collapse the second month for readability.
   const label = fridayMonth === sundayMonth
-    ? `${fridayMonth} ${friday.getDate()} to ${sunday.getDate()}`
-    : `${fridayMonth} ${friday.getDate()} to ${sundayMonth} ${sunday.getDate()}`
+    ? `${fridayMonth} ${friday.getDate()} to ${sunday.getDate()}, ${year}`
+    : `${fridayMonth} ${friday.getDate()} to ${sundayMonth} ${sunday.getDate()}, ${year}`
 
   return { start: friday, end: sunday, label }
 }

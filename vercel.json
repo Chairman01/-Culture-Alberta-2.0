@@ -39,6 +39,10 @@
             "schedule": "0 20 * * 4"
         },
         {
+            "path": "/api/cron/weekend-weather?status=draft",
+            "schedule": "45 19 * * 4"
+        },
+        {
             "path": "/api/cron/major-projects-sync",
             "schedule": "30 13 * * *"
         },
