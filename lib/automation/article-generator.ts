@@ -9,6 +9,39 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { EventbriteEvent } from './eventbrite'
 
+/**
+ * Run one Claude call and translate SDK failures into messages that say which
+ * key/service is actually at fault. Without this, an Anthropic 401 surfaces as
+ * a bare "401 ..." string that reads like any other API key problem.
+ */
+async function callClaude(client: Anthropic, prompt: string): Promise<string> {
+  let message
+  try {
+    message = await client.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }],
+    })
+  } catch (err) {
+    const status = (err as { status?: number })?.status
+    if (status === 401) {
+      throw new Error('Claude rejected the API key (401). Update ANTHROPIC_API_KEY in Vercel → Settings → Environment Variables, then redeploy.')
+    }
+    if (status === 429) {
+      throw new Error('Claude rate limit hit (429). Wait a minute and try again.')
+    }
+    if (status === 529 || status === 500) {
+      throw new Error(`Claude API is temporarily unavailable (${status}). Try again shortly.`)
+    }
+    throw err
+  }
+
+  return message.content
+    .filter(block => block.type === 'text')
+    .map(block => (block as { type: 'text'; text: string }).text)
+    .join('')
+}
+
 const CITY_LABELS: Record<string, string> = {
   calgary:          'Calgary',
   edmonton:         'Edmonton',
@@ -287,16 +320,7 @@ export async function generateWeatherArticle(
 
   console.log(`[article-generator] Generating weather article for ${forecasts.length} cities...`)
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 4000,
-    messages: [{ role: 'user', content: buildWeatherPrompt(weekendLabel, forecasts) }],
-  })
-
-  const rawText = message.content
-    .filter(block => block.type === 'text')
-    .map(block => (block as { type: 'text'; text: string }).text)
-    .join('')
+  const rawText = await callClaude(client, buildWeatherPrompt(weekendLabel, forecasts))
 
   const html = markdownToHtml(rawText)
     .replace(/\s+—\s+/g, ', ')
@@ -418,16 +442,7 @@ export async function generateJobsArticle(
 
   console.log(`[article-generator] Generating jobs article for ${cityLabel} with ${jobs.length} jobs...`)
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 4000,
-    messages: [{ role: 'user', content: buildJobsPrompt(cityLabel, weekLabel, jobs, citySlug) }],
-  })
-
-  const rawText = message.content
-    .filter(block => block.type === 'text')
-    .map(block => (block as { type: 'text'; text: string }).text)
-    .join('')
+  const rawText = await callClaude(client, buildJobsPrompt(cityLabel, weekLabel, jobs, citySlug))
 
   // Deterministic closing CTA — every roundup reliably points readers at the
   // jobs board to apply, independent of what the model writes.
@@ -473,21 +488,7 @@ export async function generateWeekendEventsArticle(
 
   console.log(`[article-generator] Generating article for ${cityLabel} with ${events.length} events...`)
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 4000,
-    messages: [
-      {
-        role: 'user',
-        content: buildPrompt(city, weekendLabel, events),
-      },
-    ],
-  })
-
-  const rawText = message.content
-    .filter(block => block.type === 'text')
-    .map(block => (block as { type: 'text'; text: string }).text)
-    .join('')
+  const rawText = await callClaude(client, buildPrompt(city, weekendLabel, events))
 
   // Hard guarantee: no em dashes survive even if the model slips one in
   const html = markdownToHtml(rawText)

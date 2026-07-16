@@ -91,12 +91,12 @@ function resultDetail(r: AutomationResult): string {
   return ''
 }
 
+// Errors from the pipeline are already specific about which service failed
+// (Claude / Supabase / event sources), so show them verbatim. Do NOT remap
+// generic 401s to Ticketmaster: Ticketmaster failures never reach the result
+// error anymore (that source is optional and fails soft).
 function friendlyError(error?: string): string {
-  if (!error) return 'Unknown error'
-  if (error.includes('401') || error.includes('InvalidApiKey')) {
-    return 'Ticketmaster key invalid (optional source). The city calendars still work: try again.'
-  }
-  return error
+  return error || 'Unknown error'
 }
 
 /**
@@ -257,6 +257,10 @@ export default function AutomationPage() {
   const [isTesting, setIsTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string; fix?: string; keyPreview?: string } | null>(null)
 
+  // Claude key test — Claude writes ALL article types, so a bad key fails everything
+  const [isTestingClaude, setIsTestingClaude] = useState(false)
+  const [claudeResult, setClaudeResult] = useState<{ ok: boolean; message: string; fix?: string; keyPreview?: string } | null>(null)
+
   const loadDrafts = useCallback(async () => {
     setIsLoadingDrafts(true)
     try {
@@ -322,6 +326,20 @@ export default function AutomationPage() {
     }
   }
 
+  const handleTestClaude = async () => {
+    setIsTestingClaude(true)
+    setClaudeResult(null)
+    try {
+      const res = await fetch('/api/admin/test-anthropic')
+      const data = await res.json()
+      setClaudeResult(data)
+    } catch {
+      setClaudeResult({ ok: false, message: 'Could not reach the test endpoint. Check your connection.' })
+    } finally {
+      setIsTestingClaude(false)
+    }
+  }
+
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 
@@ -336,6 +354,52 @@ export default function AutomationPage() {
           Events and weather run automatically on Thursdays, jobs on Mondays.
         </p>
       </div>
+
+      {/* Claude powers every generator below — surface key problems up front */}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleTestClaude}
+          disabled={isTestingClaude}
+          className="text-xs"
+        >
+          {isTestingClaude
+            ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />Testing...</>
+            : <><Wifi className="h-3.5 w-3.5 mr-1" />Test Claude Key</>
+          }
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          Claude writes all three article types. If generation fails everywhere, test this first.
+        </span>
+      </div>
+
+      {claudeResult && (
+        <div className={`mb-6 px-3 py-2.5 rounded-md text-sm border ${
+          claudeResult.ok
+            ? 'bg-green-50 border-green-200 text-green-800'
+            : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          <div className="flex items-start gap-2">
+            {claudeResult.ok
+              ? <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+              : <WifiOff className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+            }
+            <div>
+              <p className="font-medium">{claudeResult.message}</p>
+              {claudeResult.keyPreview && (
+                <p className="text-xs mt-0.5 opacity-75">Key: {claudeResult.keyPreview}</p>
+              )}
+              {claudeResult.fix && (
+                <div className="flex items-start gap-1 mt-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-600" />
+                  <p className="text-xs text-amber-800">{claudeResult.fix}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6 mb-8">
         {/* 1. Weekend events */}
@@ -360,7 +424,7 @@ export default function AutomationPage() {
             >
               {isTesting
                 ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />Testing...</>
-                : <><Wifi className="h-3.5 w-3.5 mr-1" />Test API Key</>
+                : <><Wifi className="h-3.5 w-3.5 mr-1" />Test Ticketmaster Key</>
               }
             </Button>
             <span className="text-xs text-muted-foreground">Optional: Ticketmaster adds major-venue events when a key is set</span>
