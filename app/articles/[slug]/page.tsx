@@ -291,7 +291,9 @@ const getArticleFromDB = unstable_cache(
     let article: Article | null = null
     try {
       const { data, error } = await Promise.race([
-        supabase.from('articles').select('*').eq('slug', slug).maybeSingle(),
+        // Public page: drafts must 404 here, not render. This query is the one a
+        // reader (or a crawler) actually hits for /articles/<slug>.
+        supabase.from('articles').select('*').eq('slug', slug).eq('status', 'published').maybeSingle(),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Supabase slug timeout')), 3000))
       ]) as any
 

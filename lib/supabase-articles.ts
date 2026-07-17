@@ -290,6 +290,9 @@ export async function getHomepageArticles(): Promise<Article[]> {
         const supabasePromise = supabase
           .from('articles')
           .select(fields)
+          // Public read: drafts must never reach the live site. getAdminArticles
+          // is the only reader that may see them.
+          .eq('status', 'published')
           .order('created_at', { ascending: false })
           .limit(500) // Fetch up to 500 articles to ensure all categories are populated
 
@@ -492,6 +495,7 @@ export async function getEventsArticles(): Promise<Article[]> {
       .from('articles')
       .select(fields)
       .contains('categories', ['Events'])
+      .eq('status', 'published') // Public read: never serve drafts
       .order('created_at', { ascending: false })
       .limit(30) // Reduced limit for faster loading
 
@@ -699,6 +703,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
       .from('articles')
       .select(fields)
       .or(`category.ilike.%${city}%,location.ilike.%${city}%,title.ilike.%${city}%`)
+      .eq('status', 'published') // Public read: never serve drafts
       .order('created_at', { ascending: false })
       .limit(500) // All articles for city pages
 
@@ -842,6 +847,9 @@ export async function getAllArticles(): Promise<Article[]> {
     const supabasePromise = supabase
       .from('articles')
       .select(fields)
+      // Public read. This also feeds /api/sync-fallback, so an unfiltered read
+      // bakes drafts into optimized-fallback.json and leaks them offline too.
+      .eq('status', 'published')
       .order('created_at', { ascending: false })
       .limit(500) // Raised cap to accommodate growth beyond 200 articles
 
@@ -1005,7 +1013,9 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
       try {
         const fields = ensureImageFields('id, title, excerpt, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, slug')
         const { data, error } = await Promise.race([
-          supabase.from('articles').select(fields).eq('slug', slug).single(),
+          // Public read: this backs /articles/<slug>. Without the status filter a
+          // draft is reachable by direct URL and crawlable.
+          supabase.from('articles').select(fields).eq('slug', slug).eq('status', 'published').single(),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
         ]) as any
 
@@ -1046,6 +1056,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
             .from('articles')
             .select(fields)
             .ilike('title', titlePattern)
+            .eq('status', 'published') // Public read: never serve drafts
             .limit(25),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
         ]) as any
@@ -1094,6 +1105,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
         const { data, error } = await emergencySupabase
           .from('articles')
           .select('id, title, excerpt, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, image_url, image')
+          .eq('status', 'published') // Public read: never serve drafts
           .order('created_at', { ascending: false })
           .limit(500)
 
@@ -1175,6 +1187,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
       const supabasePromise = supabase
         .from('articles')
         .select(fields)
+        .eq('status', 'published') // Public read: never serve drafts
         .order('created_at', { ascending: false })
         .limit(500)
 
@@ -1403,6 +1416,8 @@ export async function getArticleById(id: string): Promise<Article | null> {
       .from('articles')
       .select('*')
       .eq('id', id)
+      // Public read: also backs /articles/<slug> via id fallback.
+      .eq('status', 'published')
       .limit(1)
 
     const { data, error } = await Promise.race([
