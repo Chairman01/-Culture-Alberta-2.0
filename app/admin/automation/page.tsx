@@ -596,7 +596,7 @@ export default function AutomationPage() {
                         asChild
                         className="text-xs h-8 px-3"
                       >
-                        <Link href={`/articles/${article.slug}`} target="_blank">
+                        <Link href={`/admin/preview/${article.id}`} target="_blank">
                           <Eye className="h-3.5 w-3.5 mr-1" />
                           Preview
                         </Link>

@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
+import { processArticleContent } from '@/lib/utils/youtube'
+import { ArticleEmbedActivator } from '@/components/article-embed-activator'
 
 // Never cache a preview: an editor tweaking a draft must see the current row,
 // not a 30-minute-old copy.
@@ -122,10 +124,15 @@ export default async function AdminArticlePreview({
           )}
 
           {article.content ? (
-            <div
-              className="prose prose-lg max-w-none article-content-wrapper"
-              dangerouslySetInnerHTML={{ __html: article.content }}
-            />
+            <>
+              {/* Same processing + embed activation as the live article page, so
+                  the preview renders Instagram/YouTube exactly as it will publish. */}
+              <div
+                className="prose prose-lg max-w-none article-content-wrapper"
+                dangerouslySetInnerHTML={{ __html: processArticleContent(article.content) }}
+              />
+              <ArticleEmbedActivator />
+            </>
           ) : (
             <p className="text-gray-500">This article has no content.</p>
           )}
