@@ -52,8 +52,6 @@ export default async function JobsPage() {
                 You apply on the employer&apos;s own site — we never collect resumes. Listings come from
                 employer job feeds and our own curation; always confirm details on the employer&apos;s posting.
               </p>
-              {/* Required by Adzuna's API terms whenever their listings are shown */}
-              {jobs.some(j => j.source === 'adzuna') && <AdzunaAttribution />}
             </div>
           </div>
         </section>
@@ -75,6 +73,15 @@ export default async function JobsPage() {
             </div>
 
             <JobsBrowser jobs={browserJobs} />
+
+            {/* Required by Adzuna's API terms whenever their listings are shown.
+                Kept below the list rather than in the header: still present and
+                still meets their 116x23px + linked-words spec. */}
+            {jobs.some(j => j.source === 'adzuna') && (
+              <div className="mt-8 border-t border-gray-200 pt-4">
+                <AdzunaAttribution />
+              </div>
+            )}
           </div>
         </section>
       </main>
