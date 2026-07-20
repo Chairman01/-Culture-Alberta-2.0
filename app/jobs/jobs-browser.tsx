@@ -1,12 +1,18 @@
 "use client"
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Search, MapPin, Clock, X } from 'lucide-react'
+import { Search, MapPin, Clock, X, Building2, ExternalLink } from 'lucide-react'
 
 /**
- * Client-side jobs browser — filter/paginate over the full server-fetched
- * list. Prominent search bar, quick category chips, featured/new badges.
+ * Client-side jobs browser — Indeed-style list + detail.
+ *
+ * Left column is a compact scannable list; selecting a row shows the full
+ * summary in a sticky panel on the right. Below the lg breakpoint the panel is
+ * dropped and each row simply navigates to its posting page.
+ *
+ * Every row stays a real <a href="/jobs/posting/…"> so crawlers still reach each
+ * posting; on desktop the click is intercepted to fill the panel instead.
  */
 
 export interface BrowserJob {
@@ -25,7 +31,7 @@ export interface BrowserJob {
   manual?: boolean
 }
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 20
 const NEW_WITHIN_MS = 48 * 60 * 60 * 1000
 
 const POSTED_WITHIN_OPTIONS = [
@@ -48,6 +54,7 @@ export default function JobsBrowser({
   const [postedWithin, setPostedWithin] = useState('all')
   const [hasSalary, setHasSalary] = useState(false)
   const [page, setPage] = useState(1)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Top categories with counts, for the quick-filter chips
   const categoryCounts = useMemo(() => {
@@ -105,9 +112,29 @@ export default function JobsBrowser({
   const showingFrom = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
   const showingTo = Math.min(safePage * PAGE_SIZE, filtered.length)
 
+  // Falling back to the first row (rather than setting state in an effect) keeps
+  // the panel present in the server-rendered HTML and avoids a first-paint flash.
+  // A stale selectedId after filtering simply falls back to the first result.
+  const selected = pageJobs.find(j => j.id === selectedId) || pageJobs[0] || null
+
   const resetPage = () => setPage(1)
   const isNew = (j: BrowserJob) =>
     j.postedAt && Date.now() - new Date(j.postedAt).getTime() < NEW_WITHIN_MS
+
+  // Selecting a row fills the detail panel rather than navigating. Modified
+  // clicks (new tab/window) are left alone, and the row stays a real anchor so
+  // crawlers still reach every posting page.
+  const onRowClick = useCallback((e: React.MouseEvent, id: string) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    e.preventDefault()
+    setSelectedId(id)
+    if (typeof document !== 'undefined') {
+      // On narrow screens the panel sits below the list, so bring it into view.
+      if (window.matchMedia('(max-width: 1023px)').matches) {
+        document.getElementById('job-detail-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
+  }, [])
 
   return (
     <div>
@@ -200,12 +227,12 @@ export default function JobsBrowser({
           : `Showing ${showingFrom}-${showingTo} of ${filtered.length} matching jobs`}
       </p>
 
-      {/* Card grid / empty states */}
+      {/* List + detail / empty states */}
       {jobs.length === 0 ? (
         <div className="py-16 text-center">
           <p className="text-lg font-semibold text-gray-700">New jobs are being added</p>
           <p className="mt-2 text-sm text-gray-500">
-            The board updates daily with new Calgary and Edmonton openings — check back soon.
+            The board updates daily with new Calgary and Edmonton openings. Check back soon.
           </p>
         </div>
       ) : pageJobs.length === 0 ? (
@@ -220,66 +247,120 @@ export default function JobsBrowser({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {pageJobs.map(job => (
-            <Link
-              key={job.id}
-              href={`/jobs/posting/${job.slug}`}
-              className={`group flex flex-col rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md ${
-                job.featured ? 'border-blue-300 ring-1 ring-blue-200' : 'border-gray-200'
-              }`}
-            >
-              <div className="mb-1 flex items-start justify-between gap-2">
-                <h3 className="text-lg font-bold leading-snug text-gray-900 group-hover:text-blue-700">
-                  {job.title}
-                </h3>
-                {isNew(job) && !job.featured && (
-                  <span className="mt-0.5 flex-shrink-0 rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
-                    New
-                  </span>
-                )}
-                {job.featured && (
-                  <span className="mt-0.5 flex-shrink-0 rounded bg-blue-600 px-2 py-0.5 text-xs font-semibold text-white">
-                    Featured
-                  </span>
-                )}
-              </div>
-              <p className="text-sm font-medium text-gray-700">{job.company}</p>
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-6 lg:items-start">
+          {/* ── Left: scannable list ─────────────────────────────── */}
+          <ul className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 bg-white">
+            {pageJobs.map(job => {
+              const active = selected?.id === job.id
+              return (
+                <li key={job.id}>
+                  <Link
+                    href={`/jobs/posting/${job.slug}`}
+                    onClick={e => onRowClick(e, job.id)}
+                    aria-current={active ? 'true' : undefined}
+                    className={`block border-l-4 px-4 py-4 transition-colors ${
+                      active
+                        ? 'border-l-blue-600 bg-blue-50/70'
+                        : 'border-l-transparent hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className={`text-base font-semibold leading-snug ${active ? 'text-blue-800' : 'text-gray-900'}`}>
+                        {job.title}
+                      </h3>
+                      {job.featured ? (
+                        <span className="mt-0.5 flex-shrink-0 rounded bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                          Featured
+                        </span>
+                      ) : isNew(job) ? (
+                        <span className="mt-0.5 flex-shrink-0 rounded bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                          New
+                        </span>
+                      ) : null}
+                    </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5" /> {job.city}
-                </span>
-                {job.postedLabel && (
-                  <span className="inline-flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" /> {job.postedLabel}
-                  </span>
-                )}
-              </div>
+                    <p className="mt-0.5 truncate text-sm text-gray-700">{job.company}</p>
 
-              {job.salaryText && (
-                <p className="mt-2">
-                  <span className="rounded bg-emerald-50 px-2 py-1 text-sm font-semibold text-emerald-800">
-                    {job.salaryText}
-                  </span>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" /> {job.city}
+                      </span>
+                      {job.postedLabel && (
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" /> {job.postedLabel}
+                        </span>
+                      )}
+                      {job.employmentType && <span>{job.employmentType}</span>}
+                    </div>
+
+                    {job.salaryText && (
+                      <p className="mt-2 inline-block rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                        {job.salaryText}
+                      </p>
+                    )}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+
+          {/* ── Right: detail panel (below the list on mobile) ───── */}
+          {selected && (
+            <aside id="job-detail-panel" className="mt-6 lg:mt-0 lg:sticky lg:top-24">
+              <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 className="text-2xl font-bold leading-tight text-gray-900">{selected.title}</h2>
+
+                <p className="mt-1 inline-flex items-center gap-1.5 text-base text-gray-700">
+                  <Building2 className="h-4 w-4 text-gray-400" />
+                  {selected.company}
                 </p>
-              )}
 
-              {job.snippet && (
-                <p className="mt-2 text-sm text-gray-600 line-clamp-2">{job.snippet}</p>
-              )}
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="h-4 w-4 text-gray-400" /> {selected.city}
+                  </span>
+                  {selected.postedLabel && (
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-4 w-4 text-gray-400" /> Posted {selected.postedLabel}
+                    </span>
+                  )}
+                </div>
 
-              <div className="mt-auto flex flex-wrap items-center gap-2 pt-3">
-                <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">{job.category}</span>
-                {job.employmentType && (
-                  <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">{job.employmentType}</span>
+                {selected.salaryText && (
+                  <p className="mt-4">
+                    <span className="rounded bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800">
+                      {selected.salaryText}
+                    </span>
+                  </p>
                 )}
-                <span className="ml-auto text-sm font-semibold text-blue-600 group-hover:underline">
-                  View &amp; apply →
-                </span>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="rounded bg-gray-100 px-2.5 py-1 text-xs text-gray-700">{selected.category}</span>
+                  {selected.employmentType && (
+                    <span className="rounded bg-gray-100 px-2.5 py-1 text-xs text-gray-700">{selected.employmentType}</span>
+                  )}
+                </div>
+
+                {selected.snippet && (
+                  <p className="mt-4 border-t border-gray-100 pt-4 text-sm leading-relaxed text-gray-700">
+                    {selected.snippet}
+                  </p>
+                )}
+
+                <Link
+                  href={`/jobs/posting/${selected.slug}`}
+                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+                >
+                  View full posting &amp; apply
+                  <ExternalLink className="h-4 w-4" />
+                </Link>
+
+                <p className="mt-3 text-center text-xs text-gray-500">
+                  You apply on the employer&apos;s own site.
+                </p>
               </div>
-            </Link>
-          ))}
+            </aside>
+          )}
         </div>
       )}
 
@@ -288,7 +369,7 @@ export default function JobsBrowser({
         <div className="mt-8 flex items-center justify-center gap-4">
           <button
             type="button"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
+            onClick={() => { setPage(p => Math.max(1, p - 1)); setSelectedId(null) }}
             disabled={safePage <= 1}
             className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-40"
           >
@@ -297,7 +378,7 @@ export default function JobsBrowser({
           <span className="text-sm text-gray-600">Page {safePage} of {totalPages}</span>
           <button
             type="button"
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            onClick={() => { setPage(p => Math.min(totalPages, p + 1)); setSelectedId(null) }}
             disabled={safePage >= totalPages}
             className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-40"
           >
