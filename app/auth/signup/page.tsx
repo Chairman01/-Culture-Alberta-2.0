@@ -8,12 +8,16 @@ import { AuthLayout } from '@/components/auth-layout'
 import { SocialAuthButtons } from '@/components/social-auth-buttons'
 import { CitySelect } from '@/components/city-select'
 import { isValidCity } from '@/lib/alberta-municipalities'
+import { toNewsletterCity } from '@/lib/newsletter-cities'
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [city, setCity] = useState('')
+  // Deliberately starts unchecked: under CASL a pre-ticked box is not valid
+  // express consent, so the reader has to opt in themselves.
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
@@ -35,6 +39,26 @@ export default function SignUpPage() {
         options: { data: { full_name: name, city: city.trim() } }
       })
       if (error) throw error
+
+      // Express consent only — this runs solely when the reader ticked the box.
+      // Fire-and-forget: a newsletter failure must never block account creation,
+      // and /api/newsletter already handles bounced addresses and re-subscribes.
+      if (newsletterOptIn) {
+        try {
+          await fetch('/api/newsletter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email,
+              city: toNewsletterCity(city),
+              optIn: true,
+              source: 'account-signup',
+            }),
+          })
+        } catch {
+          /* non-fatal — the account still exists, they can subscribe later */
+        }
+      }
 
       if (data.session) {
         // Email confirmation is OFF — Supabase signs the user in immediately, so
@@ -117,6 +141,22 @@ export default function SignUpPage() {
           <p className="mt-1.5 text-xs text-gray-500">Minimum 6 characters</p>
         </div>
         <SocialAuthButtons />
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3.5 hover:border-gray-300">
+          <input
+            type="checkbox"
+            checked={newsletterOptIn}
+            onChange={e => setNewsletterOptIn(e.target.checked)}
+            className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="text-sm text-gray-700">
+            <span className="font-semibold text-gray-900">Email me the free Culture Alberta newsletter</span>
+            <span className="mt-0.5 block text-gray-600">
+              Local news and things to do{city ? ` in ${city}` : ' in your city'}, a few times a week.
+              Unsubscribe any time.
+            </span>
+          </span>
+        </label>
+
         {error && (
           <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm">
             {error}
