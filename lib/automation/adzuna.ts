@@ -82,8 +82,9 @@ export function mapAdzunaToJobRow(r: AdzunaResult, city: JobCity): JobUpsertRow 
     description_snippet: r.description ? cleanText(r.description) : null,
     salary_min: salaryMin,
     salary_max: salaryMax,
-    // Predicted salaries are Adzuna estimates, not employer-stated — label them
-    salary_label: predicted && (salaryMin || salaryMax) ? buildEstimatedLabel(salaryMin, salaryMax) : null,
+    // Employer-stated salaries are shown as-is; Adzuna's predictions get an
+    // "Est." prefix so readers can tell the two apart.
+    salary_label: buildSalaryLabel(salaryMin, salaryMax, predicted),
     employment_type: mapEmploymentType(r),
     apply_url: applyUrl,
     source_url: applyUrl,
@@ -92,11 +93,25 @@ export function mapAdzunaToJobRow(r: AdzunaResult, city: JobCity): JobUpsertRow 
   }
 }
 
-function buildEstimatedLabel(min: number | null, max: number | null): string {
-  const fmt = (n: number) => `$${Math.round(n).toLocaleString('en-CA')}`
-  if (min && max && min !== max) return `Est. ${fmt(min)}–${fmt(max)} a year`
-  const single = min || max
-  return single ? `Est. ${fmt(single)} a year` : ''
+/**
+ * Human-readable pay label. Adzuna returns annualised figures for most postings
+ * but hourly rates for some, so treat anything under 200 as an hourly rate —
+ * the same heuristic JobPostingStructuredData uses for schema.org unitText.
+ * Returns null when there is no salary, so `salary_label IS NOT NULL` stays a
+ * reliable "pay listed" test for the board's filter.
+ */
+function buildSalaryLabel(min: number | null, max: number | null, predicted: boolean): string | null {
+  const value = max || min
+  if (!value) return null
+
+  const hourly = value < 200
+  const fmt = (n: number) =>
+    hourly ? `$${n.toFixed(2).replace(/\.00$/, '')}` : `$${Math.round(n).toLocaleString('en-CA')}`
+  const unit = hourly ? 'an hour' : 'a year'
+  const prefix = predicted ? 'Est. ' : ''
+
+  if (min && max && min !== max) return `${prefix}${fmt(min)}–${fmt(max)} ${unit}`
+  return `${prefix}${fmt(value)} ${unit}`
 }
 
 /**
