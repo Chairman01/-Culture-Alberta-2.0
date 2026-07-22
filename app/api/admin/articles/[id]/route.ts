@@ -5,6 +5,7 @@ import { quickSyncArticle } from '@/lib/auto-sync'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
 import { postArticleToSocial } from '@/lib/social'
+import { warmSocialPreview } from '@/lib/social-image-url'
 import { requireAdmin, requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 
@@ -389,15 +390,18 @@ export async function PUT(
       notifySearchEngines(`/articles/${data.slug || nextSlug}`).catch(err =>
         console.warn('⚠️ Search engine notification failed (non-fatal):', err)
       )
-      // Auto-post to social platforms (non-blocking; the social_posts unique
+      // Warm the CDN first so Reddit's crawler gets a fast og:image and renders the
+      // large image card, then auto-post (non-blocking; the social_posts unique
       // constraint means re-saving an already-shared article never reposts)
-      postArticleToSocial({
-        id: data.id,
-        title: data.title,
-        slug: data.slug || nextSlug,
-        excerpt: data.excerpt,
-        imageUrl: data.image_url,
-      }).catch(err => console.warn('⚠️ Social posting failed (non-fatal):', err))
+      warmSocialPreview(data.image_url, data.slug || nextSlug)
+        .then(() => postArticleToSocial({
+          id: data.id,
+          title: data.title,
+          slug: data.slug || nextSlug,
+          excerpt: data.excerpt,
+          imageUrl: data.image_url,
+        }))
+        .catch(err => console.warn('⚠️ Social posting failed (non-fatal):', err))
     }
 
     return NextResponse.json({

@@ -30,7 +30,7 @@ import { processArticleContent } from '@/lib/utils/youtube'
 import Script from 'next/script'
 import { CommentsSection } from '@/components/comments-section'
 import { ArticleViewCount } from '@/components/article-view-count'
-import { encodeSocialImageUrl } from '@/lib/social-image-url'
+import { getSocialImageUrl } from '@/lib/social-image-url'
 
 // import NewsletterSignup from '@/components/newsletter-signup' // Removed - using ArticleNewsletterSignup instead
 // Removed ArticleContent import to fix hydration issues
@@ -39,27 +39,7 @@ import { encodeSocialImageUrl } from '@/lib/social-image-url'
 const LEGACY_ARTICLE_REDIRECTS: Record<string, string> = {}
 const useFastDevMode = process.env.NODE_ENV === 'development' && process.env.USE_SUPABASE_IN_DEV !== '1'
 const DEFAULT_ARTICLE_AUTHOR = 'Adam Harrison'
-const SITE_URL = 'https://www.culturealberta.com'
-const DEFAULT_OG_IMAGE = `${SITE_URL}/images/culture-alberta-og.jpg`
 type ArticleRecommendation = Article & { recommendationReason?: string; viewCount?: number }
-
-function getSocialImageUrl(imageUrl?: string | null): string {
-  if (!imageUrl || imageUrl.startsWith('data:image')) {
-    return DEFAULT_OG_IMAGE
-  }
-
-  const absoluteUrl = imageUrl.startsWith('http://') || imageUrl.startsWith('https://')
-    ? imageUrl
-    : imageUrl.startsWith('/')
-      ? `${SITE_URL}${imageUrl}`
-      : `${SITE_URL}/${imageUrl}`
-
-  if (absoluteUrl.includes('supabase.co/storage')) {
-    return `${SITE_URL}/og-image/${encodeSocialImageUrl(absoluteUrl)}/preview.jpg`
-  }
-
-  return absoluteUrl
-}
 
 function getImageMimeType(url: string): string {
   const pathname = (() => {
@@ -107,7 +87,7 @@ function tokenizeForRecommendations(value?: string | null): Set<string> {
 const CITY_CATEGORIES = new Set(['edmonton', 'calgary', 'alberta', 'red deer', 'medicine hat', 'grande prairie'])
 
 const RECOMMENDATION_TOPICS: Record<string, string[]> = {
-  crime: ['police', 'charged', 'charges', 'arrest', 'assault', 'murder', 'warrant', 'seize', 'seized', 'drug', 'drugs', 'trafficking', 'victim', 'complainants'],
+  crime: ['police', 'charged', 'charges', 'arrest', 'assault', 'murder', 'warrant', 'seize', 'seized', 'drug', 'drugs', 'trafficking', 'victim', 'complainants', 'abducted', 'abduction', 'amber', 'homicide', 'stabbing', 'shooting', 'rcmp'],
   transit: ['transit', 'streetcar', 'lrt', 'train', 'bus', 'bridge', 'construction', 'rehabilitation', 'road', 'traffic', 'route', 'station'],
   heritage: ['heritage', 'historic', 'history', 'museum', 'village', 'artifacts', 'century', 'old', 'reopens', 'destroyed', 'visitor'],
   architecture: ['building', 'pavilion', 'campus', 'architecture', 'ugliest', 'iconic', 'design', 'tower', 'downtown'],
@@ -158,10 +138,12 @@ function getArticleAgeDays(article: Article): number | null {
 
 // Evergreen / SEO content (guides, how-tos, listicles, "best of") stays relevant
 // regardless of age, so it is exempt from the recency demotion that time-sensitive
-// news (breaking news, crime, events) is subject to.
+// news (breaking news, crime, events) is subject to. Utility/benefits patterns
+// (payment dates, calculators, rebates, stat holidays…) are included because that
+// content earns a multiple of news RPM — when it's relevant, we want it surfaced.
 const EVERGREEN_TAGS = new Set(['evergreen', 'seo', 'guide', 'guides'])
 const EVERGREEN_TITLE_RE =
-  /\b(guide|how to|how-to|things to do|where to|best places|best things|ultimate|complete guide|tips|what to know|everything you need|step by step)\b/
+  /\b(guide|how to|how-to|things to do|where to|best places|best things|ultimate|complete guide|tips|what to know|everything you need|step by step|full list|payment dates?|calculator|rebates?|benefits?|stat holidays?|statutory holidays?|cost of living|minimum wage|openings? in|who'?s hiring|explained|what .* actually changes)\b/
 
 function isEvergreenLike(article: Article): boolean {
   const tags = (article.tags || []).map(tag => tag.toLowerCase())
@@ -172,6 +154,30 @@ function isEvergreenLike(article: Article): boolean {
   if (category === 'guide' || categories.includes('guide')) return true
 
   return EVERGREEN_TITLE_RE.test((article.title || '').toLowerCase())
+}
+
+// Short-lived advisories (weather warnings, closures, evacuations, recalls…).
+// A "snowstorm hits this weekend" story recommended months later reads as broken,
+// so these expire fast and are then excluded outright.
+const ALERT_TITLE_RE =
+  /\b(warns?|warning|advisory|alert|closures?|closed|cancell?ed|postponed|evacuat\w+|snowstorm|snowfall|blizzard|freezing rain|ice storm|wind chill|heat wave|air quality|flood(ing)? (warning|watch)|recalls?|outage|non-essential travel)\b/
+
+function isAlertLike(article: Article): boolean {
+  return ALERT_TITLE_RE.test(`${article.title || ''} ${article.excerpt || ''}`.toLowerCase())
+}
+
+// Hard exclusions — these never appear in recommendations, no matter how thin the
+// candidate pool is:
+//  - crime stories older than 5 days (traffic-driven when fresh, dead weight after)
+//  - alerts/advisories older than 7 days (the event is over)
+//  - any non-evergreen news older than 60 days
+function isExpiredTimeSensitive(article: Article): boolean {
+  const ageDays = getArticleAgeDays(article)
+  if (ageDays === null || isEvergreenLike(article)) return false
+
+  if (getTopicMatches(article).has('crime') && ageDays > 5) return true
+  if (isAlertLike(article) && ageDays > 7) return true
+  return ageDays > 60
 }
 
 // Resolve the city an article belongs to (used to blend city-relevant evergreen
@@ -251,6 +257,10 @@ function scoreArticleRecommendation(current: Article, candidate: Article): numbe
     const recency = getRecencyScore(ageDays)
     score += isEvergreenLike(candidate) ? Math.max(recency, 8) : recency
   }
+
+  // Utility/benefits content earns a multiple of news RPM, so when an evergreen
+  // piece and a news piece are otherwise equally relevant, the evergreen wins.
+  if (isEvergreenLike(candidate)) score += 10
 
   const viewCount = (candidate as ArticleRecommendation).viewCount || (candidate as any).view_count || 0
   if (viewCount > 0) {
@@ -392,35 +402,39 @@ function mapRecommendationArticleRow(row: any): ArticleRecommendation {
 
 const getFreshRecommendationCandidates = unstable_cache(
   async (): Promise<ArticleRecommendation[]> => {
-    try {
-      const { data, error } = await Promise.race([
-        supabase
-          .from('articles')
-          .select(`
-            id, title, content, excerpt, description, image_url, image, image_source,
-            category, categories, location, date, read_time, type, author, status, tags,
-            slug, created_at, updated_at, trending_home, trending_edmonton, trending_calgary,
-            trending_alberta, featured_home, featured_edmonton, featured_calgary,
-            featured_alberta, view_count
-          `)
-          .eq('status', 'published')
-          .neq('type', 'event')
-          .order('date', { ascending: false, nullsFirst: false })
-          .order('created_at', { ascending: false, nullsFirst: false })
-          .limit(120),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Supabase recommendations timeout')), 3000))
-      ]) as any
+    // NO `content` in this select: scoring only reads title/excerpt/description/
+    // tags/categories, and content added ~500kB per refresh — enough to trip the
+    // timeout below, which silently emptied the pool.
+    //
+    // Order by created_at, not date: articles created after May 8 2026 had NULL
+    // date (the create route never set it), so `date DESC NULLS LAST LIMIT 120`
+    // permanently excluded every new article — recommendations froze on the last
+    // 120 articles dated before then. created_at is always set.
+    const { data, error } = await Promise.race([
+      supabase
+        .from('articles')
+        .select(`
+          id, title, excerpt, description, image_url, image, image_source,
+          category, categories, location, date, read_time, type, author, status, tags,
+          slug, created_at, updated_at, trending_home, trending_edmonton, trending_calgary,
+          trending_alberta, featured_home, featured_edmonton, featured_calgary,
+          featured_alberta, view_count
+        `)
+        .eq('status', 'published')
+        .neq('type', 'event')
+        .order('created_at', { ascending: false, nullsFirst: false })
+        .limit(120),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Supabase recommendations timeout')), 3000))
+    ]) as any
 
-      if (error) {
-        console.warn('Supabase recommendation lookup failed:', error.message)
-        return []
-      }
-
-      return (data || []).map(mapRecommendationArticleRow)
-    } catch (error) {
-      console.warn('Supabase recommendation lookup failed:', error instanceof Error ? error.message : error)
-      return []
+    // Throw instead of returning [] — unstable_cache memoizes return values, so a
+    // returned [] would pin an EMPTY pool (and stale-fallback recommendations) for
+    // the whole 15-minute revalidate window. Thrown errors are not cached.
+    if (error) {
+      throw new Error(`Supabase recommendation lookup failed: ${error.message}`)
     }
+
+    return (data || []).map(mapRecommendationArticleRow)
   },
   ['fresh-article-recommendation-candidates'],
   { revalidate: 900 }
@@ -763,7 +777,14 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     // It must never overlap the "Keep Reading" grid below.
     let sidebarArticles: ArticleRecommendation[] = []
     try {
-      const freshCandidates = await getFreshRecommendationCandidates()
+      // Failures throw (so unstable_cache never pins an empty pool) but must not
+      // kill the section — swallow here and lean on the static fallback below.
+      let freshCandidates: ArticleRecommendation[] = []
+      try {
+        freshCandidates = await getFreshRecommendationCandidates()
+      } catch (error) {
+        console.warn('Fresh recommendation candidates unavailable:', error instanceof Error ? error.message : error)
+      }
       const fallbackCandidates = freshCandidates.length >= 12
         ? []
         : (await getFastArticles()).filter(a => a.type !== 'event')
@@ -779,6 +800,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           if (article.id === loadedArticle.id || candidateSlug === currentSlug) return false
           if (article.status && article.status !== 'published') return false
           if (String(article.type || '').toLowerCase() === 'event') return false
+          if (isExpiredTimeSensitive(article)) return false
           if (seenCandidates.has(dedupeKey)) return false
 
           seenCandidates.add(dedupeKey)
@@ -809,21 +831,17 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           .sort(byScoreThenRecency)
 
         // Hard ~2-week recency window: only recommend fresh stories, EXCEPT
-        // evergreen/SEO content and the top-traffic (high-RPM) performers, which
-        // stay relevant when older. Anything else that's stale is kept only as a
-        // last-resort top-up below, so the section is never left empty.
+        // evergreen/SEO content, which stays relevant when older. (Cumulative view
+        // count used to grant this exemption too — but lifetime views correlate
+        // with AGE, not quality, so it mostly resurrected old viral news. Expired
+        // time-sensitive stories are already excluded from the pool entirely.)
+        // Anything else that's stale is kept only as a last-resort top-up below,
+        // so the section is never left empty.
         const RECENT_DAYS = 14
         const MAX_CRIME_RECS = 2
-        const viewOf = (a: ArticleRecommendation) =>
-          (a as { viewCount?: number; view_count?: number }).viewCount ||
-          (a as { viewCount?: number; view_count?: number }).view_count || 0
-        const sortedViews = ranked.map(viewOf).filter((v) => v > 0).sort((a, b) => b - a)
-        const highViewCut = sortedViews.length
-          ? Math.max(300, sortedViews[Math.floor(sortedViews.length * 0.2)] || 0)
-          : 300
         const isFreshEnough = (a: ArticleRecommendation) => {
           const age = getArticleAgeDays(a)
-          return (age !== null && age <= RECENT_DAYS) || isEvergreenLike(a) || viewOf(a) >= highViewCut
+          return (age !== null && age <= RECENT_DAYS) || isEvergreenLike(a)
         }
         const prioritized = [
           ...ranked.filter(isFreshEnough),

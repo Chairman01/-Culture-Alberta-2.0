@@ -5,6 +5,7 @@ import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
 import { postArticleToSocial } from '@/lib/social'
+import { warmSocialPreview } from '@/lib/social-image-url'
 import { requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 
@@ -104,6 +105,10 @@ export async function POST(request: NextRequest) {
         featured_home: articleData.featuredHome || false,
         featured_edmonton: articleData.featuredEdmonton || false,
         featured_calgary: articleData.featuredCalgary || false,
+        // `date` is the display/publish date and MUST be set: recommendation and
+        // listing queries sort by it, and rows with NULL date sort last — articles
+        // created May–July 2026 without it never appeared in recommendations.
+        date: articleData.date || new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }])
@@ -186,14 +191,17 @@ export async function POST(request: NextRequest) {
       notifySearchEngines(`/articles/${data.slug || articleSlug}`).catch(err =>
         console.warn('⚠️ Search engine notification failed (non-fatal):', err)
       )
-      // Auto-post to social platforms (non-blocking; deduped per article+platform)
-      postArticleToSocial({
-        id: data.id,
-        title: data.title,
-        slug: data.slug || articleSlug,
-        excerpt: data.excerpt,
-        imageUrl: data.image_url,
-      }).catch(err => console.warn('⚠️ Social posting failed (non-fatal):', err))
+      // Warm the CDN first so Reddit's crawler gets a fast og:image and renders the
+      // large image card, then auto-post (non-blocking; deduped per article+platform)
+      warmSocialPreview(data.image_url, data.slug || articleSlug)
+        .then(() => postArticleToSocial({
+          id: data.id,
+          title: data.title,
+          slug: data.slug || articleSlug,
+          excerpt: data.excerpt,
+          imageUrl: data.image_url,
+        }))
+        .catch(err => console.warn('⚠️ Social posting failed (non-fatal):', err))
     }
 
     return NextResponse.json({
