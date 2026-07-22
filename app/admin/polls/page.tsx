@@ -14,6 +14,8 @@ interface AdminPoll {
     question: string
     category: string
     status: 'draft' | 'approved' | 'active' | 'done'
+    article_id: string | null
+    articleTitle: string | null
     activated_at: string | null
     closed_at: string | null
     created_at: string
@@ -139,8 +141,70 @@ export default function AdminPollsPage() {
                 <div className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
             ) : polls && (
                 <div className="space-y-8">
+                    <section>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                            Story polls
+                            <span className="ml-2 text-sm font-normal text-gray-400">{polls.filter(p => p.article_id).length}</span>
+                        </h2>
+                        <p className="text-xs text-gray-500 mb-3">
+                            AI-written for each published article (sombre stories are skipped). These run on their own article only.
+                        </p>
+                        {polls.filter(p => p.article_id).length === 0 ? (
+                            <p className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-3">
+                                None yet — one is generated automatically the next time you publish an article.
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {polls.filter(p => p.article_id).map(poll => (
+                                    <div key={poll.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3">
+                                        <div className="flex flex-wrap items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <p className="font-medium text-gray-900">{poll.question}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5">
+                                                    {poll.articleTitle ? `On: ${poll.articleTitle}` : 'On its article'} · {poll.totalVotes} vote{poll.totalVotes === 1 ? '' : 's'}
+                                                    {poll.status === 'done' && ' · closed'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {poll.status === 'active' && (
+                                                    <button onClick={() => act(poll.id, 'close')} disabled={busyId === poll.id}
+                                                        className="px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">
+                                                        Close
+                                                    </button>
+                                                )}
+                                                <button onClick={() => remove(poll.id, poll.question)} disabled={busyId === poll.id}
+                                                    aria-label="Delete question"
+                                                    className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {poll.totalVotes > 0 && (
+                                            <div className="mt-3 space-y-1.5">
+                                                {poll.options.map(option => {
+                                                    const pct = poll.totalVotes > 0 ? Math.round((option.votes / poll.totalVotes) * 100) : 0
+                                                    return (
+                                                        <div key={option.id}>
+                                                            <div className="flex justify-between text-xs text-gray-600 mb-0.5">
+                                                                <span>{option.label}</span>
+                                                                <span className="tabular-nums">{option.votes} · {pct}%</span>
+                                                            </div>
+                                                            <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                                                                <div className="h-full rounded-full bg-orange-300" style={{ width: `${pct}%` }} />
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
                     {sections.map(section => {
-                        const rows = polls.filter(poll => poll.status === section.status)
+                        const rows = polls.filter(poll => poll.status === section.status && !poll.article_id)
                         return (
                             <section key={section.status}>
                                 <h2 className="text-lg font-semibold text-gray-900">

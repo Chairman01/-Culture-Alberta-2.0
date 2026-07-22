@@ -1273,10 +1273,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       <ArticleViewCount slug={slug} articleTitle={loadedArticle.title} />
                     </div>
 
-                    {/* Daily poll — one site-wide question, suppressed on sombre stories */}
+                    {/* Reader poll — the article's own poll when it has one, else the
+                        site-wide daily question; suppressed entirely on sombre stories */}
                     {!isSombreArticle(loadedArticle) && (
                       <div className="mt-8">
-                        <PollCard />
+                        <PollCard articleId={loadedArticle.id} />
                       </div>
                     )}
 

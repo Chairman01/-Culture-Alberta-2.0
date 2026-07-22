@@ -36,10 +36,12 @@ export async function PATCH(
                 .eq('status', 'active')
             if (error) throw error
         } else if (action === 'activate') {
+            // Only displaces the current site-wide daily — article polls coexist
             const { error: closeErr } = await supabase
                 .from('polls')
                 .update({ status: 'done', closed_at: new Date().toISOString() })
                 .eq('status', 'active')
+                .is('article_id', null)
                 .neq('id', id)
             if (closeErr) throw closeErr
             const { error } = await supabase

@@ -29,8 +29,17 @@ export async function GET(request: NextRequest) {
             pollTotals.set(vote.poll_id, (pollTotals.get(vote.poll_id) || 0) + 1)
         }
 
+        // Article polls carry their story's title so the bank view reads well
+        const articleIds = (polls || []).map(poll => poll.article_id).filter(Boolean) as string[]
+        const articleTitles = new Map<string, string>()
+        if (articleIds.length > 0) {
+            const { data: linkedArticles } = await supabase.from('articles').select('id, title').in('id', articleIds)
+            for (const linked of linkedArticles || []) articleTitles.set(linked.id, linked.title)
+        }
+
         const shaped = (polls || []).map(poll => ({
             ...poll,
+            articleTitle: poll.article_id ? articleTitles.get(poll.article_id) || null : null,
             totalVotes: pollTotals.get(poll.id) || 0,
             options: (options || [])
                 .filter(option => option.poll_id === poll.id)

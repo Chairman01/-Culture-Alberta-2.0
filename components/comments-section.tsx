@@ -18,7 +18,7 @@ export function CommentsSection({ articleId }: CommentsSectionProps) {
     }
 
     return (
-        <div className="mt-16 pt-12 border-t border-gray-200">
+        <div id="comments" className="mt-16 pt-12 border-t border-gray-200 scroll-mt-24">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div className="flex items-center gap-3">
                     <MessageSquare className="w-7 h-7 text-blue-600" />

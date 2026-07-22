@@ -40,17 +40,20 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = getServiceClient()
 
+    // article_id IS NULL throughout: rotation only manages the site-wide daily
+    // question — per-article polls stay live on their articles untouched.
     const [{ data: active }, { data: next }, { count: queueCount }] = await Promise.all([
-      supabase.from('polls').select('id, question, activated_at').eq('status', 'active').maybeSingle(),
+      supabase.from('polls').select('id, question, activated_at').eq('status', 'active').is('article_id', null).maybeSingle(),
       supabase
         .from('polls')
         .select('id, question')
         .eq('status', 'approved')
+        .is('article_id', null)
         .order('sort_order')
         .order('created_at')
         .limit(1)
         .maybeSingle(),
-      supabase.from('polls').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
+      supabase.from('polls').select('*', { count: 'exact', head: true }).eq('status', 'approved').is('article_id', null),
     ])
 
     if (!next) {

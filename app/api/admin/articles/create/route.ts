@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
 import { postArticleToSocial } from '@/lib/social'
 import { warmSocialPreview } from '@/lib/social-image-url'
+import { generatePollForArticle } from '@/lib/poll-generator'
 import { requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 
@@ -202,6 +203,14 @@ export async function POST(request: NextRequest) {
           imageUrl: data.image_url,
         }))
         .catch(err => console.warn('⚠️ Social posting failed (non-fatal):', err))
+      // Generate this article's reader poll (non-blocking; skips sombre stories)
+      generatePollForArticle({
+        id: data.id,
+        title: data.title,
+        excerpt: data.excerpt,
+        content: data.content,
+        category: data.category,
+      }).catch(err => console.warn('⚠️ Poll generation failed (non-fatal):', err))
     }
 
     return NextResponse.json({
