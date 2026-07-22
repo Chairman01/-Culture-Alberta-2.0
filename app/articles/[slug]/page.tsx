@@ -145,9 +145,47 @@ const EVERGREEN_TAGS = new Set(['evergreen', 'seo', 'guide', 'guides'])
 const EVERGREEN_TITLE_RE =
   /\b(guide|how to|how-to|things to do|where to|best places|best things|ultimate|complete guide|tips|what to know|everything you need|step by step|full list|payment dates?|calculator|rebates?|benefits?|stat holidays?|statutory holidays?|cost of living|minimum wage|openings? in|who'?s hiring|explained|what .* actually changes)\b/
 
+// Weekend guides ("7 great things to do in Calgary this weekend: July 10 to 12")
+// LOOK evergreen by title ("things to do") but are dead the moment the weekend
+// passes — detect them by the "this weekend" framing or an explicit month+day
+// range in the title, and expire them fast instead.
+const DATED_GUIDE_RE = /\bthis weekend\b|\blong weekend\b|what['’]?s open/
+const MONTH_DAY_RANGE_RE =
+  /\b(january|february|march|april|may|june|july|august|september|october|november|december)\.?\s+\d{1,2}\s*(?:to|through|until|–|—|-)\s*(?:(?:january|february|march|april|may|june|july|august|september|october|november|december)\.?\s+)?\d{1,2}\b/
+
+function isDatedGuide(article: Article): boolean {
+  const title = (article.title || '').toLowerCase()
+  return DATED_GUIDE_RE.test(title) || MONTH_DAY_RANGE_RE.test(title)
+}
+
+// Real Mediavine RPM data (July 2026) — these clusters earn a multiple of the
+// site's news RPM ($3–5), so they get a proportional recommendation boost:
+//   ~$25–31 RPM: Alberta energy rebate cluster
+//   ~$14–23 RPM: benefits (AISH/ADAP/payment dates), Costco/chain openings,
+//                stat holidays, rent/damage deposit, minimum wage
+// The boost stacks with topical relevance scoring, so these surface where they
+// make sense — a rebate article won't outrank a same-story crime follow-up, but
+// it beats loosely-related news.
+const HIGH_RPM_TIERS: Array<{ pattern: RegExp; boost: number }> = [
+  { pattern: /energy rebate|\$100 rebate|rebate (checker|portal|application)/, boost: 30 },
+  { pattern: /\baish\b|\badap\b|assured income|payment dates?|\bbenefits?\b|stat(utory)? holidays?|minimum wage|damage deposit|rent increase|\bcostco\b|\bwingstop\b|grand opening|openings? in \w+/, boost: 22 },
+]
+
+function getHighRpmBoost(article: Article): number {
+  const text = `${article.title || ''} ${(article.tags || []).join(' ')}`.toLowerCase()
+  for (const tier of HIGH_RPM_TIERS) {
+    if (tier.pattern.test(text)) return tier.boost
+  }
+  return 0
+}
+
 function isEvergreenLike(article: Article): boolean {
   const tags = (article.tags || []).map(tag => tag.toLowerCase())
+  // Explicit 'evergreen' tag is a manual override and always wins.
   if (tags.some(tag => EVERGREEN_TAGS.has(tag))) return true
+
+  // Date-scoped guides are time-sensitive no matter how evergreen the title reads.
+  if (isDatedGuide(article)) return false
 
   const category = (article.category || '').toLowerCase()
   const categories = (article.categories || []).map(entry => entry.toLowerCase())
@@ -169,6 +207,7 @@ function isAlertLike(article: Article): boolean {
 // Hard exclusions — these never appear in recommendations, no matter how thin the
 // candidate pool is:
 //  - crime stories older than 5 days (traffic-driven when fresh, dead weight after)
+//  - dated guides ("this weekend: July 10 to 12") older than 5 days (weekend's over)
 //  - alerts/advisories older than 7 days (the event is over)
 //  - any non-evergreen news older than 60 days
 function isExpiredTimeSensitive(article: Article): boolean {
@@ -176,6 +215,12 @@ function isExpiredTimeSensitive(article: Article): boolean {
   if (ageDays === null || isEvergreenLike(article)) return false
 
   if (getTopicMatches(article).has('crime') && ageDays > 5) return true
+  // Holiday open/closed guides ("Canada Day 2026: What's Open, What's Closed")
+  // are published ~a week before their holiday — 14 days covers the lead-up and
+  // the day itself, then they're done until next year. Checked before the general
+  // dated-guide rule so they get the longer window.
+  if (/what['’]?s open/.test((article.title || '').toLowerCase())) return ageDays > 14
+  if (isDatedGuide(article) && ageDays > 5) return true
   if (isAlertLike(article) && ageDays > 7) return true
   return ageDays > 60
 }
@@ -258,9 +303,13 @@ function scoreArticleRecommendation(current: Article, candidate: Article): numbe
     score += isEvergreenLike(candidate) ? Math.max(recency, 8) : recency
   }
 
-  // Utility/benefits content earns a multiple of news RPM, so when an evergreen
-  // piece and a news piece are otherwise equally relevant, the evergreen wins.
-  if (isEvergreenLike(candidate)) score += 10
+  // Utility/benefits content earns a multiple of news RPM, so evergreen wins
+  // against news unless the news is substantially more relevant. Clusters with
+  // measured high RPM get a proportional boost (max, not stacked, with the
+  // generic evergreen bump — a rebate article is already evergreen).
+  const rpmBoost = getHighRpmBoost(candidate)
+  const evergreenBoost = isEvergreenLike(candidate) ? 18 : 0
+  score += Math.max(rpmBoost, evergreenBoost)
 
   const viewCount = (candidate as ArticleRecommendation).viewCount || (candidate as any).view_count || 0
   if (viewCount > 0) {
@@ -281,6 +330,9 @@ function getRecommendationReason(current: Article, candidate: Article): string {
     (current.tags || []).some(currentTag => currentTag.toLowerCase() === tag.toLowerCase())
   )
   if (sharedTag) return `Also about ${sharedTag}`
+  // High-RPM utility picks get an honest utility label instead of the generic
+  // fallback — tells the reader why a money/benefits piece is here.
+  if (getHighRpmBoost(candidate) > 0) return 'Helpful resource'
   if (candidate.trendingHome || candidate.trendingEdmonton || candidate.trendingCalgary) return 'Trending now'
   return 'Recommended next'
 }
@@ -866,6 +918,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           const tiers: ArticleRecommendation[][] = [
             nonCrime.filter(a => isEvergreenLike(a) && getArticleCity(a) === sourceCity),
             nonCrime.filter(a => isEvergreenLike(a) && getArticleCity(a) === 'alberta'),
+            // ANY evergreen before plain news: the reserved slots exist to surface
+            // high-RPM utility content, so city mismatch alone must not hand them
+            // to another news story.
+            nonCrime.filter(a => isEvergreenLike(a)),
             nonCrime.filter(a => getArticleCity(a) === sourceCity),
             nonCrime.filter(a => getArticleCity(a) === 'alberta'),
             nonCrime,
@@ -905,15 +961,16 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           .map(({ recommendationScore, ...article }: any) => article)
 
         // Request E: the sidebar shows the next-best matches that are NOT already in the
-        // grid, so the two lists are always disjoint. For crime stories, seed it with one
-        // non-crime pick first so this list isn't wall-to-wall crime either.
+        // grid, so the two lists are always disjoint. Seed it with the best remaining
+        // evergreen pick (high-RPM utility content should appear in BOTH lists), falling
+        // back to any non-crime pick for crime stories so it isn't wall-to-wall crime.
         const sidebar: ArticleRecommendation[] = []
-        if (sourceIsCrime) {
-          const nonCrimePick = prioritized.find(a => !isCrimeArticle(a) && !usedKeys.has(keyOf(a)))
-          if (nonCrimePick) {
-            usedKeys.add(keyOf(nonCrimePick))
-            sidebar.push(nonCrimePick)
-          }
+        const sidebarSeed =
+          prioritized.find(a => (isEvergreenLike(a) || getHighRpmBoost(a) > 0) && !usedKeys.has(keyOf(a))) ||
+          (sourceIsCrime ? prioritized.find(a => !isCrimeArticle(a) && !usedKeys.has(keyOf(a))) : undefined)
+        if (sidebarSeed) {
+          usedKeys.add(keyOf(sidebarSeed))
+          sidebar.push(sidebarSeed)
         }
         for (const article of prioritized) {
           if (sidebar.length >= SIDEBAR_SIZE) break
