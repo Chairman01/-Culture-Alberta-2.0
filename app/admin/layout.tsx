@@ -96,6 +96,7 @@ export default function AdminLayout({
     { name: 'Major Projects', href: '/admin/major-projects', icon: Building2 },
     { name: 'Best of Alberta', href: '/admin/best-of', icon: Award },
     { name: 'Comments', href: '/admin/comments', icon: MessageSquare },
+    { name: 'Daily Poll', href: '/admin/polls', icon: BarChart2 },
     { name: 'Members', href: '/admin/users', icon: Users },
     { name: 'Tools', href: '/admin/tools', icon: Wrench },
     { name: 'Link in Bio', href: '/admin/link-in-bio', icon: Pin },

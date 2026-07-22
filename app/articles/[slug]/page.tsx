@@ -29,6 +29,7 @@ import { Metadata } from 'next'
 import { processArticleContent } from '@/lib/utils/youtube'
 import Script from 'next/script'
 import { CommentsSection } from '@/components/comments-section'
+import { PollCard } from '@/components/poll-card'
 import { ArticleViewCount } from '@/components/article-view-count'
 import { getSocialImageUrl } from '@/lib/social-image-url'
 
@@ -202,6 +203,17 @@ const ALERT_TITLE_RE =
 
 function isAlertLike(article: Article): boolean {
   return ALERT_TITLE_RE.test(`${article.title || ''} ${article.excerpt || ''}`.toLowerCase())
+}
+
+// The daily poll card is light-hearted — it must never appear under stories
+// about death, violence, or emergencies. Over-suppressing is fine (a missing
+// poll costs nothing); under-suppressing is offensive.
+const SOMBRE_TITLE_RE =
+  /\b(dead|death|dies|died|killed|fatal|fatality|drowns?|drowned|drowning|homicide|murder|stabbing|shooting|vigil|mourns?|mourning|funeral|obituary|missing|body found|suicide|overdose|victims?|laid to rest|plane crash|collision)\b/
+
+function isSombreArticle(article: Article): boolean {
+  const text = `${article.title || ''} ${article.excerpt || ''}`.toLowerCase()
+  return SOMBRE_TITLE_RE.test(text) || getTopicMatches(article).has('crime') || isAlertLike(article)
 }
 
 // Hard exclusions — these never appear in recommendations, no matter how thin the
@@ -1260,6 +1272,13 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       )}
                       <ArticleViewCount slug={slug} articleTitle={loadedArticle.title} />
                     </div>
+
+                    {/* Daily poll — one site-wide question, suppressed on sombre stories */}
+                    {!isSombreArticle(loadedArticle) && (
+                      <div className="mt-8">
+                        <PollCard />
+                      </div>
+                    )}
 
                     {/* End-of-article CTA: add Culture Alberta as a Google preferred source */}
                     <PreferredSourceCTA />
