@@ -79,20 +79,24 @@ export async function proxySocialImageGet(imageUrl: string): Promise<NextRespons
     return new NextResponse('Failed to fetch image', { status: response.status })
   }
 
-  const imageBuffer = await response.arrayBuffer()
   const contentType = response.headers.get('content-type') || 'image/jpeg'
 
   if (!contentType.startsWith('image/')) {
     return new NextResponse('Invalid image type', { status: 415 })
   }
 
-  if (imageBuffer.byteLength > MAX_SOCIAL_IMAGE_BYTES) {
+  const contentLength = getContentLength(response.headers)
+
+  if (contentLength && Number(contentLength) > MAX_SOCIAL_IMAGE_BYTES) {
     return new NextResponse('Image too large for social preview', { status: 413 })
   }
 
-  return new NextResponse(imageBuffer, {
+  // Stream rather than buffering the whole file first. Social crawlers (Reddit
+  // especially) give up after a short timeout, and time-to-first-byte is what
+  // decides whether we get the large image card or the compact excerpt card.
+  return new NextResponse(response.body, {
     status: 200,
-    headers: getSharedImageHeaders(contentType, imageBuffer.byteLength.toString()),
+    headers: getSharedImageHeaders(contentType, contentLength),
   })
 }
 

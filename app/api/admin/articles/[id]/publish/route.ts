@@ -10,6 +10,7 @@ import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/admin-auth'
 import { notifySearchEngines } from '@/lib/indexing'
 import { postArticleToSocial } from '@/lib/social'
+import { warmSocialPreview } from '@/lib/social-image-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,15 +74,19 @@ export async function PATCH(
     notifySearchEngines(`/articles/${article.slug}`).catch(() => {})
   }
 
-  // Auto-post to social platforms (non-blocking; deduped per article+platform)
+  // Warm the CDN first, then auto-post (non-blocking; deduped per article+platform).
+  // Order matters: posting is what sends crawlers at us, and Reddit only renders the
+  // large image card if it can fetch og:image quickly — so the cache must be hot first.
   if (article.slug) {
-    postArticleToSocial({
-      id: article.id,
-      title: article.title,
-      slug: article.slug,
-      excerpt: article.excerpt,
-      imageUrl: article.image_url,
-    }).catch((err) => console.warn('⚠️ Social posting failed (non-fatal):', err))
+    warmSocialPreview(article.image_url, article.slug)
+      .then(() => postArticleToSocial({
+        id: article.id,
+        title: article.title,
+        slug: article.slug,
+        excerpt: article.excerpt,
+        imageUrl: article.image_url,
+      }))
+      .catch((err) => console.warn('⚠️ Social posting failed (non-fatal):', err))
   }
 
   return NextResponse.json({ success: true, slug: article.slug })
