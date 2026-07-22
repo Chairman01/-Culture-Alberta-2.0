@@ -209,7 +209,7 @@ function isAlertLike(article: Article): boolean {
 // about death, violence, or emergencies. Over-suppressing is fine (a missing
 // poll costs nothing); under-suppressing is offensive.
 const SOMBRE_TITLE_RE =
-  /\b(dead|death|dies|died|killed|fatal|fatality|drowns?|drowned|drowning|homicide|murder|stabbing|shooting|vigil|mourns?|mourning|funeral|obituary|missing|body found|suicide|overdose|victims?|laid to rest|plane crash|collision)\b/
+  /\b(dead|death|dies|died|killed|fatal|fatality|drowns?|drowned|drowning|homicide|murder|stabbing|shooting|vigil|mourns?|mourning|funeral|obituary|missing|body found|suicide|overdoses?|victims?|laid to rest|plane crash|collision|opioids?|addictions?|fentanyl|naloxone|drug poisoning|detox|rehab|treatment beds?|recovery beds?|treatment cent(re|er)|outbreak|epidemic|pandemic|cancer|inquest|coroner|manslaughter|lays? off|laid off|layoffs?|job cuts|evacuations?|evacuated|state of emergency|homeless(ness)?|encampments?|crisis)\b/
 
 function isSombreArticle(article: Article): boolean {
   const text = `${article.title || ''} ${article.excerpt || ''}`.toLowerCase()
