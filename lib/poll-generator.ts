@@ -64,7 +64,7 @@ Rules, in order:
 4. Otherwise write ONE engaging question a local reader can answer in one tap, directly about this story's topic. Make it fun or opinionated where the story is light.
 5. 2 to 4 short options (max 60 chars each). Options must be balanced — never push one viewpoint. A final playful option is welcome on light stories only.
 6. The question must make sense to someone who just finished this exact article.
-7. The site's goal is conversation: prefer questions readers will want to justify out loud. Where it fits, make the last option an invitation like "Depends — I'll explain in the comments".
+7. The site's goal is conversation: prefer questions readers will want to justify out loud. Every option must be a real answer with substance — NEVER meta options like "I'll explain in the comments", "tell us below", or "other". The site handles the comments invitation separately.
 
 Return ONLY JSON, nothing else:
 {"suitable": true, "question": "...", "options": ["...", "..."]}

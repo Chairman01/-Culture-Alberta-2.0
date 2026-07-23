@@ -54,6 +54,26 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
         }
     }, [draftKey])
 
+    // Poll → comments funnel: after voting, the poll card scrolls here and
+    // hands over a conversation starter so the box is never blank.
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent).detail as { option?: string } | undefined
+            if (!detail?.option) return
+            setContent(prev => (prev.trim() ? prev : `I voted "${detail.option}" because `))
+            setFocused(true)
+            setTimeout(() => {
+                const el = document.getElementById('comment-composer') as HTMLTextAreaElement | null
+                if (el) {
+                    el.focus()
+                    el.setSelectionRange(el.value.length, el.value.length)
+                }
+            }, 700)
+        }
+        window.addEventListener('ca:poll-comment', handler)
+        return () => window.removeEventListener('ca:poll-comment', handler)
+    }, [])
+
     // Auto-dismiss success message
     useEffect(() => {
         if (message?.type === 'success') {
@@ -173,6 +193,7 @@ export function CommentForm({ articleId, onCommentSubmitted }: CommentFormProps)
                         }`}
                     >
                         <textarea
+                            id="comment-composer"
                             value={content}
                             onChange={(e) => {
                                 setContent(e.target.value)

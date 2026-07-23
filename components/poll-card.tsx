@@ -81,8 +81,18 @@ export function PollCard({ articleId, dailyFallback = true }: { articleId?: stri
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible])
 
+    const goToComments = (optionLabel?: string) => {
+        const target = document.getElementById('comments')
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        if (optionLabel) {
+            window.dispatchEvent(new CustomEvent('ca:poll-comment', { detail: { option: optionLabel } }))
+        }
+    }
+
     const vote = async (optionId: string) => {
         if (!data?.poll || submitting) return
+        const firstVote = !data.myOptionId
+        const chosenLabel = data.options?.find(o => o.id === optionId)?.label
         setSubmitting(true)
         try {
             const { data: sessionData } = await supabaseBrowser.auth.getSession()
@@ -98,17 +108,17 @@ export function PollCard({ articleId, dailyFallback = true }: { articleId?: stri
             if (res.ok) {
                 setShowResults(true)
                 await load()
+                // First vote: let the result bars land, then carry the reader into
+                // the comments with their pick as a conversation starter
+                if (firstVote && chosenLabel) {
+                    setTimeout(() => goToComments(chosenLabel), 1600)
+                }
             }
         } catch {
             // ignore — reader can tap again
         } finally {
             setSubmitting(false)
         }
-    }
-
-    const scrollToComments = () => {
-        const target = document.getElementById('comments')
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
 
     if (data && !data.poll) return null
@@ -222,7 +232,7 @@ export function PollCard({ articleId, dailyFallback = true }: { articleId?: stri
                                 </span>
                                 <button
                                     type="button"
-                                    onClick={scrollToComments}
+                                    onClick={() => goToComments(data.options?.find(o => o.id === data.myOptionId)?.label)}
                                     className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 transition-colors"
                                 >
                                     <MessageCircle className="w-4 h-4" />
