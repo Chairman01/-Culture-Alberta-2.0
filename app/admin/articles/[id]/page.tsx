@@ -77,10 +77,17 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [pollQuestion, setPollQuestion] = useState("")
-  const [pollOptions, setPollOptions] = useState("")
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""])
   // What was loaded from the DB — the poll is only re-saved (votes reset) if
   // the admin actually changed it, not on every routine article edit
   const [loadedPoll, setLoadedPoll] = useState({ question: "", options: "" })
+
+  const setPollOption = (index: number, value: string) =>
+    setPollOptions(prev => prev.map((option, i) => (i === index ? value : option)))
+  const addPollOption = () => setPollOptions(prev => (prev.length < 4 ? [...prev, ""] : prev))
+  const removePollOption = (index: number) =>
+    setPollOptions(prev => (prev.length > 2 ? prev.filter((_, i) => i !== index) : prev))
+  const normalizedPollOptions = () => pollOptions.map(o => o.trim()).filter(Boolean).join('\n')
 
   // Trending selection options
   const [trendingHome, setTrendingHome] = useState(false)
@@ -154,10 +161,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           const pollData = await pollRes.json()
           if (pollData.poll?.scope === 'article') {
             const loadedQuestion = pollData.poll.question || ""
-            const loadedOptions = (pollData.options || []).map((o: { label: string }) => o.label).join('\n')
+            const loadedLabels = (pollData.options || []).map((o: { label: string }) => o.label)
             setPollQuestion(loadedQuestion)
-            setPollOptions(loadedOptions)
-            setLoadedPoll({ question: loadedQuestion, options: loadedOptions })
+            setPollOptions(loadedLabels.length >= 2 ? loadedLabels : ["", ""])
+            setLoadedPoll({ question: loadedQuestion, options: loadedLabels.join('\n') })
           }
         }
       } catch {
@@ -298,8 +305,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         featuredCalgary,
         featuredAlberta,
         poll: pollQuestion.trim() &&
-          (pollQuestion.trim() !== loadedPoll.question.trim() || pollOptions.trim() !== loadedPoll.options.trim())
-          ? { question: pollQuestion.trim(), options: pollOptions.split('\n').map(o => o.trim()).filter(Boolean) }
+          (pollQuestion.trim() !== loadedPoll.question.trim() || normalizedPollOptions() !== loadedPoll.options.trim())
+          ? { question: pollQuestion.trim(), options: pollOptions.map(o => o.trim()).filter(Boolean) }
           : undefined
       }
 
@@ -555,7 +562,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
             <Label htmlFor="pollQuestion">Reader poll (optional)</Label>
             <p className="text-xs text-gray-500 mb-2">
               This article&apos;s poll. If you change it, saving replaces the current poll and resets its
-              votes; left untouched, it stays as is. Short punchy options, one per line (2–4).
+              votes; left untouched, it stays as is. Keep the options short and punchy.
             </p>
             <Input
               id="pollQuestion"
@@ -564,13 +571,33 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               placeholder="Poll question"
               maxLength={200}
             />
-            <Textarea
-              value={pollOptions}
-              onChange={(e) => setPollOptions(e.target.value)}
-              placeholder={"Option one\nOption two"}
-              rows={3}
-              className="mt-2"
-            />
+            <div className="mt-2 space-y-2">
+              {pollOptions.map((option, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Input
+                    value={option}
+                    onChange={(e) => setPollOption(index, e.target.value)}
+                    placeholder={`Option ${index + 1}`}
+                    maxLength={60}
+                  />
+                  {pollOptions.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removePollOption(index)}
+                      aria-label={`Remove option ${index + 1}`}
+                      className="shrink-0 w-8 h-8 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 text-lg leading-none"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              {pollOptions.length < 4 && (
+                <Button type="button" variant="outline" size="sm" onClick={addPollOption}>
+                  + Add option
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 

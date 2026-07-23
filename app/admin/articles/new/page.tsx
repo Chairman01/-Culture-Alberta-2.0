@@ -44,7 +44,13 @@ export default function NewArticlePage() {
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [pollQuestion, setPollQuestion] = useState("")
-  const [pollOptions, setPollOptions] = useState("")
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""])
+
+  const setPollOption = (index: number, value: string) =>
+    setPollOptions(prev => prev.map((option, i) => (i === index ? value : option)))
+  const addPollOption = () => setPollOptions(prev => (prev.length < 4 ? [...prev, ""] : prev))
+  const removePollOption = (index: number) =>
+    setPollOptions(prev => (prev.length > 2 ? prev.filter((_, i) => i !== index) : prev))
 
   // Trending selection options
   const [trendingHome, setTrendingHome] = useState(false)
@@ -177,7 +183,7 @@ export default function NewArticlePage() {
           featuredCalgary,
           featuredAlberta,
           poll: pollQuestion.trim()
-            ? { question: pollQuestion.trim(), options: pollOptions.split('\n').map(o => o.trim()).filter(Boolean) }
+            ? { question: pollQuestion.trim(), options: pollOptions.map(o => o.trim()).filter(Boolean) }
             : undefined
         })
       })
@@ -401,7 +407,7 @@ export default function NewArticlePage() {
             <Label htmlFor="pollQuestion">Reader poll (optional)</Label>
             <p className="text-xs text-gray-500 mb-2">
               Leave blank and AI writes one from the article when you publish. Fill it in to use your own —
-              short punchy options, one per line (2–4).
+              keep the options short and punchy.
             </p>
             <Input
               id="pollQuestion"
@@ -410,13 +416,33 @@ export default function NewArticlePage() {
               placeholder="Poll question"
               maxLength={200}
             />
-            <Textarea
-              value={pollOptions}
-              onChange={(e) => setPollOptions(e.target.value)}
-              placeholder={"Option one\nOption two"}
-              rows={3}
-              className="mt-2"
-            />
+            <div className="mt-2 space-y-2">
+              {pollOptions.map((option, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Input
+                    value={option}
+                    onChange={(e) => setPollOption(index, e.target.value)}
+                    placeholder={`Option ${index + 1}`}
+                    maxLength={60}
+                  />
+                  {pollOptions.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removePollOption(index)}
+                      aria-label={`Remove option ${index + 1}`}
+                      className="shrink-0 w-8 h-8 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 text-lg leading-none"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              {pollOptions.length < 4 && (
+                <Button type="button" variant="outline" size="sm" onClick={addPollOption}>
+                  + Add option
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
