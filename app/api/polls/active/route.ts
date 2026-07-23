@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
     try {
         const clientId = request.nextUrl.searchParams.get('clientId') || ''
         const articleId = request.nextUrl.searchParams.get('articleId') || ''
+        // fallback=0: serious policy articles — only their own civic poll may
+        // show, never the playful site-wide daily question
+        const allowDailyFallback = request.nextUrl.searchParams.get('fallback') !== '0'
 
         let poll: { id: string; question: string; category: string; article_id?: string | null } | null = null
 
@@ -24,6 +27,8 @@ export async function GET(request: NextRequest) {
                 .maybeSingle()
             poll = data
         }
+
+        if (!poll && !allowDailyFallback) return NextResponse.json({ poll: null })
 
         if (!poll) {
             const { data, error: pollErr } = await supabase

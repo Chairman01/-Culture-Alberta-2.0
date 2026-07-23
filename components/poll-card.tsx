@@ -41,7 +41,7 @@ interface PollData {
  * the site-wide daily question. The article page suppresses this entirely on
  * sombre stories. After a vote, the card funnels readers into the comments.
  */
-export function PollCard({ articleId }: { articleId?: string }) {
+export function PollCard({ articleId, dailyFallback = true }: { articleId?: string; dailyFallback?: boolean }) {
     const [data, setData] = useState<PollData | null>(null)
     const [showResults, setShowResults] = useState(false)
     const [submitting, setSubmitting] = useState(false)
@@ -63,6 +63,7 @@ export function PollCard({ articleId }: { articleId?: string }) {
             setSignedIn(!!token)
             const params = new URLSearchParams({ clientId: getClientId() })
             if (articleId) params.set('articleId', articleId)
+            if (!dailyFallback) params.set('fallback', '0')
             const res = await fetch(`/api/polls/active?${params.toString()}`, {
                 headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             })

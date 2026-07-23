@@ -58,12 +58,13 @@ Excerpt: ${article.excerpt || ''}
 Body: ${plain}
 
 Rules, in order:
-1. If the story involves death, serious injury, missing persons, crime with victims, addiction, overdoses, layoffs, disasters, or any human suffering: the article gets NO poll. Return {"suitable": false}.
-2. Never write a question that promotes alcohol, bars, nightlife, gambling, casinos, or music festivals/concerts.
-3. Otherwise write ONE engaging question a local reader can answer in one tap, directly about this story's topic. Make it fun or opinionated where the story is light, and a fair civic-opinion question where the story is serious-but-not-tragic policy news (e.g. "Is this a good use of city money?").
-4. 2 to 4 short options (max 60 chars each). Options must be balanced — never push one viewpoint. A final playful option is welcome on light stories.
-5. The question must make sense to someone who just finished this exact article.
-6. The site's goal is conversation: prefer questions with a defensible "hot take" quality — ones readers will want to justify out loud. Where it fits naturally, make the last option an invitation like "Depends — I'll explain in the comments".
+1. If the story involves a death, obituary, serious injury, missing person, crime with identifiable victims, or an active emergency: the article gets NO poll. Return {"suitable": false}. This is absolute.
+2. If the story is serious POLICY or POLITICAL news (government funding or spending, new laws or rules, elections, city council decisions — including on heavy topics like addiction services, housing, or homelessness): write a sober, respectful civic-opinion question about the DECISION (e.g. "Is this the right use of the money?"). No playful tone, no jokes in the options, and never a question about the people affected — only about the policy.
+3. Never write a question that promotes alcohol, bars, nightlife, gambling, casinos, or music festivals/concerts.
+4. Otherwise write ONE engaging question a local reader can answer in one tap, directly about this story's topic. Make it fun or opinionated where the story is light.
+5. 2 to 4 short options (max 60 chars each). Options must be balanced — never push one viewpoint. A final playful option is welcome on light stories only.
+6. The question must make sense to someone who just finished this exact article.
+7. The site's goal is conversation: prefer questions readers will want to justify out loud. Where it fits, make the last option an invitation like "Depends — I'll explain in the comments".
 
 Return ONLY JSON, nothing else:
 {"suitable": true, "question": "...", "options": ["...", "..."]}

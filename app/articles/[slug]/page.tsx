@@ -205,15 +205,27 @@ function isAlertLike(article: Article): boolean {
   return ALERT_TITLE_RE.test(`${article.title || ''} ${article.excerpt || ''}`.toLowerCase())
 }
 
-// The daily poll card is light-hearted — it must never appear under stories
-// about death, violence, or emergencies. Over-suppressing is fine (a missing
-// poll costs nothing); under-suppressing is offensive.
-const SOMBRE_TITLE_RE =
-  /\b(dead|death|dies|died|killed|fatal|fatality|drowns?|drowned|drowning|homicide|murder|stabbing|shooting|vigil|mourns?|mourning|funeral|obituary|missing|body found|suicide|overdoses?|victims?|laid to rest|plane crash|collision|opioids?|addictions?|fentanyl|naloxone|drug poisoning|detox|rehab|treatment beds?|recovery beds?|treatment cent(re|er)|outbreak|epidemic|pandemic|cancer|inquest|coroner|manslaughter|lays? off|laid off|layoffs?|job cuts|evacuations?|evacuated|state of emergency|homeless(ness)?|encampments?|crisis)\b/
+// Poll tone gating, two tiers (over-suppressing is fine; under-suppressing is
+// offensive):
+//  - Tragedy (deaths, obituaries, violence, missing people, emergencies):
+//    NO poll of any kind, ever.
+//  - Serious policy (addiction funding, layoffs, homelessness, health scares):
+//    the article's own AI-written civic question may show, but never the
+//    playful daily fallback.
+const TRAGEDY_TITLE_RE =
+  /\b(dead|death|dies|died|killed|fatal|fatality|drowns?|drowned|drowning|homicide|murder|stabbing|shooting|vigil|mourns?|mourning|funeral|obituar(y|ies)|missing|body found|suicide|overdoses?|victims?|laid to rest|plane crash|collision|manslaughter|inquest|coroner|cancer|evacuations?|evacuated|state of emergency)\b/
 
-function isSombreArticle(article: Article): boolean {
+const POLICY_SOMBRE_TITLE_RE =
+  /\b(opioids?|addictions?|fentanyl|naloxone|drug poisoning|detox|rehab|treatment beds?|recovery beds?|treatment cent(re|er)|outbreak|epidemic|pandemic|lays? off|laid off|layoffs?|job cuts|homeless(ness)?|encampments?|crisis)\b/
+
+function isTragedyArticle(article: Article): boolean {
   const text = `${article.title || ''} ${article.excerpt || ''}`.toLowerCase()
-  return SOMBRE_TITLE_RE.test(text) || getTopicMatches(article).has('crime') || isAlertLike(article)
+  return TRAGEDY_TITLE_RE.test(text) || getTopicMatches(article).has('crime') || isAlertLike(article)
+}
+
+function isPolicySombreArticle(article: Article): boolean {
+  const text = `${article.title || ''} ${article.excerpt || ''}`.toLowerCase()
+  return POLICY_SOMBRE_TITLE_RE.test(text)
 }
 
 // Hard exclusions — these never appear in recommendations, no matter how thin the
@@ -1273,11 +1285,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       <ArticleViewCount slug={slug} articleTitle={loadedArticle.title} />
                     </div>
 
-                    {/* Reader poll — the article's own poll when it has one, else the
-                        site-wide daily question; suppressed entirely on sombre stories */}
-                    {!isSombreArticle(loadedArticle) && (
+                    {/* Reader poll — tragedy stories get nothing; serious policy stories
+                        get only their own civic question (no playful daily fallback);
+                        everything else gets its own poll or the daily question */}
+                    {!isTragedyArticle(loadedArticle) && (
                       <div className="mt-8">
-                        <PollCard articleId={loadedArticle.id} />
+                        <PollCard
+                          articleId={loadedArticle.id}
+                          dailyFallback={!isPolicySombreArticle(loadedArticle)}
+                        />
                       </div>
                     )}
 
