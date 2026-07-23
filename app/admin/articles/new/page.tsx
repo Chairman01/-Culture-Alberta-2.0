@@ -43,6 +43,8 @@ export default function NewArticlePage() {
   const [imageSource, setImageSource] = useState("")
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [pollQuestion, setPollQuestion] = useState("")
+  const [pollOptions, setPollOptions] = useState("")
 
   // Trending selection options
   const [trendingHome, setTrendingHome] = useState(false)
@@ -173,7 +175,10 @@ export default function NewArticlePage() {
           featuredHome,
           featuredEdmonton,
           featuredCalgary,
-          featuredAlberta
+          featuredAlberta,
+          poll: pollQuestion.trim()
+            ? { question: pollQuestion.trim(), options: pollOptions.split('\n').map(o => o.trim()).filter(Boolean) }
+            : undefined
         })
       })
 
@@ -390,6 +395,28 @@ export default function NewArticlePage() {
             <p className="text-sm text-gray-500 mt-1">
               Separate tags with commas. For neighbourhood articles, include “neighborhood” as a category or tag.
             </p>
+          </div>
+
+          <div className="rounded-lg border border-orange-200 bg-orange-50/40 p-4">
+            <Label htmlFor="pollQuestion">Reader poll (optional)</Label>
+            <p className="text-xs text-gray-500 mb-2">
+              Leave blank and AI writes one from the article when you publish. Fill it in to use your own —
+              short punchy options, one per line (2–4).
+            </p>
+            <Input
+              id="pollQuestion"
+              value={pollQuestion}
+              onChange={(e) => setPollQuestion(e.target.value)}
+              placeholder="Poll question"
+              maxLength={200}
+            />
+            <Textarea
+              value={pollOptions}
+              onChange={(e) => setPollOptions(e.target.value)}
+              placeholder={"Option one\nOption two"}
+              rows={3}
+              className="mt-2"
+            />
           </div>
         </div>
 

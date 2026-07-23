@@ -35,6 +35,31 @@ export default function AdminPollsPage() {
     const [category, setCategory] = useState('general')
     const [optionsText, setOptionsText] = useState('')
     const [creating, setCreating] = useState(false)
+    const [backfilling, setBackfilling] = useState(false)
+    const [backfillNote, setBackfillNote] = useState('')
+
+    const backfill = async () => {
+        setBackfilling(true)
+        setBackfillNote('Writing polls — this takes a minute or two per batch…')
+        try {
+            const res = await fetch('/api/admin/polls/backfill', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ limit: 20 }),
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.error || 'Backfill failed')
+            setBackfillNote(
+                `Wrote ${json.created} poll${json.created === 1 ? '' : 's'} (${json.skippedAsSensitive} skipped as sensitive). ` +
+                (json.remaining > 0 ? `${json.remaining} articles still need one — run it again.` : 'All caught up.')
+            )
+            await load()
+        } catch (e) {
+            setBackfillNote(e instanceof Error ? e.message : 'Backfill failed')
+        } finally {
+            setBackfilling(false)
+        }
+    }
 
     const load = async () => {
         setRefreshing(true)
@@ -146,9 +171,19 @@ export default function AdminPollsPage() {
                             Story polls
                             <span className="ml-2 text-sm font-normal text-gray-400">{polls.filter(p => p.article_id).length}</span>
                         </h2>
-                        <p className="text-xs text-gray-500 mb-3">
-                            AI-written for each published article (sombre stories are skipped). These run on their own article only.
-                        </p>
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <p className="text-xs text-gray-500">
+                                AI-written for each published article (sombre stories are skipped). These run on their own article only.
+                            </p>
+                            <button
+                                onClick={backfill}
+                                disabled={backfilling}
+                                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-50"
+                            >
+                                {backfilling ? 'Writing…' : 'Write missing story polls'}
+                            </button>
+                        </div>
+                        {backfillNote && <p className="text-xs text-gray-600 mb-3">{backfillNote}</p>}
                         {polls.filter(p => p.article_id).length === 0 ? (
                             <p className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-3">
                                 None yet — one is generated automatically the next time you publish an article.

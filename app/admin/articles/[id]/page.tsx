@@ -76,6 +76,11 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [pollQuestion, setPollQuestion] = useState("")
+  const [pollOptions, setPollOptions] = useState("")
+  // What was loaded from the DB — the poll is only re-saved (votes reset) if
+  // the admin actually changed it, not on every routine article edit
+  const [loadedPoll, setLoadedPoll] = useState({ question: "", options: "" })
 
   // Trending selection options
   const [trendingHome, setTrendingHome] = useState(false)
@@ -141,6 +146,23 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setFeaturedEdmonton(articleData.featuredEdmonton || false)
       setFeaturedCalgary(articleData.featuredCalgary || false)
       setFeaturedAlberta(articleData.featuredAlberta || false)
+
+      // Load this article's existing poll so it can be edited in place
+      try {
+        const pollRes = await fetch(`/api/polls/active?articleId=${encodeURIComponent(articleData.id)}&fallback=0&clientId=admin-editor`)
+        if (pollRes.ok) {
+          const pollData = await pollRes.json()
+          if (pollData.poll?.scope === 'article') {
+            const loadedQuestion = pollData.poll.question || ""
+            const loadedOptions = (pollData.options || []).map((o: { label: string }) => o.label).join('\n')
+            setPollQuestion(loadedQuestion)
+            setPollOptions(loadedOptions)
+            setLoadedPoll({ question: loadedQuestion, options: loadedOptions })
+          }
+        }
+      } catch {
+        /* poll prefill is best-effort */
+      }
 
       console.log('Form fields set - Title:', title, 'Content length:', content?.length || 0)
     } catch (error) {
@@ -274,7 +296,11 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         featuredHome,
         featuredEdmonton,
         featuredCalgary,
-        featuredAlberta
+        featuredAlberta,
+        poll: pollQuestion.trim() &&
+          (pollQuestion.trim() !== loadedPoll.question.trim() || pollOptions.trim() !== loadedPoll.options.trim())
+          ? { question: pollQuestion.trim(), options: pollOptions.split('\n').map(o => o.trim()).filter(Boolean) }
+          : undefined
       }
 
       console.log('Sending update data:', updateData)
@@ -523,6 +549,28 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
             <p className="text-sm text-gray-500 mt-1">
               Separate tags with commas. For neighbourhood articles, include “neighborhood” as a category or tag.
             </p>
+          </div>
+
+          <div className="rounded-lg border border-orange-200 bg-orange-50/40 p-4">
+            <Label htmlFor="pollQuestion">Reader poll (optional)</Label>
+            <p className="text-xs text-gray-500 mb-2">
+              This article&apos;s poll. If you change it, saving replaces the current poll and resets its
+              votes; left untouched, it stays as is. Short punchy options, one per line (2–4).
+            </p>
+            <Input
+              id="pollQuestion"
+              value={pollQuestion}
+              onChange={(e) => setPollQuestion(e.target.value)}
+              placeholder="Poll question"
+              maxLength={200}
+            />
+            <Textarea
+              value={pollOptions}
+              onChange={(e) => setPollOptions(e.target.value)}
+              placeholder={"Option one\nOption two"}
+              rows={3}
+              className="mt-2"
+            />
           </div>
         </div>
 

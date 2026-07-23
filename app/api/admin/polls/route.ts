@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
         const supabase = getServiceClient()
         const [{ data: polls, error: pollErr }, { data: options, error: optErr }, { data: votes, error: voteErr }] =
             await Promise.all([
-                supabase.from('polls').select('*').order('sort_order').order('created_at'),
+                supabase.from('polls').select('*').neq('status', 'skipped').order('sort_order').order('created_at'),
                 supabase.from('poll_options').select('id, poll_id, label, sort').order('sort'),
                 supabase.from('poll_votes').select('poll_id, option_id, city'),
             ])

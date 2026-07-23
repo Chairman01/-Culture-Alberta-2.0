@@ -205,27 +205,17 @@ function isAlertLike(article: Article): boolean {
   return ALERT_TITLE_RE.test(`${article.title || ''} ${article.excerpt || ''}`.toLowerCase())
 }
 
-// Poll tone gating, two tiers (over-suppressing is fine; under-suppressing is
-// offensive):
-//  - Tragedy (deaths, obituaries, violence, missing people, emergencies):
-//    NO poll of any kind, ever.
-//  - Serious policy (addiction funding, layoffs, homelessness, health scares):
-//    the article's own AI-written civic question may show, but never the
-//    playful daily fallback.
+// Poll tone gate: every article shows only ITS OWN poll (no site-wide fallback
+// question, per editorial decision — a random question under an unrelated story
+// reads wrong). Tragedy stories (deaths, obituaries, violence, missing people,
+// emergencies) never show a poll at all, even if one exists. The AI generator
+// applies the same judgment at creation time; this is the render-time backstop.
 const TRAGEDY_TITLE_RE =
   /\b(dead|death|dies|died|killed|fatal|fatality|drowns?|drowned|drowning|homicide|murder|stabbing|shooting|vigil|mourns?|mourning|funeral|obituar(y|ies)|missing|body found|suicide|overdoses?|victims?|laid to rest|plane crash|collision|manslaughter|inquest|coroner|cancer|evacuations?|evacuated|state of emergency)\b/
-
-const POLICY_SOMBRE_TITLE_RE =
-  /\b(opioids?|addictions?|fentanyl|naloxone|drug poisoning|detox|rehab|treatment beds?|recovery beds?|treatment cent(re|er)|outbreak|epidemic|pandemic|lays? off|laid off|layoffs?|job cuts|homeless(ness)?|encampments?|crisis)\b/
 
 function isTragedyArticle(article: Article): boolean {
   const text = `${article.title || ''} ${article.excerpt || ''}`.toLowerCase()
   return TRAGEDY_TITLE_RE.test(text) || getTopicMatches(article).has('crime') || isAlertLike(article)
-}
-
-function isPolicySombreArticle(article: Article): boolean {
-  const text = `${article.title || ''} ${article.excerpt || ''}`.toLowerCase()
-  return POLICY_SOMBRE_TITLE_RE.test(text)
 }
 
 // Hard exclusions — these never appear in recommendations, no matter how thin the
@@ -1285,15 +1275,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       <ArticleViewCount slug={slug} articleTitle={loadedArticle.title} />
                     </div>
 
-                    {/* Reader poll — tragedy stories get nothing; serious policy stories
-                        get only their own civic question (no playful daily fallback);
-                        everything else gets its own poll or the daily question */}
+                    {/* Reader poll — this article's own question only; tragedy stories
+                        get nothing */}
                     {!isTragedyArticle(loadedArticle) && (
                       <div className="mt-8">
-                        <PollCard
-                          articleId={loadedArticle.id}
-                          dailyFallback={!isPolicySombreArticle(loadedArticle)}
-                        />
+                        <PollCard articleId={loadedArticle.id} dailyFallback={false} />
                       </div>
                     )}
 

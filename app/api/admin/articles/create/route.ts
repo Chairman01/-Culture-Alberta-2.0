@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
 import { postArticleToSocial } from '@/lib/social'
 import { warmSocialPreview } from '@/lib/social-image-url'
-import { generatePollForArticle } from '@/lib/poll-generator'
+import { generatePollForArticle, saveManualPollForArticle } from '@/lib/poll-generator'
 import { requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 
@@ -187,6 +187,16 @@ export async function POST(request: NextRequest) {
       // Don't fail the entire request if revalidation fails
     }
 
+    // A poll written in the editor always wins over AI generation, and saves
+    // even on drafts so it goes live together with the article
+    const manualPoll = articleData.poll as { question?: string; options?: string[] } | undefined
+    const hasManualPoll = !!(manualPoll?.question?.trim() && Array.isArray(manualPoll?.options) &&
+      manualPoll.options.filter((o) => typeof o === 'string' && o.trim()).length >= 2)
+    if (hasManualPoll) {
+      saveManualPollForArticle(data.id, manualPoll!.question!, manualPoll!.options!)
+        .catch(err => console.warn('⚠️ Manual poll save failed (non-fatal):', err))
+    }
+
     // Auto-notify search engines about the new article (non-blocking)
     if (data.status === 'published') {
       notifySearchEngines(`/articles/${data.slug || articleSlug}`).catch(err =>
@@ -203,14 +213,17 @@ export async function POST(request: NextRequest) {
           imageUrl: data.image_url,
         }))
         .catch(err => console.warn('⚠️ Social posting failed (non-fatal):', err))
-      // Generate this article's reader poll (non-blocking; skips sombre stories)
-      generatePollForArticle({
-        id: data.id,
-        title: data.title,
-        excerpt: data.excerpt,
-        content: data.content,
-        category: data.category,
-      }).catch(err => console.warn('⚠️ Poll generation failed (non-fatal):', err))
+      // Generate this article's reader poll unless the editor supplied one
+      // (non-blocking; the AI skips sombre stories)
+      if (!hasManualPoll) {
+        generatePollForArticle({
+          id: data.id,
+          title: data.title,
+          excerpt: data.excerpt,
+          content: data.content,
+          category: data.category,
+        }).catch(err => console.warn('⚠️ Poll generation failed (non-fatal):', err))
+      }
     }
 
     return NextResponse.json({

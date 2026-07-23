@@ -27,11 +27,59 @@ interface GeneratedPoll {
     options?: string[]
 }
 
-export async function generatePollForArticle(article: ArticleForPoll): Promise<void> {
+export type PollGenerationResult = 'created' | 'exists' | 'unsuitable' | 'error' | 'no-key'
+
+/**
+ * Saves a hand-written poll for an article (from the article editor),
+ * replacing any existing poll for it. Manual always beats AI.
+ */
+export async function saveManualPollForArticle(
+    articleId: string,
+    question: string,
+    optionLabels: string[]
+): Promise<boolean> {
+    const cleanQuestion = String(question || '').trim().slice(0, 200)
+    const cleanOptions = (optionLabels || [])
+        .map(label => String(label || '').trim())
+        .filter(Boolean)
+        .slice(0, 4)
+    if (!cleanQuestion || cleanOptions.length < 2) return false
+
+    const supabase = getServiceClient()
+    await supabase.from('polls').delete().eq('article_id', articleId)
+
+    const { data: poll, error: pollErr } = await supabase
+        .from('polls')
+        .insert([{
+            question: cleanQuestion,
+            category: 'general',
+            status: 'active',
+            article_id: articleId,
+            activated_at: new Date().toISOString(),
+        }])
+        .select('id')
+        .single()
+    if (pollErr || !poll) {
+        console.error('[poll-generator] manual poll insert error:', pollErr)
+        return false
+    }
+
+    const { error: optErr } = await supabase
+        .from('poll_options')
+        .insert(cleanOptions.map((label, index) => ({ poll_id: poll.id, label: label.slice(0, 120), sort: index })))
+    if (optErr) {
+        console.error('[poll-generator] manual poll options error:', optErr)
+        await supabase.from('polls').delete().eq('id', poll.id)
+        return false
+    }
+    return true
+}
+
+export async function generatePollForArticle(article: ArticleForPoll): Promise<PollGenerationResult> {
     const apiKey = process.env.ANTHROPIC_API_KEY
     if (!apiKey) {
         console.warn('[poll-generator] ANTHROPIC_API_KEY missing — skipping article poll')
-        return
+        return 'no-key'
     }
 
     const supabase = getServiceClient()
@@ -42,7 +90,7 @@ export async function generatePollForArticle(article: ArticleForPoll): Promise<v
         .select('id')
         .eq('article_id', article.id)
         .maybeSingle()
-    if (existing) return
+    if (existing) return 'exists'
 
     const plain = String(article.content || '')
         .replace(/<[^>]*>/g, ' ')
@@ -85,20 +133,31 @@ or {"suitable": false}`
             .trim()
 
         const match = raw.match(/\{[\s\S]*\}/)
-        if (!match) return
+        if (!match) return 'error'
         let parsed: GeneratedPoll
         try {
             parsed = JSON.parse(match[0])
         } catch {
-            return
+            return 'error'
         }
 
-        if (!parsed.suitable || !parsed.question || !Array.isArray(parsed.options)) return
+        const markUnsuitable = async (): Promise<'unsuitable'> => {
+            // Persist the judgment so backfills never re-bill the same article
+            await supabase.from('polls').insert([{
+                question: 'No poll — story judged too sensitive',
+                category: 'general',
+                status: 'skipped',
+                article_id: article.id,
+            }])
+            return 'unsuitable'
+        }
+
+        if (!parsed.suitable || !parsed.question || !Array.isArray(parsed.options)) return markUnsuitable()
         const options = parsed.options
             .map((o) => String(o).trim())
             .filter(Boolean)
             .slice(0, 4)
-        if (options.length < 2) return
+        if (options.length < 2) return markUnsuitable()
 
         const { data: poll, error: pollErr } = await supabase
             .from('polls')
@@ -113,7 +172,7 @@ or {"suitable": false}`
             .single()
         if (pollErr || !poll) {
             console.error('[poll-generator] insert error:', pollErr)
-            return
+            return 'error'
         }
 
         const { error: optErr } = await supabase
@@ -122,11 +181,13 @@ or {"suitable": false}`
         if (optErr) {
             console.error('[poll-generator] options error:', optErr)
             await supabase.from('polls').delete().eq('id', poll.id)
-            return
+            return 'error'
         }
 
         console.log(`[poll-generator] created poll for "${article.title}": ${parsed.question}`)
+        return 'created'
     } catch (err) {
         console.error('[poll-generator] generation failed (non-fatal):', err)
+        return 'error'
     }
 }
