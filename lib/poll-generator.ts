@@ -62,7 +62,7 @@ Rules, in order:
 2. If the story is serious POLICY or POLITICAL news (government funding or spending, new laws or rules, elections, city council decisions — including on heavy topics like addiction services, housing, or homelessness): write a sober, respectful civic-opinion question about the DECISION (e.g. "Is this the right use of the money?"). No playful tone, no jokes in the options, and never a question about the people affected — only about the policy.
 3. Never write a question that promotes alcohol, bars, nightlife, gambling, casinos, or music festivals/concerts.
 4. Otherwise write ONE engaging question a local reader can answer in one tap, directly about this story's topic. Make it fun or opinionated where the story is light.
-5. 2 to 4 short options (max 60 chars each). Options must be balanced — never push one viewpoint. A final playful option is welcome on light stories only.
+5. 2 to 4 options, each SHORT and punchy — 2 to 6 words, max 40 characters. Sound like a local talking, not a survey. Never use the formulaic "one side / other side / not sure" template, and never include a "not sure", "no opinion", or "undecided" option. Options must still be balanced — never push one viewpoint. A playful option is welcome on light stories only.
 6. The question must make sense to someone who just finished this exact article.
 7. The site's goal is conversation: prefer questions readers will want to justify out loud. Every option must be a real answer with substance — NEVER meta options like "I'll explain in the comments", "tell us below", or "other". The site handles the comments invitation separately.
 

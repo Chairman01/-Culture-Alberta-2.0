@@ -91,7 +91,6 @@ export function PollCard({ articleId, dailyFallback = true }: { articleId?: stri
 
     const vote = async (optionId: string) => {
         if (!data?.poll || submitting) return
-        const firstVote = !data.myOptionId
         const chosenLabel = data.options?.find(o => o.id === optionId)?.label
         setSubmitting(true)
         try {
@@ -108,9 +107,9 @@ export function PollCard({ articleId, dailyFallback = true }: { articleId?: stri
             if (res.ok) {
                 setShowResults(true)
                 await load()
-                // First vote: let the result bars land, then carry the reader into
-                // the comments with their pick as a conversation starter
-                if (firstVote && chosenLabel) {
+                // Let the result bars land, then carry the reader into the
+                // comments with their pick as a conversation starter
+                if (chosenLabel) {
                     setTimeout(() => goToComments(chosenLabel), 1600)
                 }
             }
