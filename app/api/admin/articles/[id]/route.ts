@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
 import { postArticleToSocial } from '@/lib/social'
 import { warmSocialPreview } from '@/lib/social-image-url'
-import { generatePollForArticle, saveManualPollForArticle } from '@/lib/poll-generator'
+import { saveManualPollForArticle, deletePollForArticle } from '@/lib/poll-generator'
 import { requireAdmin, requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 
@@ -385,14 +385,18 @@ export async function PUT(
       console.error('❌ Revalidation failed:', revalidateError)
     }
 
-    // A poll written in the editor always wins over AI generation, and saves
-    // even on drafts so it goes live together with the article
-    const manualPoll = articleData.poll as { question?: string; options?: string[] } | undefined
+    // Polls are editor-controlled: a poll object saves/replaces the article's
+    // poll; an explicit null means the editor unticked the box (delete it);
+    // absent means no change.
+    const manualPoll = articleData.poll as { question?: string; options?: string[] } | null | undefined
     const hasManualPoll = !!(manualPoll?.question?.trim() && Array.isArray(manualPoll?.options) &&
       manualPoll.options.filter((o) => typeof o === 'string' && o.trim()).length >= 2)
     if (hasManualPoll) {
       saveManualPollForArticle(data.id, manualPoll!.question!, manualPoll!.options!)
         .catch(err => console.warn('⚠️ Manual poll save failed (non-fatal):', err))
+    } else if (manualPoll === null) {
+      deletePollForArticle(data.id)
+        .catch(err => console.warn('⚠️ Poll removal failed (non-fatal):', err))
     }
 
     // Auto-notify search engines about the updated article (non-blocking)
@@ -413,17 +417,7 @@ export async function PUT(
           imageUrl: data.image_url,
         }))
         .catch(err => console.warn('⚠️ Social posting failed (non-fatal):', err))
-      // Generate this article's reader poll unless the editor supplied one
-      // (non-blocking; dedupes on re-save, the AI skips sombre stories)
-      if (!hasManualPoll) {
-        generatePollForArticle({
-          id: data.id,
-          title: data.title,
-          excerpt: data.excerpt,
-          content: data.content,
-          category: data.category,
-        }).catch(err => console.warn('⚠️ Poll generation failed (non-fatal):', err))
-      }
+      // Polls are editor-controlled: no automatic generation on publish
     }
 
     return NextResponse.json({

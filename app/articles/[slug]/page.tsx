@@ -206,16 +206,21 @@ function isAlertLike(article: Article): boolean {
 }
 
 // Poll tone gate: every article shows only ITS OWN poll (no site-wide fallback
-// question, per editorial decision — a random question under an unrelated story
-// reads wrong). Tragedy stories (deaths, obituaries, violence, missing people,
-// emergencies) never show a poll at all, even if one exists. The AI generator
-// applies the same judgment at creation time; this is the render-time backstop.
+// question, per editorial decision). The AI generator is the primary judge —
+// it reads the full article and refuses polls on sensitive stories — so this
+// render-time backstop only blocks true tragedy/emergency stories. It must NOT
+// match broad crime words like "police": a victimless "driver caught at
+// 230 km/h" story is prime poll material even though police are in the title.
 const TRAGEDY_TITLE_RE =
-  /\b(dead|death|dies|died|killed|fatal|fatality|drowns?|drowned|drowning|homicide|murder|stabbing|shooting|vigil|mourns?|mourning|funeral|obituar(y|ies)|missing|body found|suicide|overdoses?|victims?|laid to rest|plane crash|collision|manslaughter|inquest|coroner|cancer|evacuations?|evacuated|state of emergency)\b/
+  /\b(dead|death|dies|died|killed|fatal|fatality|drowns?|drowned|drowning|homicide|murder|stabbing|shooting|assaults?|gunpoint|robbery|vigil|mourns?|mourning|funeral|obituar(y|ies)|missing|body found|suicide|overdoses?|victims?|laid to rest|plane crash|collision|manslaughter|inquest|coroner|cancer|evacuations?|evacuated|state of emergency)\b/
 
+// Deliberately NOT reusing isAlertLike here: its regex catches stray words like
+// "warning range" in a breathalyzer story. Polls now exist only by deliberate
+// choice (editor checkbox or user-triggered backfill), so the only render-time
+// backstop needed is the death/violence list above.
 function isTragedyArticle(article: Article): boolean {
   const text = `${article.title || ''} ${article.excerpt || ''}`.toLowerCase()
-  return TRAGEDY_TITLE_RE.test(text) || getTopicMatches(article).has('crime') || isAlertLike(article)
+  return TRAGEDY_TITLE_RE.test(text)
 }
 
 // Hard exclusions — these never appear in recommendations, no matter how thin the

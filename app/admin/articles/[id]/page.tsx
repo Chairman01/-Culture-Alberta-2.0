@@ -76,11 +76,33 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [includePoll, setIncludePoll] = useState(false)
+  const [suggestingPoll, setSuggestingPoll] = useState(false)
   const [pollQuestion, setPollQuestion] = useState("")
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""])
   // What was loaded from the DB — the poll is only re-saved (votes reset) if
-  // the admin actually changed it, not on every routine article edit
-  const [loadedPoll, setLoadedPoll] = useState({ question: "", options: "" })
+  // the admin actually changed it, not on every routine article edit. hadPoll
+  // tracks whether one existed so unticking the box deletes it deliberately.
+  const [loadedPoll, setLoadedPoll] = useState({ question: "", options: "", hadPoll: false })
+
+  const suggestPoll = async () => {
+    setSuggestingPoll(true)
+    try {
+      const res = await fetch('/api/admin/polls/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, excerpt, category }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Suggestion failed')
+      setPollQuestion(data.question || "")
+      setPollOptions(Array.isArray(data.options) && data.options.length >= 2 ? data.options : ["", ""])
+    } catch (e) {
+      toast({ title: "No suggestion", description: e instanceof Error ? e.message : 'Suggestion failed', variant: "destructive" })
+    } finally {
+      setSuggestingPoll(false)
+    }
+  }
 
   const setPollOption = (index: number, value: string) =>
     setPollOptions(prev => prev.map((option, i) => (i === index ? value : option)))
@@ -162,9 +184,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           if (pollData.poll?.scope === 'article') {
             const loadedQuestion = pollData.poll.question || ""
             const loadedLabels = (pollData.options || []).map((o: { label: string }) => o.label)
+            setIncludePoll(true)
             setPollQuestion(loadedQuestion)
             setPollOptions(loadedLabels.length >= 2 ? loadedLabels : ["", ""])
-            setLoadedPoll({ question: loadedQuestion, options: loadedLabels.join('\n') })
+            setLoadedPoll({ question: loadedQuestion, options: loadedLabels.join('\n'), hadPoll: true })
           }
         }
       } catch {
@@ -304,10 +327,12 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         featuredEdmonton,
         featuredCalgary,
         featuredAlberta,
-        poll: pollQuestion.trim() &&
-          (pollQuestion.trim() !== loadedPoll.question.trim() || normalizedPollOptions() !== loadedPoll.options.trim())
-          ? { question: pollQuestion.trim(), options: pollOptions.map(o => o.trim()).filter(Boolean) }
-          : undefined
+        poll: !includePoll && loadedPoll.hadPoll
+          ? null
+          : includePoll && pollQuestion.trim() &&
+            (pollQuestion.trim() !== loadedPoll.question.trim() || normalizedPollOptions() !== loadedPoll.options.trim())
+            ? { question: pollQuestion.trim(), options: pollOptions.map(o => o.trim()).filter(Boolean) }
+            : undefined
       }
 
       console.log('Sending update data:', updateData)
@@ -559,17 +584,37 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           </div>
 
           <div className="rounded-lg border border-orange-200 bg-orange-50/40 p-4">
-            <Label htmlFor="pollQuestion">Reader poll (optional)</Label>
-            <p className="text-xs text-gray-500 mb-2">
-              This article&apos;s poll. If you change it, saving replaces the current poll and resets its
-              votes; left untouched, it stays as is. Keep the options short and punchy.
+            <div className="flex items-center justify-between gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includePoll}
+                  onChange={(e) => setIncludePoll(e.target.checked)}
+                  className="w-4 h-4 accent-orange-500"
+                />
+                <span className="font-medium text-gray-900">This article has a reader poll</span>
+              </label>
+              {includePoll && (
+                <Button type="button" variant="outline" size="sm" onClick={suggestPoll} disabled={suggestingPoll}>
+                  {suggestingPoll ? "Drafting…" : "✨ Suggest poll"}
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {includePoll
+                ? "Changing the question or options replaces the poll and resets its votes; untouched, it stays as is."
+                : loadedPoll.hadPoll
+                  ? "Unticked — saving will REMOVE this article's existing poll and its votes."
+                  : "Unticked — this article has no poll."}
             </p>
+            {includePoll && (<>
             <Input
               id="pollQuestion"
               value={pollQuestion}
               onChange={(e) => setPollQuestion(e.target.value)}
               placeholder="Poll question"
               maxLength={200}
+              className="mt-2"
             />
             <div className="mt-2 space-y-2">
               {pollOptions.map((option, index) => (
@@ -598,6 +643,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                 </Button>
               )}
             </div>
+            </>)}
           </div>
         </div>
 

@@ -43,8 +43,33 @@ export default function NewArticlePage() {
   const [imageSource, setImageSource] = useState("")
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [includePoll, setIncludePoll] = useState(false)
+  const [suggestingPoll, setSuggestingPoll] = useState(false)
   const [pollQuestion, setPollQuestion] = useState("")
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""])
+
+  const suggestPoll = async () => {
+    if (!title.trim() && !content.trim()) {
+      toast({ title: "Add a title first", description: "Enter a title or some content so AI can draft a poll.", variant: "destructive" })
+      return
+    }
+    setSuggestingPoll(true)
+    try {
+      const res = await fetch('/api/admin/polls/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, excerpt, category: category || categories[0] || '' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Suggestion failed')
+      setPollQuestion(data.question || "")
+      setPollOptions(Array.isArray(data.options) && data.options.length >= 2 ? data.options : ["", ""])
+    } catch (e) {
+      toast({ title: "No suggestion", description: e instanceof Error ? e.message : 'Suggestion failed', variant: "destructive" })
+    } finally {
+      setSuggestingPoll(false)
+    }
+  }
 
   const setPollOption = (index: number, value: string) =>
     setPollOptions(prev => prev.map((option, i) => (i === index ? value : option)))
@@ -151,6 +176,15 @@ export default function NewArticlePage() {
       return
     }
 
+    if (includePoll && (!pollQuestion.trim() || pollOptions.map(o => o.trim()).filter(Boolean).length < 2)) {
+      toast({
+        title: "Finish the poll or untick it",
+        description: "The poll box is checked — add a question and at least 2 options, or untick it to publish without one.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSaving(true)
 
     try {
@@ -182,7 +216,7 @@ export default function NewArticlePage() {
           featuredEdmonton,
           featuredCalgary,
           featuredAlberta,
-          poll: pollQuestion.trim()
+          poll: includePoll && pollQuestion.trim()
             ? { question: pollQuestion.trim(), options: pollOptions.map(o => o.trim()).filter(Boolean) }
             : undefined
         })
@@ -404,17 +438,35 @@ export default function NewArticlePage() {
           </div>
 
           <div className="rounded-lg border border-orange-200 bg-orange-50/40 p-4">
-            <Label htmlFor="pollQuestion">Reader poll (optional)</Label>
-            <p className="text-xs text-gray-500 mb-2">
-              Leave blank and AI writes one from the article when you publish. Fill it in to use your own —
-              keep the options short and punchy.
+            <div className="flex items-center justify-between gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includePoll}
+                  onChange={(e) => setIncludePoll(e.target.checked)}
+                  className="w-4 h-4 accent-orange-500"
+                />
+                <span className="font-medium text-gray-900">Add a reader poll to this article</span>
+              </label>
+              {includePoll && (
+                <Button type="button" variant="outline" size="sm" onClick={suggestPoll} disabled={suggestingPoll}>
+                  {suggestingPoll ? "Drafting…" : "✨ Suggest poll"}
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {includePoll
+                ? "Write the question and 2–4 short punchy options, or let AI draft one for you to edit."
+                : "Unchecked means this article ships without a poll — your call, nothing is auto-generated."}
             </p>
+            {includePoll && (<>
             <Input
               id="pollQuestion"
               value={pollQuestion}
               onChange={(e) => setPollQuestion(e.target.value)}
               placeholder="Poll question"
               maxLength={200}
+              className="mt-2"
             />
             <div className="mt-2 space-y-2">
               {pollOptions.map((option, index) => (
@@ -443,6 +495,7 @@ export default function NewArticlePage() {
                 </Button>
               )}
             </div>
+            </>)}
           </div>
         </div>
 
