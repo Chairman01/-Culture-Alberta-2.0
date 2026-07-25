@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { BarChart3, Check, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { BarChart3, Check, Download, Loader2, Plus, RefreshCw, Trash2, Trophy } from 'lucide-react'
 
 interface AdminPollOption {
     id: string
@@ -37,6 +37,7 @@ export default function AdminPollsPage() {
     const [creating, setCreating] = useState(false)
     const [backfilling, setBackfilling] = useState(false)
     const [backfillNote, setBackfillNote] = useState('')
+    const [storySort, setStorySort] = useState<'responses' | 'newest'>('responses')
 
     const backfill = async () => {
         setBackfilling(true)
@@ -132,6 +133,49 @@ export default function AdminPollsPage() {
         }
     }
 
+    // Story polls, ranked. "Newest" is the API order (newest first after we reverse
+    // created_at ascending); "responses" surfaces the best-performing questions.
+    const storyPolls = useMemo(() => {
+        const rows = (polls || []).filter(p => p.article_id)
+        const byNewest = [...rows].reverse()
+        if (storySort === 'newest') return byNewest
+        return [...byNewest].sort((a, b) => b.totalVotes - a.totalVotes)
+    }, [polls, storySort])
+
+    const storyStats = useMemo(() => {
+        const totalVotes = storyPolls.reduce((sum, p) => sum + p.totalVotes, 0)
+        const answered = storyPolls.filter(p => p.totalVotes > 0).length
+        const top = storyPolls.reduce<AdminPoll | null>((best, p) => (!best || p.totalVotes > best.totalVotes ? p : best), null)
+        return { totalVotes, answered, top: top && top.totalVotes > 0 ? top : null }
+    }, [storyPolls])
+
+    const exportCsv = () => {
+        const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`
+        const header = ['Rank', 'Question', 'Article', 'Total votes', 'Status', 'Winning option', 'Option', 'Votes', 'Percent']
+        const lines = [header.map(esc).join(',')]
+        // Rank by responses regardless of the on-screen sort, so the file is stable.
+        const ranked = [...storyPolls].sort((a, b) => b.totalVotes - a.totalVotes)
+        ranked.forEach((poll, i) => {
+            const winner = poll.totalVotes > 0
+                ? [...poll.options].sort((a, b) => b.votes - a.votes)[0]?.label ?? ''
+                : ''
+            poll.options.forEach(option => {
+                const pct = poll.totalVotes > 0 ? Math.round((option.votes / poll.totalVotes) * 100) : 0
+                lines.push([
+                    i + 1, poll.question, poll.articleTitle || '', poll.totalVotes, poll.status,
+                    winner, option.label, option.votes, `${pct}%`,
+                ].map(esc).join(','))
+            })
+        })
+        const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `story-polls-${new Date().toISOString().slice(0, 10)}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+    }
+
     const sections: { title: string; hint: string; status: AdminPoll['status']; }[] = [
         { title: 'Live now', hint: 'Showing at the end of every article. The cron rotates it each morning.', status: 'active' },
         { title: 'Queued', hint: 'Approved and waiting — the rotation picks from the top of this list.', status: 'approved' },
@@ -169,36 +213,92 @@ export default function AdminPollsPage() {
                     <section>
                         <h2 className="text-lg font-semibold text-gray-900">
                             Story polls
-                            <span className="ml-2 text-sm font-normal text-gray-400">{polls.filter(p => p.article_id).length}</span>
+                            <span className="ml-2 text-sm font-normal text-gray-400">{storyPolls.length}</span>
                         </h2>
+                        <p className="text-xs text-gray-500 mb-3">
+                            AI-written for each published article (sombre stories are skipped). These run on their own article only.
+                        </p>
+
+                        {storyPolls.length > 0 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                                <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+                                    <p className="text-xs text-gray-400">Total responses</p>
+                                    <p className="text-2xl font-bold text-gray-900 tabular-nums">{storyStats.totalVotes.toLocaleString()}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">{storyStats.answered} of {storyPolls.length} polls got votes</p>
+                                </div>
+                                <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 sm:col-span-2 min-w-0">
+                                    <p className="text-xs text-orange-600 flex items-center gap-1">
+                                        <Trophy className="w-3.5 h-3.5" /> Most responses
+                                    </p>
+                                    {storyStats.top ? (
+                                        <>
+                                            <p className="font-semibold text-gray-900 truncate mt-0.5">{storyStats.top.question}</p>
+                                            <p className="text-xs text-orange-700 mt-0.5 tabular-nums">
+                                                {storyStats.top.totalVotes} vote{storyStats.top.totalVotes === 1 ? '' : 's'}
+                                                {storyStats.top.articleTitle ? ` · ${storyStats.top.articleTitle}` : ''}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <p className="text-sm text-gray-500 mt-0.5">No votes yet.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                            <p className="text-xs text-gray-500">
-                                AI-written for each published article (sombre stories are skipped). These run on their own article only.
-                            </p>
-                            <button
-                                onClick={backfill}
-                                disabled={backfilling}
-                                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-50"
-                            >
-                                {backfilling ? 'Writing…' : 'Write missing story polls'}
-                            </button>
+                            <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs font-medium">
+                                {(['responses', 'newest'] as const).map(key => (
+                                    <button
+                                        key={key}
+                                        onClick={() => setStorySort(key)}
+                                        className={`px-3 py-1 rounded-md transition-colors ${storySort === key ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}
+                                    >
+                                        {key === 'responses' ? 'Most responses' : 'Newest'}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={exportCsv}
+                                    disabled={storyPolls.length === 0}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                                >
+                                    <Download className="w-3.5 h-3.5" /> Export CSV
+                                </button>
+                                <button
+                                    onClick={backfill}
+                                    disabled={backfilling}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-50"
+                                >
+                                    {backfilling ? 'Writing…' : 'Write missing story polls'}
+                                </button>
+                            </div>
                         </div>
                         {backfillNote && <p className="text-xs text-gray-600 mb-3">{backfillNote}</p>}
-                        {polls.filter(p => p.article_id).length === 0 ? (
+                        {storyPolls.length === 0 ? (
                             <p className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-3">
                                 None yet — one is generated automatically the next time you publish an article.
                             </p>
                         ) : (
                             <div className="space-y-3">
-                                {polls.filter(p => p.article_id).map(poll => (
+                                {storyPolls.map((poll, index) => {
+                                    const topVotes = Math.max(0, ...poll.options.map(o => o.votes))
+                                    return (
                                     <div key={poll.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3">
                                         <div className="flex flex-wrap items-start justify-between gap-2">
-                                            <div className="min-w-0">
-                                                <p className="font-medium text-gray-900">{poll.question}</p>
-                                                <p className="text-xs text-gray-400 mt-0.5">
-                                                    {poll.articleTitle ? `On: ${poll.articleTitle}` : 'On its article'} · {poll.totalVotes} vote{poll.totalVotes === 1 ? '' : 's'}
-                                                    {poll.status === 'done' && ' · closed'}
-                                                </p>
+                                            <div className="flex items-start gap-3 min-w-0">
+                                                {storySort === 'responses' && (
+                                                    <span className={`shrink-0 mt-0.5 inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold tabular-nums ${index === 0 && poll.totalVotes > 0 ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                                        {index + 1}
+                                                    </span>
+                                                )}
+                                                <div className="min-w-0">
+                                                    <p className="font-medium text-gray-900">{poll.question}</p>
+                                                    <p className="text-xs text-gray-400 mt-0.5">
+                                                        {poll.articleTitle ? `On: ${poll.articleTitle}` : 'On its article'} · <span className="font-medium text-gray-500 tabular-nums">{poll.totalVotes} vote{poll.totalVotes === 1 ? '' : 's'}</span>
+                                                        {poll.status === 'done' && ' · closed'}
+                                                    </p>
+                                                </div>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
                                                 {poll.status === 'active' && (
@@ -218,14 +318,15 @@ export default function AdminPollsPage() {
                                             <div className="mt-3 space-y-1.5">
                                                 {poll.options.map(option => {
                                                     const pct = poll.totalVotes > 0 ? Math.round((option.votes / poll.totalVotes) * 100) : 0
+                                                    const leading = option.votes === topVotes && topVotes > 0
                                                     return (
                                                         <div key={option.id}>
-                                                            <div className="flex justify-between text-xs text-gray-600 mb-0.5">
-                                                                <span>{option.label}</span>
-                                                                <span className="tabular-nums">{option.votes} · {pct}%</span>
+                                                            <div className="flex justify-between text-xs mb-0.5">
+                                                                <span className={leading ? 'font-semibold text-gray-900' : 'text-gray-600'}>{option.label}</span>
+                                                                <span className={`tabular-nums ${leading ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>{option.votes} · {pct}%</span>
                                                             </div>
                                                             <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                                                                <div className="h-full rounded-full bg-orange-300" style={{ width: `${pct}%` }} />
+                                                                <div className={`h-full rounded-full ${leading ? 'bg-orange-500' : 'bg-orange-200'}`} style={{ width: `${pct}%` }} />
                                                             </div>
                                                         </div>
                                                     )
@@ -233,7 +334,8 @@ export default function AdminPollsPage() {
                                             </div>
                                         )}
                                     </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         )}
                     </section>
