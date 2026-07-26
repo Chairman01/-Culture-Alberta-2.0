@@ -440,3 +440,114 @@ export async function getAllCityArticlesWithFallback(city: string): Promise<Arti
     return []
   }
 }
+
+// ---------------------------------------------------------------------------
+// Commerce sections (Money, Retail)
+//
+// These are keyword-driven so existing articles surface immediately, but they
+// share a crime/tragedy guard: keywords like "store", "mall" or "grant" would
+// otherwise drag in "robbery at the mall" or "assault in a store parking lot".
+// An editor can also just tag an article "Money"/"Retail" to force it in.
+// ---------------------------------------------------------------------------
+
+const SOMBRE_TERMS = [
+  'murder', 'homicide', 'manslaughter', 'killed', 'stabb', 'shooting', ' shot ',
+  'robbery', 'sexual', 'assault', 'arrested', 'charged', 'charges', 'accused',
+  'allegedly', 'scam', 'fraud', 'stolen', 'theft', 'smash-and-grab', 'raid',
+  ' drugs', 'rcmp', 'police', 'fake ', 'victim', 'suspect', 'manhunt', 'weapon',
+  ' gun ', 'dead', 'died', 'death', 'fatal', 'crash', 'collision', 'missing',
+]
+
+// Deliberately NOT "tax credit"/"tax break": those pull in corporate & film-
+// industry incentives (Corus, Netflix, Lactalis) that aren't personal-money help.
+const MONEY_TERMS = [
+  'rebate', 'refund', 'aish', 'adap', 'cpp', 'pension', 'minimum wage',
+  'living wage', 'cost of living', 'affordabil', 'carbon tax', 'income tax',
+  'rrsp', 'tfsa', 'gst', 'child care subsidy', 'disability payment',
+  'disabilities are losing', 'benefit cheque', 'seniors benefit', 'income support',
+]
+
+// High-precision: named chains + explicit retail phrases. Deliberately avoids
+// loose substrings like "outlet" (power outlet), "winners" (contest winner) and
+// "store"/"town centre" that pull in news, supply and location references.
+const RETAIL_TERMS = [
+  'costco', 'ikea', 'walmart', 'dollarama', 'canadian tire', 'homesense',
+  'uniqlo', 'sephora', 'lululemon', 'best buy', 'no frills', 'save-on-foods',
+  'real canadian superstore', 'superstore', 'supercentre', 'department store',
+  'shopping centre', 'shopping center', 'shopping mall', ' mall ', 'west edmonton mall',
+  'experience store', 'big-box', 'big box store', 'retail chain', 'retailer opens',
+]
+
+const isSombreArticle = (article: Article): boolean => {
+  const haystack = `${article.title || ''} ${article.excerpt || ''}`.toLowerCase()
+  return SOMBRE_TERMS.some(term => haystack.includes(term))
+}
+
+const matchesSection = (
+  article: Article,
+  terms: string[],
+  categoryName: string,
+  includeExcerpt: boolean,
+): boolean => {
+  const c = (str: string | undefined) => (str ? str.toLowerCase() : '')
+  const name = categoryName.toLowerCase()
+
+  // An explicit editor category wins outright. NOTE: we deliberately ignore the
+  // freeform `tags` field — the auto-tagger over-tags (a milk shortage and a bar
+  // closing both carry a "retail" tag), so only curated categories are trusted.
+  if (c(article.category).includes(name)) return true
+  if (article.categories?.some(cat => c(cat).includes(name))) return true
+
+  // Otherwise fall back to topic keywords. Retail matches the TITLE only: a
+  // store-opening names the chain in its headline, whereas a milk-shortage or
+  // holiday-hours story merely mentions "Costco"/"Superstore" in passing.
+  const haystack = (includeExcerpt ? `${article.title || ''} ${article.excerpt || ''}` : `${article.title || ''}`).toLowerCase()
+  return terms.some(term => haystack.includes(term))
+}
+
+async function getSectionArticlesWithFallback(
+  terms: string[],
+  categoryName: string,
+  includeExcerpt: boolean,
+): Promise<Article[]> {
+  console.log(`🔄 Loading ${categoryName} articles with fallback system...`)
+
+  const keep = (article: Article) =>
+    article.type !== 'event' &&
+    !isSombreArticle(article) &&
+    matchesSection(article, terms, categoryName, includeExcerpt)
+
+  // Try Supabase first
+  try {
+    const articles = await getSupabaseArticles()
+    const filtered = articles.filter(keep)
+    if (filtered.length > 0) {
+      console.log(`✅ Loaded ${filtered.length} ${categoryName} articles from Supabase`)
+      updateOptimizedFallback(articles).catch(err => console.warn('Background update failed', err))
+      return filtered
+    }
+  } catch (error) {
+    console.warn(`⚠️ Supabase failed for ${categoryName}, using fallback:`, error)
+  }
+
+  // Fallback: optimized JSON
+  try {
+    const fallback = await loadOptimizedFallback()
+    const filtered = fallback.filter(keep)
+    console.log(`⚡ FALLBACK: Returning ${filtered.length} ${categoryName} articles`)
+    return filtered
+  } catch (error) {
+    console.error(`❌ Failed to load ${categoryName} articles from fallback:`, error)
+    return []
+  }
+}
+
+export async function getMoneyArticlesWithFallback(): Promise<Article[]> {
+  // Money terms (rebate, AISH, minimum wage…) are specific, so scan title + excerpt.
+  return getSectionArticlesWithFallback(MONEY_TERMS, 'money', true)
+}
+
+export async function getRetailArticlesWithFallback(): Promise<Article[]> {
+  // Retail matches the title only to avoid news that merely mentions a store.
+  return getSectionArticlesWithFallback(RETAIL_TERMS, 'retail', false)
+}

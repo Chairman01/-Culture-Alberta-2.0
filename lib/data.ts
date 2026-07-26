@@ -30,6 +30,8 @@ export const MAIN_CATEGORIES = [
   "News",
   "Guide",
   "Food & Drink",
+  "Money",
+  "Retail",
   "Events",
   "Culture",
   "Best of Alberta",

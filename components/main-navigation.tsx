@@ -93,6 +93,12 @@ export function MainNavigation() {
           <Link href="/food-drink" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Food & Drink
           </Link>
+          <Link href="/money" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+            Money
+          </Link>
+          <Link href="/retail" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+            Retail
+          </Link>
           <Link href="/events" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Events
           </Link>
@@ -225,6 +231,20 @@ export function MainNavigation() {
               className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
             >
               Food & Drink
+            </Link>
+            <Link
+              href="/money"
+              onClick={closeMobileMenu}
+              className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
+            >
+              Money
+            </Link>
+            <Link
+              href="/retail"
+              onClick={closeMobileMenu}
+              className="text-base font-medium text-gray-600 py-3.5 min-h-[44px] flex items-center touch-manipulation"
+            >
+              Retail
             </Link>
             <Link
               href="/events"
