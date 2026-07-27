@@ -155,6 +155,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: baseUrl + '/money',
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9, // high-intent rebate/benefits landing page
+    },
+    {
+      url: baseUrl + '/retail',
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9, // store-opening searches are high volume
+    },
+    {
       url: baseUrl + '/about',
       lastModified: new Date(),
       changeFrequency: 'monthly',

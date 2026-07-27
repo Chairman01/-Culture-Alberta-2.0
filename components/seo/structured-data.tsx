@@ -203,7 +203,9 @@ export function HomepageStructuredData({ baseUrl = 'https://www.culturealberta.c
           { "@type": "SiteNavigationElement", "position": 3, "name": "Around Alberta", "url": `${baseUrl}/alberta` },
           { "@type": "SiteNavigationElement", "position": 4, "name": "Events", "url": `${baseUrl}/events` },
           { "@type": "SiteNavigationElement", "position": 5, "name": "Food & Drink", "url": `${baseUrl}/food-drink` },
-          { "@type": "SiteNavigationElement", "position": 6, "name": "Tools", "url": `${baseUrl}/tools` }
+          { "@type": "SiteNavigationElement", "position": 6, "name": "Money", "url": `${baseUrl}/money` },
+          { "@type": "SiteNavigationElement", "position": 7, "name": "Retail", "url": `${baseUrl}/retail` },
+          { "@type": "SiteNavigationElement", "position": 8, "name": "Tools", "url": `${baseUrl}/tools` }
         ]
       }
     },
@@ -633,6 +635,74 @@ export function JobsItemListStructuredData({
       "name": j.title,
       "url": `${baseUrl}/jobs/posting/${j.slug}`,
     })),
+  }
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  )
+}
+
+/**
+ * Section hub pages (Money, Retail, Food & Drink…). Emits CollectionPage +
+ * ItemList so search engines understand the page is a curated index, plus a
+ * breadcrumb trail back to the homepage. Links to articles rather than
+ * embedding full Article objects — that markup belongs on the article page.
+ */
+export function SectionStructuredData({
+  name,
+  description,
+  path,
+  articles,
+  baseUrl = 'https://www.culturealberta.com',
+}: {
+  name: string
+  description: string
+  path: string
+  articles: Array<{ title: string; slug?: string; url?: string }>
+  baseUrl?: string
+}) {
+  const pageUrl = `${baseUrl}${path}`
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        "@id": `${pageUrl}#collection`,
+        "name": name,
+        "description": description,
+        "url": pageUrl,
+        "isPartOf": { "@type": "WebSite", "name": "Culture Alberta", "url": baseUrl },
+        "about": { "@type": "Place", "name": "Alberta, Canada" },
+        "publisher": { "@type": "Organization", "name": "Culture Alberta", "url": baseUrl },
+        ...(articles.length > 0 && {
+          "mainEntity": {
+            "@type": "ItemList",
+            "name": `${name} articles`,
+            "numberOfItems": articles.length,
+            "itemListElement": articles.slice(0, 50).map((article, index) => ({
+              "@type": "ListItem",
+              "position": index + 1,
+              "name": article.title,
+              "url": article.url
+                ? (article.url.startsWith('http') ? article.url : `${baseUrl}${article.url}`)
+                : `${baseUrl}/articles/${article.slug}`,
+            })),
+          },
+        }),
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${pageUrl}#breadcrumb`,
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": baseUrl },
+          { "@type": "ListItem", "position": 2, "name": name, "item": pageUrl },
+        ],
+      },
+    ],
   }
 
   return (

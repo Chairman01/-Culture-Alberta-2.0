@@ -30,3 +30,12 @@ next-env.d.ts
 articles.json
 lib/data/articles.json
 .vercel
+
+# next-sitemap postbuild artifacts.
+# These MUST NOT be committed: a static public/sitemap.xml or public/robots.txt
+# collides with the dynamic app/sitemap.ts and app/robots.ts routes, and Next.js
+# then serves a 500 ("conflicting public file and page file") for both — which
+# would hide the whole site from search engines.
+public/robots.txt
+public/sitemap.xml
+public/sitemap-*.xml

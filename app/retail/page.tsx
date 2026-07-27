@@ -1,6 +1,8 @@
 import { Metadata } from 'next'
 import { getRetailArticlesWithFallback } from "@/lib/fallback-articles"
 import SectionHub, { SectionHubArticle } from "@/components/section-hub"
+import { SectionStructuredData } from "@/components/seo/structured-data"
+import { getArticleUrl } from "@/lib/utils/article-url"
 
 export const metadata: Metadata = {
   title: 'Retail in Alberta | Store Openings, Costco, Malls & Shopping | Culture Alberta',
@@ -40,7 +42,15 @@ async function getRetailData() {
 
 export default async function RetailPage() {
   const { featuredArticle, articles } = await getRetailData()
+  const all = featuredArticle ? [featuredArticle, ...articles] : articles
   return (
+    <>
+    <SectionStructuredData
+      name="Retail"
+      description="Store openings and shopping news across Alberta — new Costcos, big-box arrivals, malls and the chains coming to your city."
+      path="/retail"
+      articles={all.map(a => ({ title: a.title, url: getArticleUrl(a) }))}
+    />
     <SectionHub
       title="Retail"
       description="Store openings and shopping news across Alberta — new Costcos, big-box arrivals, malls and the chains coming to your city."
@@ -50,5 +60,6 @@ export default async function RetailPage() {
       newsletterTitle="Never miss an opening"
       newsletterDescription="New stores, Costcos and shopping news across Alberta — straight to your inbox."
     />
+    </>
   )
 }

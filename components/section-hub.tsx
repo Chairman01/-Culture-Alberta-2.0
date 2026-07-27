@@ -57,9 +57,9 @@ const ACCENTS: Record<Accent, {
   },
 }
 
-// Cities we offer as filters, in priority order. Only those actually present in
-// the section's articles get shown as chips.
-const CITY_ORDER = ['Edmonton', 'Calgary', 'Red Deer', 'Lethbridge', 'Grande Prairie', 'Medicine Hat']
+// "Alberta" is province-wide rather than a city, so it never becomes a chip —
+// those stories still show under "All".
+const NON_CITY_LOCATIONS = new Set(['alberta', 'canada', ''])
 
 interface SectionHubProps {
   title: string
@@ -84,6 +84,23 @@ function articleInCity(article: SectionHubArticle, city: string) {
   return hay.includes(city.toLowerCase())
 }
 
+/**
+ * Chips come from the articles themselves, not a fixed list — otherwise a city
+ * we cover (Lloydminster, Banff…) would have stories in the section with no way
+ * to filter to them. Ordered by how much content each city has.
+ */
+function deriveCities(articles: SectionHubArticle[]): string[] {
+  const counts = new Map<string, number>()
+  for (const article of articles) {
+    const name = (article.location || '').trim()
+    if (!name || NON_CITY_LOCATIONS.has(name.toLowerCase())) continue
+    counts.set(name, (counts.get(name) || 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([name]) => name)
+}
+
 export default function SectionHub({
   title,
   description,
@@ -103,10 +120,7 @@ export default function SectionHub({
     [featuredArticle, articles],
   )
 
-  const availableCities = useMemo(
-    () => CITY_ORDER.filter(c => allArticles.some(article => articleInCity(article, c))),
-    [allArticles],
-  )
+  const availableCities = useMemo(() => deriveCities(allArticles), [allArticles])
 
   const filtered = useMemo(
     () => (city === 'All' ? allArticles : allArticles.filter(article => articleInCity(article, city))),

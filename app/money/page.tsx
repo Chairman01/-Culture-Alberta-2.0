@@ -1,6 +1,8 @@
 import { Metadata } from 'next'
 import { getMoneyArticlesWithFallback } from "@/lib/fallback-articles"
 import SectionHub, { SectionHubArticle } from "@/components/section-hub"
+import { SectionStructuredData } from "@/components/seo/structured-data"
+import { getArticleUrl } from "@/lib/utils/article-url"
 
 export const metadata: Metadata = {
   title: 'Money in Alberta | Rebates, Benefits & Cost of Living | Culture Alberta',
@@ -40,7 +42,15 @@ async function getMoneyData() {
 
 export default async function MoneyPage() {
   const { featuredArticle, articles } = await getMoneyData()
+  const all = featuredArticle ? [featuredArticle, ...articles] : articles
   return (
+    <>
+    <SectionStructuredData
+      name="Money"
+      description="Alberta rebates, benefits, wages and cost-of-living help — who qualifies, how to apply, and when you get paid."
+      path="/money"
+      articles={all.map(a => ({ title: a.title, url: getArticleUrl(a) }))}
+    />
     <SectionHub
       title="Money"
       description="Rebates, benefits, wages and the cost of living in Alberta — what you qualify for, how to apply, and when you get paid."
@@ -50,5 +60,6 @@ export default async function MoneyPage() {
       newsletterTitle="Money in your inbox"
       newsletterDescription="Rebates, benefits and cost-of-living help for Albertans — the moment they're announced."
     />
+    </>
   )
 }
