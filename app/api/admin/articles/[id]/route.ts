@@ -199,6 +199,23 @@ export async function PUT(
 
     console.log('✅ Article updated successfully in Supabase:', data.id)
 
+    // The homepage hero is a single slot: pinning this article unpins every other
+    // one, so the checkbox means "this is THE featured article" rather than
+    // "add to a pile of pins where the newest silently wins".
+    if (articleData.featuredHome) {
+      const { error: unpinError } = await supabase
+        .from('articles')
+        .update({ featured_home: false })
+        .eq('featured_home', true)
+        .neq('id', articleId)
+
+      if (unpinError) {
+        console.warn('⚠️ Failed to unpin previous homepage hero (non-fatal):', unpinError)
+      } else {
+        console.log('📌 Homepage hero pinned exclusively to:', articleId)
+      }
+    }
+
     // Auto-save slug redirect if title changed
     if (existingArticle && existingArticle.title !== articleData.title) {
       try {

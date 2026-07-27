@@ -373,6 +373,47 @@ export async function getHomepageArticles(): Promise<Article[]> {
   }
 }
 
+// The manually-pinned homepage hero.
+// This MUST be its own query: getHomepageArticles only returns the 500 newest
+// articles, so a pin on an older article would silently never be found.
+export async function getFeaturedHomeArticle(): Promise<Article | null> {
+  try {
+    if (!supabase) return null
+
+    const fields = ensureImageFields('id, title, excerpt, category, categories, created_at, updated_at, featured_home, type, status, author, location, tags')
+    const timeoutDuration = process.env.NODE_ENV === 'development' ? 1200 : 3000
+
+    const result = await Promise.race([
+      supabase
+        .from('articles')
+        .select(fields)
+        .eq('status', 'published')
+        .eq('featured_home', true)
+        .order('created_at', { ascending: false })
+        .limit(1),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
+      )
+    ]) as any
+
+    const article = result?.data?.[0]
+    if (result?.error || !article) return null
+
+    let imageUrl = article.image_url
+    if (imageUrl && imageUrl.startsWith('data:')) imageUrl = undefined
+
+    return {
+      ...article,
+      imageUrl,
+      date: article.created_at,
+      featuredHome: true
+    } as Article
+  } catch (error) {
+    console.warn('⚠️ Failed to load pinned homepage hero:', error)
+    return null
+  }
+}
+
 // Function to invalidate homepage cache when articles are modified
 export function invalidateHomepageCache(): void {
   console.log('🗑️ CACHE: Invalidating homepage cache due to article changes')

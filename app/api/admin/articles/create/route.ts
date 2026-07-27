@@ -123,6 +123,22 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Article created successfully:', data.id)
 
+    // The homepage hero is a single slot — see the same block in the [id] update
+    // route. Pinning this article unpins whatever was pinned before.
+    if (articleData.featuredHome) {
+      const { error: unpinError } = await supabase
+        .from('articles')
+        .update({ featured_home: false })
+        .eq('featured_home', true)
+        .neq('id', articleId)
+
+      if (unpinError) {
+        console.warn('⚠️ Failed to unpin previous homepage hero (non-fatal):', unpinError)
+      } else {
+        console.log('📌 Homepage hero pinned exclusively to:', articleId)
+      }
+    }
+
     // Try to sync the new article to fallback file
     try {
       console.log('🔄 Auto-syncing new article to fallback...')

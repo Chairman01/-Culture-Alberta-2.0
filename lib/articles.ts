@@ -5,6 +5,7 @@ import {
   getAdminArticles as getAdminArticlesFromSupabase,
   getCityArticles as getCityArticlesFromSupabase,
   getEventsArticles as getEventsArticlesFromSupabase,
+  getFeaturedHomeArticle as getFeaturedHomeArticleFromSupabase,
   getArticleById as getArticleByIdFromSupabase,
   getArticleBySlug as getArticleBySlugFromSupabase,
   createArticle as createArticleInSupabase,
@@ -57,6 +58,23 @@ export async function getHomepageArticles(): Promise<Article[]> {
     console.warn('⚠️ Supabase failed, using optimized fallback:', supabaseError)
     const fallbackArticles = await loadOptimizedFallback()
     return fallbackArticles.filter(item => item.type !== 'event')
+  }
+}
+
+// The article pinned as the homepage hero via the admin "Show as Home Page
+// Featured Article" checkbox. Returns null when nothing is pinned, in which
+// case the homepage falls back to the newest article with an image.
+export async function getFeaturedHomeArticle(): Promise<Article | null> {
+  if (useFastDevFallback) {
+    const fallbackArticles = await loadOptimizedFallback()
+    return fallbackArticles.find(item => item.type !== 'event' && item.featuredHome === true) || null
+  }
+
+  try {
+    return await getFeaturedHomeArticleFromSupabase()
+  } catch (supabaseError) {
+    console.warn('⚠️ Supabase failed loading pinned hero:', supabaseError)
+    return null
   }
 }
 

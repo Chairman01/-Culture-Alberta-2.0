@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["node_modules/next/dist/bin/next", "dev"],
       "port": 3000
+    },
+    {
+      "name": "dev-supabase",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set USE_SUPABASE_IN_DEV=1&& node node_modules/next/dist/bin/next dev -p 3001"],
+      "port": 3001
     }
   ]
 }

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { getHomepageArticles } from '@/lib/articles'
+import { getHomepageArticles, getFeaturedHomeArticle } from '@/lib/articles'
 import { getAllAlbertaArticles } from '@/lib/alberta-cities'
 import { getAllEvents } from '@/lib/events'
 import { ArrowRight, Calculator, Scale, Calendar } from 'lucide-react'
@@ -164,9 +164,10 @@ async function getHomePageData() {
 
 export default async function HomeStatic() {
   // Load data for static generation
-  const [homeData, fallbackResult] = await Promise.allSettled([
+  const [homeData, fallbackResult, pinnedHeroResult] = await Promise.allSettled([
     getHomePageData(),
     loadOptimizedFallback(),
+    getFeaturedHomeArticle(),
   ])
 
   const { posts, events, albertaArticles } = homeData.status === 'fulfilled'
@@ -312,8 +313,16 @@ export default async function HomeStatic() {
     )
 
   // Featured hero: always use the manually-pinned featuredHome article if one is set.
+  // The pin is fetched by its own query (pinnedHero) because homepageCandidatePosts
+  // only holds the 500 newest articles — an older pin would never be found in there.
   // Fall back to newest article with an image, then newest article overall.
+  const pinnedHero = pinnedHeroResult.status === 'fulfilled' ? pinnedHeroResult.value : null
+  if (pinnedHeroResult.status === 'rejected') {
+    console.warn('Failed to load pinned homepage hero:', pinnedHeroResult.reason)
+  }
+
   const featuredPost =
+    pinnedHero ||
     homepageCandidatePosts.find(post => post.featuredHome === true) ||
     homepageCandidatePosts.find(post => !!getPostImage(post) && getPostImage(post) !== '/placeholder.svg') ||
     homepageCandidatePosts[0] ||
