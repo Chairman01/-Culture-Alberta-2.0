@@ -45,6 +45,42 @@ async function getWeeklyArticlePathsFromSupabase(
   }
 }
 
+/**
+ * Recent popular: most-viewed articles PUBLISHED in the last N days, using the
+ * live view_count counter. For fresh articles, cumulative view_count ≈ views
+ * since publication, so this is a solid "Trending This Week" when GA4 and the
+ * internal weekly tracker are unavailable — and it updates continuously because
+ * view_count increments on every read. (It won't catch an OLD article resurging
+ * this week — that needs per-week deltas; see the analytics tracker fix.)
+ */
+async function getRecentPopularArticlePathsFromSupabase(
+  days: number,
+  limit: number
+): Promise<{ path: string; count: number }[]> {
+  try {
+    if (!supabase) return []
+
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+    const { data: articles } = await supabase
+      .from('articles')
+      .select('slug, view_count')
+      .eq('status', 'published')
+      .gte('created_at', since)
+      .gt('view_count', 0)
+      .order('view_count', { ascending: false })
+      .limit(limit)
+
+    if (!articles || articles.length === 0) return []
+
+    return articles
+      .filter((a) => a.slug)
+      .map((a) => ({ path: `/articles/${a.slug}`, count: (a.view_count as number) || 0 }))
+  } catch (error) {
+    console.warn('recent popular Supabase trending error:', error)
+    return []
+  }
+}
+
 async function getAllTimeArticlePathsFromSupabase(
   limit: number
 ): Promise<{ path: string; count: number }[]> {
@@ -87,6 +123,12 @@ async function getMostViewedArticlePathsUncached(
   const weeklyInternal = await getWeeklyArticlePathsFromSupabase(days, limit)
   if (weeklyInternal.length > 0) {
     return weeklyInternal
+  }
+
+  // Live proxy for weekly trending: most-viewed among recently-published articles.
+  const recentPopular = await getRecentPopularArticlePathsFromSupabase(days, limit)
+  if (recentPopular.length > 0) {
+    return recentPopular
   }
 
   return getAllTimeArticlePathsFromSupabase(limit)
