@@ -373,6 +373,45 @@ export async function getHomepageArticles(): Promise<Article[]> {
   }
 }
 
+// Articles an editor filed under a section category (Money, Retail).
+//
+// Like getFeaturedHomeArticle, this MUST be its own query rather than filtering
+// getAllArticles() in JS: that helper caps at the 500 newest rows, so an older
+// article silently vanished from its section. "How Alberta Slid from Canada's
+// Highest to Its Lowest Minimum Wage Province" sits at row 576 and disappeared
+// from /money for exactly that reason. Filtering in the database also means we
+// fetch ~12 rows instead of 500 to render the page.
+export async function getArticlesBySectionCategory(categoryName: string): Promise<Article[]> {
+  if (!supabase) return []
+
+  // Match the singular `category` column case-insensitively, or the `categories`
+  // array by exact element (Postgres array containment is case-sensitive, and the
+  // admin picker writes the canonical capitalised name).
+  const canonical = categoryName.charAt(0).toUpperCase() + categoryName.slice(1).toLowerCase()
+  const fields = ensureImageFields('id, title, excerpt, category, categories, created_at, updated_at, type, status, author, location, tags')
+  const timeoutDuration = process.env.NODE_ENV === 'development' ? 1500 : 4000
+
+  const result = await Promise.race([
+    supabase
+      .from('articles')
+      .select(fields)
+      .eq('status', 'published')
+      .or(`category.ilike.${categoryName},categories.cs.{"${canonical}"}`)
+      .order('created_at', { ascending: false }),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
+    )
+  ]) as any
+
+  if (result?.error) throw result.error
+
+  return (result?.data || []).map((article: any) => {
+    let imageUrl = article.image_url
+    if (imageUrl && imageUrl.startsWith('data:')) imageUrl = undefined
+    return { ...article, imageUrl, date: article.created_at }
+  }) as Article[]
+}
+
 // The manually-pinned homepage hero.
 // This MUST be its own query: getHomepageArticles only returns the 500 newest
 // articles, so a pin on an older article would silently never be found.

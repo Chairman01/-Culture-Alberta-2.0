@@ -1,5 +1,5 @@
 import { Article } from './types/article'
-import { getAllArticles as getSupabaseArticles, getHomepageArticles } from './supabase-articles'
+import { getAllArticles as getSupabaseArticles, getHomepageArticles, getArticlesBySectionCategory } from './supabase-articles'
 import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fallback'
 import fs from 'fs'
 import path from 'path'
@@ -458,72 +458,45 @@ const SOMBRE_TERMS = [
   ' gun ', 'dead', 'died', 'death', 'fatal', 'crash', 'collision', 'missing',
 ]
 
-// Deliberately NOT "tax credit"/"tax break": those pull in corporate & film-
-// industry incentives (Corus, Netflix, Lactalis) that aren't personal-money help.
-const MONEY_TERMS = [
-  'rebate', 'refund', 'aish', 'adap', 'cpp', 'pension', 'minimum wage',
-  'living wage', 'cost of living', 'affordabil', 'carbon tax', 'income tax',
-  'rrsp', 'tfsa', 'gst', 'child care subsidy', 'disability payment',
-  'disabilities are losing', 'benefit cheque', 'seniors benefit', 'income support',
-]
-
-// High-precision: named chains + explicit retail phrases. Deliberately avoids
-// loose substrings like "outlet" (power outlet), "winners" (contest winner) and
-// "store"/"town centre" that pull in news, supply and location references.
-const RETAIL_TERMS = [
-  'costco', 'ikea', 'walmart', 'dollarama', 'canadian tire', 'homesense',
-  'uniqlo', 'sephora', 'lululemon', 'best buy', 'no frills', 'save-on-foods',
-  'real canadian superstore', 'superstore', 'supercentre', 'department store',
-  'shopping centre', 'shopping center', 'shopping mall', ' mall ', 'west edmonton mall',
-  'experience store', 'big-box', 'big box store', 'retail chain', 'retailer opens',
-]
-
 const isSombreArticle = (article: Article): boolean => {
   const haystack = `${article.title || ''} ${article.excerpt || ''}`.toLowerCase()
   return SOMBRE_TERMS.some(term => haystack.includes(term))
 }
 
-const matchesSection = (
-  article: Article,
-  terms: string[],
-  categoryName: string,
-  includeExcerpt: boolean,
-): boolean => {
+// Section membership is EDITORIAL ONLY: an article appears on /money or /retail
+// if, and only if, an editor set that category on it in admin.
+//
+// This used to fall back to keyword matching on the title/excerpt, which put
+// articles on these pages that nobody chose and no admin action could remove:
+//   - "Post Malone's Edmonton Concert Cancelled…" landed on /money because its
+//     excerpt ends "fans are being refunded" and `refund` is a money term.
+//   - "Wingstop Is Opening in Calgary" landed on /money because the substring
+//     `gst` appears inside "Win-gst-op".
+// Substring matching over freeform prose cannot be made safe by tuning the word
+// list, so the fallback is gone rather than patched. The `tags` field stays
+// untrusted too — the auto-tagger over-tags.
+const matchesSection = (article: Article, categoryName: string): boolean => {
   const c = (str: string | undefined) => (str ? str.toLowerCase() : '')
   const name = categoryName.toLowerCase()
 
-  // An explicit editor category wins outright. NOTE: we deliberately ignore the
-  // freeform `tags` field — the auto-tagger over-tags (a milk shortage and a bar
-  // closing both carry a "retail" tag), so only curated categories are trusted.
-  if (c(article.category).includes(name)) return true
-  if (article.categories?.some(cat => c(cat).includes(name))) return true
-
-  // Otherwise fall back to topic keywords. Retail matches the TITLE only: a
-  // store-opening names the chain in its headline, whereas a milk-shortage or
-  // holiday-hours story merely mentions "Costco"/"Superstore" in passing.
-  const haystack = (includeExcerpt ? `${article.title || ''} ${article.excerpt || ''}` : `${article.title || ''}`).toLowerCase()
-  return terms.some(term => haystack.includes(term))
+  return c(article.category) === name ||
+    (article.categories?.some(cat => c(cat) === name) ?? false)
 }
 
-async function getSectionArticlesWithFallback(
-  terms: string[],
-  categoryName: string,
-  includeExcerpt: boolean,
-): Promise<Article[]> {
+async function getSectionArticlesWithFallback(categoryName: string): Promise<Article[]> {
   console.log(`🔄 Loading ${categoryName} articles with fallback system...`)
 
   const keep = (article: Article) =>
     article.type !== 'event' &&
     !isSombreArticle(article) &&
-    matchesSection(article, terms, categoryName, includeExcerpt)
+    matchesSection(article, categoryName)
 
-  // Try Supabase first
+  // Query the category in the database rather than pulling the 500 newest rows
+  // and filtering here — that cap silently dropped older section articles.
   try {
-    const articles = await getSupabaseArticles()
-    const filtered = articles.filter(keep)
+    const filtered = (await getArticlesBySectionCategory(categoryName)).filter(keep)
     if (filtered.length > 0) {
       console.log(`✅ Loaded ${filtered.length} ${categoryName} articles from Supabase`)
-      updateOptimizedFallback(articles).catch(err => console.warn('Background update failed', err))
       return filtered
     }
   } catch (error) {
@@ -542,12 +515,12 @@ async function getSectionArticlesWithFallback(
   }
 }
 
+// Both sections are opt-in: tick "Money" / "Retail" in the admin category picker
+// and the article appears here. Untick it and it leaves. Nothing else adds to them.
 export async function getMoneyArticlesWithFallback(): Promise<Article[]> {
-  // Money terms (rebate, AISH, minimum wage…) are specific, so scan title + excerpt.
-  return getSectionArticlesWithFallback(MONEY_TERMS, 'money', true)
+  return getSectionArticlesWithFallback('money')
 }
 
 export async function getRetailArticlesWithFallback(): Promise<Article[]> {
-  // Retail matches the title only to avoid news that merely mentions a store.
-  return getSectionArticlesWithFallback(RETAIL_TERMS, 'retail', false)
+  return getSectionArticlesWithFallback('retail')
 }
