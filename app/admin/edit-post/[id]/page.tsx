@@ -146,14 +146,10 @@ export default function EditPostPage({ params }: EditPostPageProps) {
           tags: tags.split(',').map(tag => tag.trim()),
           type: "article",
           status: "published",
-          // Add trending flags (default to false)
-          trendingHome: false,
-          trendingEdmonton: false,
-          trendingCalgary: false,
-          // Add featured article flags (default to false)
-          featuredHome: false,
-          featuredEdmonton: false,
-          featuredCalgary: false
+          // Trending/featured flags are deliberately NOT sent: this form has no
+          // checkboxes for them, so sending `false` wiped the homepage hero pin
+          // (and the Edmonton/Calgary pins) whenever anyone saved here. The API
+          // preserves the stored values when these keys are absent.
         })
       })
 

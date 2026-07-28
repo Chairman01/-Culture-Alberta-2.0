@@ -321,9 +321,15 @@ export default async function HomeStatic() {
     console.warn('Failed to load pinned homepage hero:', pinnedHeroResult.reason)
   }
 
+  // NOTE: do not re-add a `homepageCandidatePosts.find(p => p.featuredHome)` clause
+  // here. That pool is merged with optimized-fallback.json, a snapshot committed to
+  // the repo — and that snapshot still carried `featuredHome: true` on an article
+  // unpinned in the database months ago. The stale flag won every render, so the
+  // hero was pinned to an article no admin action could ever unpin: unticking the
+  // checkbox writes to Supabase, never to the JSON file. `pinnedHero` is the only
+  // trustworthy source for the pin because it queries the database directly.
   const featuredPost =
     pinnedHero ||
-    homepageCandidatePosts.find(post => post.featuredHome === true) ||
     homepageCandidatePosts.find(post => !!getPostImage(post) && getPostImage(post) !== '/placeholder.svg') ||
     homepageCandidatePosts[0] ||
     null

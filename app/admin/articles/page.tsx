@@ -39,6 +39,7 @@ interface ExtendedArticle extends Article {
   createdAt?: string;
   updatedAt?: string;
   pinned_link_in_bio?: boolean;
+  featuredHome?: boolean;
 }
 
 // Define a more complete article type
@@ -353,6 +354,10 @@ export default function AdminArticles() {
     }
   }
 
+  // Searched across the unfiltered list: the pinned article is often an older one
+  // that the current search/category filter would hide.
+  const featuredHomeArticle = articles.find(article => article.featuredHome === true)
+
   const filteredArticles = articles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = category === "all" || article.category === category
@@ -463,6 +468,33 @@ export default function AdminArticles() {
             </Button>
           </Link>
         </div>
+      </div>
+
+      {/* The homepage hero is invisible state otherwise: with nothing pinned the
+          homepage silently shows the newest article, which reads as "the featured
+          checkbox is broken". Say which article is pinned, or that none is. */}
+      <div className={`rounded-lg border p-4 text-sm ${
+        featuredHomeArticle ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'
+      }`}>
+        {featuredHomeArticle ? (
+          <>
+            <span className="font-semibold text-amber-900">Homepage featured article:</span>{' '}
+            <Link
+              href={`/admin/articles/${featuredHomeArticle.id}`}
+              className="text-amber-900 underline hover:no-underline"
+            >
+              {featuredHomeArticle.title}
+            </Link>
+          </>
+        ) : (
+          <>
+            <span className="font-semibold text-gray-700">No homepage featured article is pinned.</span>{' '}
+            <span className="text-gray-600">
+              The homepage is showing the newest article. To pin one, open it and tick
+              &ldquo;Show as Home Page Featured Article&rdquo;.
+            </span>
+          </>
+        )}
       </div>
 
       <div className="flex gap-4">

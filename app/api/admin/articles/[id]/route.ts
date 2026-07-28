@@ -148,10 +148,11 @@ export async function PUT(
     // Get Supabase client
     const supabase = getSupabaseClient()
 
-    // Fetch current title before update so we can detect slug changes
+    // Fetch current title before update so we can detect slug changes, plus the
+    // trending/featured flags so a caller that omits them doesn't wipe them.
     const { data: existingArticle } = await supabase
       .from('articles')
-      .select('title, slug, author')
+      .select('title, slug, author, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
       .eq('id', articleId)
       .single()
 
@@ -181,12 +182,16 @@ export async function PUT(
         image_url: articleData.imageUrl,
         slug: nextSlug,
         image_source: articleData.imageSource || null,
-        trending_home: articleData.trendingHome || false,
-        trending_edmonton: articleData.trendingEdmonton || false,
-        trending_calgary: articleData.trendingCalgary || false,
-        featured_home: articleData.featuredHome || false,
-        featured_edmonton: articleData.featuredEdmonton || false,
-        featured_calgary: articleData.featuredCalgary || false,
+        // `??`, not `||`: a caller that omits these keys keeps whatever is already
+        // set. `|| false` silently unpinned the homepage hero every time an editor
+        // saved through a form that doesn't render the flag checkboxes
+        // (/admin/edit-post is one). An explicit `false` still unpins.
+        trending_home: articleData.trendingHome ?? existingArticle?.trending_home ?? false,
+        trending_edmonton: articleData.trendingEdmonton ?? existingArticle?.trending_edmonton ?? false,
+        trending_calgary: articleData.trendingCalgary ?? existingArticle?.trending_calgary ?? false,
+        featured_home: articleData.featuredHome ?? existingArticle?.featured_home ?? false,
+        featured_edmonton: articleData.featuredEdmonton ?? existingArticle?.featured_edmonton ?? false,
+        featured_calgary: articleData.featuredCalgary ?? existingArticle?.featured_calgary ?? false,
       })
       .eq('id', articleId)
       .select()
