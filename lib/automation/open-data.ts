@@ -23,8 +23,12 @@ import { filterEvents } from './content-filter'
 const EDMONTON_ENDPOINT = 'https://data.edmonton.ca/resource/64u3-c7bh.json'
 const CALGARY_ENDPOINT = 'https://data.calgary.ca/resource/n625-9k5x.json'
 
+// `revalidate: 0` made this fetch uncacheable, which opted every route that
+// renders these events — `/`, `/events` — out of static rendering entirely, so
+// they re-ran the whole page (and both 10s-timeout Socrata calls) on every
+// request. City open data updates daily at best; an hour is plenty.
 const FETCH_OPTS: RequestInit & { next: { revalidate: number } } = {
-  next: { revalidate: 0 },
+  next: { revalidate: 3600 },
   headers: {
     'User-Agent': 'CultureAlberta/1.0 (hello@culturealberta.com)',
     Accept: 'application/json',

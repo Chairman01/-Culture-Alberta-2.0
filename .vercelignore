@@ -8,3 +8,18 @@ node_modules
 *.log
 .DS_Store
 *.tsbuildinfo
+
+# One-off data dumps from past migrations/exports. 138 MB combined, all
+# git-tracked, none read by app code — they were being uploaded and traced on
+# every deploy. optimized-fallback.json is NOT here: it IS loaded at runtime.
+temp_admin_articles.json
+current-articles.json
+exported-articles.json
+temp-homepage.html
+articles-optimized.json
+exported-events.json
+
+# Local worktrees and scratch output
+.claude/worktrees
+.next-dev-out.log
+.next-dev-err.log

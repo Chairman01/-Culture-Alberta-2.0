@@ -124,6 +124,7 @@ export async function updateOptimizedFallback(articles: Article[]): Promise<void
 
     // Write optimized file
     fs.writeFileSync(OPTIMIZED_FALLBACK_PATH, JSON.stringify(optimizedArticles, null, 2))
+    invalidateOptimizedFallbackCache()
 
     // Log file size
     const stats = fs.statSync(OPTIMIZED_FALLBACK_PATH)
@@ -140,38 +141,66 @@ export async function updateOptimizedFallback(articles: Article[]): Promise<void
   }
 }
 
+// Memoized parse of the fallback file. This is ~580 KB of JSON mapped over 500
+// articles, and it had 41 call sites — several of them on the request path, and
+// `getArticleBySlug` runs it first thing. Worse, `readFileSync` blocks the whole
+// Node event loop, so it stalled every *other* request sharing the lambda too.
+// On Vercel the file is baked into the deployment and cannot change under a
+// running instance, so caching it for the process lifetime is safe; the TTL only
+// exists so local dev picks up `updateOptimizedFallback` writes.
+let fallbackCache: Article[] | null = null
+let fallbackCacheAt = 0
+let fallbackInFlight: Promise<Article[]> | null = null
+const FALLBACK_CACHE_MS = process.env.NODE_ENV === 'production' ? Infinity : 10_000
+
 /**
  * Load articles from optimized fallback file
  */
 export async function loadOptimizedFallback(): Promise<Article[]> {
-  try {
-    if (!fs.existsSync(OPTIMIZED_FALLBACK_PATH)) {
-      console.log('📁 No optimized fallback file found')
-      return []
-    }
-
-    const fileContent = fs.readFileSync(OPTIMIZED_FALLBACK_PATH, 'utf-8')
-    const optimizedArticles: OptimizedArticle[] = JSON.parse(fileContent)
-
-    // Convert back to full Article format (with content if available)
-    const articles: Article[] = optimizedArticles.map(opt => ({
-      ...opt,
-      content: opt.content || '', // Use content if available, otherwise empty
-      slug: opt.slug || createSlug(opt.title),
-      updatedAt: opt.createdAt, // Use createdAt as updatedAt fallback
-    }))
-
-    // DEBUG: Check how many articles have content
-    const articlesWithContent = articles.filter(article =>
-      article.content && article.content.trim().length > 10
-    )
-    console.log(`✅ Loaded ${articles.length} articles from optimized fallback, ${articlesWithContent.length} have content`)
-
-    return articles
-  } catch (error) {
-    console.error('❌ Failed to load optimized fallback:', error)
-    return []
+  if (fallbackCache && Date.now() - fallbackCacheAt < FALLBACK_CACHE_MS) {
+    return fallbackCache
   }
+  // Concurrent callers during a cold start share one read instead of each
+  // doing their own 580 KB blocking parse.
+  if (fallbackInFlight) return fallbackInFlight
+
+  fallbackInFlight = (async (): Promise<Article[]> => {
+    try {
+      if (!fs.existsSync(OPTIMIZED_FALLBACK_PATH)) {
+        console.log('📁 No optimized fallback file found')
+        return []
+      }
+
+      // Async read: does not block the event loop for other in-flight requests.
+      const fileContent = await fs.promises.readFile(OPTIMIZED_FALLBACK_PATH, 'utf-8')
+      const optimizedArticles: OptimizedArticle[] = JSON.parse(fileContent)
+
+      // Convert back to full Article format (with content if available)
+      const articles: Article[] = optimizedArticles.map(opt => ({
+        ...opt,
+        content: opt.content || '', // Use content if available, otherwise empty
+        slug: opt.slug || createSlug(opt.title),
+        updatedAt: opt.createdAt, // Use createdAt as updatedAt fallback
+      }))
+
+      fallbackCache = articles
+      fallbackCacheAt = Date.now()
+      return articles
+    } catch (error) {
+      console.error('❌ Failed to load optimized fallback:', error)
+      return []
+    } finally {
+      fallbackInFlight = null
+    }
+  })()
+
+  return fallbackInFlight
+}
+
+/** Drop the memoized fallback so the next read re-parses (used after a rewrite). */
+export function invalidateOptimizedFallbackCache(): void {
+  fallbackCache = null
+  fallbackCacheAt = 0
 }
 
 /**
