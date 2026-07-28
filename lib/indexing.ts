@@ -3,16 +3,14 @@
  *
  * Automatically notifies search engines when new content is published.
  *
- * Methods used:
- * 1. Google Indexing API (fastest — requires Service Account credentials in env)
- * 2. Bing/IndexNow (free, no auth needed, covers Bing + Yandex + other IndexNow participants)
- * 3. Sitemap ping to Google and Bing (fallback — always works, slowest)
+ * Method used: Bing/IndexNow (free, no auth, covers Bing + Yandex + other
+ * IndexNow participants). Verified returning HTTP 200 as of 2026-07-28.
  *
- * Setup for Google Indexing API:
- *  - Go to https://search.google.com/search-console
- *  - Create a Service Account in Google Cloud Console
- *  - Grant it "Owner" permission in Search Console
- *  - Download the JSON key and set GOOGLE_INDEXING_SA_KEY env var to the JSON string
+ * The old google.com/ping and bing.com/ping sitemap endpoints were REMOVED:
+ * both search engines retired them (Google now 404s, Bing 410 Gone), so every
+ * publish fired two guaranteed-to-fail requests and logged warnings that
+ * buried real IndexNow failures. Google has no ping replacement — it
+ * rediscovers via the sitemap in robots.txt and Search Console.
  *
  * Setup for IndexNow (Bing):
  *  - Set INDEXNOW_KEY env var to any random string (e.g. a UUID)
@@ -20,7 +18,6 @@
  */
 
 const BASE_URL = 'https://www.culturealberta.com'
-const SITEMAP_URL = `${BASE_URL}/sitemap.xml`
 
 // IndexNow host + key. The key is intentionally PUBLIC (it's hosted at
 // https://www.culturealberta.com/<key>.txt for verification), so a hardcoded
@@ -72,12 +69,8 @@ export async function notifySearchEngines(articleUrl: string): Promise<void> {
 
   console.log(`🔔 Notifying search engines about: ${fullUrl}`)
 
-  // Run all pings in parallel — failures are non-fatal
-  await Promise.allSettled([
-    pingIndexNow(fullUrl),
-    pingSitemapGoogle(),
-    pingSitemapBing(),
-  ])
+  // Failures are non-fatal — publishing must never block on indexing.
+  await pingIndexNow(fullUrl)
 }
 
 /**
@@ -87,39 +80,4 @@ export async function notifySearchEngines(articleUrl: string): Promise<void> {
  */
 async function pingIndexNow(url: string): Promise<void> {
   await submitUrlsToIndexNow([url])
-}
-
-/**
- * Ping Google's sitemap endpoint — tells Google to re-crawl the sitemap.
- * Slower than the Indexing API but always works with no auth.
- */
-async function pingSitemapGoogle(): Promise<void> {
-  try {
-    const pingUrl = `https://www.google.com/ping?sitemap=${encodeURIComponent(SITEMAP_URL)}`
-    const res = await fetch(pingUrl, { method: 'GET' })
-    if (res.ok) {
-      console.log('✅ Google sitemap pinged')
-    } else {
-      console.warn(`⚠️  Google sitemap ping returned ${res.status}`)
-    }
-  } catch (err) {
-    console.warn('⚠️  Google sitemap ping failed:', err)
-  }
-}
-
-/**
- * Ping Bing's sitemap endpoint — tells Bing to re-crawl the sitemap.
- */
-async function pingSitemapBing(): Promise<void> {
-  try {
-    const pingUrl = `https://www.bing.com/ping?sitemap=${encodeURIComponent(SITEMAP_URL)}`
-    const res = await fetch(pingUrl, { method: 'GET' })
-    if (res.ok) {
-      console.log('✅ Bing sitemap pinged')
-    } else {
-      console.warn(`⚠️  Bing sitemap ping returned ${res.status}`)
-    }
-  } catch (err) {
-    console.warn('⚠️  Bing sitemap ping failed:', err)
-  }
 }
