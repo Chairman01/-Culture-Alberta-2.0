@@ -8,17 +8,48 @@ import { ArrowRight, X, MapPin, Phone, Mail, Download, Users, Eye, TrendingUp, Z
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-// Client logos with their websites
-const clients = [
-  { name: "Moveology", logo: "/images/clients/moveology.png", url: "https://moveology.ca" },
-  { name: "Tutti Frutti", logo: "/images/clients/tutti-frutti.png", url: "https://tuttifrutti.com" },
-  { name: "Neon YYC", logo: "/images/clients/neon-yyc.png", url: "#" },
-  { name: "Pho City YYC", logo: "/images/clients/pho-city-yyc.png", url: "#" },
-  { name: "TC Legal", logo: "/images/clients/tc-legal.png", url: "#" },
+// Client logos. `article` is the Culture Alberta story we wrote for them and
+// takes priority over `url` (their own site) when linking the logo.
+const clients: { name: string; logo: string; url: string; article?: string }[] = [
+  {
+    name: "Moveology",
+    logo: "/images/clients/moveology.png",
+    url: "https://moveology.ca",
+    article: "/articles/moveology-is-the-calgary-fitness-studio-that-doesnt-feel-like-a-gym",
+  },
+  {
+    name: "Tutti Frutti",
+    logo: "/images/clients/tutti-frutti.png",
+    url: "https://tuttifrutti.com",
+    article: "/articles/tutti-frutti-breakfast-lunch-is-the-diner-thats-taking-over-edmonton-alberta",
+  },
+  {
+    name: "Neon YYC",
+    logo: "/images/clients/neon-yyc.png",
+    url: "#",
+    article: "/articles/neon-yyc-lighting-up-calgary-with-custom-signage",
+  },
+  {
+    name: "Pho City YYC",
+    logo: "/images/clients/pho-city-yyc.png",
+    url: "#",
+    article: "/articles/pho-city-is-one-of-the-best-vietnamese-restaurants-in-calgary",
+  },
+  {
+    name: "TC Legal",
+    logo: "/images/clients/tc-legal.png",
+    url: "#",
+    article: "/articles/tc-legal-is-the-calgary-law-firm-fighting-for-albertans-after-accidents",
+  },
   { name: "Sport Calgary", logo: "/images/clients/sport-calgary.png", url: "https://sportcalgary.ca" },
   { name: "Gamecon Canada", logo: "/images/clients/gamecon-canada.png", url: "#" },
   { name: "Pekko Chicken", logo: "/images/clients/pekko-chicken.png", url: "#" },
-  { name: "Tire Doctors", logo: "/images/clients/tiredoctors.png", url: "#" },
+  {
+    name: "Tire Doctors",
+    logo: "/images/clients/tiredoctors.png",
+    url: "#",
+    article: "/articles/tire-doctors-is-the-calgary-mobile-tire-service-that-comes-to-you",
+  },
 ]
 
 // Animated counter component
@@ -183,24 +214,28 @@ export default function PartnerPage() {
 
               {/* Right side - Logo Grid */}
               <div className="grid grid-cols-3 gap-4">
-                {clients.map((client, index) => (
-                  <Link
-                    key={index}
-                    href={client.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center h-28 p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md hover:scale-105 transition-all duration-300"
-                    title={client.name}
-                  >
-                    <Image
-                      src={client.logo}
-                      alt={client.name}
-                      width={140}
-                      height={70}
-                      className="object-contain max-h-20"
-                    />
-                  </Link>
-                ))}
+                {clients.map((client, index) => {
+                  const href = client.article ?? client.url
+                  const isExternal = href.startsWith("http")
+
+                  return (
+                    <Link
+                      key={index}
+                      href={href}
+                      {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                      className="flex items-center justify-center h-28 p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md hover:scale-105 transition-all duration-300"
+                      title={client.article ? `Read our story on ${client.name}` : client.name}
+                    >
+                      <Image
+                        src={client.logo}
+                        alt={client.name}
+                        width={140}
+                        height={70}
+                        className="object-contain max-h-20"
+                      />
+                    </Link>
+                  )
+                })}
               </div>
             </div>
           </div>
