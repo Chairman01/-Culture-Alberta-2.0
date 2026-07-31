@@ -12,25 +12,32 @@ import {
   Newspaper,
 } from "lucide-react"
 
-// ---------------------------------------------------------------------------
-// 2026 ADAP and AISH program constants (Alberta government — verify annually)
-// ADAP launches July 1 2026 — base rate $1,740/month, $700/month income exempt
-// AISH continues at $1,940/month, $1,072/month income exempt
-// ---------------------------------------------------------------------------
-const ADAP_BASE_SINGLE                        = 1740
-const ADAP_INCOME_EXEMPTION                   = 700   // full exemption threshold
+import {
+  ADAP_LIVING_ALLOWANCE,
+  ADAP_BENEFIT_END_ANNUAL_INCOME,
+  ADAP_EXEMPTION_SINGLE,
+  ADAP_EXEMPTION_WITH_CHILDREN,
+  ADAP_EXEMPTION_COHABITING,
+  AISH_LIVING_ALLOWANCE,
+  AISH_EMPLOYMENT_EXEMPTION,
+  CHILD_BENEFIT_TIERS,
+  COUPLE_BOTH_ON_DISABILITY_RATE,
+  calculateAdap,
+  calculateAish,
+  getChildBenefit,
+} from "@/lib/disability-benefits"
 
-const AISH_BASE_SINGLE                        = 1940
-const AISH_FIRST_CHILD                        = 232
-const AISH_ADDITIONAL_CHILD                   = 117
-const MONTHLY_EARNED_INCOME_EXEMPTION         = 1072
-const MONTHLY_PARTIAL_EXEMPTION_LIMIT         = 2009
-const MONTHLY_MAX_EARNED_INCOME_EXEMPTION     = 1541
-const FAMILY_MONTHLY_EARNED_INCOME_EXEMPTION  = 2612
-const FAMILY_MONTHLY_PARTIAL_EXEMPTION_LIMIT  = 3349
-const FAMILY_MONTHLY_MAX_EARNED_INCOME_EXEMPTION = 2981
+// Rates live in lib/disability-benefits.ts — see that file for sources, for the
+// August 2026 changes (recalibrated child benefit, 88% couples rule), and for
+// why ADAP's income reduction above the exemption is a modelled approximation.
+const ADAP_BASE_SINGLE = ADAP_LIVING_ALLOWANCE
+const AISH_BASE_SINGLE = AISH_LIVING_ALLOWANCE
+const MONTHLY_EARNED_INCOME_EXEMPTION = AISH_EMPLOYMENT_EXEMPTION.single.full
 
 const ADAP_LOGO_IMAGE = "/images/adap-logo.svg"
+
+/** Plain-language summary of the tiered child benefit, e.g. "$300 · $117 · …" */
+const CHILD_TIER_SUMMARY = CHILD_BENEFIT_TIERS.map((t) => `$${t}`).join(" · ")
 
 // ---------------------------------------------------------------------------
 // Formatters
@@ -43,59 +50,57 @@ function fmtShort(n: number) {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-function getChildBenefit(n: number) {
-  if (n <= 0) return 0
-  return AISH_FIRST_CHILD + Math.max(0, n - 1) * AISH_ADDITIONAL_CHILD
-}
-
-function getAISHExemption(income: number, type: "single" | "family") {
-  const full  = type === "family" ? FAMILY_MONTHLY_EARNED_INCOME_EXEMPTION : MONTHLY_EARNED_INCOME_EXEMPTION
-  const limit = type === "family" ? FAMILY_MONTHLY_PARTIAL_EXEMPTION_LIMIT : MONTHLY_PARTIAL_EXEMPTION_LIMIT
-  const max   = type === "family" ? FAMILY_MONTHLY_MAX_EARNED_INCOME_EXEMPTION : MONTHLY_MAX_EARNED_INCOME_EXEMPTION
-  if (income <= full)  return income
-  if (income <= limit) return full + (income - full) * 0.5
-  return max
-}
-
-// ---------------------------------------------------------------------------
 // Core calculation — compares ADAP and AISH side by side
 // ---------------------------------------------------------------------------
 function calculateComparison({
-  myIncome, partnerIncome, children, exemptionType,
+  myIncome, partnerIncome, children, exemptionType, partnerOnDisabilityAssistance,
 }: {
   myIncome: number
   partnerIncome: number
   children: number
   exemptionType: "single" | "family"
+  partnerOnDisabilityAssistance: boolean
 }) {
-  const household = myIncome + partnerIncome
+  const adap = calculateAdap({
+    children,
+    monthlyIncome: myIncome,
+    partnerMonthlyIncome: partnerIncome,
+    partnerOnDisabilityAssistance,
+  })
 
-  // ---- ADAP ----
-  // $700/month full exemption, then 50-cent clawback per dollar above that
-  const adapExcess    = Math.max(0, household - ADAP_INCOME_EXEMPTION)
-  const adapClawback  = adapExcess * 0.5
-  const adapBenefit   = Math.max(0, ADAP_BASE_SINGLE - adapClawback)
-  const adapFullyClawedBack = adapBenefit === 0 && household > ADAP_INCOME_EXEMPTION
-
-  // ---- AISH ----
-  const childBonus       = getChildBenefit(children)
-  const grossAISH        = AISH_BASE_SINGLE + childBonus
-  const aishExemption    = getAISHExemption(household, exemptionType)
-  const aishClawback     = Math.max(0, household - aishExemption)
-  const aishBenefit      = Math.max(0, grossAISH - aishClawback)
-  const aishFullyClawedBack = aishBenefit === 0 && grossAISH > 0
+  const aish = calculateAish({
+    children,
+    monthlyIncome: myIncome,
+    partnerMonthlyIncome: partnerIncome,
+    exemptionType,
+    partnerOnDisabilityAssistance,
+  })
 
   // ---- DIFFERENCE (AISH - ADAP) ----
-  const monthlyDiff = aishBenefit - adapBenefit
-  const annualDiff  = monthlyDiff * 12
+  const monthlyDiff = aish.netBenefit - adap.netBenefit
 
   return {
-    household,
-    adapBenefit, adapClawback, adapExcess, adapFullyClawedBack,
-    childBonus, grossAISH, aishExemption, aishClawback, aishBenefit, aishFullyClawedBack,
-    monthlyDiff, annualDiff,
+    household: aish.householdIncome,
+
+    adapBase: adap.livingAllowance,
+    adapGross: adap.grossBenefit,
+    adapExemption: adap.exemption,
+    adapExcess: Math.max(0, adap.householdIncome - adap.exemption),
+    adapClawback: adap.reduction,
+    adapBenefit: adap.netBenefit,
+    adapFullyClawedBack: adap.fullyReduced,
+
+    aishBase: aish.livingAllowance,
+    childBonus: aish.childBenefit,
+    grossAISH: aish.grossBenefit,
+    aishExemption: aish.exemption,
+    aishClawback: aish.reduction,
+    aishBenefit: aish.netBenefit,
+    aishFullyClawedBack: aish.fullyReduced,
+
+    coupleRateApplied: aish.coupleRateApplied,
+    monthlyDiff,
+    annualDiff: monthlyDiff * 12,
   }
 }
 
@@ -104,6 +109,7 @@ function calculateComparison({
 // ---------------------------------------------------------------------------
 export default function ADAPCalculatorClient() {
   const [maritalStatus, setMaritalStatus]       = useState("single")
+  const [partnerOnDA, setPartnerOnDA]           = useState(false)
   const [children, setChildren]                 = useState(0)
   const [rawIncome, setRawIncome]               = useState("")
   const [rawPartnerIncome, setRawPartnerIncome] = useState("")
@@ -113,9 +119,15 @@ export default function ADAPCalculatorClient() {
   const partnerIncome = maritalStatus === "single" ? 0 : Math.max(0, parseFloat(rawPartnerIncome) || 0)
   const exemptionType: "single" | "family" = maritalStatus === "single" ? "single" : "family"
 
+  // The 88% couples rule and ADAP's $1,500 cohabiting exemption only apply when
+  // the partner also receives AISH or ADAP.
+  const partnerOnDisabilityAssistance = maritalStatus !== "single" && partnerOnDA
+
   const result = useMemo(
-    () => calculateComparison({ myIncome, partnerIncome, children, exemptionType }),
-    [myIncome, partnerIncome, children, exemptionType]
+    () => calculateComparison({
+      myIncome, partnerIncome, children, exemptionType, partnerOnDisabilityAssistance,
+    }),
+    [myIncome, partnerIncome, children, exemptionType, partnerOnDisabilityAssistance]
   )
 
   const diffDir = result.monthlyDiff > 0.5 ? "aish" : result.monthlyDiff < -0.5 ? "adap" : "same"
@@ -183,16 +195,19 @@ export default function ADAPCalculatorClient() {
             <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">ADAP — new July 2026</p>
               <p className="text-sm leading-relaxed text-blue-900">
-                <strong>$1,740/month</strong> base benefit. For Albertans with a severe and permanent
-                disability who are assessed as able to work to some degree. First{" "}
-                <strong>$700/month</strong> of employment income is fully exempt.
+                <strong>{fmt(ADAP_LIVING_ALLOWANCE)}/month</strong> living allowance. For Albertans with a severe and permanent
+                disability who are assessed as able to work to some degree. Employment income is fully exempt up to{" "}
+                <strong>{fmtShort(ADAP_EXEMPTION_SINGLE)}/month</strong> for single clients,{" "}
+                <strong>{fmtShort(ADAP_EXEMPTION_WITH_CHILDREN)}/month</strong> with dependent children, and{" "}
+                <strong>{fmtShort(ADAP_EXEMPTION_COHABITING)}/month</strong> for cohabiting partners who both receive disability assistance.
               </p>
             </div>
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">AISH — permanently unable to work</p>
               <p className="text-sm leading-relaxed text-emerald-900">
-                <strong>$1,940/month</strong> base benefit. For Albertans permanently unable to work.
-                First <strong>$1,072/month</strong> of employment income is fully exempt. The
+                <strong>{fmt(AISH_LIVING_ALLOWANCE)}/month</strong> living allowance. For Albertans permanently unable to work.
+                First <strong>{fmt(MONTHLY_EARNED_INCOME_EXEMPTION)}/month</strong> of employment income is fully exempt
+                ({fmt(AISH_EMPLOYMENT_EXEMPTION.family.full)} for families). The
                 government places you in ADAP or AISH based on your medical assessment — you apply
                 once for both.
               </p>
@@ -263,10 +278,37 @@ export default function ADAPCalculatorClient() {
                 ))}
               </div>
               {maritalStatus !== "single" && (
-                <p className="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-start gap-2">
-                  <Info className="w-4 h-4 mt-0.5 shrink-0" />
-                  AISH uses higher exemption amounts for families. ADAP family rates are not yet confirmed — this estimate uses single rates for ADAP.
-                </p>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleChange(() => setPartnerOnDA(!partnerOnDA))}
+                    aria-pressed={partnerOnDA}
+                    className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all ${
+                      partnerOnDA ? "border-blue-600 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-400"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className={`w-5 h-5 rounded border-2 shrink-0 flex items-center justify-center mt-0.5 ${
+                        partnerOnDA ? "border-blue-600 bg-blue-600" : "border-gray-300"
+                      }`}>
+                        {partnerOnDA && <CheckCircle2 className="w-4 h-4 text-white" />}
+                      </span>
+                      <div>
+                        <p className="font-bold text-gray-900">My partner also receives AISH or ADAP</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          From the August 2026 benefit period, each partner then receives{" "}
+                          {Math.round(COUPLE_BOTH_ON_DISABILITY_RATE * 100)}% of the maximum individual living allowance,
+                          and ADAP&apos;s exempt employment income rises to {fmt(ADAP_EXEMPTION_COHABITING)}/month.
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                  <p className="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                    AISH uses higher income exemptions for families ({fmt(AISH_EMPLOYMENT_EXEMPTION.family.full)}/month fully exempt).
+                    Both partners&apos; employment income counts toward the household total.
+                  </p>
+                </>
               )}
             </div>
 
@@ -275,8 +317,8 @@ export default function ADAPCalculatorClient() {
               <label className="block text-base font-bold text-gray-800">
                 How many dependent children do you have?
                 <span className="block text-sm text-gray-500 font-normal mt-0.5">
-                  AISH adds {fmt(AISH_FIRST_CHILD)}/mo for the first child, {fmt(AISH_ADDITIONAL_CHILD)}/mo for each after.
-                  ADAP child supplement rates are not yet confirmed.
+                  Recalibrated for the August 2026 benefit period. AISH and ADAP now pay the same
+                  monthly child benefit, per child: {CHILD_TIER_SUMMARY} ({fmt(CHILD_BENEFIT_TIERS[4])} for each child after the fourth).
                 </span>
               </label>
               <div className="flex items-center gap-0 border-2 border-gray-200 rounded-xl overflow-hidden w-fit">
@@ -296,7 +338,7 @@ export default function ADAPCalculatorClient() {
               </div>
               {children > 0 && (
                 <p className="text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-lg px-4 py-2 w-fit">
-                  AISH adds +{fmt(getChildBenefit(children))}/month for your {children} {children === 1 ? "child" : "children"}
+                  Both programs add +{fmt(getChildBenefit(children))}/month for your {children} {children === 1 ? "child" : "children"}
                 </p>
               )}
             </div>
@@ -430,16 +472,32 @@ export default function ADAPCalculatorClient() {
                 </div>
                 <div className="divide-y divide-gray-50">
                   <div className="flex justify-between px-5 py-3 text-sm">
-                    <span className="text-gray-500">Base ADAP benefit</span>
-                    <span className="font-semibold text-blue-700">{fmt(ADAP_BASE_SINGLE)}/mo</span>
+                    <span className="text-gray-500">
+                      ADAP living allowance
+                      {result.coupleRateApplied && (
+                        <span className="block text-xs text-gray-400 mt-0.5">
+                          {Math.round(COUPLE_BOTH_ON_DISABILITY_RATE * 100)}% couples rate applied to {fmt(ADAP_LIVING_ALLOWANCE)}
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-semibold text-blue-700">{fmt(result.adapBase)}/mo</span>
                   </div>
+                  {result.childBonus > 0 && (
+                    <div className="flex justify-between px-5 py-3 text-sm">
+                      <span className="text-gray-500">Child benefit</span>
+                      <span className="font-medium text-blue-600">+{fmt(result.childBonus)}/mo</span>
+                    </div>
+                  )}
                   <div className="flex justify-between px-5 py-3 text-sm">
-                    <span className="text-gray-500">Income exempt (first $700)</span>
-                    <span className="font-medium text-gray-700">{fmt(Math.min(result.household, ADAP_INCOME_EXEMPTION))}/mo</span>
+                    <span className="text-gray-500">Income exempt (first {fmtShort(result.adapExemption)})</span>
+                    <span className="font-medium text-gray-700">{fmt(Math.min(result.household, result.adapExemption))}/mo</span>
                   </div>
                   {result.adapClawback > 0 && (
                     <div className="flex justify-between px-5 py-3 text-sm">
-                      <span className="text-gray-500">Clawback on ${fmtShort(result.adapExcess)} above exempt</span>
+                      <span className="text-gray-500">
+                        Reduction on {fmtShort(result.adapExcess)} above exempt
+                        <span className="block text-xs text-gray-400 mt-0.5">Modelled — see note below</span>
+                      </span>
                       <span className="font-medium text-red-500">−{fmt(result.adapClawback)}/mo</span>
                     </div>
                   )}
@@ -457,17 +515,26 @@ export default function ADAPCalculatorClient() {
                 </div>
                 <div className="divide-y divide-gray-50">
                   <div className="flex justify-between px-5 py-3 text-sm">
-                    <span className="text-gray-500">Base AISH benefit</span>
-                    <span className="font-semibold text-emerald-700">{fmt(AISH_BASE_SINGLE)}/mo</span>
+                    <span className="text-gray-500">
+                      AISH living allowance
+                      {result.coupleRateApplied && (
+                        <span className="block text-xs text-gray-400 mt-0.5">
+                          {Math.round(COUPLE_BOTH_ON_DISABILITY_RATE * 100)}% couples rate applied to {fmt(AISH_LIVING_ALLOWANCE)}
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-semibold text-emerald-700">{fmt(result.aishBase)}/mo</span>
                   </div>
                   {result.childBonus > 0 && (
                     <div className="flex justify-between px-5 py-3 text-sm">
-                      <span className="text-gray-500">Child supplement</span>
+                      <span className="text-gray-500">Child benefit</span>
                       <span className="font-medium text-emerald-600">+{fmt(result.childBonus)}/mo</span>
                     </div>
                   )}
                   <div className="flex justify-between px-5 py-3 text-sm">
-                    <span className="text-gray-500">Income exempt (first $1,072)</span>
+                    <span className="text-gray-500">
+                      Income exempt (first {fmtShort(exemptionType === "family" ? AISH_EMPLOYMENT_EXEMPTION.family.full : MONTHLY_EARNED_INCOME_EXEMPTION)})
+                    </span>
                     <span className="font-medium text-gray-700">{fmt(result.aishExemption)}/mo</span>
                   </div>
                   {result.aishClawback > 0 && (
@@ -488,12 +555,14 @@ export default function ADAPCalculatorClient() {
             <div className={`rounded-2xl p-5 border ${diffDir === "aish" ? "bg-emerald-50 border-emerald-200" : "bg-gray-50 border-gray-200"}`}>
               <p className="font-bold text-gray-900 mb-3">Why the difference changes with income</p>
               <p className="text-sm text-gray-700 leading-relaxed">
-                ADAP&apos;s income exemption is <strong>{fmt(ADAP_INCOME_EXEMPTION)}/month</strong> — once you earn
-                above that, ADAP reduces by 50 cents per dollar. AISH&apos;s exemption is{" "}
-                <strong>{fmt(MONTHLY_EARNED_INCOME_EXEMPTION)}/month</strong> — higher, meaning AISH reduces later.
-                At <strong>$0 income</strong> the gap is always{" "}
-                <strong>{fmtShort(AISH_BASE_SINGLE - ADAP_BASE_SINGLE)}/month</strong> ($1,940 − $1,740).
-                Once you start earning, ADAP reduces faster, so the gap grows.
+                At <strong>$0 employment income</strong> the gap is the difference in living allowances —{" "}
+                <strong>{fmtShort(AISH_BASE_SINGLE - ADAP_BASE_SINGLE)}/month</strong> ({fmtShort(AISH_BASE_SINGLE)} − {fmtShort(ADAP_BASE_SINGLE)}).
+                The two programs then reduce very differently. AISH exempts your first{" "}
+                <strong>{fmt(result.aishExemption > 0 ? (exemptionType === "family" ? AISH_EMPLOYMENT_EXEMPTION.family.full : MONTHLY_EARNED_INCOME_EXEMPTION) : MONTHLY_EARNED_INCOME_EXEMPTION)}/month</strong>,
+                half-exempts the next slice, then deducts the rest dollar-for-dollar — so AISH falls away sharply.
+                ADAP exempts <strong>{fmtShort(result.adapExemption)}/month</strong> and then reduces gradually,
+                letting you earn up to <strong>{fmtShort(ADAP_BENEFIT_END_ANNUAL_INCOME)}/year</strong> before the
+                financial benefit runs out. That is why ADAP can be worth more than AISH once your earnings climb.
               </p>
             </div>
 
@@ -524,10 +593,17 @@ export default function ADAPCalculatorClient() {
                 <p className="font-bold mb-1">Rough estimate only</p>
                 <p>
                   ADAP and AISH eligibility both require a medical assessment and a full income and asset review
-                  by Alberta Supports. ADAP&apos;s exact clawback schedule above $700/month has not been fully
-                  confirmed — this calculator uses a 50-cent reduction per dollar, consistent with the
-                  $45,000/year income ceiling published by the Alberta government. Always confirm with Alberta
-                  Supports or a qualified advisor.
+                  by Alberta Supports.
+                </p>
+                <p className="mt-2">
+                  <strong>About the ADAP reduction:</strong> the living allowances, exemption thresholds, child
+                  benefit rates and the {Math.round(COUPLE_BOTH_ON_DISABILITY_RATE * 100)}% couples rate above are
+                  published by the Alberta government. The exact rate at which ADAP reduces your benefit above the
+                  exemption is set by Ministerial order and has <em>not</em> been published. Alberta has said only
+                  that the reduction begins at less than a cent per dollar and increases as earnings approach{" "}
+                  {fmtShort(ADAP_BENEFIT_END_ANNUAL_INCOME)}/year, where the financial benefit ends. This calculator
+                  models a gradual curve between those two published points, so ADAP figures at mid-range incomes are
+                  an approximation. Always confirm with Alberta Supports or a qualified advisor.
                 </p>
               </div>
             </div>

@@ -161,7 +161,7 @@ const faqSchema = {
       name: "How much is AISH in Alberta in 2026?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "The 2026 AISH standard living allowance is $1,940 per month for a single recipient before any income reductions. Additional child benefits may be added: $232/month for the first dependent child and $117/month for each additional child.",
+        text: "The 2026 AISH standard living allowance is $1,940 per month for a single recipient before any income reductions. Child benefits were recalibrated for the August 2026 benefit period: $300/month for the first dependent child, then $117, $88 and $59/month for the second, third and fourth, and $30/month for each additional child. Where both adults in a household receive AISH or ADAP, each partner receives 88% of the maximum individual living allowance, or $1,707.20/month.",
       },
     },
     {
@@ -193,7 +193,7 @@ const faqSchema = {
       name: "How is AISH calculated?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AISH is calculated by starting with the base living allowance ($1,940/month in 2026) and adding any child benefits. Employment income is then assessed: the first $1,072/month (single) or $2,612/month (family) is fully exempt. Income above that reduces AISH by 50 cents per dollar until the maximum exemption cap is reached. Any income above the cap is deducted dollar-for-dollar.",
+        text: "AISH is calculated by starting with the living allowance ($1,940/month in 2026, or $1,707.20 each where both partners receive AISH or ADAP from August 2026) and adding any child benefits. Employment income is then assessed: the first $1,072/month (single) or $2,612/month (family) is fully exempt. Income above that reduces AISH by 50 cents per dollar until the maximum exemption cap is reached. Any income above the cap is deducted dollar-for-dollar.",
       },
     },
     {

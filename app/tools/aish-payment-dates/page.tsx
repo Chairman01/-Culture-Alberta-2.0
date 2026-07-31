@@ -177,7 +177,7 @@ const faqSchema = {
       name: "What is the AISH payment amount in 2026?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "The AISH base benefit is $1,940 per month in 2026. AISH clients with dependent children receive an additional $232/month for the first child and $117/month for each additional child. If you have net employment income above $1,072/month, your AISH benefit is reduced by 50 cents for each dollar above that threshold.",
+        text: "The AISH living allowance is $1,940 per month in 2026. From the August 2026 benefit period, clients with dependent children receive an additional $300/month for the first child, then $117, $88 and $59/month for the second, third and fourth, and $30/month for each additional child. Where both adults in a household receive AISH or ADAP, each partner receives 88% of the maximum individual living allowance. If you have net employment income above $1,072/month, your AISH benefit is reduced by 50 cents for each dollar above that threshold.",
       },
     },
     {

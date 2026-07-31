@@ -225,7 +225,7 @@ export default function ToolsPage() {
                 </div>
                 <div className="text-center py-3 px-2 border-x border-gray-100">
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">1st child</p>
-                  <p className="text-sm font-bold text-gray-900">+$232</p>
+                  <p className="text-sm font-bold text-gray-900">+$300</p>
                   <p className="text-[10px] text-gray-400">/month</p>
                 </div>
                 <div className="text-center py-3 px-2">

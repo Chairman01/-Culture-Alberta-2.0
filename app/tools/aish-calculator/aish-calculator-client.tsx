@@ -5,19 +5,24 @@ import Image from "next/image"
 import { useState, useMemo } from "react"
 import { ArrowLeft, ArrowRight, Info, AlertCircle, ExternalLink, CheckCircle2, Newspaper } from "lucide-react"
 
-// ---------------------------------------------------------------------------
-// 2026 AISH program constants (Alberta government — verify annually)
-// ---------------------------------------------------------------------------
-const AISH_BASE_SINGLE = 1940
-const AISH_FIRST_CHILD = 232
-const AISH_ADDITIONAL_CHILD = 117
-const MONTHLY_EARNED_INCOME_EXEMPTION = 1072
-const MONTHLY_PARTIAL_EXEMPTION_LIMIT = 2009
-const MONTHLY_MAX_EARNED_INCOME_EXEMPTION = 1541
-const FAMILY_MONTHLY_EARNED_INCOME_EXEMPTION = 2612
-const FAMILY_MONTHLY_PARTIAL_EXEMPTION_LIMIT = 3349
-const FAMILY_MONTHLY_MAX_EARNED_INCOME_EXEMPTION = 2981
-const CLAWBACK_RATE = 0.5
+import {
+  AISH_LIVING_ALLOWANCE,
+  AISH_EMPLOYMENT_EXEMPTION,
+  CHILD_BENEFIT_TIERS,
+  COUPLE_BOTH_ON_DISABILITY_RATE,
+  calculateAish,
+  getChildBenefit,
+} from "@/lib/disability-benefits"
+
+// Rates live in lib/disability-benefits.ts — see that file for sources and for
+// the August 2026 changes (recalibrated child benefit, 88% couples rule).
+const AISH_BASE_SINGLE = AISH_LIVING_ALLOWANCE
+const MONTHLY_EARNED_INCOME_EXEMPTION = AISH_EMPLOYMENT_EXEMPTION.single.full
+const MONTHLY_PARTIAL_EXEMPTION_LIMIT = AISH_EMPLOYMENT_EXEMPTION.single.partialLimit
+const MONTHLY_MAX_EARNED_INCOME_EXEMPTION = AISH_EMPLOYMENT_EXEMPTION.single.max
+const FAMILY_MONTHLY_EARNED_INCOME_EXEMPTION = AISH_EMPLOYMENT_EXEMPTION.family.full
+const FAMILY_MONTHLY_PARTIAL_EXEMPTION_LIMIT = AISH_EMPLOYMENT_EXEMPTION.family.partialLimit
+const FAMILY_MONTHLY_MAX_EARNED_INCOME_EXEMPTION = AISH_EMPLOYMENT_EXEMPTION.family.max
 const AISH_LOGO_IMAGE = "/images/aish-logo.svg"
 
 // ---------------------------------------------------------------------------
@@ -73,72 +78,48 @@ function fmtShort(n: number) {
   return n.toLocaleString("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 })
 }
 
-function getChildBenefit(dependentChildren: number) {
-  if (dependentChildren <= 0) return 0
-  return AISH_FIRST_CHILD + Math.max(0, dependentChildren - 1) * AISH_ADDITIONAL_CHILD
-}
-
-function getEmploymentIncomeExemption(monthlyEmploymentIncome: number, exemptionType: "single" | "family") {
-  const fullExemption = exemptionType === "family"
-    ? FAMILY_MONTHLY_EARNED_INCOME_EXEMPTION
-    : MONTHLY_EARNED_INCOME_EXEMPTION
-  const partialLimit = exemptionType === "family"
-    ? FAMILY_MONTHLY_PARTIAL_EXEMPTION_LIMIT
-    : MONTHLY_PARTIAL_EXEMPTION_LIMIT
-  const maxExemption = exemptionType === "family"
-    ? FAMILY_MONTHLY_MAX_EARNED_INCOME_EXEMPTION
-    : MONTHLY_MAX_EARNED_INCOME_EXEMPTION
-
-  if (monthlyEmploymentIncome <= fullExemption) {
-    return monthlyEmploymentIncome
-  }
-
-  if (monthlyEmploymentIncome <= partialLimit) {
-    return fullExemption + (monthlyEmploymentIncome - fullExemption) * CLAWBACK_RATE
-  }
-
-  return maxExemption
-}
+/** Plain-language summary of the tiered child benefit, e.g. "$300, $117, $88…" */
+const CHILD_TIER_SUMMARY = CHILD_BENEFIT_TIERS.map((t) => `$${t}`).join(" · ")
 
 function calculateAISH(inputs: {
   dependentChildren: number
   monthlyEmploymentIncome: number
   partnerMonthlyEmploymentIncome: number
   exemptionType: "single" | "family"
+  partnerOnAish: boolean
 }) {
   const {
     dependentChildren,
     monthlyEmploymentIncome,
     partnerMonthlyEmploymentIncome,
     exemptionType,
+    partnerOnAish,
   } = inputs
 
-  const baseMonthly = AISH_BASE_SINGLE
-  const childSupplement = getChildBenefit(dependentChildren)
-  const grossMonthly = baseMonthly + childSupplement
-  const householdEmploymentIncome = monthlyEmploymentIncome + partnerMonthlyEmploymentIncome
-
-  const exemptionApplied = getEmploymentIncomeExemption(householdEmploymentIncome, exemptionType)
-  const clawback = Math.max(0, householdEmploymentIncome - exemptionApplied)
-  const netMonthly = Math.max(0, grossMonthly - clawback)
-  const annualBenefit = netMonthly * 12
+  const r = calculateAish({
+    children: dependentChildren,
+    monthlyIncome: monthlyEmploymentIncome,
+    partnerMonthlyIncome: partnerMonthlyEmploymentIncome,
+    exemptionType,
+    partnerOnDisabilityAssistance: partnerOnAish,
+  })
 
   // User enters net (after-tax) employment income — no re-taxation needed
-  const totalMonthlyTakeHome = netMonthly + householdEmploymentIncome
-  const totalAnnualTakeHome = totalMonthlyTakeHome * 12
+  const totalMonthlyTakeHome = r.netBenefit + r.householdIncome
 
   return {
-    baseMonthly,
-    childSupplement,
-    grossMonthly,
-    householdEmploymentIncome,
-    exemptionApplied,
-    clawback,
-    netMonthly,
-    annualBenefit,
-    fullyClawedBack: netMonthly === 0 && grossMonthly > 0,
+    baseMonthly: r.livingAllowance,
+    coupleRateApplied: r.coupleRateApplied,
+    childSupplement: r.childBenefit,
+    grossMonthly: r.grossBenefit,
+    householdEmploymentIncome: r.householdIncome,
+    exemptionApplied: r.exemption,
+    clawback: r.reduction,
+    netMonthly: r.netBenefit,
+    annualBenefit: r.annualBenefit,
+    fullyClawedBack: r.fullyReduced,
     totalMonthlyTakeHome,
-    totalAnnualTakeHome,
+    totalAnnualTakeHome: totalMonthlyTakeHome * 12,
   }
 }
 
@@ -226,14 +207,19 @@ export default function AISHCalculatorPage() {
     ? FAMILY_MONTHLY_MAX_EARNED_INCOME_EXEMPTION
     : MONTHLY_MAX_EARNED_INCOME_EXEMPTION
 
+  // August 2026: where both adults receive AISH or ADAP, each partner's living
+  // allowance is 88% of the maximum individual amount.
+  const partnerOnAish = maritalStatus === "married-both"
+
   const result = useMemo(
     () => calculateAISH({
       dependentChildren,
       monthlyEmploymentIncome,
       partnerMonthlyEmploymentIncome,
       exemptionType,
+      partnerOnAish,
     }),
-    [dependentChildren, monthlyEmploymentIncome, partnerMonthlyEmploymentIncome, exemptionType]
+    [dependentChildren, monthlyEmploymentIncome, partnerMonthlyEmploymentIncome, exemptionType, partnerOnAish]
   )
   const breakEvenEmploymentIncome = result.grossMonthly + maxEmploymentExemption
   const canCalculate = true
@@ -292,7 +278,7 @@ export default function AISHCalculatorPage() {
           <div className="space-y-6">
             <div>
               <span className="inline-block text-xs font-semibold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full mb-3">
-                Free Calculator · 2026 Rates
+                Free Calculator · Updated for August 2026 rates
               </span>
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
                 AISH Calculator Alberta
@@ -428,7 +414,9 @@ export default function AISHCalculatorPage() {
                 {maritalStatus === "married-both" && (
                   <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 flex items-start gap-2 mt-2">
                     <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    If both partners receive AISH, each partner may have their own file. This tool estimates one recipient&apos;s payment using the family income exemption.
+                    Starting the August 2026 benefit period, when both adults receive AISH or ADAP each partner gets{" "}
+                    {Math.round(COUPLE_BOTH_ON_DISABILITY_RATE * 100)}% of the maximum individual living allowance —{" "}
+                    {fmt(AISH_BASE_SINGLE * COUPLE_BOTH_ON_DISABILITY_RATE)}/month each. This tool estimates one partner&apos;s payment using the family income exemption.
                   </p>
                 )}
               </div>
@@ -437,7 +425,7 @@ export default function AISHCalculatorPage() {
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Dependent children
-                  <span className="ml-1.5 text-gray-400 font-normal text-xs">(+{fmt(AISH_FIRST_CHILD)} first child, +{fmt(AISH_ADDITIONAL_CHILD)} after)</span>
+                  <span className="ml-1.5 text-gray-400 font-normal text-xs">(per child: {CHILD_TIER_SUMMARY})</span>
                 </label>
                 <div className="flex items-center gap-0 border border-gray-200 rounded-lg overflow-hidden w-fit">
                   <button
@@ -547,8 +535,8 @@ export default function AISHCalculatorPage() {
                 <span className="text-gray-400 text-lg leading-none group-open:rotate-45 transition-transform inline-block">+</span>
               </summary>
               <div className="px-5 pb-5 pt-3 space-y-3 text-sm text-gray-600 leading-relaxed border-t border-gray-100">
-                <p><strong className="text-gray-800">Living allowance:</strong> The standard 2026 AISH living allowance is {fmt(AISH_BASE_SINGLE)}/month before income reductions.</p>
-                <p><strong className="text-gray-800">Child benefit:</strong> AISH may add {fmt(AISH_FIRST_CHILD)}/month for the first dependent child and {fmt(AISH_ADDITIONAL_CHILD)}/month for each additional dependent child.</p>
+                <p><strong className="text-gray-800">Living allowance:</strong> The standard 2026 AISH living allowance is {fmt(AISH_LIVING_ALLOWANCE)}/month before income reductions. Where both adults in a household receive AISH or ADAP, each partner receives {Math.round(COUPLE_BOTH_ON_DISABILITY_RATE * 100)}% of that — {fmt(AISH_LIVING_ALLOWANCE * COUPLE_BOTH_ON_DISABILITY_RATE)}/month each — starting the August 2026 benefit period.</p>
+                <p><strong className="text-gray-800">Child benefit:</strong> Recalibrated for the August 2026 benefit period. AISH adds {fmt(CHILD_BENEFIT_TIERS[0])}/month for the first dependent child, then {fmt(CHILD_BENEFIT_TIERS[1])}, {fmt(CHILD_BENEFIT_TIERS[2])}, and {fmt(CHILD_BENEFIT_TIERS[3])}/month for the second, third, and fourth, and {fmt(CHILD_BENEFIT_TIERS[4])}/month for each child after that.</p>
                 <p><strong className="text-gray-800">Employment exemption:</strong> Singles can have up to {fmt(MONTHLY_EARNED_INCOME_EXEMPTION)} fully exempt, to a maximum exemption of {fmt(MONTHLY_MAX_EARNED_INCOME_EXEMPTION)}. Families can have up to {fmt(FAMILY_MONTHLY_EARNED_INCOME_EXEMPTION)} fully exempt, to a maximum exemption of {fmt(FAMILY_MONTHLY_MAX_EARNED_INCOME_EXEMPTION)}.</p>
                 <p><strong className="text-gray-800">Clawback:</strong> Employment income left after the exemption is deducted from the AISH living allowance.</p>
                 <p><strong className="text-gray-800">Taxes:</strong> AISH payments are <em>not</em> taxable income. Only employment earnings are subject to federal and Alberta income tax.</p>
@@ -665,7 +653,14 @@ export default function AISHCalculatorPage() {
               <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-4">Calculation breakdown</p>
               <div className="divide-y divide-gray-50">
                 <div className="flex justify-between py-2.5 text-sm">
-                  <span className="text-gray-500">Base AISH benefit</span>
+                  <span className="text-gray-500">
+                    Base AISH living allowance
+                    {result.coupleRateApplied && (
+                      <span className="block text-xs text-gray-400 mt-0.5">
+                        {Math.round(COUPLE_BOTH_ON_DISABILITY_RATE * 100)}% couples rate applied to {fmt(AISH_LIVING_ALLOWANCE)}
+                      </span>
+                    )}
+                  </span>
                   <span className="font-medium text-gray-900">{fmt(result.baseMonthly)}/mo</span>
                 </div>
                 {result.childSupplement > 0 && (
