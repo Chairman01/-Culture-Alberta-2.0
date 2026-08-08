@@ -1,20 +1,28 @@
 /**
- * Jobs sync orchestrator: Adzuna → values filter → Supabase upsert → expiry.
+ * Jobs sync: employers' own ATS boards → values filter → Supabase → expiry.
  *
  * Runs daily via /api/cron/sync-jobs (see vercel.json) or the admin trigger.
  * Slugs are generated ONCE at insert and never regenerated on upsert —
  * slug churn would reset each posting page's SEO.
+ *
+ * Replaced an aggregator feed in August 2026. Two things changed as a result:
+ *
+ *  1. Expiry is immediate rather than on a 3-day timer. The aggregator only
+ *     ever showed us the first 150 results per city, so a missing job proved
+ *     nothing. An ATS board is the employer's complete list, so absence IS the
+ *     signal that a role closed — but only for boards that actually answered,
+ *     hence the per-board bookkeeping below.
+ *
+ *  2. Rows carry full descriptions and an apply URL on the employer's own
+ *     application form, which is what makes the pages indexable.
  */
 
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
-import { fetchAdzunaJobs, fetchFixtureJobs } from './adzuna'
+import { fetchAtsJobs, ATS_BOARDS } from './ats'
 import { filterJobs } from './jobs-filter'
 import { JOB_CITIES, buildJobSlug } from '@/lib/jobs'
 import { JobCity, JobUpsertRow } from '@/lib/types/job'
-
-// Adzuna rows absent from the feed for this many days get expired
-const STALE_AFTER_DAYS = 3
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -24,55 +32,69 @@ function getSupabaseAdmin() {
 }
 
 export interface JobsSyncResult {
-  city: JobCity
   fetched: number
   blocked: number
   inserted: number
   updated: number
-  expiredStale: number
-  expiredPastDue: number
+  expired: number
+  byCity: Partial<Record<JobCity, number>>
+  boards: Array<{ board: string; provider: string; alberta: number; error?: string }>
   errors: string[]
 }
 
-export async function syncJobsForCity(city: JobCity, useFixture = false): Promise<JobsSyncResult> {
+export async function syncAllJobs(): Promise<JobsSyncResult> {
   const result: JobsSyncResult = {
-    city, fetched: 0, blocked: 0, inserted: 0, updated: 0,
-    expiredStale: 0, expiredPastDue: 0, errors: [],
+    fetched: 0, blocked: 0, inserted: 0, updated: 0, expired: 0,
+    byCity: {}, boards: [], errors: [],
   }
 
   const supabase = getSupabaseAdmin()
 
-  // 1. Fetch
-  const fetched = useFixture ? await fetchFixtureJobs(city) : await fetchAdzunaJobs(city)
+  // 1. Fetch every configured board
+  const { rows: fetched, boards } = await fetchAtsJobs()
   result.fetched = fetched.length
+  result.boards = boards.map(b => ({ board: b.board, provider: b.provider, alberta: b.alberta, error: b.error }))
+
+  const failedBoards = new Set(boards.filter(b => b.error).map(b => b.board))
+  for (const b of boards.filter(b => b.error)) {
+    result.errors.push(`${b.provider}/${b.board}: ${b.error}`)
+  }
 
   if (fetched.length === 0) {
-    // Empty fetch = API failure or missing keys. Do NOT expire existing rows
-    // off the back of a failed fetch — report and stop.
-    result.errors.push('Fetch returned 0 jobs (missing keys or API failure) — skipped upsert and stale-expiry')
+    // Every board failed, or the config is empty. Expiring here would wipe the
+    // board off the back of an outage.
+    result.errors.push('No jobs fetched from any board — skipped upsert and expiry')
     return result
   }
 
-  // 2. Values filter
+  // 2. Values filter (alcohol, gambling, cannabis, nightlife, adult)
   const { kept, blocked } = filterJobs(fetched)
   result.blocked = blocked.length
 
-  // 3. Upsert: update existing rows (never the slug), insert new ones
-  const sourceIds = kept.map(r => r.source_id)
-  const { data: existingRows, error: existingErr } = await supabase
-    .from('jobs')
-    .select('source_id')
-    .eq('source', 'adzuna')
-    .in('source_id', sourceIds)
-
-  if (existingErr) {
-    result.errors.push(`Lookup failed: ${existingErr.message}`)
-    return result
+  for (const row of kept) {
+    result.byCity[row.city] = (result.byCity[row.city] ?? 0) + 1
   }
 
-  const existing = new Set((existingRows ?? []).map(r => r.source_id as string))
-  const nowIso = new Date().toISOString()
+  // 3. Upsert: update existing rows (never the slug), insert new ones
+  const sourceIds = kept.map(r => r.source_id)
+  const existing = new Set<string>()
 
+  // Chunked: `in` with a thousand-plus ids overruns the URL length limit.
+  for (let i = 0; i < sourceIds.length; i += 200) {
+    const chunk = sourceIds.slice(i, i + 200)
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('source_id')
+      .eq('source', 'ats')
+      .in('source_id', chunk)
+    if (error) {
+      result.errors.push(`Lookup failed: ${error.message}`)
+      return result
+    }
+    for (const r of data ?? []) existing.add(r.source_id as string)
+  }
+
+  const nowIso = new Date().toISOString()
   const toUpdate = kept.filter(r => existing.has(r.source_id))
   const toInsert = kept.filter(r => !existing.has(r.source_id))
 
@@ -82,20 +104,21 @@ export async function syncJobsForCity(city: JobCity, useFixture = false): Promis
       .update({
         title: row.title,
         company: row.company,
-        category: row.category,
         location_raw: row.location_raw,
         description_snippet: row.description_snippet,
-        salary_min: row.salary_min,
-        salary_max: row.salary_max,
-        salary_label: row.salary_label,
+        description_html: row.description_html,
         employment_type: row.employment_type,
+        // Both are re-read from the description each run, so a corrected
+        // closing date or a newly published salary reaches rows that already
+        // exist — not just newly inserted ones.
+        valid_through: row.valid_through ?? null,
+        salary_label: row.salary_label ?? null,
         apply_url: row.apply_url,
         source_url: row.source_url,
-        valid_through: row.valid_through,
         last_seen_at: nowIso,
         status: 'active',
       })
-      .eq('source', 'adzuna')
+      .eq('source', 'ats')
       .eq('source_id', row.source_id)
     if (error) result.errors.push(`Update ${row.source_id}: ${error.message}`)
     else result.updated++
@@ -110,53 +133,45 @@ export async function syncJobsForCity(city: JobCity, useFixture = false): Promis
       is_manual: false,
       is_featured: false,
     }))
-    const { error } = await supabase.from('jobs').insert(insertRows)
-    if (error) result.errors.push(`Insert failed: ${error.message}`)
-    else result.inserted = insertRows.length
-  }
-
-  // 4. Expire: stale (absent from feed > N days) and past valid_through
-  const staleCutoff = new Date(Date.now() - STALE_AFTER_DAYS * 24 * 60 * 60 * 1000).toISOString()
-
-  const { data: staleRows, error: staleErr } = await supabase
-    .from('jobs')
-    .update({ status: 'expired' })
-    .eq('source', 'adzuna')
-    .eq('city', city)
-    .eq('status', 'active')
-    .lt('last_seen_at', staleCutoff)
-    .select('id')
-  if (staleErr) result.errors.push(`Stale expiry failed: ${staleErr.message}`)
-  else result.expiredStale = staleRows?.length ?? 0
-
-  const { data: pastDueRows, error: pastDueErr } = await supabase
-    .from('jobs')
-    .update({ status: 'expired' })
-    .eq('city', city)
-    .eq('status', 'active')
-    .lt('valid_through', nowIso)
-    .select('id')
-  if (pastDueErr) result.errors.push(`Past-due expiry failed: ${pastDueErr.message}`)
-  else result.expiredPastDue = pastDueRows?.length ?? 0
-
-  return result
-}
-
-export async function syncAllJobs(useFixture = false): Promise<JobsSyncResult[]> {
-  const results: JobsSyncResult[] = []
-  for (const city of JOB_CITIES) {
-    try {
-      results.push(await syncJobsForCity(city, useFixture))
-    } catch (err) {
-      results.push({
-        city, fetched: 0, blocked: 0, inserted: 0, updated: 0,
-        expiredStale: 0, expiredPastDue: 0,
-        errors: [err instanceof Error ? err.message : String(err)],
-      })
+    // Chunked so one oversized request can't fail the whole batch.
+    for (let i = 0; i < insertRows.length; i += 100) {
+      const chunk = insertRows.slice(i, i + 100)
+      const { error } = await supabase.from('jobs').insert(chunk)
+      if (error) result.errors.push(`Insert failed: ${error.message}`)
+      else result.inserted += chunk.length
     }
   }
 
-  // Refresh the jobs pages once per run
+  // 4. Expire anything that has left its board.
+  //    Scoped per board and skipped for boards that errored — a timeout must
+  //    never be read as "this employer closed every role".
+  const seen = new Set(kept.map(r => r.source_id))
+  for (const board of ATS_BOARDS) {
+    if (failedBoards.has(board.token)) continue
+
+    const { data: live, error: liveErr } = await supabase
+      .from('jobs')
+      .select('id, source_id')
+      .eq('source', 'ats')
+      .eq('ats_board', board.token)
+      .eq('status', 'active')
+    if (liveErr) {
+      result.errors.push(`Expiry lookup ${board.token}: ${liveErr.message}`)
+      continue
+    }
+
+    const gone = (live ?? []).filter(r => !seen.has(r.source_id as string)).map(r => r.id as string)
+    if (gone.length === 0) continue
+
+    const { error: expErr } = await supabase
+      .from('jobs')
+      .update({ status: 'expired' })
+      .in('id', gone)
+    if (expErr) result.errors.push(`Expiry ${board.token}: ${expErr.message}`)
+    else result.expired += gone.length
+  }
+
+  // 5. Refresh the jobs pages once per run
   try {
     revalidatePath('/jobs')
     for (const city of JOB_CITIES) revalidatePath(`/jobs/${city}`)
@@ -164,5 +179,5 @@ export async function syncAllJobs(useFixture = false): Promise<JobsSyncResult[]>
     // revalidatePath throws outside a request scope in some contexts — non-fatal
   }
 
-  return results
+  return result
 }

@@ -1,10 +1,10 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { getActiveJobs } from '@/lib/jobs'
+import { getActiveJobs, getCompaniesWithJobs, JOB_CITY_LABELS } from '@/lib/jobs'
 import { JobsItemListStructuredData } from '@/components/seo/structured-data'
-import { AdzunaAttribution } from '@/components/jobs/adzuna-attribution'
+import { CompanyLogo } from '@/components/jobs/company-logo'
 import JobsBrowser from './jobs-browser'
-import { toBrowserJob } from './shared'
+import { toBrowserJob, logoDomainFor } from './shared'
 
 export const metadata: Metadata = {
   title: 'Alberta Jobs Board | Who\'s Hiring in Calgary & Edmonton',
@@ -24,6 +24,7 @@ export const revalidate = 3600
 export default async function JobsPage() {
   const jobs = await getActiveJobs()
   const browserJobs = jobs.map(toBrowserJob)
+  const companies = await getCompaniesWithJobs()
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -49,7 +50,7 @@ export default async function JobsPage() {
                 to apply, save jobs, and track every application in one place.
               </p>
               <p className="max-w-[800px] text-sm text-muted-foreground">
-                You apply on the employer&apos;s own site — we never collect resumes. Listings come from
+                Every listing links straight to the employer&apos;s own careers site. Listings come from
                 employer job feeds and our own curation; always confirm details on the employer&apos;s posting.
               </p>
             </div>
@@ -58,14 +59,35 @@ export default async function JobsPage() {
 
         <section className="w-full py-10 md:py-14">
           <div className="container mx-auto max-w-7xl px-4 md:px-6">
+            {/* 60,000 positions in all 87 divisions dwarfs everything else on the
+                board, and it has a hard October 10 deadline — it earns the top slot. */}
+            <Link
+              href="/jobs/elections-alberta"
+              className="mb-8 flex flex-col gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 transition-colors hover:border-blue-300 hover:bg-blue-100/70 sm:flex-row sm:items-center"
+            >
+              <CompanyLogo company="Elections Alberta" domain="elections.ab.ca" size={56} />
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-bold text-gray-900">
+                  Elections Alberta is hiring 60,000 Albertans
+                </p>
+                <p className="mt-0.5 text-sm text-gray-700">
+                  Referendum work in all 87 electoral divisions — every role, the October 10
+                  deadline, and a searchable map of your division.
+                </p>
+              </div>
+              <span className="flex-shrink-0 rounded-md bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white">
+                See the guide →
+              </span>
+            </Link>
+
             {/* Server-rendered job list for SEO */}
             <div className="sr-only">
-              <h2>Latest job openings in Calgary and Edmonton</h2>
+              <h2>Latest job openings across Alberta</h2>
               <ul>
                 {jobs.slice(0, 50).map(job => (
                   <li key={job.id}>
                     <a href={`/jobs/posting/${job.slug}`}>
-                      {job.title} at {job.company} — {job.city === 'calgary' ? 'Calgary' : 'Edmonton'}
+                      {job.title} at {job.company} — {JOB_CITY_LABELS[job.city]}
                     </a>
                   </li>
                 ))}
@@ -74,12 +96,38 @@ export default async function JobsPage() {
 
             <JobsBrowser jobs={browserJobs} />
 
-            {/* Required by Adzuna's API terms whenever their listings are shown.
-                Kept below the list rather than in the header: still present and
-                still meets their 116x23px + linked-words spec. */}
-            {jobs.some(j => j.source === 'adzuna') && (
-              <div className="mt-8 border-t border-gray-200 pt-4">
-                <AdzunaAttribution />
+            {/* Employer directory. Gives readers a way to browse by name, and is
+                the crawl path to every company page — without it those pages
+                would only be reachable from individual postings. */}
+            {companies.length > 0 && (
+              <div className="mt-12 border-t border-gray-200 pt-8">
+                <h2 className="text-xl font-semibold">Browse by employer</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {companies.length} Alberta employers hiring right now.
+                </p>
+                <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {companies.map(c => (
+                    <li key={c.slug}>
+                      <Link
+                        href={`/jobs/company/${c.slug}`}
+                        className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-colors hover:border-gray-300 hover:bg-gray-50"
+                      >
+                        <CompanyLogo
+                          company={c.company}
+                          domain={logoDomainFor({ ats_board: c.atsBoard, company: c.company })}
+                          size={40}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium text-gray-900">{c.company}</span>
+                          <span className="block text-sm text-gray-500">
+                            {c.jobCount} open role{c.jobCount === 1 ? '' : 's'} ·{' '}
+                            {c.cities.map(city => JOB_CITY_LABELS[city]).join(', ')}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>

@@ -20,10 +20,12 @@ export function JobActions({
   jobId,
   applyUrl,
   expired,
+  company,
 }: {
   jobId: string
   applyUrl: string
   expired: boolean
+  company?: string
 }) {
   const { toast } = useToast()
   const { user } = useAuth()
@@ -96,30 +98,64 @@ export function JobActions({
     }
   }, [user, isSaved, jobId, router, toast])
 
+  const applyLabel = user
+    ? company ? `Apply at ${company} →` : 'Apply on employer site →'
+    : 'Sign in free to apply →'
+
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      {!expired && (
-        <a
-          href={applyUrl}
-          target="_blank"
-          rel="nofollow noopener"
-          onClick={handleApply}
-          className="inline-flex items-center rounded-md bg-blue-600 px-6 py-3 text-base font-semibold text-white hover:bg-blue-700"
+    <>
+      <div className="flex flex-wrap items-center gap-3">
+        {!expired && (
+          <a
+            href={applyUrl}
+            target="_blank"
+            rel="nofollow noopener"
+            onClick={handleApply}
+            className="inline-flex items-center rounded-md bg-blue-600 px-6 py-3 text-base font-semibold text-white hover:bg-blue-700"
+          >
+            {applyLabel}
+          </a>
+        )}
+        <button
+          onClick={handleSave}
+          disabled={busy}
+          className={`inline-flex items-center gap-2 rounded-md border px-4 py-3 text-sm font-medium transition-colors disabled:opacity-50 ${
+            isSaved ? 'border-blue-600 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
+          aria-pressed={isSaved}
         >
-          {user ? 'Apply on employer site →' : 'Sign in free to apply →'}
-        </a>
+          <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-current' : ''}`} />
+          {isSaved ? 'Saved' : 'Save job'}
+        </button>
+      </div>
+
+      {/* Descriptions run to several thousand words, so by the time someone has
+          decided to apply the button is far off-screen. This keeps it reachable
+          on mobile without a scroll back to the top. */}
+      {!expired && (
+        <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-2 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] backdrop-blur md:hidden">
+          <a
+            href={applyUrl}
+            target="_blank"
+            rel="nofollow noopener"
+            onClick={handleApply}
+            className="flex-1 rounded-md bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white"
+          >
+            {applyLabel}
+          </a>
+          <button
+            onClick={handleSave}
+            disabled={busy}
+            aria-label={isSaved ? 'Saved' : 'Save job'}
+            aria-pressed={isSaved}
+            className={`rounded-md border px-4 py-3 disabled:opacity-50 ${
+              isSaved ? 'border-blue-600 text-blue-700' : 'border-gray-300 text-gray-700'
+            }`}
+          >
+            <Bookmark className={`h-5 w-5 ${isSaved ? 'fill-current' : ''}`} />
+          </button>
+        </div>
       )}
-      <button
-        onClick={handleSave}
-        disabled={busy}
-        className={`inline-flex items-center gap-2 rounded-md border px-4 py-3 text-sm font-medium transition-colors disabled:opacity-50 ${
-          isSaved ? 'border-blue-600 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-        }`}
-        aria-pressed={isSaved}
-      >
-        <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-current' : ''}`} />
-        {isSaved ? 'Saved' : 'Save job'}
-      </button>
-    </div>
+    </>
   )
 }

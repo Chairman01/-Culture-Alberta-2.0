@@ -1,7 +1,7 @@
 ﻿import { MetadataRoute } from 'next'
 import { supabase } from '@/lib/supabase'
 import { getAllEvents } from '@/lib/events'
-import { getActiveJobSlugs } from '@/lib/jobs'
+import { getActiveJobSlugs, getJobCountsByCity, getCompaniesWithJobs, JOB_CITIES, CITY_PAGE_MIN_INDEXABLE_JOBS } from '@/lib/jobs'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
 export const revalidate = 3600
@@ -59,6 +59,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }))
 
+  // Only offer city job pages that clear the minimum — an empty municipality
+  // page is thin content, and submitting it invites the same "Discovered,
+  // currently not indexed" treatment the aggregator postings got.
+  // Employer pages: unique aggregated content and the landing page for
+  // "<company> careers <city>" searches, which individual postings otherwise
+  // compete with each other for.
+  const companies = await getCompaniesWithJobs()
+  const companyEntries: MetadataRoute.Sitemap = companies.map(c => ({
+    url: `${baseUrl}/jobs/company/${c.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'daily' as const,
+    priority: 0.7,
+  }))
+
+  const cityCounts = await getJobCountsByCity()
+  const jobCityEntries: MetadataRoute.Sitemap = JOB_CITIES
+    .filter(city => (cityCounts[city] ?? 0) >= CITY_PAGE_MIN_INDEXABLE_JOBS)
+    .map(city => ({
+      url: `${baseUrl}/jobs/${city}`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
+    }))
+
   // Static routes
   const staticRoutes: MetadataRoute.Sitemap = [
     {
@@ -86,17 +110,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
-      url: baseUrl + '/jobs/calgary',
+      url: baseUrl + '/jobs/elections-alberta',
       lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
+      changeFrequency: 'weekly',
+      priority: 0.9, // 60,000 positions across all 87 divisions, deadline Oct 10 2026
     },
-    {
-      url: baseUrl + '/jobs/edmonton',
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
+    // City job pages are added below, but only once they have real supply.
     {
       url: baseUrl + '/alberta',
       lastModified: new Date(),
@@ -264,6 +283,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ]
 
-  return [...staticRoutes, ...articleEntries, ...eventEntries, ...jobEntries]
+  return [
+    ...staticRoutes,
+    ...articleEntries,
+    ...eventEntries,
+    ...jobEntries,
+    ...jobCityEntries,
+    ...companyEntries,
+  ]
 }
 

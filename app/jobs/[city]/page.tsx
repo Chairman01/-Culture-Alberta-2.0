@@ -1,9 +1,11 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getActiveJobs, isJobCity, JOB_CITIES, JOB_CITY_LABELS } from '@/lib/jobs'
+import {
+  getActiveJobs, isJobCity, isIndexableJob, JOB_CITIES, JOB_CITY_LABELS,
+  CITY_PAGE_MIN_INDEXABLE_JOBS,
+} from '@/lib/jobs'
 import { JobsItemListStructuredData } from '@/components/seo/structured-data'
-import { AdzunaAttribution } from '@/components/jobs/adzuna-attribution'
 import JobsBrowser from '../jobs-browser'
 import { toBrowserJob } from '../shared'
 
@@ -17,9 +19,17 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
   const { city } = await params
   if (!isJobCity(city)) return {}
   const label = JOB_CITY_LABELS[city]
+
+  // Offered to Google once the page carries at least one full job description —
+  // that's original content a crawler can't get elsewhere. A city with nothing
+  // but empty state stays reachable for browsing but out of the index.
+  const jobs = await getActiveJobs({ city })
+  const thin = jobs.filter(isIndexableJob).length < CITY_PAGE_MIN_INDEXABLE_JOBS
+
   return {
     title: `${label} Jobs | Who's Hiring in ${label} Right Now`,
     description: `The latest job openings in ${label}, Alberta — updated daily. Browse by category and salary, then apply directly on the employer's site.`,
+    robots: thin ? { index: false, follow: true } : { index: true, follow: true },
     openGraph: {
       title: `${label} Jobs | Culture Alberta`,
       description: `Who's hiring in ${label} right now — the latest openings, updated daily.`,
@@ -33,7 +43,7 @@ export default async function CityJobsPage({ params }: { params: Promise<{ city:
   const { city } = await params
   if (!isJobCity(city)) notFound()
   const label = JOB_CITY_LABELS[city]
-  const otherCity = JOB_CITIES.find(c => c !== city)!
+  const otherCities = JOB_CITIES.filter(c => c !== city)
   const jobs = await getActiveJobs({ city })
   const browserJobs = jobs.map(toBrowserJob)
 
@@ -59,7 +69,15 @@ export default async function CityJobsPage({ params }: { params: Promise<{ city:
                 to apply, save jobs, and track your applications.
               </p>
               <p className="max-w-[800px] text-sm text-muted-foreground">
-                Also hiring: <Link href={`/jobs/${otherCity}`} className="underline hover:text-gray-900">{JOB_CITY_LABELS[otherCity]} jobs</Link>
+                Also hiring:{' '}
+                {otherCities.map((c, i) => (
+                  <span key={c}>
+                    {i > 0 && ' · '}
+                    <Link href={`/jobs/${c}`} className="underline hover:text-gray-900">
+                      {JOB_CITY_LABELS[c]}
+                    </Link>
+                  </span>
+                ))}
                 {' '}· <Link href="/jobs" className="underline hover:text-gray-900">All Alberta jobs</Link>
               </p>
             </div>
@@ -82,14 +100,6 @@ export default async function CityJobsPage({ params }: { params: Promise<{ city:
 
             <JobsBrowser jobs={browserJobs} initialCity={label} />
 
-            {/* Required by Adzuna's API terms whenever their listings are shown.
-                Kept below the list rather than in the header: still present and
-                still meets their 116x23px + linked-words spec. */}
-            {jobs.some(j => j.source === 'adzuna') && (
-              <div className="mt-8 border-t border-gray-200 pt-4">
-                <AdzunaAttribution />
-              </div>
-            )}
           </div>
         </section>
       </main>

@@ -6,9 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
-import { syncJobsForCity, syncAllJobs } from '@/lib/automation/jobs-sync'
-import { JOB_CITIES } from '@/lib/jobs'
-import { JobCity } from '@/lib/types/job'
+import { syncAllJobs } from '@/lib/automation/jobs-sync'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -25,28 +23,17 @@ export async function POST(req: NextRequest) {
   }
 
   const city = body.city || 'all'
-  const useFixture = body.fixture === true && process.env.NODE_ENV !== 'production'
-
-  if (city !== 'all' && !(JOB_CITIES as string[]).includes(city)) {
-    return NextResponse.json(
-      { error: `Invalid city. Valid: ${JOB_CITIES.join(', ')}, all` },
-      { status: 400 }
-    )
-  }
-
-  console.log(`[admin/sync-jobs] Triggered by admin — city: ${city}`)
+  console.log('[admin/sync-jobs] Triggered by admin')
 
   try {
-    const results =
-      city === 'all'
-        ? await syncAllJobs(useFixture)
-        : [await syncJobsForCity(city as JobCity, useFixture)]
+    // Employer boards aren't city-scoped, so this always syncs every board and
+    // sorts the results into cities afterwards.
+    const result = await syncAllJobs()
 
-    const failed = results.filter(r => r.errors.length > 0).length
     return NextResponse.json({
-      success: failed === 0,
+      success: result.errors.length === 0,
       timestamp: new Date().toISOString(),
-      results,
+      result,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

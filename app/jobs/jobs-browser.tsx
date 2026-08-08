@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useMemo, useState } from 'react'
+import { CompanyLogo } from '@/components/jobs/company-logo'
 import Link from 'next/link'
 import { Search, MapPin, Clock, X, Building2, ExternalLink } from 'lucide-react'
 
@@ -20,7 +21,14 @@ export interface BrowserJob {
   slug: string
   title: string
   company: string
-  city: 'Calgary' | 'Edmonton'
+  /** Display label, e.g. "Fort McMurray" — see JOB_CITY_LABELS. */
+  city: string
+  /** Locally hosted logo, preferred when present. */
+  logoSrc?: string
+  /** Employer website for the logo; undefined falls back to a lettered tile. */
+  logoDomain?: string
+  /** 'unknown' when the posting never says — most of them. */
+  unionStatus?: 'union' | 'non-union' | 'unknown'
   category: string
   salaryText?: string
   postedAt?: string       // ISO — for the posted-within filter + New badge
@@ -53,6 +61,8 @@ export default function JobsBrowser({
   const [category, setCategory] = useState('all')
   const [postedWithin, setPostedWithin] = useState('all')
   const [hasSalary, setHasSalary] = useState(false)
+  const [employment, setEmployment] = useState('all')
+  const [union, setUnion] = useState('all')
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -67,7 +77,7 @@ export default function JobsBrowser({
 
   const filtersActive =
     keyword.trim() !== '' || city !== initialCity || category !== 'all' ||
-    postedWithin !== 'all' || hasSalary
+    postedWithin !== 'all' || hasSalary || employment !== 'all' || union !== 'all'
 
   const clearFilters = () => {
     setKeyword('')
@@ -75,6 +85,8 @@ export default function JobsBrowser({
     setCategory('all')
     setPostedWithin('all')
     setHasSalary(false)
+    setEmployment('all')
+    setUnion('all')
     setPage(1)
   }
 
@@ -88,6 +100,8 @@ export default function JobsBrowser({
     const matches = jobs.filter(j => {
       if (city !== 'all' && j.city !== city) return false
       if (category !== 'all' && j.category !== category) return false
+      if (employment !== 'all' && j.employmentType !== employment) return false
+      if (union !== 'all' && j.unionStatus !== union) return false
       if (hasSalary && !j.salaryText) return false
       if (cutoff && (!j.postedAt || new Date(j.postedAt).getTime() < cutoff)) return false
       if (kw) {
@@ -104,7 +118,36 @@ export default function JobsBrowser({
       if (r !== 0) return r
       return (b.postedAt || '').localeCompare(a.postedAt || '')
     })
-  }, [jobs, keyword, city, category, postedWithin, hasSalary])
+  }, [jobs, keyword, city, category, postedWithin, hasSalary, employment, union])
+
+  /**
+   * Options come from the data, never a fixed list. The board currently holds
+   * zero part-time roles, so a hardcoded "Part-time" option would be a filter
+   * that always returns nothing — the single most annoying thing a job board
+   * can do. Options appear when jobs exist to back them.
+   */
+  const employmentOptions = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const j of jobs) {
+      if (j.employmentType) counts.set(j.employmentType, (counts.get(j.employmentType) || 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])
+  }, [jobs])
+
+  const unionOptions = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const j of jobs) {
+      if (j.unionStatus && j.unionStatus !== 'unknown') {
+        counts.set(j.unionStatus, (counts.get(j.unionStatus) || 0) + 1)
+      }
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])
+  }, [jobs])
+
+  const cityOptions = useMemo(
+    () => [...new Set(jobs.map(j => j.city))].sort((a, b) => a.localeCompare(b)),
+    [jobs]
+  )
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
@@ -160,8 +203,11 @@ export default function JobsBrowser({
           className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
         >
           <option value="all">All of Alberta</option>
-          <option value="Calgary">Calgary</option>
-          <option value="Edmonton">Edmonton</option>
+          {/* Only cities actually represented in this result set — an empty
+              option is a dead end for the reader. */}
+          {cityOptions.map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
         </select>
         <select
           value={category}
@@ -180,6 +226,37 @@ export default function JobsBrowser({
         >
           {POSTED_WITHIN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+
+        {employmentOptions.length > 1 && (
+          <select
+            value={employment}
+            onChange={e => { setEmployment(e.target.value); resetPage() }}
+            aria-label="Employment type"
+            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          >
+            <option value="all">Any job type</option>
+            {employmentOptions.map(([type, n]) => (
+              <option key={type} value={type}>{type} ({n})</option>
+            ))}
+          </select>
+        )}
+
+        {unionOptions.length > 0 && (
+          <select
+            value={union}
+            onChange={e => { setUnion(e.target.value); resetPage() }}
+            aria-label="Union status"
+            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          >
+            <option value="all">Union or not</option>
+            {unionOptions.map(([status, n]) => (
+              <option key={status} value={status}>
+                {status === 'union' ? 'Union' : 'Non-union'} ({n})
+              </option>
+            ))}
+          </select>
+        )}
+
         <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
           <input
             type="checkbox"
@@ -232,7 +309,7 @@ export default function JobsBrowser({
         <div className="py-16 text-center">
           <p className="text-lg font-semibold text-gray-700">New jobs are being added</p>
           <p className="mt-2 text-sm text-gray-500">
-            The board updates daily with new Calgary and Edmonton openings. Check back soon.
+            The board updates daily with new openings across Alberta. Check back soon.
           </p>
         </div>
       ) : pageJobs.length === 0 ? (
@@ -264,33 +341,39 @@ export default function JobsBrowser({
                         : 'border-l-transparent hover:bg-gray-50'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className={`text-base font-semibold leading-snug ${active ? 'text-blue-800' : 'text-gray-900'}`}>
-                        {job.title}
-                      </h3>
-                      {job.featured ? (
-                        <span className="mt-0.5 flex-shrink-0 rounded bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">
-                          Featured
-                        </span>
-                      ) : isNew(job) ? (
-                        <span className="mt-0.5 flex-shrink-0 rounded bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
-                          New
-                        </span>
-                      ) : null}
-                    </div>
+                    <div className="flex gap-3">
+                      <CompanyLogo company={job.company} domain={job.logoDomain} src={job.logoSrc} size={44} className="mt-0.5" />
 
-                    <p className="mt-0.5 truncate text-sm text-gray-700">{job.company}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className={`text-base font-semibold leading-snug ${active ? 'text-blue-800' : 'text-gray-900'}`}>
+                            {job.title}
+                          </h3>
+                          {job.featured ? (
+                            <span className="mt-0.5 flex-shrink-0 rounded bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                              Featured
+                            </span>
+                          ) : isNew(job) ? (
+                            <span className="mt-0.5 flex-shrink-0 rounded bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                              New
+                            </span>
+                          ) : null}
+                        </div>
 
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" /> {job.city}
-                      </span>
-                      {job.postedLabel && (
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" /> {job.postedLabel}
-                        </span>
-                      )}
-                      {job.employmentType && <span>{job.employmentType}</span>}
+                        <p className="mt-0.5 truncate text-sm text-gray-700">{job.company}</p>
+
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" /> {job.city}
+                          </span>
+                          {job.postedLabel && (
+                            <span className="inline-flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5" /> {job.postedLabel}
+                            </span>
+                          )}
+                          {job.employmentType && <span>{job.employmentType}</span>}
+                        </div>
+                      </div>
                     </div>
 
                     {job.salaryText && (
@@ -308,12 +391,16 @@ export default function JobsBrowser({
           {selected && (
             <aside id="job-detail-panel" className="mt-6 lg:mt-0 lg:sticky lg:top-24">
               <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 className="text-2xl font-bold leading-tight text-gray-900">{selected.title}</h2>
-
-                <p className="mt-1 inline-flex items-center gap-1.5 text-base text-gray-700">
-                  <Building2 className="h-4 w-4 text-gray-400" />
-                  {selected.company}
-                </p>
+                <div className="flex items-start gap-4">
+                  <CompanyLogo company={selected.company} domain={selected.logoDomain} src={selected.logoSrc} size={56} />
+                  <div className="min-w-0">
+                    <h2 className="text-2xl font-bold leading-tight text-gray-900">{selected.title}</h2>
+                    <p className="mt-1 inline-flex items-center gap-1.5 text-base text-gray-700">
+                      <Building2 className="h-4 w-4 text-gray-400" />
+                      {selected.company}
+                    </p>
+                  </div>
+                </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                   <span className="inline-flex items-center gap-1">

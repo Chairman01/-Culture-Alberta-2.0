@@ -60,14 +60,26 @@ export default function AdminJobsPage() {
       const res = await fetch('/api/admin/automation/sync-jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: 'all' }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      const totals = (data.results || []).map((r: any) =>
-        `${r.city}: +${r.inserted} new, ${r.updated} updated, ${r.blocked} blocked, ${r.expiredStale + r.expiredPastDue} expired`
-      ).join(' · ')
-      setMessage(`Sync complete. ${totals}`)
+
+      const r = data.result
+      const cities = Object.entries(r?.byCity ?? {})
+        .map(([city, n]) => `${city} ${n}`)
+        .join(', ')
+      // Surface failing boards by name — a silently unreachable employer looks
+      // exactly like an employer with no openings, and only one of those is a bug.
+      const failed = (r?.boards ?? []).filter((b: any) => b.error)
+      const failedNote = failed.length
+        ? ` · ${failed.length} board(s) failed: ${failed.map((b: any) => b.board).join(', ')}`
+        : ''
+
+      setMessage(
+        `Sync complete — ${r?.inserted ?? 0} new, ${r?.updated ?? 0} updated, ` +
+        `${r?.expired ?? 0} expired, ${r?.blocked ?? 0} filtered out` +
+        (cities ? ` · ${cities}` : '') + failedNote
+      )
       load()
     } catch (err) {
       setMessage(`Sync failed: ${err instanceof Error ? err.message : err}`)
@@ -117,7 +129,7 @@ export default function AdminJobsPage() {
             disabled={busy !== null}
             className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
           >
-            {busy === 'sync' ? 'Syncing…' : 'Run Adzuna sync'}
+            {busy === 'sync' ? 'Syncing…' : 'Run employer board sync'}
           </button>
           <button
             onClick={runWeeklyArticle}
@@ -153,14 +165,16 @@ export default function AdminJobsPage() {
         >
           <option value="all">All sources</option>
           <option value="manual">Manual</option>
-          <option value="adzuna">Adzuna</option>
+          <option value="ats">Employer boards</option>
+          {/* Retired Aug 2026 — kept so historical rows stay filterable. */}
+          <option value="adzuna">Adzuna (retired)</option>
         </select>
       </div>
 
       {jobs === null ? (
         <p className="py-12 text-center text-gray-500">Loading…</p>
       ) : filtered.length === 0 ? (
-        <p className="py-12 text-center text-gray-500">No jobs found. Run the Adzuna sync or create a manual posting.</p>
+        <p className="py-12 text-center text-gray-500">No jobs found. Run the employer board sync or create a manual posting.</p>
       ) : (
         <div className="overflow-x-auto rounded-md border">
           <table className="w-full text-sm">

@@ -1,6 +1,31 @@
 import { Article } from '@/lib/types'
 import { createSlug } from '@/lib/utils/slug'
 
+/**
+ * Serialise a JSON-LD payload for embedding in a <script> tag.
+ *
+ * `<` MUST be escaped. A job description that contains a literal
+ * `</script>` — the Government of Alberta's postings embed one, pulling in
+ * dompurify — otherwise closes the surrounding element early, truncating the
+ * JSON. The block then fails to parse entirely, which is how Search Console
+ * came to report validThrough and employmentType as "missing" on pages that
+ * were emitting both: Google was reading a broken fragment.
+ *
+ * It is also the standard defence against markup injection through any
+ * user- or employer-supplied string that lands in structured data.
+ */
+function jsonLd(data: unknown): string {
+  return JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    // U+2028/U+2029 are legal in JSON strings but terminate a JS string
+    // literal. Written as escape sequences: the literal characters would
+    // break this regex literal the same way.
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
+}
+
 interface StructuredDataProps {
   article: Article
   baseUrl?: string
@@ -121,7 +146,7 @@ export function ArticleStructuredData({ article, baseUrl = 'https://www.culturea
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
     />
   )
 }
@@ -158,7 +183,7 @@ export function WebsiteStructuredData({ baseUrl = 'https://www.culturealberta.co
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
     />
   )
 }
@@ -245,7 +270,7 @@ export function HomepageStructuredData({ baseUrl = 'https://www.culturealberta.c
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
     />
   )
 }
@@ -363,7 +388,7 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
     />
   )
 }
@@ -410,7 +435,7 @@ export function ListicleStructuredData({ article, baseUrl = 'https://www.culture
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
     />
   )
 }
@@ -531,7 +556,7 @@ export function EventsStructuredData({
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
     />
   )
 }
@@ -543,6 +568,9 @@ export function EventsStructuredData({
 // and JobPosting markup without the complete description risks a sitewide
 // manual action. Callers must also never render it for expired jobs.
 import type { Job } from '@/lib/types/job'
+import { isIndexableJob } from '@/lib/jobs'
+import { resolveValidThrough, resolveEmploymentType } from '@/lib/job-attributes'
+import { prepareJobDescription } from '@/lib/job-description-html'
 
 const JOB_CITY_LABEL: Record<string, string> = {
   calgary: 'Calgary',
@@ -556,8 +584,9 @@ export function JobPostingStructuredData({
   job: Job
   baseUrl?: string
 }) {
-  if (!job.is_manual || !job.description_html || job.status !== 'active') return null
-  if (job.valid_through && new Date(job.valid_through).getTime() < Date.now()) return null
+  // Same predicate that drives the sitemap and the robots tag, so a page can
+  // never be indexed without its markup or vice versa.
+  if (!isIndexableJob(job)) return null
 
   const cityLabel = JOB_CITY_LABEL[job.city] || job.city
   const salaryUnit = (n: number) => (n < 200 ? 'HOUR' : 'YEAR')
@@ -566,10 +595,15 @@ export function JobPostingStructuredData({
     "@context": "https://schema.org",
     "@type": "JobPosting",
     "title": job.title,
-    "description": job.description_html,
+    // Sanitised, not raw: employer descriptions carry <script> and <style>
+    // tags that have no place in structured data.
+    "description": prepareJobDescription(job.description_html),
     "datePosted": job.posted_at || job.created_at,
-    ...(job.valid_through ? { "validThrough": job.valid_through } : {}),
-    ...(job.employment_type ? { "employmentType": job.employment_type } : {}),
+    // Always emitted. Search Console reports both as missing when omitted, and
+    // both are derivable: the employer's stated closing date, and the
+    // employment type read from the body when the feed doesn't supply one.
+    "validThrough": resolveValidThrough(job),
+    "employmentType": resolveEmploymentType(job.employment_type, job.description_html),
     "hiringOrganization": {
       "@type": "Organization",
       "name": job.company,
@@ -602,7 +636,7 @@ export function JobPostingStructuredData({
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
     />
   )
 }
@@ -640,7 +674,7 @@ export function JobsItemListStructuredData({
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
     />
   )
 }
@@ -708,7 +742,7 @@ export function SectionStructuredData({
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
     />
   )
 }
@@ -774,7 +808,7 @@ export function BreadcrumbStructuredData({
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
     />
   )
 }
@@ -844,7 +878,7 @@ export function LocalBusinessStructuredData({ baseUrl = 'https://www.culturealbe
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
     />
   )
 }

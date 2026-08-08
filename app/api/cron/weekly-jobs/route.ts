@@ -5,7 +5,7 @@
  * Generates the "Who's Hiring in {City} This Week" article for each city
  * from the past week's jobs table rows.
  *
- * Auth: Bearer {AUTOMATION_CRON_SECRET}
+ * Auth: Bearer {CRON_SECRET} (or AUTOMATION_CRON_SECRET)
  *
  * Query params:
  *   ?city=calgary|edmonton   → single city (default: all)
@@ -13,6 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import {
   generateWeeklyJobsArticleForCity,
   generateWeeklyJobsArticlesForAllCities,
@@ -23,17 +24,8 @@ import { JobCity } from '@/lib/types/job'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.AUTOMATION_CRON_SECRET
-  if (!secret) {
-    console.error('[weekly-jobs cron] AUTOMATION_CRON_SECRET is not set')
-    return false
-  }
-  return req.headers.get('authorization') === `Bearer ${secret}`
-}
-
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isCronAuthorized(req, 'weekly-jobs cron')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

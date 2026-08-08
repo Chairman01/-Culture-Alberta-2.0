@@ -2,69 +2,42 @@
  * Jobs Sync Cron Endpoint
  *
  * Called daily by Vercel Cron (13:00 UTC / 7am MDT) — see vercel.json.
- * Fetches Calgary + Edmonton listings from Adzuna, values-filters them,
- * upserts into the jobs table, and expires stale/past-due postings.
+ * Reads every configured employer ATS board (lib/automation/ats/boards.ts),
+ * keeps the Alberta postings, values-filters them, upserts into the jobs table,
+ * and expires anything that has left its board.
  *
- * Auth: Bearer {AUTOMATION_CRON_SECRET}
+ * Not city-scoped: employer boards span cities, so the sync always runs every
+ * board and sorts the results into cities afterwards.
  *
- * Query params:
- *   ?city=calgary|edmonton   → single city (default: all)
- *   ?fixture=1               → use the checked-in sample data (non-production only)
+ * Auth: Bearer {CRON_SECRET} (or AUTOMATION_CRON_SECRET)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { syncJobsForCity, syncAllJobs } from '@/lib/automation/jobs-sync'
-import { JOB_CITIES } from '@/lib/jobs'
-import { JobCity } from '@/lib/types/job'
+import { isCronAuthorized } from '@/lib/cron-auth'
+import { syncAllJobs } from '@/lib/automation/jobs-sync'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.AUTOMATION_CRON_SECRET
-  if (!secret) {
-    console.error('[sync-jobs cron] AUTOMATION_CRON_SECRET is not set')
-    return false
-  }
-  return req.headers.get('authorization') === `Bearer ${secret}`
-}
-
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isCronAuthorized(req, 'sync-jobs cron')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const { searchParams } = req.nextUrl
-  const city = searchParams.get('city') || 'all'
-  const useFixture =
-    searchParams.get('fixture') === '1' && process.env.NODE_ENV !== 'production'
-
-  console.log(`[sync-jobs cron] Starting — city: ${city}${useFixture ? ' (fixture)' : ''}`)
+  console.log('[sync-jobs cron] Starting')
 
   try {
-    if (city !== 'all') {
-      if (!(JOB_CITIES as string[]).includes(city)) {
-        return NextResponse.json(
-          { error: `Invalid city. Valid options: ${JOB_CITIES.join(', ')}, all` },
-          { status: 400 }
-        )
-      }
-      const result = await syncJobsForCity(city as JobCity, useFixture)
-      return NextResponse.json({
-        success: result.errors.length === 0,
-        timestamp: new Date().toISOString(),
-        results: [result],
-      })
-    }
-
-    const results = await syncAllJobs(useFixture)
-    const failed = results.filter(r => r.errors.length > 0).length
-    console.log(`[sync-jobs cron] Complete — ${results.length - failed} ok, ${failed} with errors`)
+    const result = await syncAllJobs()
+    console.log(
+      `[sync-jobs cron] Complete — ${result.inserted} new, ${result.updated} updated, ` +
+      `${result.expired} expired, ${result.blocked} blocked, ${result.errors.length} errors`
+    )
 
     return NextResponse.json({
-      success: failed === 0,
+      success: result.errors.length === 0,
       timestamp: new Date().toISOString(),
-      results,
+      result,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
