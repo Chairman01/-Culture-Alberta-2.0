@@ -444,24 +444,29 @@ export async function getAllCityArticlesWithFallback(city: string): Promise<Arti
 // ---------------------------------------------------------------------------
 // Commerce sections (Money, Retail)
 //
-// These are keyword-driven so existing articles surface immediately, but they
-// share a crime/tragedy guard: keywords like "store", "mall" or "grant" would
-// otherwise drag in "robbery at the mall" or "assault in a store parking lot".
-// An editor can also just tag an article "Money"/"Retail" to force it in.
+// Membership is editorial: an article is here because an editor ticked the
+// category, and for no other reason.
+//
+// There used to be a crime/tragedy keyword guard here as well, from when these
+// pages were keyword-driven and "robbery at the mall" could match on "mall".
+// It outlived that design and started vetoing the editor instead. Both of the
+// articles it was hiding were hand-tagged Money, and both were exactly the
+// benefits explainers these pages exist for:
+//
+//   - "Albertans Can Now Claim Up to $5,280 in the CRA Privacy Breach
+//     Settlement" — excerpt mentions "stolen credentials" and "fraudulent
+//     claims", so it matched `stolen` and `fraud`.
+//   - "Alberta Energy Rebate Portal Not Working? The Bank Fix and the
+//     September 30 Deadline" — matched `dead`, inside the word "Deadline".
+//
+// Nothing in admin could put either back, and nothing explained why they were
+// missing.
+//
+// Substring matching over freeform prose cannot be made safe by tuning the
+// word list (see the note on matchesSection below for the same lesson), so the
+// guard is gone rather than patched. If a sombre article ends up on /money, an
+// editor put it there and an editor can take it off.
 // ---------------------------------------------------------------------------
-
-const SOMBRE_TERMS = [
-  'murder', 'homicide', 'manslaughter', 'killed', 'stabb', 'shooting', ' shot ',
-  'robbery', 'sexual', 'assault', 'arrested', 'charged', 'charges', 'accused',
-  'allegedly', 'scam', 'fraud', 'stolen', 'theft', 'smash-and-grab', 'raid',
-  ' drugs', 'rcmp', 'police', 'fake ', 'victim', 'suspect', 'manhunt', 'weapon',
-  ' gun ', 'dead', 'died', 'death', 'fatal', 'crash', 'collision', 'missing',
-]
-
-const isSombreArticle = (article: Article): boolean => {
-  const haystack = `${article.title || ''} ${article.excerpt || ''}`.toLowerCase()
-  return SOMBRE_TERMS.some(term => haystack.includes(term))
-}
 
 // Section membership is EDITORIAL ONLY: an article appears on /money or /retail
 // if, and only if, an editor set that category on it in admin.
@@ -488,7 +493,6 @@ async function getSectionArticlesWithFallback(categoryName: string): Promise<Art
 
   const keep = (article: Article) =>
     article.type !== 'event' &&
-    !isSombreArticle(article) &&
     matchesSection(article, categoryName)
 
   // Query the category in the database rather than pulling the 500 newest rows
