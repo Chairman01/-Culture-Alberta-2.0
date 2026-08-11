@@ -1,7 +1,8 @@
 'use client'
 
 import { supabaseBrowser } from '@/lib/supabase-browser'
-import type { SavedJobStatus } from '@/lib/types/job'
+import { JOB_CITY_LABELS } from '@/lib/jobs'
+import { SAVED_JOB_STATUS_RANK, type JobCity, type SavedJobStatus } from '@/lib/types/job'
 
 /**
  * Browser helpers for the per-user job tracker (public.saved_jobs).
@@ -32,6 +33,54 @@ export async function unsaveJob(jobId: string): Promise<void> {
         .delete()
         .eq('job_id', jobId)
     if (error) throw error
+}
+
+/** Tracker status for one job, or null when it isn't tracked. */
+export async function getJobTrackStatus(jobId: string): Promise<SavedJobStatus | null> {
+    const { data } = await supabaseBrowser
+        .from('saved_jobs')
+        .select('status')
+        .eq('job_id', jobId)
+        .maybeSingle()
+    return (data?.status as SavedJobStatus) ?? null
+}
+
+/**
+ * Every tracked job for the signed-in user, as jobId → status.
+ *
+ * One query for the whole board rather than one per card: RLS already scopes
+ * the table to this user and nobody tracks more than a few dozen jobs, so the
+ * full set is far cheaper than 400 lookups against a 594-row board.
+ */
+export async function listJobTrackStatuses(): Promise<Record<string, SavedJobStatus>> {
+    const { data, error } = await supabaseBrowser
+        .from('saved_jobs')
+        .select('job_id, status')
+    if (error) return {}
+    const out: Record<string, SavedJobStatus> = {}
+    for (const row of data ?? []) out[row.job_id as string] = row.status as SavedJobStatus
+    return out
+}
+
+/**
+ * Move a job forward in the pipeline, never backward.
+ *
+ * Clicking Apply on a job already marked 'interviewing' should leave it there —
+ * the click says nothing new. Returns the status the row now holds.
+ */
+export async function advanceSavedJobStatus(
+    userId: string,
+    jobId: string,
+    status: SavedJobStatus
+): Promise<SavedJobStatus> {
+    const current = await getJobTrackStatus(jobId)
+    if (current === null) {
+        await saveJob(userId, jobId, status)
+        return status
+    }
+    if (SAVED_JOB_STATUS_RANK[current] >= SAVED_JOB_STATUS_RANK[status]) return current
+    await updateSavedJobStatus(jobId, status)
+    return status
 }
 
 export async function updateSavedJobStatus(
@@ -86,7 +135,10 @@ export async function listSavedJobs(): Promise<SavedJobCard[]> {
                 slug: j.slug,
                 title: j.title,
                 company: j.company,
-                city: j.city === 'calgary' ? 'Calgary' : 'Edmonton',
+                // Was `city === 'calgary' ? 'Calgary' : 'Edmonton'`, from when
+                // those were the only two. The board now runs seven cities, so
+                // that showed a Fort McMurray job as Edmonton on /account.
+                city: JOB_CITY_LABELS[j.city as JobCity] ?? j.city,
                 trackStatus: r.status as SavedJobStatus,
                 notes: r.notes ?? null,
                 jobStatus: j.status,

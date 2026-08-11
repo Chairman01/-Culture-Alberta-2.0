@@ -72,7 +72,29 @@ export interface JobUpsertRow {
   valid_through?: string | null
 }
 
-export type SavedJobStatus = 'saved' | 'applied' | 'interviewing' | 'offer' | 'rejected'
+/**
+ * Where a tracked job sits in the user's own pipeline.
+ *
+ * 'started' is what clicking Apply actually proves: the employer's form opened
+ * in a new tab. We never see whether it was submitted, so the posting page asks
+ * on the next visit and only then promotes the row to 'applied'. Statuses past
+ * 'applied' are set by the user on /account.
+ */
+export type SavedJobStatus =
+  | 'saved' | 'started' | 'applied' | 'interviewing' | 'offer' | 'rejected'
+
+/**
+ * Ranked so a status is never silently downgraded — clicking Apply again on a
+ * job already marked 'interviewing' must not knock it back to 'started'.
+ */
+export const SAVED_JOB_STATUS_RANK: Record<SavedJobStatus, number> = {
+  saved: 0,
+  started: 1,
+  applied: 2,
+  interviewing: 3,
+  offer: 4,
+  rejected: 5,
+}
 
 export interface SavedJob {
   id: string

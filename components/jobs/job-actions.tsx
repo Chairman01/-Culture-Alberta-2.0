@@ -5,16 +5,22 @@ import { useRouter } from 'next/navigation'
 import { Bookmark } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/components/auth-provider'
-import { isJobSaved, saveJob, unsaveJob, updateSavedJobStatus } from '@/lib/saved-jobs'
+import { getJobTrackStatus, saveJob, unsaveJob, updateSavedJobStatus, advanceSavedJobStatus } from '@/lib/saved-jobs'
+import { TrackBadge } from '@/components/jobs/track-badge'
+import type { SavedJobStatus } from '@/lib/types/job'
 
 /**
  * Apply + Save controls for a job posting page. Mirrors the save flow in
  * components/article-actions.tsx.
  *
  * Applying requires a free account: signed-out visitors are routed to
- * sign-in (and come straight back to this posting). Signed-in users get
- * the employer's application page in a new tab and the job is marked
- * "applied" in their tracker automatically.
+ * sign-in (and come straight back to this posting).
+ *
+ * A click records 'started', not 'applied'. It opens the employer's form in a
+ * new tab and we never see the other side, so anyone who gave up on a long
+ * Workday application used to be filed as having applied — the tracker was
+ * answering "did you click apply" while calling it "applied". On the next
+ * visit this asks, and only the answer promotes the row.
  */
 export function JobActions({
   jobId,
@@ -30,17 +36,22 @@ export function JobActions({
   const { toast } = useToast()
   const { user } = useAuth()
   const router = useRouter()
-  const [isSaved, setIsSaved] = useState(false)
+  const [status, setStatus] = useState<SavedJobStatus | null>(null)
   const [busy, setBusy] = useState(false)
+  // Set once the visitor answers (or waves off) the did-you-finish prompt, so
+  // it can't reappear on the same page view.
+  const [asked, setAsked] = useState(false)
+
+  const isSaved = status !== null
 
   useEffect(() => {
     let active = true
     if (!user) {
-      setIsSaved(false)
+      setStatus(null)
       return
     }
-    isJobSaved(jobId)
-      .then(v => active && setIsSaved(v))
+    getJobTrackStatus(jobId)
+      .then(v => active && setStatus(v))
       .catch(() => {})
     return () => { active = false }
   }, [user, jobId])
@@ -57,11 +68,11 @@ export function JobActions({
     try {
       if (isSaved) {
         await unsaveJob(jobId)
-        setIsSaved(false)
+        setStatus(null)
         toast({ title: 'Removed', description: 'Job removed from your tracker.' })
       } else {
         await saveJob(user.id, jobId)
-        setIsSaved(true)
+        setStatus('saved')
         toast({ title: 'Saved!', description: 'Track it under Account → My Jobs.' })
       }
     } catch {
@@ -84,26 +95,81 @@ export function JobActions({
       })
       return
     }
-    // Signed in: the <a> opens the employer page; track it as applied.
+    // Signed in: the <a> opens the employer page. Record only what the click
+    // proves — and never knock a further-along job backwards.
     try {
-      if (isSaved) {
-        await updateSavedJobStatus(jobId, 'applied')
-      } else {
-        await saveJob(user.id, jobId, 'applied')
-        setIsSaved(true)
+      const now = await advanceSavedJobStatus(user.id, jobId, 'started')
+      setStatus(now)
+      // Re-arm the prompt: they're off to the form, so the question is live
+      // again when they come back.
+      setAsked(false)
+      if (now === 'started') {
+        toast({ title: 'Application started', description: "We'll ask if you finished when you come back." })
       }
-      toast({ title: 'Marked as applied', description: 'Track this application under Account → My Jobs.' })
     } catch {
       // Tracking is best-effort — never block the application itself
     }
-  }, [user, isSaved, jobId, router, toast])
+  }, [user, jobId, router, toast])
+
+  const confirmApplied = useCallback(async (finished: boolean) => {
+    setAsked(true)
+    if (!finished) return
+    try {
+      await updateSavedJobStatus(jobId, 'applied')
+      setStatus('applied')
+      toast({ title: 'Marked as applied', description: 'Track this application under Account → My Jobs.' })
+    } catch {
+      toast({ title: 'Something went wrong', description: 'Could not update your tracker.', variant: 'destructive' })
+    }
+  }, [jobId, toast])
 
   const applyLabel = user
-    ? company ? `Apply at ${company} →` : 'Apply on employer site →'
+    ? status && status !== 'saved' && status !== 'started'
+      ? 'Apply again →'
+      : company ? `Apply at ${company} →` : 'Apply on employer site →'
     : 'Sign in free to apply →'
 
   return (
     <>
+      {/* Asked only after a click-through that hasn't been resolved yet. This
+          is the whole point of 'started': the answer is the only thing that
+          can turn it into a real application. */}
+      {user && status === 'started' && !asked && (
+        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900">
+            Did you finish your application{company ? ` to ${company}` : ''}?
+          </p>
+          <p className="mt-0.5 text-sm text-amber-800">
+            You opened the application form. We can&apos;t see the employer&apos;s site, so only you know how it went.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={() => confirmApplied(true)}
+              className="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+            >
+              Yes, I applied
+            </button>
+            <button
+              onClick={() => confirmApplied(false)}
+              className="rounded-md border border-amber-400 bg-white px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+            >
+              Not yet
+            </button>
+          </div>
+        </div>
+      )}
+
+      {user && status && status !== 'saved' && (
+        <div className="mb-4 flex items-center gap-2">
+          <TrackBadge status={status} />
+          <span className="text-sm text-gray-600">
+            {status === 'started'
+              ? 'You opened this application.'
+              : 'Update this under Account → My Jobs.'}
+          </span>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         {!expired && (
           <a
