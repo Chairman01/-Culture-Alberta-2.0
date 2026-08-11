@@ -115,6 +115,15 @@ export const ATS_BOARDS: AtsBoard[] = [
   // the policy above: the board is verified and costs one request per sync.
   { provider: 'workday', token: 'vermilionenergy', company: 'Vermilion Energy', domain: 'vermilionenergy.com', datacenter: 'wd10', site: 'VEI_EXTERNAL' },
 
+  // BMO (bmo/wd3/External) and CIBC (cibc/wd3/search) are reachable and carry
+  // real Calgary openings — personal bankers, customer service, branch roles.
+  // They are left out because fetchWorkday pages the whole board and stops at
+  // WORKDAY_MAX_PAGES: BMO posts 1,114 jobs nationally against a 300-posting
+  // ceiling, so we would read a third of the board, miss most Alberta roles,
+  // and spend 15 requests a sync doing it — while showing a page that looks
+  // complete. Adding them needs the Workday location facet so the filter runs
+  // server-side, not another entry in this list.
+
   // ── Oracle Recruiting Cloud ────────────────────────────────────────────────
   {
     provider: 'oracle',
@@ -123,6 +132,20 @@ export const ATS_BOARDS: AtsBoard[] = [
     domain: 'ualberta.ca',
     host: 'iaejup.fa.ocs.oraclecloud.com',
     site: 'UOA-Careers',
+  },
+  // The board's biggest source of entry-level work: 153 postings, every one of
+  // them Alberta, and overwhelmingly Calgary (130, plus 22 across Airdrie, High
+  // River, Cochrane, Strathmore and Okotoks, which the location matcher already
+  // routes to Calgary). Deli and produce clerks, meat wrappers, gas bar
+  // attendants — the roles a reader without a degree or a decade of experience
+  // can actually apply for, which the oil-and-gas head offices never post.
+  {
+    provider: 'oracle',
+    token: 'calgary-coop',
+    company: 'Calgary Co-op',
+    domain: 'calgarycoop.com',
+    host: 'fa-etus-saasfaprod1.fa.ocs.oraclecloud.com',
+    site: 'CX_2004',
   },
   {
     provider: 'oracle',
