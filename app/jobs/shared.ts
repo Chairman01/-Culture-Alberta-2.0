@@ -24,6 +24,10 @@ const MANUAL_COMPANY_DOMAINS: Record<string, string> = {
  */
 const MANUAL_COMPANY_LOGOS: Record<string, string> = {
   "Hell's Kitchen at River Cree Resort": '/images/Hells-Kitchen-Logo.jpeg',
+  // Google's favicon service 404s on calgarycoop.com — the only employer on the
+  // board it doesn't know — which left the largest employer we carry showing an
+  // empty tile across 149 postings. Their own site publishes a 192px icon.
+  'Calgary Co-op': '/images/calgary-coop-logo.png',
 }
 
 /** Locally hosted logo for an employer, if we have one. */
