@@ -1,7 +1,11 @@
 "use client"
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CompanyLogo } from '@/components/jobs/company-logo'
+import { TrackBadge, BOARD_BADGE_STATUSES } from '@/components/jobs/track-badge'
+import { useAuth } from '@/components/auth-provider'
+import { listJobTrackStatuses } from '@/lib/saved-jobs'
+import type { SavedJobStatus } from '@/lib/types/job'
 import Link from 'next/link'
 import { Search, MapPin, Clock, X, Building2, ExternalLink } from 'lucide-react'
 
@@ -65,6 +69,36 @@ export default function JobsBrowser({
   const [union, setUnion] = useState('all')
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  /**
+   * The signed-in user's tracker state, so a job they've already applied to is
+   * obvious while scanning. One query for every tracked job rather than one per
+   * card — the board runs to hundreds of rows and nobody tracks more than a few
+   * dozen. Signed-out visitors fetch nothing and see no badges.
+   */
+  const { user } = useAuth()
+  const [tracked, setTracked] = useState<Record<string, SavedJobStatus>>({})
+
+  useEffect(() => {
+    let active = true
+    if (!user) {
+      setTracked({})
+      return
+    }
+    listJobTrackStatuses()
+      .then(map => active && setTracked(map))
+      .catch(() => {})
+    return () => { active = false }
+  }, [user])
+
+  /** Badge-worthy status for a row, or null. Plain 'saved' stays quiet. */
+  const badgeFor = useCallback(
+    (id: string): SavedJobStatus | null => {
+      const s = tracked[id]
+      return s && BOARD_BADGE_STATUSES.includes(s) ? s : null
+    },
+    [tracked]
+  )
 
   // Top categories with counts, for the quick-filter chips
   const categoryCounts = useMemo(() => {
@@ -161,6 +195,37 @@ export default function JobsBrowser({
   const selected = pageJobs.find(j => j.id === selectedId) || pageJobs[0] || null
 
   const resetPage = () => setPage(1)
+
+  /**
+   * Turn a page and go back to the first result.
+   *
+   * Without this you click Next at the bottom of page 1 and land at the bottom
+   * of page 2 — looking at its last row, having skipped everything above it.
+   * Same going back.
+   *
+   * The scroll has to wait for the new rows to commit. Calling scrollIntoView
+   * in the click handler starts a smooth scroll that React then cancels when it
+   * swaps the list out underneath it, which leaves the page turned and the
+   * viewport where it was. Flagging the intent and scrolling from an effect
+   * runs it after the re-render, when the anchor is at its final position.
+   */
+  const pendingScroll = useRef(false)
+
+  const goToPage = useCallback((next: number) => {
+    pendingScroll.current = true
+    setPage(next)
+    setSelectedId(null)
+  }, [])
+
+  useEffect(() => {
+    if (!pendingScroll.current) return
+    pendingScroll.current = false
+    // Instant, not smooth. Gliding 3,000px is slow and disorienting when the
+    // content under you has already changed, and smooth scrolling is silently
+    // ignored in enough environments that relying on it means the jump simply
+    // doesn't happen for some readers.
+    document.getElementById('job-results-top')?.scrollIntoView({ block: 'start' })
+  }, [page])
   const isNew = (j: BrowserJob) =>
     j.postedAt && Date.now() - new Date(j.postedAt).getTime() < NEW_WITHIN_MS
 
@@ -297,8 +362,8 @@ export default function JobsBrowser({
         </div>
       )}
 
-      {/* Result count */}
-      <p className="mb-4 text-sm text-gray-600">
+      {/* Result count — also the anchor paging scrolls back to. */}
+      <p id="job-results-top" className="mb-4 scroll-mt-24 text-sm text-gray-600">
         {filtered.length === jobs.length
           ? `${jobs.length} open ${jobs.length === 1 ? 'job' : 'jobs'} in Alberta`
           : `Showing ${showingFrom}-${showingTo} of ${filtered.length} matching jobs`}
@@ -349,7 +414,12 @@ export default function JobsBrowser({
                           <h3 className={`text-base font-semibold leading-snug ${active ? 'text-blue-800' : 'text-gray-900'}`}>
                             {job.title}
                           </h3>
-                          {job.featured ? (
+                          {/* Tracker state outranks Featured and New: knowing
+                              you already applied changes what you do with the
+                              row, and the other two don't. */}
+                          {badgeFor(job.id) ? (
+                            <TrackBadge status={badgeFor(job.id)!} className="mt-0.5" />
+                          ) : job.featured ? (
                             <span className="mt-0.5 flex-shrink-0 rounded bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">
                               Featured
                             </span>
@@ -399,6 +469,11 @@ export default function JobsBrowser({
                       <Building2 className="h-4 w-4 text-gray-400" />
                       {selected.company}
                     </p>
+                    {badgeFor(selected.id) && (
+                      <div className="mt-2">
+                        <TrackBadge status={badgeFor(selected.id)!} />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -456,7 +531,7 @@ export default function JobsBrowser({
         <div className="mt-8 flex items-center justify-center gap-4">
           <button
             type="button"
-            onClick={() => { setPage(p => Math.max(1, p - 1)); setSelectedId(null) }}
+            onClick={() => goToPage(Math.max(1, safePage - 1))}
             disabled={safePage <= 1}
             className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-40"
           >
@@ -465,7 +540,7 @@ export default function JobsBrowser({
           <span className="text-sm text-gray-600">Page {safePage} of {totalPages}</span>
           <button
             type="button"
-            onClick={() => { setPage(p => Math.min(totalPages, p + 1)); setSelectedId(null) }}
+            onClick={() => goToPage(Math.min(totalPages, safePage + 1))}
             disabled={safePage >= totalPages}
             className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-40"
           >

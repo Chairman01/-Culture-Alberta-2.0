@@ -3,7 +3,7 @@
  *
  * Every entry here was verified live before being added — a guessed token
  * silently returns nothing, which looks identical to "this employer has no
- * openings right now". Confirmed 2026-08-02.
+ * openings right now". Confirmed 2026-08-02; the Calgary block 2026-08-11.
  *
  * Adding an employer is a two-minute job and needs no permission: open their
  * careers page and the provider, token and (for Workday) datacenter and site
@@ -100,6 +100,20 @@ export const ATS_BOARDS: AtsBoard[] = [
   { provider: 'workday', token: 'finning', company: 'Finning', domain: 'finning.com', datacenter: 'wd3', site: 'External' },
   { provider: 'workday', token: 'ledcor', company: 'Ledcor', domain: 'ledcor.com', datacenter: 'wd3', site: 'Ledcor_External' },
   { provider: 'workday', token: 'strathconaresources', company: 'Strathcona Resources', domain: 'strathconaresources.com', datacenter: 'wd10', site: 'Careers' },
+
+  // Calgary-weighted additions, confirmed live 2026-08-11. The board skewed
+  // heavily to Edmonton (391 active postings against Calgary's 122), and the
+  // gap was supply, not demand — these are all Calgary head offices.
+  { provider: 'workday', token: 'tcenergy', company: 'TC Energy', domain: 'tcenergy.com', datacenter: 'wd3', site: 'CAREER_SITE_TC' },
+  { provider: 'workday', token: 'keyera', company: 'Keyera', domain: 'keyera.com', datacenter: 'wd10', site: 'Keyera_Careers' },
+  // Tenant is 'wgl' (WGL Holdings, acquired 2018), not 'altagas' — the board
+  // still runs under the old company's Workday tenant. `company` is what
+  // readers see; the token only has to match the URL.
+  { provider: 'workday', token: 'wgl', company: 'AltaGas', domain: 'altagas.ca', datacenter: 'wd5', site: 'AltaGas' },
+  { provider: 'workday', token: 'wcap', company: 'Whitecap Resources', domain: 'wcap.ca', datacenter: 'wd10', site: 'Whitecap_Careers' },
+  // Calgary head office, but every posting today is in BC or France. Kept per
+  // the policy above: the board is verified and costs one request per sync.
+  { provider: 'workday', token: 'vermilionenergy', company: 'Vermilion Energy', domain: 'vermilionenergy.com', datacenter: 'wd10', site: 'VEI_EXTERNAL' },
 
   // ── Oracle Recruiting Cloud ────────────────────────────────────────────────
   {
