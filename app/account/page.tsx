@@ -14,6 +14,7 @@ import { isValidCity } from '@/lib/alberta-municipalities'
 import { listSavedArticles, unsaveArticle, type SavedArticleCard } from '@/lib/saved-articles'
 import { listSavedJobs, unsaveJob, updateSavedJobStatus, type SavedJobCard } from '@/lib/saved-jobs'
 import type { SavedJobStatus } from '@/lib/types/job'
+import { TRACK_LABELS, TRACK_STYLES } from '@/components/jobs/track-badge'
 
 function initialsOf(name: string): string {
     const w = name.trim().split(/\s+/)
@@ -315,21 +316,16 @@ function MyComments({ userId }: { userId: string }) {
     )
 }
 
-const JOB_STATUS_OPTIONS: Array<{ value: SavedJobStatus; label: string }> = [
-    { value: 'saved', label: 'Saved' },
-    { value: 'applied', label: 'Applied' },
-    { value: 'interviewing', label: 'Interviewing' },
-    { value: 'offer', label: 'Offer' },
-    { value: 'rejected', label: 'Rejected' },
-]
+/**
+ * Labels and colours come from components/jobs/track-badge so a job reads the
+ * same here as it does on the board. They used to be duplicated, which left
+ * 'interviewing' amber here and about to collide with the new 'started'.
+ */
+const JOB_STATUS_OPTIONS: Array<{ value: SavedJobStatus; label: string }> =
+    (['saved', 'started', 'applied', 'interviewing', 'offer', 'rejected'] as const)
+        .map(value => ({ value, label: TRACK_LABELS[value] }))
 
-const JOB_STATUS_STYLES: Record<SavedJobStatus, string> = {
-    saved: 'bg-gray-100 text-gray-700',
-    applied: 'bg-blue-100 text-blue-800',
-    interviewing: 'bg-amber-100 text-amber-800',
-    offer: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-700',
-}
+const JOB_STATUS_STYLES = TRACK_STYLES
 
 function MyJobs() {
     const [items, setItems] = useState<SavedJobCard[] | null>(null)
