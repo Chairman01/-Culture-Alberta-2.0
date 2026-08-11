@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
 import { getServiceClient } from '@/lib/supabase-admin'
+import { toNewsletterCity } from '@/lib/newsletter-cities'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,10 @@ interface ShapedUser {
     created_at: string | undefined
     last_sign_in_at: string | null
     newsletter: 'active' | 'unsubscribed' | null
+    /** Which city edition they're on, e.g. 'calgary'. Null when not subscribed. */
+    newsletterCity: string | null
+    /** True when the subscription doesn't match their profile city. */
+    newsletterMismatch: boolean
     comments: number
     saved: number
 }
@@ -46,6 +51,8 @@ export async function GET(request: NextRequest) {
                     created_at: u.created_at,
                     last_sign_in_at: u.last_sign_in_at ?? null,
                     newsletter: null,
+                    newsletterCity: null,
+                    newsletterMismatch: false,
                     comments: 0,
                     saved: 0,
                 })
@@ -57,16 +64,16 @@ export async function GET(request: NextRequest) {
 
         // Newsletter status: page through the whole table (it can exceed the
         // 1000-row select cap) and match by lowercased email.
-        const newsletterByEmail = new Map<string, string>()
+        const newsletterByEmail = new Map<string, { status: string; city: string | null }>()
         for (let from = 0; ; from += 1000) {
             const { data, error } = await supabase
                 .from('newsletter_subscriptions')
-                .select('email, status')
+                .select('email, status, city')
                 .range(from, from + 999)
             if (error) throw error
             const rows = data ?? []
             for (const r of rows) {
-                if (r.email) newsletterByEmail.set(String(r.email).toLowerCase(), r.status)
+                if (r.email) newsletterByEmail.set(String(r.email).toLowerCase(), { status: r.status, city: (r.city as string) ?? null })
             }
             if (rows.length < 1000) break
         }
@@ -88,7 +95,13 @@ export async function GET(request: NextRequest) {
 
         for (const u of all) {
             const nl = u.email ? newsletterByEmail.get(u.email.toLowerCase()) : undefined
-            u.newsletter = nl === 'active' ? 'active' : nl ? 'unsubscribed' : null
+            u.newsletter = nl?.status === 'active' ? 'active' : nl ? 'unsubscribed' : null
+            u.newsletterCity = nl?.city ?? null
+            // Flag only ACTIVE subscriptions whose list differs from where the
+            // member says they live — that's the case worth reviewing by hand.
+            u.newsletterMismatch =
+                u.newsletter === 'active' && !!u.city && !!nl?.city &&
+                toNewsletterCity(u.city) !== nl.city
             u.comments = commentCounts.get(u.id) ?? 0
             u.saved = savedCounts.get(u.id) ?? 0
         }
