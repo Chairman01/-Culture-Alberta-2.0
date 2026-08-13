@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { supabase } from '@/lib/supabase'
 import { createApiResponse, handleApiError, validateEventData } from '@/lib/cursor-web-utils'
@@ -53,9 +54,12 @@ interface SupabaseUpdateData {
 }
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const resolvedParams = await params
     const eventId = resolvedParams.id
@@ -111,9 +115,12 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const resolvedParams = await params
     const eventId = resolvedParams.id

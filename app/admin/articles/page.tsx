@@ -358,7 +358,15 @@ export default function AdminArticles() {
   // that the current search/category filter would hide.
   const featuredHomeArticle = articles.find(article => article.featuredHome === true)
 
+  // Drafts awaiting approval live in /admin/review, not here — an admin's
+  // Articles list is the published site. A contributor still sees their own
+  // drafts, since that is the only place their submitted work appears to them.
+  const pendingDrafts = isContributor
+    ? 0
+    : articles.filter(a => a.status === 'draft').length
+
   const filteredArticles = articles.filter(article => {
+    if (!isContributor && article.status === 'draft') return false
     const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = category === "all" || article.category === category
     const matchesLocation = location === "all" || article.location === location
@@ -407,6 +415,20 @@ export default function AdminArticles() {
 
   return (
     <div className="space-y-6">
+      {pendingDrafts > 0 && (
+        <Link
+          href="/admin/review"
+          className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100 transition-colors"
+        >
+          <span>
+            <strong>{pendingDrafts}</strong>{" "}
+            {pendingDrafts === 1 ? "draft is" : "drafts are"} waiting for your
+            approval.
+          </span>
+          <span className="font-medium whitespace-nowrap">Go to Review Queue →</span>
+        </Link>
+      )}
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Articles</h1>

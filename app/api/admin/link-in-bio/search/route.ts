@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,9 @@ function getSupabase() {
 // When q is empty, returns 60 most recent articles so admin can browse all
 // When q is set, searches all articles with no cap so old articles are findable
 export async function GET(req: NextRequest) {
+  const auth = requireAdmin(req)
+  if (!auth.ok) return auth.response
+
   try {
     const q = req.nextUrl.searchParams.get('q')?.trim() || ''
 

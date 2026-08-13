@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { markReviewed } from "@/lib/major-projects/sync"
+import { requireAdmin } from "@/lib/admin-auth"
 
 // POST /api/admin/major-projects/review
 // Body: { projectIds?: string[] }
@@ -10,6 +11,9 @@ import { markReviewed } from "@/lib/major-projects/sync"
 export const dynamic = "force-dynamic"
 
 export async function POST(req: NextRequest) {
+  const auth = requireAdmin(req)
+  if (!auth.ok) return auth.response
+
   try {
     let projectIds: string[] | undefined
     try {

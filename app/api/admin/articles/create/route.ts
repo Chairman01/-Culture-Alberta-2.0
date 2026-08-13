@@ -9,6 +9,7 @@ import { warmSocialPreview } from '@/lib/social-image-url'
 import { saveManualPollForArticle } from '@/lib/poll-generator'
 import { requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
+import { sanitizeAdminHtml } from '@/lib/sanitize-html'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -61,7 +62,25 @@ export async function POST(request: NextRequest) {
   try {
     const articleData = await request.json()
     const articleAuthor = articleOwner || articleData.author || 'Admin'
-    
+
+    // Contributors submit for review — they never publish. Forcing the status
+    // here rather than trusting the request body is the whole approval gate:
+    // the editor UI hides the option, but the API is what an outside caller
+    // hits. A published status is also what fires IndexNow and the social
+    // autopost below, so this must be decided server-side from the JWT role.
+    const articleStatus = auth.role === 'contributor'
+      ? 'draft'
+      : (articleData.status || 'published')
+
+    // Article bodies are rendered with dangerouslySetInnerHTML on the public
+    // article page and processArticleContent does not sanitize, so a stored
+    // <script> would execute for every visitor once approved. Contributor HTML
+    // is scrubbed on the way in. Admin content is left untouched — it may carry
+    // hand-placed embeds that the scrubber would strip.
+    const articleContent = auth.role === 'contributor'
+      ? sanitizeAdminHtml(articleData.content || '')
+      : articleData.content
+
     console.log('📝 Creating new article:', articleData.title)
 
     if (!hasMeaningfulContent(articleData.content)) {
@@ -88,7 +107,7 @@ export async function POST(request: NextRequest) {
       .insert([{
         id: articleId,
         title: articleData.title,
-        content: articleData.content,
+        content: articleContent,
         excerpt: articleData.excerpt,
         category: articleData.category,
         categories: articleData.categories,
@@ -96,7 +115,7 @@ export async function POST(request: NextRequest) {
         author: articleAuthor,
         tags: articleData.tags,
         type: articleData.type || 'article',
-        status: articleData.status || 'published',
+        status: articleStatus,
         image_url: articleData.imageUrl,
         slug: articleSlug,
         image_source: articleData.imageSource || null,

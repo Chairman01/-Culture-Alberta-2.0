@@ -20,9 +20,13 @@ export function getAdminSession(req: NextRequest): AdminSession | null {
   const secret = process.env.JWT_SECRET
   if (!token || !secret) return null
   try {
-    const payload = jwt.verify(token, secret) as { role?: AdminRole; username?: string }
+    const payload = jwt.verify(token, secret) as { role?: string; username?: string }
+    // Fail closed: a token whose role claim is missing or unrecognised is
+    // rejected outright. Defaulting it to 'admin' meant any future signing path
+    // that forgot to set the claim would silently mint full access.
+    if (payload.role !== 'admin' && payload.role !== 'contributor') return null
     return {
-      role: payload.role ?? 'admin',
+      role: payload.role,
       username: payload.username || '',
     }
   } catch {

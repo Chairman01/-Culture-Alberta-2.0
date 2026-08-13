@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
+import { requireAdmin } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,10 @@ function getSupabase() {
 }
 
 // GET — return all pinned articles ordered by link_in_bio_order
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = requireAdmin(req)
+  if (!auth.ok) return auth.response
+
   try {
     const sb = getSupabase()
     const { data, error } = await sb
@@ -32,6 +36,9 @@ export async function GET() {
 
 // POST — save the order: body = { order: [{ id, order }] }
 export async function POST(req: NextRequest) {
+  const auth = requireAdmin(req)
+  if (!auth.ok) return auth.response
+
   try {
     const { order } = await req.json() as { order: { id: string; order: number }[] }
     if (!Array.isArray(order)) {

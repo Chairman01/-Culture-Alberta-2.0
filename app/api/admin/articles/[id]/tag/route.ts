@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdmin } from "@/lib/admin-auth"
 
 // POST /api/admin/articles/[id]/tag  — add a project tag to an article by slug
 // Body: { tag: string }   e.g. { tag: "project:10715" }
@@ -17,6 +18,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const { id: slug } = await params
     const { tag } = await request.json()

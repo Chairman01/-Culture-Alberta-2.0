@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
+import { requireAdmin } from "@/lib/admin-auth"
 
 export async function POST(req: NextRequest) {
+  const auth = requireAdmin(req)
+  if (!auth.ok) return auth.response
+
   try {
     const body = await req.json()
     const { tags, fetchAll } = body
