@@ -151,10 +151,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Try to sync the new article to fallback file
+    // Try to sync the new article to fallback file. Drafts stay out of it —
+    // optimized-fallback.json is what the public site reads when Supabase is
+    // slow, so an unapproved contributor draft has no business being in it.
+    // (The article page filters drafts too; this keeps them out a layer earlier.)
     try {
+      if (articleStatus !== 'published') {
+        console.log('📝 Draft — skipping public fallback sync')
+      } else {
       console.log('🔄 Auto-syncing new article to fallback...')
-      
+
       // Fallback: Manual update of optimized fallback (more reliable)
       const allArticles = await loadOptimizedFallback()
       const mappedArticle = {
@@ -193,6 +199,7 @@ export async function POST(request: NextRequest) {
       const { clearArticlesCache } = await import('@/lib/fast-articles')
       clearArticlesCache()
       console.log('✅ Fast cache cleared')
+      }
     } catch (syncError) {
       console.error('❌ Sync failed:', syncError)
       // Don't fail the entire request if sync fails
