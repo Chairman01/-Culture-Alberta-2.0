@@ -112,7 +112,18 @@ function getTimeGreeting(cityLabel: string): string {
   return `Hello, ${cityLabel}` // late night / very early
 }
 
-const DEFAULT_TAGLINE = "Here's what's happening in your city — the stories worth knowing, in 5 minutes or less."
+/**
+ * The line under the greeting.
+ *
+ * The province-wide edition can't say "your city": its readers are spread
+ * across small towns and outside Alberta, and telling them these are their
+ * city's stories is simply wrong.
+ */
+function defaultTagline(city: NewsletterCity): string {
+  return city === 'alberta'
+    ? "Here's what's happening across the province, the stories worth knowing, in 5 minutes or less."
+    : "Here's what's happening in your city, the stories worth knowing, in 5 minutes or less."
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function escapeHtml(str: string): string {
@@ -349,7 +360,7 @@ export function generateNewsletterHtml(
   const subject = getSubjectLine(city)
   // Use auto time-based greeting; custom note replaces the default tagline if provided
   const greeting = getTimeGreeting(cfg.cityLabel)
-  const tagline = options?.customNote?.trim() || DEFAULT_TAGLINE
+  const tagline = options?.customNote?.trim() || defaultTagline(city)
 
   const body = `
   <!DOCTYPE html>
@@ -365,7 +376,7 @@ export function generateNewsletterHtml(
 
     <!-- Email preview text (hidden) -->
     <div style="display:none;max-height:0;overflow:hidden;font-size:1px;color:#e8e8e8;">
-      ${hero ? escapeHtml(hero.title.substring(0, 90)) : `Today's top stories from ${escapeHtml(cfg.cityLabel)}`} — Culture Alberta
+      ${hero ? escapeHtml(hero.title.substring(0, 90)) : `Today's top stories from ${escapeHtml(cfg.cityLabel)}`} · Culture Alberta
       &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
     </div>
 
@@ -433,7 +444,7 @@ export function getSubjectLine(city: NewsletterCity): string {
     day: 'numeric',
     timeZone: 'America/Edmonton',
   })
-  return `${cfg.newsletterName} · ${cfg.cityLabel} — ${today}`
+  return `${cfg.newsletterName} · ${cfg.cityLabel} · ${today}`
 }
 
 export function getPreviewText(city: NewsletterCity): string {
