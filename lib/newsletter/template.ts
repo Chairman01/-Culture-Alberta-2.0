@@ -1,7 +1,11 @@
 import type { NewsletterArticle, NewsletterContent, NewsletterEvent } from './fetch-articles'
 
 // ── City configuration ────────────────────────────────────────────────────────
-export type NewsletterCity = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat' | 'red-deer' | 'grande-prairie' | 'fort-mcmurray'
+// Re-exported rather than redeclared. This union used to be written out in
+// three files that had to be kept in step by hand, which is precisely how an
+// edition gets added in one place and silently ignored in another.
+export type { NewsletterCity } from './config'
+import type { NewsletterCity } from './config'
 
 interface CityConfig {
   newsletterName: string
@@ -14,6 +18,18 @@ interface CityConfig {
 }
 
 const CITY_CONFIG: Record<NewsletterCity, CityConfig> = {
+  // The province-wide edition. Its readers are spread across small towns and
+  // outside Alberta, so the greeting and tagline can't name a city the way the
+  // seven geographic editions do.
+  alberta: {
+    newsletterName: 'The Province',
+    tagline: "Alberta's Daily Brief",
+    cityLabel: 'Alberta',
+    accentColor: '#0f766e',
+    accentColorDark: '#115e59',
+    greeting: 'Good morning, Alberta',
+    emoji: '🏔️',
+  },
   edmonton: {
     newsletterName: 'The Capital',
     tagline: "Edmonton's Daily Brief",

@@ -48,7 +48,24 @@ interface NewsletterSubscription {
   status?: 'active' | 'unsubscribed'
 }
 
-type CityKey = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat' | 'red-deer' | 'grande-prairie' | 'fort-mcmurray'
+type CityKey = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat' | 'red-deer' | 'grande-prairie' | 'fort-mcmurray' | 'alberta'
+
+/** The seven geographic editions. 'alberta' is the catch-all and is not one. */
+const CITY_KEYS: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray']
+
+/** Every sendable edition, including the province-wide one. */
+const ALL_EDITIONS: CityKey[] = [...CITY_KEYS, 'alberta']
+
+/**
+ * Build a per-edition record from one factory.
+ *
+ * These initial states used to be seven object literals written out by hand,
+ * which meant adding an edition was eight separate edits and a type error for
+ * each one you forgot. Derived from ALL_EDITIONS, a new edition is one line.
+ */
+function byEdition<T>(make: (city: CityKey) => T): Record<CityKey, T> {
+  return Object.fromEntries(ALL_EDITIONS.map(c => [c, make(c)])) as Record<CityKey, T>
+}
 
 interface SendState {
   status: 'idle' | 'sending' | 'success' | 'error'
@@ -96,6 +113,10 @@ const CITY_CONFIG: Record<CityKey, { label: string; newsletter: string; color: s
   'red-deer':       { label: 'Red Deer',      newsletter: 'The Parkland', color: 'text-red-700',    accent: 'bg-red-700',    border: 'border-red-300'    },
   'grande-prairie': { label: 'Grande Prairie',newsletter: 'The Peace',    color: 'text-green-700',  accent: 'bg-green-700',  border: 'border-green-200'  },
   'fort-mcmurray':  { label: 'Fort McMurray', newsletter: 'The North',    color: 'text-slate-700',  accent: 'bg-slate-700',  border: 'border-slate-200'  },
+  // Not a city. Goes to every active subscriber who isn't on one of the seven
+  // lists above — the "Other Alberta" and "Other" buckets, which received
+  // nothing at all until this edition existed.
+  alberta:          { label: 'Alberta (everyone else)', newsletter: 'The Province', color: 'text-teal-700', accent: 'bg-teal-700', border: 'border-teal-200' },
 }
 
 const OTHER_CITY_LABELS: Record<string, string> = {
@@ -130,34 +151,20 @@ export default function NewsletterAdmin() {
   })
 
   // Send states
-  const [sendStates, setSendStates] = useState<Record<CityKey, SendState>>({
-    edmonton:         { status: 'idle' },
-    calgary:          { status: 'idle' },
-    lethbridge:       { status: 'idle' },
-    'medicine-hat':   { status: 'idle' },
-    'red-deer':       { status: 'idle' },
-    'grande-prairie': { status: 'idle' },
-    'fort-mcmurray':  { status: 'idle' },
-  })
+  const [sendStates, setSendStates] = useState<Record<CityKey, SendState>>(
+    byEdition<SendState>(() => ({ status: 'idle' }))
+  )
   // Confirmation gate — true means "waiting for user to confirm before actual send"
-  const [confirmSend, setConfirmSend] = useState<Record<CityKey, boolean>>({
-    edmonton: false, calgary: false, lethbridge: false, 'medicine-hat': false,
-    'red-deer': false, 'grande-prairie': false, 'fort-mcmurray': false,
-  })
-  const [testStates, setTestStates] = useState<Record<CityKey, TestState>>({
-    edmonton:         { open: false, email: '', status: 'idle' },
-    calgary:          { open: false, email: '', status: 'idle' },
-    lethbridge:       { open: false, email: '', status: 'idle' },
-    'medicine-hat':   { open: false, email: '', status: 'idle' },
-    'red-deer':       { open: false, email: '', status: 'idle' },
-    'grande-prairie': { open: false, email: '', status: 'idle' },
-    'fort-mcmurray':  { open: false, email: '', status: 'idle' },
-  })
+  const [confirmSend, setConfirmSend] = useState<Record<CityKey, boolean>>(
+    byEdition(() => false)
+  )
+  const [testStates, setTestStates] = useState<Record<CityKey, TestState>>(
+    byEdition<TestState>(() => ({ open: false, email: '', status: 'idle' }))
+  )
   // Optional custom opening note per city — typed before sending, shown in preview
-  const [customNotes, setCustomNotes] = useState<Record<CityKey, string>>({
-    edmonton: '', calgary: '', lethbridge: '', 'medicine-hat': '',
-    'red-deer': '', 'grande-prairie': '', 'fort-mcmurray': '',
-  })
+  const [customNotes, setCustomNotes] = useState<Record<CityKey, string>>(
+    byEdition(() => '')
+  )
   const [sendAllState, setSendAllState] = useState<{
     status: 'idle' | 'sending' | 'success' | 'error'
     results?: SendResult[]
@@ -167,15 +174,9 @@ export default function NewsletterAdmin() {
 
   // Configure states
   const [configCollapsed, setConfigCollapsed] = useState(false)
-  const [cityDrafts, setCityDrafts] = useState<Record<CityKey, CityConfigDraft>>({
-    edmonton:         emptyDraft(),
-    calgary:          emptyDraft(),
-    lethbridge:       emptyDraft(),
-    'medicine-hat':   emptyDraft(),
-    'red-deer':       emptyDraft(),
-    'grande-prairie': emptyDraft(),
-    'fort-mcmurray':  emptyDraft(),
-  })
+  const [cityDrafts, setCityDrafts] = useState<Record<CityKey, CityConfigDraft>>(
+    byEdition(() => emptyDraft())
+  )
   const [albertaDraft, setAlbertaDraft] = useState<AlbertaDraft>({ ids: null, items: [], isDirty: false })
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -204,10 +205,9 @@ export default function NewsletterAdmin() {
   const [activeTab, setActiveTab] = useState<'subscribers' | 'campaigns' | 'analytics'>('subscribers')
   const [expandedBounces, setExpandedBounces] = useState<CityKey | null>(null)
   const [emailEventsTableMissing, setEmailEventsTableMissing] = useState(false)
-  const [lastSentAt, setLastSentAt] = useState<Record<CityKey, string | null>>({
-    edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null,
-    'red-deer': null, 'grande-prairie': null, 'fort-mcmurray': null,
-  })
+  const [lastSentAt, setLastSentAt] = useState<Record<CityKey, string | null>>(
+    byEdition<string | null>(() => null)
+  )
 
   // ── Load on mount ───────────────────────────────────────────────────────────
 
@@ -233,8 +233,8 @@ export default function NewsletterAdmin() {
         setEmailEventsTableMissing(!tableExists)
 
         // Hydrate city drafts + extract last_sent_at
-        const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray']
-        const sentAt: Record<CityKey, string | null> = { edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null, 'red-deer': null, 'grande-prairie': null, 'fort-mcmurray': null }
+        const cities: CityKey[] = ALL_EDITIONS
+        const sentAt: Record<CityKey, string | null> = { edmonton: null, calgary: null, lethbridge: null, 'medicine-hat': null, 'red-deer': null, 'grande-prairie': null, 'fort-mcmurray': null, alberta: null }
         for (const city of cities) {
           // DB value wins; fall back to localStorage (works before SQL migration is run)
           const dbTime = configData[city]?.last_sent_at ?? null
@@ -244,10 +244,7 @@ export default function NewsletterAdmin() {
           else sentAt[city] = dbTime || lsTime || null
         }
         setLastSentAt(sentAt)
-        const newDrafts: Record<CityKey, CityConfigDraft> = {
-          edmonton: emptyDraft(), calgary: emptyDraft(), lethbridge: emptyDraft(), 'medicine-hat': emptyDraft(),
-          'red-deer': emptyDraft(), 'grande-prairie': emptyDraft(), 'fort-mcmurray': emptyDraft(),
-        }
+        const newDrafts: Record<CityKey, CityConfigDraft> = byEdition(() => emptyDraft())
         const allArticleIds = new Set<string>()
 
         for (const city of cities) {
@@ -291,14 +288,19 @@ export default function NewsletterAdmin() {
 
   // ── Send handlers ───────────────────────────────────────────────────────────
 
-  function handleSendCity(city: CityKey) {
+  /**
+   * `force` overrides the minimum-interval guard that stops a city being mailed
+   * twice in quick succession. It is never passed by the normal button — only
+   * by the "Send anyway" control that appears after a send has been skipped.
+   */
+  function handleSendCity(city: CityKey, force = false) {
     // Clear confirmation flag and start sending
     setConfirmSend(prev => ({ ...prev, [city]: false }))
     setSendStates(prev => ({ ...prev, [city]: { status: 'sending' } }))
     const note = customNotes[city].trim() || undefined
     startTransition(async () => {
       try {
-        const result = await triggerCityNewsletter(city, note)
+        const result = await triggerCityNewsletter(city, note, force)
         setSendStates(prev => ({ ...prev, [city]: { status: 'success', result } }))
         if (result.sent > 0) {
           const now = new Date().toISOString()
@@ -510,7 +512,7 @@ export default function NewsletterAdmin() {
     setSaveSuccess(false)
     setSaveError(null)
 
-    const cities: CityKey[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray']
+    const cities: CityKey[] = ALL_EDITIONS
     const errors: string[] = []
 
     for (const city of cities) {
@@ -655,9 +657,21 @@ export default function NewsletterAdmin() {
   const otherCities = Object.entries(OTHER_CITY_LABELS).filter(
     ([key]) => (stats?.byCity?.[key] ?? 0) > 0
   )
-  const newsletterCityTotal = (['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray'] as CityKey[])
+  const newsletterCityTotal = CITY_KEYS
     .reduce((s, c) => s + (stats?.byCity?.[c] ?? 0), 0)
   const otherCityTotal = otherCities.reduce((s, [key]) => s + (stats?.byCity?.[key] ?? 0), 0)
+
+  /**
+   * How many people an edition actually reaches.
+   *
+   * For the seven cities that's the count stored against that city. The Alberta
+   * edition has no subscribers filed under 'alberta' — it is defined as everyone
+   * NOT on a city list, so its audience is the other buckets added up. Reading
+   * byCity['alberta'] would show 0 and make the send button claim it was going
+   * to nobody.
+   */
+  const audienceFor = (city: CityKey): number =>
+    city === 'alberta' ? otherCityTotal : (stats?.byCity?.[city] ?? 0)
 
   // ── Analytics helpers ───────────────────────────────────────────────────────
 
@@ -844,7 +858,7 @@ export default function NewsletterAdmin() {
                       <div className="text-lg font-semibold text-gray-900">{cfg.label}</div>
                       {stats && (
                         <div className="text-sm text-muted-foreground">
-                          {stats.byCity?.[city] ?? 0} active subscribers
+                          {audienceFor(city)} active subscribers
                         </div>
                       )}
                     </div>
@@ -883,7 +897,7 @@ export default function NewsletterAdmin() {
                           >
                             {state.status === 'sending'
                               ? <Loader2 className="h-3 w-3 animate-spin" />
-                              : <>✓ Confirm Send to {stats?.byCity?.[city] ?? '?'}</>}
+                              : <>✓ Confirm Send to {audienceFor(city)}</>}
                           </Button>
                           <Button
                             size="sm" variant="outline" className="shrink-0 text-xs"
@@ -960,17 +974,51 @@ export default function NewsletterAdmin() {
                     </div>
 
                     {state.status === 'success' && state.result && (
-                      <div className="flex items-start gap-2 text-sm text-green-700 bg-green-50 rounded-lg p-3">
-                        <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                      /* "Sent successfully · 0 sent" is a contradiction — colour
+                         and wording follow whether anything actually went out. */
+                      <div className={`flex items-start gap-2 text-sm rounded-lg p-3 ${
+                        state.result.sent > 0
+                          ? 'text-green-700 bg-green-50'
+                          : 'text-amber-800 bg-amber-50'
+                      }`}>
+                        {state.result.sent > 0
+                          ? <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                          : <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />}
                         <div>
-                          <div className="font-medium">Sent successfully</div>
-                          <div className="text-green-600">
+                          <div className="font-medium">
+                            {state.result.sent > 0 ? 'Sent successfully' : 'Nothing sent'}
+                          </div>
+                          <div className={state.result.sent > 0 ? 'text-green-600' : 'text-amber-700'}>
                             ✓ {state.result.sent} sent
                             {state.result.failed  > 0 && ` · ✗ ${state.result.failed} failed`}
                             {state.result.skipped > 0 && ` · ${state.result.skipped} skipped`}
                           </div>
                           {state.result.errors.length > 0 && (
                             <div className="text-xs text-red-500 mt-1">{state.result.errors[0]}</div>
+                          )}
+
+                          {/* Nothing went out because the send was inside the
+                              minimum interval. Offer a deliberate override
+                              rather than leaving the city unsendable. */}
+                          {state.result.sent === 0 &&
+                            state.result.errors.some(e => e.includes('minimum')) && (
+                            <div className="mt-2 border-t border-green-200 pt-2">
+                              <p className="text-xs text-gray-600">
+                                Nothing was sent. This city was mailed recently, so the duplicate
+                                guard stopped it. Send anyway only if you mean subscribers to get a
+                                second email.
+                              </p>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Send the ${city} newsletter anyway?\n\nSubscribers were mailed less than 20 hours ago and will receive a second email.`)) {
+                                    handleSendCity(city, true)
+                                  }
+                                }}
+                                className="mt-2 inline-flex items-center rounded-md border border-amber-400 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                              >
+                                Send anyway (override guard)
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1405,7 +1453,7 @@ export default function NewsletterAdmin() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold ${cfg.color}`}>{stats.byCity?.[city] ?? 0}</div>
+                    <div className={`text-2xl font-bold ${cfg.color}`}>{audienceFor(city)}</div>
                     <p className="text-xs text-muted-foreground mt-1">{cfg.newsletter}</p>
                     {lastSentAt[city] ? (
                       <p className={`text-xs mt-1.5 flex items-center gap-1 ${wasSentToday(city) ? 'text-green-600 font-medium' : 'text-gray-400'}`}>
@@ -1432,7 +1480,8 @@ export default function NewsletterAdmin() {
                     Other cities — {otherCityTotal} active subscriber{otherCityTotal !== 1 ? 's' : ''}
                     {' '}
                     <span className="font-normal text-xs">
-                      (no newsletter yet — total across all cities: {newsletterCityTotal + otherCityTotal} = {stats.active} active ✓)
+                      (these are the readers the <strong>Alberta</strong> edition goes to — total across
+                      all cities: {newsletterCityTotal + otherCityTotal} = {stats.active} active ✓)
                     </span>
                   </CardTitle>
                 </CardHeader>

@@ -1,6 +1,28 @@
 import { supabase } from '@/lib/supabase'
 
-export type NewsletterCity = 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat' | 'red-deer' | 'grande-prairie' | 'fort-mcmurray'
+/**
+ * A sendable edition.
+ *
+ * The seven cities are geographic. 'alberta' is not — it is the catch-all for
+ * everyone who isn't on a city list: subscribers who picked "Other Alberta" or
+ * "Other" at signup, plus anything unrecognised that ends up in the column.
+ * Before it existed those readers had opted in and received nothing, because
+ * the send route only recognised the seven.
+ *
+ * Membership is computed at send time (see getActiveSubscribers) rather than
+ * stored, so a new junk value in the city column is covered automatically
+ * instead of stranding someone silently.
+ */
+export type NewsletterCity =
+  | 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat'
+  | 'red-deer' | 'grande-prairie' | 'fort-mcmurray'
+  | 'alberta'
+
+/** The seven geographic editions — everyone else falls to the Alberta edition. */
+export const CITY_EDITIONS = [
+  'edmonton', 'calgary', 'lethbridge', 'medicine-hat',
+  'red-deer', 'grande-prairie', 'fort-mcmurray',
+] as const
 
 export interface NewsletterConfig {
   city: NewsletterCity
@@ -56,6 +78,7 @@ export async function getAllNewsletterConfigs(): Promise<Record<NewsletterCity, 
     'red-deer': empty('red-deer'),
     'grande-prairie': empty('grande-prairie'),
     'fort-mcmurray': empty('fort-mcmurray'),
+    alberta: empty('alberta'),
   }
   for (const row of data || []) {
     result[row.city as NewsletterCity] = row as NewsletterConfig

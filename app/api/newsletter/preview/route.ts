@@ -4,7 +4,7 @@ import { generateNewsletterHtml, type NewsletterCity } from '@/lib/newsletter/te
 
 export const dynamic = 'force-dynamic'
 
-const VALID_CITIES: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray']
+const VALID_CITIES: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray', 'alberta']
 
 /**
  * GET /api/newsletter/preview?city=edmonton

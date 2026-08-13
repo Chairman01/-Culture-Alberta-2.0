@@ -42,11 +42,15 @@ export async function saveArticleOrder(
   return saveNewsletterConfig(city, { article_order: articleIds })
 }
 
-// Alberta is shared — saves to all city rows
+// The Alberta story picks are shared — saved onto every edition's row, the
+// province-wide one included, so the same picks appear wherever they're read.
 export async function saveAlbertaArticles(
   articleIds: string[] | null,
 ): Promise<{ error: string | null }> {
-  const cities: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray']
+  const cities: NewsletterCity[] = [
+    'edmonton', 'calgary', 'lethbridge', 'medicine-hat',
+    'red-deer', 'grande-prairie', 'fort-mcmurray', 'alberta',
+  ]
   for (const city of cities) {
     const result = await saveNewsletterConfig(city, { alberta_article_ids: articleIds })
     if (result.error) return result

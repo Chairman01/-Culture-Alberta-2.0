@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { titleToSlug } from '@/lib/utils/article-url'
-import { getNewsletterConfig, getArticlesByIds } from './config'
+import { getNewsletterConfig, getArticlesByIds, type NewsletterCity } from './config'
 
 export interface NewsletterArticle {
   id: string
@@ -56,7 +56,7 @@ const CITY_SEARCH_TERM: Record<string, string> = {
 }
 
 export async function fetchNewsletterContent(
-  city: 'edmonton' | 'calgary' | 'lethbridge' | 'medicine-hat' | 'red-deer' | 'grande-prairie' | 'fort-mcmurray'
+  city: NewsletterCity
 ): Promise<NewsletterContent> {
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
@@ -68,18 +68,27 @@ export async function fetchNewsletterContent(
 
   const cityTerm = CITY_SEARCH_TERM[city] ?? city
 
+  // The Alberta edition has no single city to filter on — its readers are
+  // scattered across small towns and outside the province — so it takes the
+  // province-wide view instead of a municipal one.
+  const isProvinceWide = city === 'alberta'
+
   // Load config and events in parallel
+  const eventsQuery = supabase
+    .from('events')
+    .select('id, title, venue, location, event_date, website_url')
+    .eq('status', 'published')
+    .gte('event_date', now)
+    .lte('event_date', twoWeeksOut.toISOString())
+    .order('event_date', { ascending: true })
+    .limit(3)
+
   const [config, eventsResult] = await Promise.all([
     getNewsletterConfig(city),
-    supabase
-      .from('events')
-      .select('id, title, venue, location, event_date, website_url')
-      .eq('status', 'published')
-      .ilike('location', `%${cityTerm}%`)
-      .gte('event_date', now)
-      .lte('event_date', twoWeeksOut.toISOString())
-      .order('event_date', { ascending: true })
-      .limit(3),
+    // Province-wide takes the next events anywhere in Alberta rather than
+    // location ilike '%alberta%', which matches almost nothing — venues are
+    // listed by town, not by province.
+    isProvinceWide ? eventsQuery : eventsQuery.ilike('location', `%${cityTerm}%`),
   ])
 
   // ── 1. City articles ────────────────────────────────────────────────────────
@@ -123,15 +132,27 @@ export async function fetchNewsletterContent(
     const cityFields = 'id, title, excerpt, image_url, image_source, category, categories, tags, location, author, created_at'
 
     // Auto fetch top 3 newest — last 7 days first, with broader fallbacks
-    let { data: recentData } = await supabase
-      .from('articles')
-      .select(cityFields)
-      .eq('status', 'published')
-      .neq('type', 'event')
-      .or(`location.ilike.%${cityTerm}%,category.ilike.%${cityTerm}%,title.ilike.%${cityTerm}%`)
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .limit(10)
+    let { data: recentData } = isProvinceWide
+      // No municipal filter: the lead stories are simply the week's newest
+      // across the whole site. Filtering on 'alberta' here would return only
+      // articles that happen to say "Alberta", not the best of the week.
+      ? await supabase
+          .from('articles')
+          .select(cityFields)
+          .eq('status', 'published')
+          .neq('type', 'event')
+          .gte('created_at', since)
+          .order('created_at', { ascending: false })
+          .limit(10)
+      : await supabase
+          .from('articles')
+          .select(cityFields)
+          .eq('status', 'published')
+          .neq('type', 'event')
+          .or(`location.ilike.%${cityTerm}%,category.ilike.%${cityTerm}%,title.ilike.%${cityTerm}%`)
+          .gte('created_at', since)
+          .order('created_at', { ascending: false })
+          .limit(10)
 
     let cityData: any[] = (recentData || [])
 

@@ -1,7 +1,8 @@
 import { Resend } from 'resend'
 import { supabase } from '@/lib/supabase'
 import { fetchNewsletterContent } from './fetch-articles'
-import { recordCitySent } from './config'
+import { recordCitySent, getNewsletterConfig, CITY_EDITIONS } from './config'
+import type { NewsletterTopic } from '@/lib/signup-source'
 import {
   generateNewsletterHtml,
   getSubjectLine,
@@ -47,12 +48,32 @@ function isValidEmail(email: string | null | undefined): boolean {
 }
 
 // ── Subscriber fetching ───────────────────────────────────────────────────────
-async function getActiveSubscribers(city: NewsletterCity): Promise<{ id: string; email: string }[]> {
-  const { data, error } = await supabase
+/**
+ * Active subscribers for one city AND one topic.
+ *
+ * The topic filter is the guarantee that a jobs email never lands in a culture
+ * reader's inbox — each topic is a separate CASL express consent, so sending
+ * across lists would be sending without consent, not just a bad experience.
+ * Existing rows default to {culture}, so the culture send is unchanged.
+ */
+async function getActiveSubscribers(
+  city: NewsletterCity,
+  topic: NewsletterTopic = 'culture'
+): Promise<{ id: string; email: string }[]> {
+  const base = supabase
     .from('newsletter_subscriptions')
     .select('id, email')
-    .eq('city', city)
     .eq('status', 'active')
+    .contains('topics', [topic])
+
+  // The Alberta edition is defined by exclusion: everyone active who is not on
+  // one of the seven city lists. Matching on city = 'alberta' would catch only
+  // rows literally stored that way and miss the buckets this exists to serve
+  // ('other-alberta', 'other', 'outside-alberta', a typo, a value added later).
+  // Defining it as the complement means nobody can be stranded again.
+  const { data, error } = city === 'alberta'
+    ? await base.not('city', 'in', `(${CITY_EDITIONS.join(',')})`)
+    : await base.eq('city', city)
 
   if (error || !data) return []
   return data as { id: string; email: string }[]
@@ -69,11 +90,59 @@ export interface SendResult {
 
 export interface SendOptions {
   customNote?: string
+  /**
+   * Send even if this city already went out today. Requires a deliberate act —
+   * never set by the cron. See the guard below.
+   */
+  force?: boolean
+}
+
+/**
+ * Minimum gap between two sends to the same city.
+ *
+ * Deliberately an interval rather than a calendar-day check. The scheduled run
+ * is 24h apart so it always clears this, but a calendar comparison would happily
+ * allow an 8pm send followed by an 8am one — different days, twelve hours apart,
+ * two emails in one night from the reader's point of view.
+ */
+const MIN_SEND_INTERVAL_HOURS = 20
+
+/**
+ * Was this city sent too recently?
+ *
+ * `last_sent_at` was recorded from the beginning but never read, so nothing
+ * stopped an edition going out twice. On 2026-08-03 an accidental request to
+ * the send endpoint mailed 1,032 subscribers across all seven cities. One
+ * unlucky probe should not be able to blast a whole list.
+ */
+async function sentTooRecently(city: NewsletterCity): Promise<{ blocked: boolean; hoursAgo?: number }> {
+  try {
+    const config = await getNewsletterConfig(city)
+    if (!config.last_sent_at) return { blocked: false }
+    const hoursAgo = (Date.now() - new Date(config.last_sent_at).getTime()) / 3_600_000
+    return { blocked: hoursAgo < MIN_SEND_INTERVAL_HOURS, hoursAgo }
+  } catch {
+    // If the check itself fails, refuse to send. A missed newsletter is
+    // recoverable; a duplicate blast to the whole list is not.
+    return { blocked: true }
+  }
 }
 
 // ── Core send function ────────────────────────────────────────────────────────
 export async function sendCityNewsletter(city: NewsletterCity, options?: SendOptions): Promise<SendResult> {
   const result: SendResult = { city, sent: 0, failed: 0, skipped: 0, errors: [] }
+
+  // 0. Refuse to send the same city twice inside the minimum interval.
+  if (!options?.force) {
+    const recent = await sentTooRecently(city)
+    if (recent.blocked) {
+      const ago = recent.hoursAgo !== undefined ? ` (${recent.hoursAgo.toFixed(1)}h ago)` : ''
+      result.errors.push(
+        `Skipped ${city}: last sent${ago}, under the ${MIN_SEND_INTERVAL_HOURS}h minimum. Pass force to override.`
+      )
+      return result
+    }
+  }
 
   // 1. Get subscribers
   const subscribers = await getActiveSubscribers(city)
@@ -162,6 +231,21 @@ export async function sendCityNewsletter(city: NewsletterCity, options?: SendOpt
 }
 
 // ── Send all cities ───────────────────────────────────────────────────────────
+/**
+ * Send every edition in one action — the "send all" path. Seven cities only.
+ *
+ * 'alberta' is deliberately excluded. It has its own card in the admin panel
+ * and answers to an explicit ?city=alberta request, so it is never unreachable
+ * — it just isn't swept up by "send everything".
+ *
+ * Two reasons. Its readers opted in expecting a city brief and are about to
+ * receive something new, so the first few should go out as a decision rather
+ * than as a side effect of a bulk action. And one careless click here already
+ * mailed 1,032 people across all seven cities on 2026-08-03; a new list is
+ * worth keeping out of the blast radius until it has a rhythm.
+ *
+ * Add it here once it does.
+ */
 export async function sendAllNewsletters(): Promise<SendResult[]> {
   const cities: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'medicine-hat', 'red-deer', 'grande-prairie', 'fort-mcmurray']
   const results: SendResult[] = []
