@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getServiceClient } from '@/lib/supabase-admin'
+
+// newsletter_subscriptions holds subscriber emails: service role only, never
+// the public anon key.
+const supabase = getServiceClient()
 
 export async function POST(request: NextRequest) {
   try {

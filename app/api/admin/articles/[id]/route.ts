@@ -10,20 +10,13 @@ import { saveManualPollForArticle, deletePollForArticle } from '@/lib/poll-gener
 import { requireAdmin, requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 import { sanitizeAdminHtml } from '@/lib/sanitize-html'
+import { getServiceClient } from '@/lib/supabase-admin'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
-  
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase environment variables are not configured')
-  }
-  
-  return createClient(supabaseUrl, supabaseKey)
-}
+// Service role, not the public anon key — see the note in ../route.ts.
+const getSupabaseClient = getServiceClient
 
 async function generateArticleSlug(
   supabase: ReturnType<typeof getSupabaseClient>,

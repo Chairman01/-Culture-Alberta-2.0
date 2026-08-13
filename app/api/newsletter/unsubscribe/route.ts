@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getServiceClient } from '@/lib/supabase-admin'
+
+// See app/api/newsletter/route.ts — subscriber rows are service-role only.
+const supabase = getServiceClient()
 import { decodeUnsubscribeToken } from '@/lib/newsletter/send-newsletter'
 
 const SITE_URL = 'https://www.culturealberta.com'
