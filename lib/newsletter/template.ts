@@ -126,8 +126,27 @@ function defaultTagline(city: NewsletterCity): string {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function escapeHtml(str: string): string {
+
+/**
+ * No em dashes in the email, ever.
+ *
+ * The template's own copy no longer contains any, but article titles and
+ * excerpts come from the database and a future headline could reintroduce one
+ * silently. Applied at render time so it holds regardless of what gets written.
+ *
+ * A spaced em dash is doing the work of a comma, so it becomes one. An unspaced
+ * one is joining two things ("2020—2021") and becomes a hyphen.
+ *
+ * En dashes are deliberately left alone: they are correct in a date range, and
+ * "July 31–August 3" is not a typographic mistake to be scrubbed.
+ */
+function stripEmDashes(str: string): string {
   return str
+    .replace(/\s*—\s*/g, (m) => (/^\s|\s$/.test(m) ? ', ' : '-'))
+}
+
+function escapeHtml(str: string): string {
+  return stripEmDashes(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
