@@ -46,6 +46,11 @@ const CITY_PATTERNS: Array<{ city: JobCity; patterns: RegExp[] }> = [
       /\bedmonton\b/i, /\bsherwood\s*park\b/i, /\bst\.?\s*albert\b/i,
       /\bspruce\s*grove\b/i, /\bfort\s*saskatchewan\b/i, /\bleduc\b/i,
       /\bstony\s*plain\b/i, /\bbeaumont\b/i, /\bnisku\b/i, /\bdevon\b/i,
+      // Bare "Sherwood" is how some boards label a Sherwood Park site —
+      // Costco's warehouse there is listed as plain "SHERWOOD, Alberta", which
+      // the "sherwood park" pattern above never matched. There is no other
+      // Sherwood in Alberta, so the looser form is safe.
+      /\bsherwood\b/i,
     ],
   },
   {
@@ -53,6 +58,10 @@ const CITY_PATTERNS: Array<{ city: JobCity; patterns: RegExp[] }> = [
     patterns: [
       /\bcalgary\b/i, /\bairdrie\b/i, /\bcochrane\b/i, /\bokotoks\b/i,
       /\bchestermere\b/i, /\bstrathmore\b/i, /\bhigh\s*river\b/i, /\bcanmore\b/i,
+      // Tsuut'ina Nation adjoins Calgary's southwest edge; the retail sites
+      // there (Costco Buffalo Run among them) are a Calgary commute, and are
+      // listed under the nation's name rather than a municipality.
+      /\btsuut'?\s*ina\b/i,
     ],
   },
 ]

@@ -46,6 +46,26 @@ function resolveCities(board: AtsBoard, location: string, title = ''): JobCity[]
   return []
 }
 
+/**
+ * The part of a multi-office location string that belongs to one city.
+ *
+ * A posting listing several offices becomes one row per city, and each row
+ * shows `location_raw` as its location chip — so without this, the Medicine Hat
+ * row of a Costco role read "CHICOUTIMI, Quebec; ST. JOHN'S, Newfoundland…",
+ * naming 111 places the job isn't. Cadient makes it glaring, but the same was
+ * true of any multi-office Ashby posting.
+ *
+ * Falls back to the full string when no segment names the city on its own —
+ * that's the NAIT case, where the city came from a site-name alias and the
+ * original text ("Main Campus") is still the most useful thing to show.
+ */
+function locationForCity(location: string, city: JobCity): string {
+  const parts = location.split(';').map(p => p.trim()).filter(Boolean)
+  if (parts.length < 2) return location
+  const mine = parts.filter(p => matchJobCities(p).includes(city))
+  return mine.length > 0 ? mine.join('; ') : location
+}
+
 /** Cheap pre-filter for the providers that pay a detail request per candidate row. */
 function looksAlberta(board: AtsBoard): (location: string) => boolean {
   return location => resolveCities(board, location).length > 0
@@ -74,7 +94,7 @@ function toRows(posting: RawPosting, board: AtsBoard, city: JobCity): JobUpsertR
     title: posting.title,
     company: board.company,
     city,
-    location_raw: posting.location || null,
+    location_raw: locationForCity(posting.location, city) || null,
     category: null,
     description_snippet: toSnippet(posting.descriptionHtml),
     description_html: posting.descriptionHtml || null,

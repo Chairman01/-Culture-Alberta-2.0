@@ -3,16 +3,26 @@
  *
  * Every entry here was verified live before being added — a guessed token
  * silently returns nothing, which looks identical to "this employer has no
- * openings right now". Confirmed 2026-08-02; the Calgary block 2026-08-11.
+ * openings right now". Confirmed 2026-08-02; the Calgary block 2026-08-11;
+ * retail and the post-secondaries 2026-08-14.
  *
  * Adding an employer is a two-minute job and needs no permission: open their
  * careers page and the provider, token and (for Workday) datacenter and site
  * name are all visible in the URL.
  *
- *   Greenhouse  job-boards.greenhouse.io/{token}
- *   Lever       jobs.lever.co/{token}
- *   Ashby       jobs.ashbyhq.com/{token}
- *   Workday     {token}.{datacenter}.myworkdayjobs.com/{site}
+ *   Greenhouse   job-boards.greenhouse.io/{token}
+ *   Lever        jobs.lever.co/{token}
+ *   Ashby        jobs.ashbyhq.com/{token}
+ *   Workday      {token}.{datacenter}.myworkdayjobs.com/{site}
+ *   PeopleAdmin  {token}.peopleadmin.ca            → /postings/search.atom
+ *   HRsmart      {tenant}.hua.hrsmart.com          → /hr/ats/JobSearch/viewAll
+ *   Avanti       {tenant}.myavanti.ca/careers      → POST /careers/Job/Search
+ *
+ * Finding one is the hard part, not adding it. Fetch the site ROOT and follow
+ * its careers links — guessing `careers.{domain}` almost never resolves — then
+ * grep for the vendor hosts above. Don't trust a "JavaScript required" banner:
+ * HRsmart shows one on /JobSearch/index while /JobSearch/viewAll serves the
+ * whole board as plain HTML.
  *
  * Boards with no Alberta postings today are kept rather than removed — they
  * cost one request per sync and start producing the moment they hire locally.
@@ -101,6 +111,28 @@ export const ATS_BOARDS: AtsBoard[] = [
   { provider: 'workday', token: 'ledcor', company: 'Ledcor', domain: 'ledcor.com', datacenter: 'wd3', site: 'Ledcor_External' },
   { provider: 'workday', token: 'strathconaresources', company: 'Strathcona Resources', domain: 'strathconaresources.com', datacenter: 'wd10', site: 'Careers' },
 
+  // Retail, added 2026-08-14 to reach the cities outside Calgary and Edmonton.
+  // Every board above is a head office or a campus, which is why Medicine Hat
+  // had two openings and Grande Prairie seven — the employers who actually hire
+  // in those cities are grocers and big-box stores, not oil and gas.
+  //
+  // Save-On-Foods is the single biggest fix available: 97 Alberta postings, and
+  // the only board here present in all seven of our cities. The tenant is
+  // Pattison Food Group ('pfg'), which also owns the PFGCareers site — that one
+  // is corporate roles in BC and is deliberately not read.
+  { provider: 'workday', token: 'pfg', company: 'Save-On-Foods', domain: 'saveonfoods.com', datacenter: 'wd3', site: 'SaveonfoodsCareers' },
+  { provider: 'workday', token: 'homedepot', company: 'The Home Depot Canada', domain: 'homedepot.ca', datacenter: 'wd5', site: 'CareerDepotCanada' },
+  // Corporate and distribution roles only — Canadian Tire's store jobs are
+  // posted by the individual dealers, who are not on this board. Four Calgary
+  // openings today, for six list requests a sync.
+  { provider: 'workday', token: 'canadiantirecorporation', company: 'Canadian Tire', domain: 'canadiantire.ca', datacenter: 'wd3', site: 'Enterprise_External_Careers_Site' },
+
+  // Added while looking for the University of Calgary, whose own board turned
+  // out to be unreadable (see the note further down). Bow Valley College is the
+  // nearest thing we can legitimately read: a downtown Calgary post-secondary
+  // with ~15,000 students, 18 of its 20 postings in Calgary.
+  { provider: 'workday', token: 'bowvalleycollege', company: 'Bow Valley College', domain: 'bowvalleycollege.ca', datacenter: 'wd10', site: 'BowValleyCollege' },
+
   // Calgary-weighted additions, confirmed live 2026-08-11. The board skewed
   // heavily to Edmonton (391 active postings against Calgary's 122), and the
   // gap was supply, not demand — these are all Calgary head offices.
@@ -147,6 +179,16 @@ export const ATS_BOARDS: AtsBoard[] = [
     host: 'fa-etus-saasfaprod1.fa.ocs.oraclecloud.com',
     site: 'CX_2004',
   },
+  // Red Deer's own municipality, and on its own the largest employer we can
+  // reach there — 14 postings against the four the city page had in total.
+  {
+    provider: 'oracle',
+    token: 'city-of-red-deer',
+    company: 'City of Red Deer',
+    domain: 'reddeer.ca',
+    host: 'fa-eyjj-saasfaprod1.fa.ocs.oraclecloud.com',
+    site: 'CX_1',
+  },
   {
     provider: 'oracle',
     token: 'strathcona-county',
@@ -165,6 +207,24 @@ export const ATS_BOARDS: AtsBoard[] = [
     company: 'Government of Alberta',
     domain: 'jobpostings.alberta.ca',
     logoDomain: 'alberta.ca',
+  },
+  // Fort McMurray's municipality. Its site renders no location column at all,
+  // so the city is recovered from the job URL — see locationFromSlug. Postings
+  // in the outlying hamlets (Conklin, Janvier, Fort Chipewyan) name no city we
+  // cover and are dropped, which is correct.
+  {
+    provider: 'successfactors',
+    token: 'norquest-college',
+    company: 'NorQuest College',
+    domain: 'careers.norquest.ca',
+    logoDomain: 'norquest.ca',
+  },
+  {
+    provider: 'successfactors',
+    token: 'wood-buffalo',
+    company: 'Regional Municipality of Wood Buffalo',
+    domain: 'jobs.rmwb.ca',
+    logoDomain: 'rmwb.ca',
   },
 
   // ── Oracle Talent Social Sourcing — DELIBERATELY NOT ENABLED ──────────────
@@ -193,6 +253,31 @@ export const ATS_BOARDS: AtsBoard[] = [
   //
   // If a feed is granted, add the boards back here and the provider handles it.
 
+  // ── University of Calgary — DELIBERATELY NOT ENABLED ──────────────────────
+  //
+  // Asked for on 2026-08-14 and genuinely wanted: it's the largest employer in
+  // Calgary we don't carry. It is left out for the same reason as AHS below,
+  // and the finding is recorded here so it isn't rediscovered from scratch.
+  //
+  // careers.ucalgary.ca sits behind a Cloudflare bot challenge. The site root
+  // serves our User-Agent fine, but `/search/jobs` — the only path that
+  // enumerates postings — answered 403 with the "Just a moment…" interstitial
+  // on first contact, before any repeated requests. Sustained probing then had
+  // robots.txt and sitemap.xml return 403 too, so we cannot even read their
+  // stated crawl policy.
+  //
+  // Reading the listing therefore needs a spoofed browser User-Agent or a
+  // solved JS challenge, which is defeating their bot protection, so we don't.
+  //
+  // Legitimate routes back in:
+  //   - ask UCalgary HR for the syndication feed they already give Indeed and
+  //     Google for Jobs, or to allow our User-Agent
+  //   - the federal Job Bank XML feed (access application), which carries them
+  //   - post individual headline roles by hand via /admin/jobs
+  //
+  // NOTE: the University of ALBERTA (Oracle, above) and the University of
+  // LETHBRIDGE (PeopleAdmin, below) are both enabled and unaffected by this.
+
   // ── Phenom People ──────────────────────────────────────────────────────────
   // `domain` is the board origin, as with SuccessFactors above.
   {
@@ -201,6 +286,113 @@ export const ATS_BOARDS: AtsBoard[] = [
     company: 'City of Edmonton',
     domain: 'recruitment.edmonton.ca',
     logoDomain: 'edmonton.ca',
+  },
+
+  // ── PeopleAdmin ────────────────────────────────────────────────────────────
+  // `domain` is the portal origin, as with SuccessFactors above. The Atom feed
+  // states no location, so the alias supplies one — but only after the matcher
+  // has read the job title, which is what routes a role advertised at the
+  // Calgary campus to Calgary instead.
+  {
+    provider: 'peopleadmin',
+    token: 'university-of-lethbridge',
+    company: 'University of Lethbridge',
+    domain: 'uleth.peopleadmin.ca',
+    logoDomain: 'ulethbridge.ca',
+    locationAliases: [{ pattern: /^/, city: 'lethbridge' }],
+  },
+  {
+    provider: 'peopleadmin',
+    token: 'lethbridge-polytechnic',
+    company: 'Lethbridge Polytechnic',
+    domain: 'lethpolytech.peopleadmin.ca',
+    logoDomain: 'lethpolytech.ca',
+    locationAliases: [{ pattern: /^/, city: 'lethbridge' }],
+  },
+  {
+    provider: 'peopleadmin',
+    token: 'red-deer-polytechnic',
+    company: 'Red Deer Polytechnic',
+    domain: 'employment.rdpolytech.ca',
+    logoDomain: 'rdpolytech.ca',
+    locationAliases: [{ pattern: /^/, city: 'red-deer' }],
+  },
+
+  // ── Avanti Career Connector ────────────────────────────────────────────────
+  {
+    provider: 'avanti',
+    token: 'keyano-college',
+    company: 'Keyano College',
+    domain: 'keyanocollege.myavanti.ca',
+    logoDomain: 'keyano.ca',
+  },
+
+  // ── Medicine Hat College (own website) ─────────────────────────────────────
+  // No ATS; see the provider note. The alias supplies the city because the
+  // pages state none. MHC's small Brooks campus is the known imprecision here —
+  // a Brooks-based posting would show under Medicine Hat unless its title says
+  // otherwise, which the matcher checks before falling back to this alias.
+  {
+    provider: 'mhc',
+    token: 'medicine-hat-college',
+    company: 'Medicine Hat College',
+    domain: 'www.mhc.ab.ca',
+    logoDomain: 'mhc.ab.ca',
+    locationAliases: [{ pattern: /^/, city: 'medicine-hat' }],
+  },
+
+  // ── Plain RSS careers feed ─────────────────────────────────────────────────
+  // `site` is the feed path, not a career-site name. MacEwan states no location
+  // in the feed and has one campus, in Edmonton.
+  {
+    provider: 'rss',
+    token: 'macewan-university',
+    company: 'MacEwan University',
+    domain: 'www.macewan.ca',
+    logoDomain: 'macewan.ca',
+    site: '/rss/?feed=all-careers',
+    locationAliases: [{ pattern: /^/, city: 'edmonton' }],
+  },
+
+  // ── HRsmart / Deltek Talent ────────────────────────────────────────────────
+  // `domain` is the tenant's board host, as with SuccessFactors above.
+  //
+  // Northwestern Polytechnic states a Location column, so its Fairview and
+  // Grande Cache campuses correctly name no city we cover and drop out. Mount
+  // Royal publishes no Location column at all, hence the alias — it has one
+  // campus, in Calgary. The tenant name 'gprc' is Grande Prairie Regional
+  // College, NWP's name before 2022; only the URL has to match.
+  {
+    provider: 'hrsmart',
+    token: 'northwestern-polytechnic',
+    company: 'Northwestern Polytechnic',
+    domain: 'gprc.hua.hrsmart.com',
+    logoDomain: 'nwpolytech.ca',
+  },
+  {
+    provider: 'hrsmart',
+    token: 'mount-royal-university',
+    company: 'Mount Royal University',
+    domain: 'mtroyalca.hua.hrsmart.com',
+    logoDomain: 'mtroyal.ca',
+    locationAliases: [{ pattern: /^/, city: 'calgary' }],
+  },
+
+  // ── Cadient Talent ─────────────────────────────────────────────────────────
+  // Costco Wholesale Canada. `token` is Cadient's applicationName and `domain`
+  // the shared board origin, the way the SuccessFactors entries work.
+  //
+  // Costco publishes no dated vacancies anywhere — this rolling pool is the
+  // whole of its Canadian hourly hiring, and it covers the warehouses in
+  // Calgary, Edmonton, Red Deer, Lethbridge, Medicine Hat and Grande Prairie.
+  // Rows from it are excluded from JobPosting markup on purpose; see the note
+  // in providers.ts and isIndexableJob in lib/jobs.ts.
+  {
+    provider: 'cadient',
+    token: 'CostcoCanadaNonReqExtCanada',
+    company: 'Costco Wholesale Canada',
+    domain: 'cta.cadienttalent.com',
+    logoDomain: 'costco.ca',
   },
 ]
 
