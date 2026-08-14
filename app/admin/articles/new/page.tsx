@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Upload, Newspaper, BookOpen } from "lucide-react"
@@ -47,6 +47,11 @@ export default function NewArticlePage() {
   const [suggestingPoll, setSuggestingPoll] = useState(false)
   const [pollQuestion, setPollQuestion] = useState("")
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""])
+  const [isContributor, setIsContributor] = useState(false)
+
+  useEffect(() => {
+    setIsContributor(localStorage.getItem("admin_role") === "contributor")
+  }, [])
 
   const suggestPoll = async () => {
     if (!title.trim() && !content.trim()) {
@@ -229,8 +234,10 @@ export default function NewArticlePage() {
       const newArticle = await response.json()
 
       toast({
-        title: "Article created",
-        description: "Your article has been created successfully.",
+        title: isContributor ? "Submitted for review" : "Article created",
+        description: isContributor
+          ? "An editor will review your draft before it goes live."
+          : "Your article has been created successfully.",
       })
 
       // Trigger revalidation for article pages
@@ -275,14 +282,25 @@ export default function NewArticlePage() {
           </Link>
           <div>
             <h1 className="text-3xl font-bold">Create New Article</h1>
-            <p className="text-gray-500 mt-1">Add a new article to your website</p>
+            <p className="text-gray-500 mt-1">
+              {isContributor
+                ? "Write your draft — an editor reviews it before it goes live"
+                : "Add a new article to your website"}
+            </p>
           </div>
         </div>
         <Button onClick={handleSave} disabled={isSaving}>
           <Save className="h-4 w-4 mr-2" />
-          {isSaving ? "Saving..." : "Save Article"}
+          {isSaving ? "Saving..." : isContributor ? "Submit for Review" : "Save Article"}
         </Button>
       </div>
+
+      {isContributor && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          Your article is saved as a draft and sent to an editor for approval. It
+          is not visible on the website until it has been approved.
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-4">

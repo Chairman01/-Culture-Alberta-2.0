@@ -9,20 +9,14 @@ import { warmSocialPreview } from '@/lib/social-image-url'
 import { saveManualPollForArticle } from '@/lib/poll-generator'
 import { requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
+import { sanitizeAdminHtml } from '@/lib/sanitize-html'
+import { getServiceClient } from '@/lib/supabase-admin'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
-  
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase environment variables are not configured')
-  }
-  
-  return createClient(supabaseUrl, supabaseKey)
-}
+// Service role, not the public anon key — see the note in ../route.ts.
+const getSupabaseClient = getServiceClient
 
 async function generateArticleSlug(supabase: ReturnType<typeof getSupabaseClient>, title: string) {
   const baseSlug = createSlug(title)
@@ -61,7 +55,25 @@ export async function POST(request: NextRequest) {
   try {
     const articleData = await request.json()
     const articleAuthor = articleOwner || articleData.author || 'Admin'
-    
+
+    // Contributors submit for review — they never publish. Forcing the status
+    // here rather than trusting the request body is the whole approval gate:
+    // the editor UI hides the option, but the API is what an outside caller
+    // hits. A published status is also what fires IndexNow and the social
+    // autopost below, so this must be decided server-side from the JWT role.
+    const articleStatus = auth.role === 'contributor'
+      ? 'draft'
+      : (articleData.status || 'published')
+
+    // Article bodies are rendered with dangerouslySetInnerHTML on the public
+    // article page and processArticleContent does not sanitize, so a stored
+    // <script> would execute for every visitor once approved. Contributor HTML
+    // is scrubbed on the way in. Admin content is left untouched — it may carry
+    // hand-placed embeds that the scrubber would strip.
+    const articleContent = auth.role === 'contributor'
+      ? sanitizeAdminHtml(articleData.content || '')
+      : articleData.content
+
     console.log('📝 Creating new article:', articleData.title)
 
     if (!hasMeaningfulContent(articleData.content)) {
@@ -88,7 +100,7 @@ export async function POST(request: NextRequest) {
       .insert([{
         id: articleId,
         title: articleData.title,
-        content: articleData.content,
+        content: articleContent,
         excerpt: articleData.excerpt,
         category: articleData.category,
         categories: articleData.categories,
@@ -96,7 +108,7 @@ export async function POST(request: NextRequest) {
         author: articleAuthor,
         tags: articleData.tags,
         type: articleData.type || 'article',
-        status: articleData.status || 'published',
+        status: articleStatus,
         image_url: articleData.imageUrl,
         slug: articleSlug,
         image_source: articleData.imageSource || null,
@@ -139,10 +151,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Try to sync the new article to fallback file
+    // Try to sync the new article to fallback file. Drafts stay out of it —
+    // optimized-fallback.json is what the public site reads when Supabase is
+    // slow, so an unapproved contributor draft has no business being in it.
+    // (The article page filters drafts too; this keeps them out a layer earlier.)
     try {
+      if (articleStatus !== 'published') {
+        console.log('📝 Draft — skipping public fallback sync')
+      } else {
       console.log('🔄 Auto-syncing new article to fallback...')
-      
+
       // Fallback: Manual update of optimized fallback (more reliable)
       const allArticles = await loadOptimizedFallback()
       const mappedArticle = {
@@ -181,6 +199,7 @@ export async function POST(request: NextRequest) {
       const { clearArticlesCache } = await import('@/lib/fast-articles')
       clearArticlesCache()
       console.log('✅ Fast cache cleared')
+      }
     } catch (syncError) {
       console.error('❌ Sync failed:', syncError)
       // Don't fail the entire request if sync fails

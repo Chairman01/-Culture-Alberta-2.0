@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { BarChart2, FileText, Calendar, Award, Mail, MessageSquare, RefreshCw, LogOut, Menu, X, Zap, Pin, Building2, Wrench, Users, Briefcase } from "lucide-react"
+import { BarChart2, FileText, Calendar, Award, Mail, MessageSquare, RefreshCw, LogOut, Menu, X, Zap, Pin, Building2, Wrench, Users, Briefcase, Inbox } from "lucide-react"
 import { Toaster } from "@/components/ui/toaster"
 
 export default function AdminLayout({
@@ -18,6 +18,7 @@ export default function AdminLayout({
   const [isClient, setIsClient] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [adminRole, setAdminRole] = useState<'admin' | 'contributor'>('admin')
+  const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
     setIsClient(true)
@@ -72,6 +73,18 @@ export default function AdminLayout({
     setIsLoading(false)
   }, [router, pathname, isClient])
 
+  // Badge the Review Queue so pending drafts are visible from any admin page.
+  // Re-runs on navigation, so approving a draft updates the count.
+  useEffect(() => {
+    if (!isAuthenticated || adminRole === 'contributor') return
+    let cancelled = false
+    fetch('/api/admin/review?count=1')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => { if (!cancelled && data) setPendingCount(data.count || 0) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [isAuthenticated, adminRole, pathname])
+
   const handleLogout = async () => {
 
     // Clear all admin authentication data
@@ -90,6 +103,7 @@ export default function AdminLayout({
   const adminNavigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart2 },
     { name: 'Articles', href: '/admin/articles', icon: FileText },
+    { name: 'Review Queue', href: '/admin/review', icon: Inbox },
     { name: 'Auto Articles', href: '/admin/automation', icon: Zap },
     { name: 'Events', href: '/admin/events', icon: Calendar },
     { name: 'Jobs', href: '/admin/jobs', icon: Briefcase },
@@ -162,7 +176,13 @@ export default function AdminLayout({
                   }`}
               >
                 <item.icon className="h-5 w-5" />
-                {item.name}
+                <span className="flex-1">{item.name}</span>
+                {item.href === '/admin/review' && pendingCount > 0 && (
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${isActive ? 'bg-white text-black' : 'bg-amber-500 text-white'
+                    }`}>
+                    {pendingCount}
+                  </span>
+                )}
               </Link>
             )
           })}

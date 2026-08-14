@@ -1,5 +1,8 @@
 import { Resend } from 'resend'
-import { supabase } from '@/lib/supabase'
+import { getServiceClient } from '@/lib/supabase-admin'
+
+// See app/api/newsletter/route.ts — subscriber rows are service-role only.
+const supabase = getServiceClient()
 import { fetchNewsletterContent } from './fetch-articles'
 import { recordCitySent, getNewsletterConfig, CITY_EDITIONS } from './config'
 import type { NewsletterTopic } from '@/lib/signup-source'

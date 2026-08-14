@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@supabase/supabase-js'
+import { getServiceClient } from '@/lib/supabase-admin'
 import { processArticleContent } from '@/lib/utils/youtube'
 import { ArticleEmbedActivator } from '@/components/article-embed-activator'
 
@@ -25,11 +25,9 @@ type PreviewArticle = {
 // Reads drafts on purpose. Safe because every /admin/* route is gated by the
 // JWT check in middleware.ts — this page is unreachable without an admin session.
 async function getArticleForPreview(id: string): Promise<PreviewArticle | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) return null
-
-  const supabase = createClient(url, key)
+  // Service role: once RLS limits `anon` to published rows, the anon key can no
+  // longer see the drafts this page exists to show.
+  const supabase = getServiceClient()
   const { data, error } = await supabase
     .from('articles')
     .select('id, title, content, excerpt, category, location, author, status, slug, image_url, created_at')

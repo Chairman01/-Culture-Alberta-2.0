@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import fs from 'fs'
 import path from 'path'
 import { createSlug } from '@/lib/utils/slug'
+import { requireAdmin } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 55
@@ -32,6 +33,9 @@ function normalizeCategories(val: unknown): string[] {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const supabase = makeClient()
 

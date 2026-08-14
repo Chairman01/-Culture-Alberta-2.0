@@ -70,13 +70,20 @@ export function buildJobSlug(title: string, company: string): string {
  * structured data, so the three can never drift apart.
  */
 export function isIndexableJob(
-  job: Pick<Job, 'source' | 'description_html' | 'status' | 'valid_through'>
+  job: Pick<Job, 'source' | 'description_html' | 'status' | 'valid_through'> &
+    Partial<Pick<Job, 'ats_provider'>>
 ): boolean {
   // The test is "do we hold a full description we're entitled to publish", not
   // who typed it. Manual postings are ours; ATS rows come from the employer's
   // own public board and carry their full text. Aggregator rows have neither.
   if (job.source !== 'manual' && job.source !== 'ats') return false
   if (!job.description_html) return false
+  // Cadient boards are rolling candidate pools, not vacancies: no requisition,
+  // no posting date, no deadline, and one entry standing in for every store
+  // that will take an application. They are worth browsing and they are honest
+  // about what they are, but a pool is not a job opening — JobPosting markup on
+  // one would misrepresent it to Google. Browsable, not indexable.
+  if (job.ats_provider === 'cadient') return false
   if (job.status !== 'active') return false
   if (job.valid_through && new Date(job.valid_through).getTime() < Date.now()) return false
   return true
@@ -244,7 +251,7 @@ export async function getJobCountsByCity(): Promise<Partial<Record<JobCity, numb
   try {
     const { data, error } = await supabase
       .from('jobs')
-      .select('city, source, description_html, status, valid_through')
+      .select('city, source, description_html, status, valid_through, ats_provider')
       .eq('status', 'active')
       .limit(5000)
     if (error) {
@@ -253,7 +260,7 @@ export async function getJobCountsByCity(): Promise<Partial<Record<JobCity, numb
     }
     const counts: Partial<Record<JobCity, number>> = {}
     for (const row of data ?? []) {
-      if (!isIndexableJob(row as Pick<Job, 'source' | 'description_html' | 'status' | 'valid_through'>)) continue
+      if (!isIndexableJob(row as Pick<Job, 'source' | 'description_html' | 'status' | 'valid_through' | 'ats_provider'>)) continue
       const city = row.city as JobCity
       counts[city] = (counts[city] ?? 0) + 1
     }

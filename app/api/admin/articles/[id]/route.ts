@@ -9,20 +9,14 @@ import { warmSocialPreview } from '@/lib/social-image-url'
 import { saveManualPollForArticle, deletePollForArticle } from '@/lib/poll-generator'
 import { requireAdmin, requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
+import { sanitizeAdminHtml } from '@/lib/sanitize-html'
+import { getServiceClient } from '@/lib/supabase-admin'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
-  
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase environment variables are not configured')
-  }
-  
-  return createClient(supabaseUrl, supabaseKey)
-}
+// Service role, not the public anon key — see the note in ../route.ts.
+const getSupabaseClient = getServiceClient
 
 async function generateArticleSlug(
   supabase: ReturnType<typeof getSupabaseClient>,
@@ -152,7 +146,7 @@ export async function PUT(
     // trending/featured flags so a caller that omits them doesn't wipe them.
     const { data: existingArticle } = await supabase
       .from('articles')
-      .select('title, slug, author, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+      .select('title, slug, author, status, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
       .eq('id', articleId)
       .single()
 
@@ -165,12 +159,25 @@ export async function PUT(
       ? authCheck.username
       : articleData.author
 
+    // A contributor's save never changes publication state — only an admin
+    // approving from /admin/review can do that. Their own drafts stay drafts;
+    // an article an admin already approved stays live when they fix a typo.
+    const articleStatus = authCheck.role === 'contributor'
+      ? (existingArticle?.status || 'draft')
+      : (articleData.status || 'published')
+
+    // Same reasoning as the create route: contributor HTML is scrubbed before
+    // it can reach the public renderer, admin HTML is left as authored.
+    const articleContent = authCheck.role === 'contributor'
+      ? sanitizeAdminHtml(articleData.content || '')
+      : articleData.content
+
     // Update the article in Supabase
     const { data, error } = await supabase
       .from('articles')
       .update({
         title: articleData.title,
-        content: articleData.content,
+        content: articleContent,
         excerpt: articleData.excerpt,
         category: articleData.category,
         categories: articleData.categories,
@@ -178,7 +185,7 @@ export async function PUT(
         author: articleAuthor,
         tags: articleData.tags,
         type: articleData.type || 'article',
-        status: articleData.status || 'published',
+        status: articleStatus,
         image_url: articleData.imageUrl,
         slug: nextSlug,
         image_source: articleData.imageSource || null,
@@ -257,7 +264,7 @@ export async function PUT(
           allArticles[articleIndex] = {
             ...allArticles[articleIndex],
             title: articleData.title,
-            content: articleData.content,
+            content: articleContent,
             excerpt: articleData.excerpt,
             category: articleData.category,
             categories: articleData.categories,
@@ -282,7 +289,7 @@ export async function PUT(
           allArticles.push({
             id: articleId,
             title: articleData.title,
-            content: articleData.content,
+            content: articleContent,
             excerpt: articleData.excerpt,
             description: articleData.excerpt,
             category: articleData.category,
@@ -322,7 +329,7 @@ export async function PUT(
           allArticles[articleIndex] = {
             ...allArticles[articleIndex],
             title: articleData.title,
-            content: articleData.content,
+            content: articleContent,
             excerpt: articleData.excerpt,
             category: articleData.category,
             categories: articleData.categories,
@@ -347,7 +354,7 @@ export async function PUT(
           allArticles.push({
             id: articleId,
             title: articleData.title,
-            content: articleData.content,
+            content: articleContent,
             excerpt: articleData.excerpt,
             description: articleData.excerpt,
             category: articleData.category,

@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/admin-auth'
 import { updateOptimizedFallback, loadOptimizedFallback } from '@/lib/optimized-fallback'
 import { revalidatePath } from 'next/cache'
 import { notifySearchEngines } from '@/lib/indexing'
@@ -16,7 +17,10 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseKey)
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const eventData = await request.json()
     

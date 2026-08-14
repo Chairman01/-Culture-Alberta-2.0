@@ -31,7 +31,12 @@ async function verifyAdminJWT(token: string, secret: string): Promise<{ valid: b
     const decodedPayload = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
     if (decodedPayload.exp && decodedPayload.exp < Math.floor(Date.now() / 1000)) return { valid: false }
 
-    return { valid: true, role: decodedPayload.role ?? 'admin' }
+    // Fail closed, matching lib/admin-auth.ts: an unrecognised role is not a
+    // reason to assume 'admin'.
+    const role = decodedPayload.role
+    if (role !== 'admin' && role !== 'contributor') return { valid: false }
+
+    return { valid: true, role }
   } catch {
     return { valid: false }
   }

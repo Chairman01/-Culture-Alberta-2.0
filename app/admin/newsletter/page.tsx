@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+// Pure helpers only. The database reads moved to /api/admin/newsletter/data so
+// the subscriber list is never fetched with the browser's anon key.
 import {
-  getAllNewsletterSubscriptions, getNewsletterStats,
-  getEmailEvents, checkEmailEventsTable, computeCampaignStats, computeSubscriberEngagement,
-  getCampaignDetails,
+  computeCampaignStats, computeSubscriberEngagement, getCampaignDetails,
   type CampaignStat, type EmailEvent, type SubscriberEngagement, type CampaignRecipient,
-} from "@/lib/newsletter"
+} from "@/lib/newsletter-analytics"
 import { triggerCityNewsletter, triggerAllNewsletters, sendTestNewsletter } from "./_actions"
 import {
   loadAllConfigs,
@@ -218,19 +218,20 @@ export default function NewsletterAdmin() {
 
     const loadData = async () => {
       try {
-        const [subscriptionsData, statsData, configData, eventsData, tableExists] = await Promise.all([
-          getAllNewsletterSubscriptions(),
-          getNewsletterStats(),
+        const [newsletterRes, configData] = await Promise.all([
+          fetch('/api/admin/newsletter/data').then(r => {
+            if (!r.ok) throw new Error(`Newsletter data request failed (${r.status})`)
+            return r.json()
+          }),
           loadAllConfigs(),
-          getEmailEvents(),
-          checkEmailEventsTable(),
         ])
-        setSubscriptions(subscriptionsData)
-        setStats(statsData)
+        const eventsData = newsletterRes.events || []
+        setSubscriptions(newsletterRes.subscriptions || [])
+        setStats(newsletterRes.stats)
         setEmailEvents(eventsData)
         setCampaigns(computeCampaignStats(eventsData))
         setEngagement(computeSubscriberEngagement(eventsData))
-        setEmailEventsTableMissing(!tableExists)
+        setEmailEventsTableMissing(!newsletterRes.hasEventsTable)
 
         // Hydrate city drafts + extract last_sent_at
         const cities: CityKey[] = ALL_EDITIONS
@@ -573,8 +574,8 @@ export default function NewsletterAdmin() {
       })
       if (res.ok) {
         setSubscriptions(prev => prev.map(s => s.email === sub.email ? { ...s, status: newStatus } : s))
-        const newStats = await getNewsletterStats()
-        setStats(newStats)
+        const statsRes = await fetch('/api/admin/newsletter/data?only=stats')
+        if (statsRes.ok) setStats((await statsRes.json()).stats)
       }
     } catch (err) {
       console.error('Failed to update subscription:', err)

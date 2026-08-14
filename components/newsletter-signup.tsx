@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { testNewsletterConnection } from "@/lib/newsletter"
 import { Instagram, Youtube, Facebook, Mail } from "lucide-react"
-import { NEWSLETTER_CITIES } from "@/lib/newsletter-cities"
+import { NEWSLETTER_CITIES, toNewsletterCity } from "@/lib/newsletter-cities"
+import { useAuth } from "@/components/auth-provider"
 
 interface NewsletterSignupProps {
   defaultCity?: string
@@ -22,28 +22,35 @@ export default function NewsletterSignup({
   compact = false,
   accentColor = "blue"
 }: NewsletterSignupProps) {
+  const { user } = useAuth()
   const [email, setEmail] = useState("")
   const [city, setCity] = useState(defaultCity)
+
+  /**
+   * A signed-in reader's own city beats the page they happen to be reading.
+   *
+   * `defaultCity` is set per page — /calgary pre-fills "calgary", /edmonton
+   * pre-fills "edmonton" — so a Calgary resident reading an Edmonton story was
+   * being signed up to the Edmonton list. Nine subscribers ended up on the
+   * wrong edition that way before this was caught.
+   */
+  useEffect(() => {
+    const profileCity = user?.user_metadata?.city
+    if (!profileCity) return
+    const mapped = toNewsletterCity(String(profileCity))
+    if (mapped && mapped !== 'other-alberta') setCity(mapped)
+  }, [user])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState("")
   const [messageType, setMessageType] = useState<"success" | "error" | "">("")
-  const [isConnected, setIsConnected] = useState<boolean | null>(null)
-
-  // Test database connection on component mount
-  useEffect(() => {
-    const testConnection = async () => {
-      const result = await testNewsletterConnection()
-      setIsConnected(Boolean(result.success && result.tableExists))
-      
-      if (!result.success || !result.tableExists) {
-        console.error('Newsletter database not ready:', result.error)
-        setMessage("Newsletter system is being set up. Please try again later.")
-        setMessageType("error")
-      }
-    }
-    
-    testConnection()
-  }, [])
+  /**
+   * There used to be a connection test here that ran on mount and queried
+   * `newsletter_subscriptions` straight from the browser. That made every
+   * visitor's page load a public read of the subscriber table — the reason the
+   * table's RLS had to stay open to `anon`, and with 1,654 rows in it, a
+   * standing leak of every subscriber's email. The signup POST already reports
+   * a broken backend, so the form just renders and lets submit do the talking.
+   */
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -177,10 +184,10 @@ export default function NewsletterSignup({
         
         <button 
           type="submit"
-          disabled={isSubmitting || isConnected === false}
+          disabled={isSubmitting}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl text-sm font-semibold transition-all font-body disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
         >
-          {isSubmitting ? "Subscribing..." : isConnected === false ? "Setting up..." : "Subscribe"}
+          {isSubmitting ? "Subscribing..." : "Subscribe"}
         </button>
       </form>
 

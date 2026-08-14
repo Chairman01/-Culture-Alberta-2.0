@@ -60,6 +60,44 @@ function decodeEntities(text: string): string {
     .replace(/&amp;/g, '&') // last, so "&amp;lt;" doesn't become "<"
 }
 
+/**
+ * Detail fetches to run at once on the providers that need a request per
+ * posting. The sync has a 300-second ceiling on Vercel and every board runs in
+ * the same invocation, so the detail phases — which are most of the wall clock
+ * — cannot afford to be sequential: adding the retail boards in August 2026 put
+ * roughly 250 more requests in the run, which one at a time would not have fit.
+ *
+ * Six is what the AHS reader has used against a far larger board without
+ * trouble; it's polite to the employer and still cuts these phases sixfold.
+ */
+const DETAIL_CONCURRENCY = 6
+
+/**
+ * Map over items with a bounded number of requests in flight, preserving input
+ * order. Failures are dropped, not thrown — one unreadable posting must never
+ * sink a whole board.
+ */
+async function mapDetails<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R | null>
+): Promise<R[]> {
+  const out: Array<R | null> = new Array(items.length).fill(null)
+  let next = 0
+  await Promise.all(
+    Array.from({ length: Math.min(DETAIL_CONCURRENCY, items.length) }, async () => {
+      while (next < items.length) {
+        const i = next++
+        try {
+          out[i] = await fn(items[i])
+        } catch {
+          // Leaves a null, filtered out below.
+        }
+      }
+    })
+  )
+  return out.filter((r): r is R => r !== null)
+}
+
 function normaliseEmployment(value: string | null | undefined): string | null {
   if (!value) return null
   const v = value.toLowerCase().replace(/[\s_-]/g, '')
@@ -183,13 +221,30 @@ interface WorkdayListItem {
 }
 
 const WORKDAY_PAGE = 20
-const WORKDAY_MAX_PAGES = 15
+/**
+ * 500 postings. Workday caps `limit` at 20, so this is purely a runaway guard.
+ * Raised from 15 (300) when Save-On-Foods and Home Depot Canada were added:
+ * both run ~370 postings nationally, and a 300 ceiling would have read four
+ * fifths of each board while looking complete — the same failure that keeps BMO
+ * and CIBC out of the registry.
+ */
+const WORKDAY_MAX_PAGES = 25
 
 /**
  * Workday is the only two-call provider: the list endpoint carries titles and
  * locations but no descriptions, so each Alberta match needs a detail fetch.
  * The list is filtered to Alberta FIRST so a national employer costs a handful
  * of detail calls rather than one per posting company-wide.
+ *
+ * Paging has to be defensive, because some tenants never signal the end. Ask
+ * Cenovus for offset 480 of a 40-posting board and it answers with a full page
+ * of jobs rather than an empty one, so the naive "stop on a short page" test
+ * never fired: we collected the same 40 postings twelve times over and spent a
+ * detail request on each copy. The rows deduplicated later, at the database, so
+ * nothing looked wrong — it just quietly cost 300 requests a sync.
+ *
+ * Three independent stops now: the tenant's own `total`, a page that adds
+ * nothing new, and the page ceiling as a last resort.
  */
 async function fetchWorkday(
   board: AtsBoard,
@@ -198,6 +253,9 @@ async function fetchWorkday(
   const base = `https://${board.token}.${board.datacenter}.myworkdayjobs.com/wday/cxs/${board.token}/${board.site}`
 
   const albertaItems: WorkdayListItem[] = []
+  const seen = new Set<string>()
+  let total: number | null = null
+
   for (let page = 0; page < WORKDAY_MAX_PAGES; page++) {
     const data = (await getJson(`${base}/jobs`, {
       method: 'POST',
@@ -205,42 +263,49 @@ async function fetchWorkday(
       body: JSON.stringify({ appliedFacets: {}, limit: WORKDAY_PAGE, offset: page * WORKDAY_PAGE, searchText: '' }),
     })) as { jobPostings?: WorkdayListItem[]; total?: number }
 
+    if (total === null && typeof data.total === 'number') total = data.total
+
     const items = data.jobPostings ?? []
     if (items.length === 0) break
-    albertaItems.push(...items.filter(i => isAlberta(i.locationsText ?? '')))
+
+    let fresh = 0
+    for (const item of items) {
+      const key = item.externalPath ?? `${item.title}|${item.locationsText}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      fresh++
+      if (isAlberta(item.locationsText ?? '')) albertaItems.push(item)
+    }
+
+    if (fresh === 0) break
+    if (total !== null && seen.size >= total) break
     if (items.length < WORKDAY_PAGE) break
   }
 
-  const postings: RawPosting[] = []
-  for (const item of albertaItems) {
-    if (!item.externalPath) continue
-    try {
-      const detail = (await getJson(`${base}${item.externalPath}`)) as {
-        jobPostingInfo?: {
-          jobDescription?: string
-          externalUrl?: string
-          startDate?: string
-          timeType?: string
-          jobPostingId?: string
-        }
+  return mapDetails(albertaItems, async item => {
+    if (!item.externalPath) return null
+    const detail = (await getJson(`${base}${item.externalPath}`)) as {
+      jobPostingInfo?: {
+        jobDescription?: string
+        externalUrl?: string
+        startDate?: string
+        timeType?: string
+        jobPostingId?: string
       }
-      const info = detail.jobPostingInfo
-      if (!info?.externalUrl) continue
-      postings.push({
-        id: info.jobPostingId || item.bulletFields?.[0] || item.externalPath,
-        title: (item.title ?? '').trim(),
-        location: item.locationsText ?? '',
-        descriptionHtml: info.jobDescription ?? '',
-        applyUrl: info.externalUrl,
-        // `postedOn` is relative prose ("Posted 2 Days Ago"); startDate is real.
-        postedAt: info.startDate ? new Date(info.startDate).toISOString() : null,
-        employmentType: normaliseEmployment(info.timeType),
-      })
-    } catch {
-      // One unreadable posting must not sink the whole board.
     }
-  }
-  return postings
+    const info = detail.jobPostingInfo
+    if (!info?.externalUrl) return null
+    return {
+      id: info.jobPostingId || item.bulletFields?.[0] || item.externalPath,
+      title: (item.title ?? '').trim(),
+      location: item.locationsText ?? '',
+      descriptionHtml: info.jobDescription ?? '',
+      applyUrl: info.externalUrl,
+      // `postedOn` is relative prose ("Posted 2 Days Ago"); startDate is real.
+      postedAt: info.startDate ? new Date(info.startDate).toISOString() : null,
+      employmentType: normaliseEmployment(info.timeType),
+    }
+  })
 }
 
 // ── SuccessFactors (Government of Alberta) ───────────────────────────────────
@@ -276,7 +341,10 @@ async function fetchSuccessFactors(
     let fresh = 0
     for (const m of html.matchAll(/<tr class="data-row"[\s\S]*?<\/tr>/g)) {
       const tr = m[0]
-      const path = tr.match(/href="(\/job\/[^"]+)"/)?.[1]
+      // Decoded, not raw: a title containing an ampersand ("Access & Privacy")
+      // arrives as "&amp;" inside the href, and carrying that through produced
+      // an apply URL that doesn't resolve.
+      const path = tr.match(/href="(\/job\/[^"]+)"/)?.[1]?.replace(/&amp;/g, '&')
       if (!path || seen.has(path)) continue
       seen.add(path)
       fresh++
@@ -284,10 +352,15 @@ async function fetchSuccessFactors(
       // "Barrister &amp; Solicitor" and would render with the raw entity.
       const strip = (s?: string) =>
         decodeEntities((s ?? '').replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim()
+      const title = strip(tr.match(/class="jobTitle-link"[^>]*>([\s\S]*?)<\/a>/)?.[1])
       listing.push({
         path,
-        title: strip(tr.match(/class="jobTitle-link"[^>]*>([\s\S]*?)<\/a>/)?.[1]),
-        location: strip(tr.match(/class="jobLocation">([\s\S]*?)<\/span>/)?.[1]),
+        title,
+        // Not every SuccessFactors site renders a location column. The Regional
+        // Municipality of Wood Buffalo's doesn't, so every row read as "no
+        // location" and the whole board was dropped by the Alberta filter.
+        location: strip(tr.match(/class="jobLocation">([\s\S]*?)<\/span>/)?.[1])
+          || locationFromSlug(path, title),
         posted: strip(tr.match(/class="jobDate">([\s\S]*?)<\/span>/)?.[1]) || null,
       })
     }
@@ -301,51 +374,90 @@ async function fetchSuccessFactors(
     )
   }
 
-  const postings: RawPosting[] = []
-  for (const job of wanted.slice(0, SF_MAX_DETAILS)) {
-    try {
-      const res = await fetch(`${origin}${job.path}`, {
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-        headers: { 'user-agent': UA },
-      })
-      if (!res.ok) continue
-      const html = await res.text()
+  return mapDetails(wanted.slice(0, SF_MAX_DETAILS), async job => {
+    const res = await fetch(`${origin}${job.path}`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { 'user-agent': UA },
+    })
+    if (!res.ok) return null
+    const html = await res.text()
 
-      const start = html.indexOf('<div class="jobDisplay"')
-      if (start < 0) continue
-      const end = html.indexOf('<div class="joblayouttoken', start + 10)
-      const block = html.slice(start, end > start ? end : start + 60_000)
-      if (!block) continue
+    const start = html.indexOf('<div class="jobDisplay"')
+    if (start < 0) return null
+    const end = html.indexOf('<div class="joblayouttoken', start + 10)
+    const block = html.slice(start, end > start ? end : start + 60_000)
+    if (!block) return null
 
-      const plain = block.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ')
-      const field = (label: string): string | null => {
-        const i = plain.indexOf(`${label}:`)
-        if (i < 0) return null
-        return plain.slice(i + label.length + 1, i + label.length + 90).trim() || null
-      }
-
-      // Requisition id is stable; the URL id changes if the posting is reissued.
-      const reqId = field('Job Requisition ID')?.match(/^\d+/)?.[0]
-      const idFromPath = job.path.match(/\/(\d+)\/?$/)?.[1]
-
-      postings.push({
-        id: reqId || idFromPath || job.path,
-        title: job.title,
-        location: job.location,
-        descriptionHtml: block,
-        applyUrl: `${origin}${job.path}`,
-        postedAt: job.posted ? new Date(job.posted).toISOString() : null,
-        employmentType: normaliseEmployment(field('Full or Part-Time')),
-        // GoA states pay as a biweekly figure with the annual in brackets —
-        // "$2,918.05 - $4,001.58 biweekly ($76,161 - $104,441/year)". The
-        // annual is what readers compare on, so prefer it.
-        salaryLabel: parseGoaSalary(field('Salary')),
-      })
-    } catch {
-      // One unreadable posting must not sink the board.
+    const plain = block.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ')
+    const field = (label: string): string | null => {
+      const i = plain.indexOf(`${label}:`)
+      if (i < 0) return null
+      return plain.slice(i + label.length + 1, i + label.length + 90).trim() || null
     }
+
+    // Requisition id is stable; the URL id changes if the posting is reissued.
+    const reqId = field('Job Requisition ID')?.match(/^\d+/)?.[0]
+    const idFromPath = job.path.match(/\/(\d+)\/?$/)?.[1]
+
+    // The jobDisplay slice above is the right place to read the labelled fields
+    // from, but it is NOT reliably the description: on the Government of
+    // Alberta's template it contains the whole posting, while on NorQuest's the
+    // same markers sit either side of the title and apply button, yielding 487
+    // characters of "Apply now »". Both templates publish the real body as
+    // schema.org microdata, so that is what's preferred, with the old slice
+    // kept as the fallback. GoA's microdata still carries its Closing Date,
+    // Salary and Requisition ID text, so nothing downstream loses a field.
+    const described = extractItemprop(html, 'description')
+
+    return {
+      id: reqId || idFromPath || job.path,
+      title: job.title,
+      location: job.location,
+      descriptionHtml: described?.trim() ? described : block,
+      applyUrl: `${origin}${job.path}`,
+      postedAt: job.posted ? new Date(job.posted).toISOString() : null,
+      // Where the tenant states a closing date as microdata, take it; where it
+      // doesn't (GoA), leave it undefined so the date is read out of the body.
+      validThrough: itempropMeta(html, 'validThrough'),
+      employmentType: normaliseEmployment(field('Full or Part-Time')),
+      // GoA states pay as a biweekly figure with the annual in brackets —
+      // "$2,918.05 - $4,001.58 biweekly ($76,161 - $104,441/year)". The
+      // annual is what readers compare on, so prefer it.
+      salaryLabel: parseGoaSalary(field('Salary')),
+    }
+  })
+}
+
+/**
+ * Recover a location from a SuccessFactors job URL, for sites that publish no
+ * location column.
+ *
+ * The slugs are built as `{Location}-{Title}-{Province}-{Postal}`, e.g.
+ * `/job/Fort-McMurray-Supervisor%2C-Assessment-AB-T9H-2K4/1291336147/`. The row
+ * already told us the title, so cutting the slug at the title leaves the
+ * location on its own — which matters, because handing the whole slug to the
+ * city matcher would let a city named in a job title decide the posting's city.
+ *
+ * When the title can't be found in the slug (they encode punctuation
+ * differently now and then) the whole slug is returned. That's the looser
+ * reading, and it's acceptable only because this path is reached solely by
+ * boards with no location column at all — all of them single-municipality
+ * employers, where the title is not competing with a real other city.
+ */
+function locationFromSlug(path: string, title: string): string {
+  const slug = path.split('/').filter(Boolean)[1] ?? ''
+  let text: string
+  try {
+    text = decodeURIComponent(slug)
+  } catch {
+    text = slug
   }
-  return postings
+  text = text.replace(/-/g, ' ').replace(/\s+/g, ' ').trim()
+
+  const needle = title.replace(/\s+/g, ' ').trim()
+  if (!needle) return text
+  const at = text.toLowerCase().indexOf(needle.toLowerCase())
+  return at > 0 ? text.slice(0, at).trim() : text
 }
 
 /** Prefer the annual figure GoA puts in brackets after a biweekly rate. */
@@ -482,8 +594,14 @@ async function fetchPhenom(
 
 const ORACLE_PAGE = 200
 const ORACLE_MAX_PAGES = 5
-/** Detail fetches per run. Logged when hit, never silently truncated. */
-const ORACLE_MAX_DETAILS = 150
+/**
+ * Detail fetches per run. Logged when hit, never silently truncated.
+ *
+ * Raised from 150 once these ran concurrently: Calgary Co-op matches ~161
+ * Alberta postings, so the old ceiling dropped eleven entry-level Calgary jobs
+ * every sync — exactly the roles this board exists to surface.
+ */
+const ORACLE_MAX_DETAILS = 220
 
 interface OracleReq {
   Id?: number | string
@@ -536,48 +654,42 @@ async function fetchOracle(
     )
   }
 
-  const postings: RawPosting[] = []
-  for (const req of wanted.slice(0, ORACLE_MAX_DETAILS)) {
-    if (!req.Id || !req.Title) continue
-    try {
-      const detail = (await getJson(
-        `${api}/recruitingCEJobRequisitionDetails?expand=all&onlyData=true` +
-        `&finder=ById;Id=%22${req.Id}%22,siteNumber=${site}`
-      )) as {
-        items?: Array<{
-          ExternalDescriptionStr?: string
-          ExternalResponsibilitiesStr?: string
-          ExternalQualificationsStr?: string
-          ExternalPostedEndDate?: string
-          ExternalPostedStartDate?: string
-          JobSchedule?: string
-        }>
-      }
-      const info = detail.items?.[0]
-      if (!info) continue
-
-      const html = [
-        info.ExternalDescriptionStr ?? '',
-        info.ExternalResponsibilitiesStr ?? '',
-        info.ExternalQualificationsStr ?? '',
-      ].filter(Boolean).join('')
-      if (!html.trim()) continue
-
-      postings.push({
-        id: String(req.Id),
-        title: req.Title.trim(),
-        location: oracleLocation(req),
-        descriptionHtml: html,
-        applyUrl: `https://${host}/hcmUI/CandidateExperience/en/sites/${site}/job/${req.Id}`,
-        postedAt: info.ExternalPostedStartDate ?? req.PostedDate ?? null,
-        employmentType: normaliseEmployment(info.JobSchedule ?? req.JobSchedule ?? req.ContractType),
-        validThrough: info.ExternalPostedEndDate ?? null,
-      })
-    } catch {
-      // One unreadable posting must not sink the board.
+  return mapDetails(wanted.slice(0, ORACLE_MAX_DETAILS), async req => {
+    if (!req.Id || !req.Title) return null
+    const detail = (await getJson(
+      `${api}/recruitingCEJobRequisitionDetails?expand=all&onlyData=true` +
+      `&finder=ById;Id=%22${req.Id}%22,siteNumber=${site}`
+    )) as {
+      items?: Array<{
+        ExternalDescriptionStr?: string
+        ExternalResponsibilitiesStr?: string
+        ExternalQualificationsStr?: string
+        ExternalPostedEndDate?: string
+        ExternalPostedStartDate?: string
+        JobSchedule?: string
+      }>
     }
-  }
-  return postings
+    const info = detail.items?.[0]
+    if (!info) return null
+
+    const html = [
+      info.ExternalDescriptionStr ?? '',
+      info.ExternalResponsibilitiesStr ?? '',
+      info.ExternalQualificationsStr ?? '',
+    ].filter(Boolean).join('')
+    if (!html.trim()) return null
+
+    return {
+      id: String(req.Id),
+      title: req.Title.trim(),
+      location: oracleLocation(req),
+      descriptionHtml: html,
+      applyUrl: `https://${host}/hcmUI/CandidateExperience/en/sites/${site}/job/${req.Id}`,
+      postedAt: info.ExternalPostedStartDate ?? req.PostedDate ?? null,
+      employmentType: normaliseEmployment(info.JobSchedule ?? req.JobSchedule ?? req.ContractType),
+      validThrough: info.ExternalPostedEndDate ?? null,
+    }
+  })
 }
 
 /** Primary plus any secondary offices, as one string for the city matcher. */
@@ -771,12 +883,16 @@ function otssClosingDate(raw: string | null): string | null {
  * closing tag several levels deep, so counting depth is the only way to take
  * the whole block without also swallowing the rest of the page.
  */
-function extractBalancedDiv(html: string, opener: string): string | null {
-  const start = html.indexOf(opener)
+function extractBalancedDiv(html: string, opener: string, from = 0): string | null {
+  const start = html.indexOf(opener, from)
   if (start < 0) return null
-  const inner = start + opener.length
+  return divContentFrom(html, start + opener.length)
+}
+
+/** Depth-counting walk from the first character inside an already-opened tag. */
+function balancedFrom(html: string, inner: number, tagName = 'div'): string | null {
   let depth = 1
-  const tag = /<(\/?)div\b/g
+  const tag = new RegExp(`<(/?)${tagName}\\b`, 'g')
   tag.lastIndex = inner
   let m: RegExpExecArray | null
   while ((m = tag.exec(html))) {
@@ -784,6 +900,529 @@ function extractBalancedDiv(html: string, opener: string): string | null {
     if (depth === 0) return html.slice(inner, m.index)
   }
   return null
+}
+
+function divContentFrom(html: string, inner: number): string | null {
+  return balancedFrom(html, inner, 'div')
+}
+
+/**
+ * Contents of the element carrying a schema.org itemprop, whatever tag it is.
+ *
+ * Career sites disagree wildly about their own page furniture but agree about
+ * their microdata, so this is the stable way in. The element's tag name is read
+ * off the page rather than assumed — SuccessFactors marks the description on a
+ * <span>, and nothing stops another tenant using a <div>.
+ */
+function extractItemprop(html: string, prop: string): string | null {
+  const at = html.indexOf(`itemprop="${prop}"`)
+  if (at < 0) return null
+  const open = html.lastIndexOf('<', at)
+  if (open < 0) return null
+  const name = html.slice(open + 1, open + 40).match(/^([a-zA-Z][\w-]*)/)?.[1]
+  if (!name) return null
+  const gt = html.indexOf('>', at)
+  if (gt < 0) return null
+  return balancedFrom(html, gt + 1, name)
+}
+
+/** `content` attribute of a <meta itemprop="…">, for the microdata date fields. */
+function itempropMeta(html: string, prop: string): string | null {
+  const m = html.match(new RegExp(`<meta[^>]*itemprop="${prop}"[^>]*content="([^"]*)"`))
+  if (!m) return null
+  const d = new Date(m[1])
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+/**
+ * Same idea, but keyed on a div's id rather than its opening tag. Needed where
+ * the element is identified by id and its class list varies between fields.
+ */
+function extractDivById(html: string, id: string): string | null {
+  const at = html.indexOf(`id="${id}"`)
+  if (at < 0) return null
+  const gt = html.indexOf('>', at)
+  if (gt < 0) return null
+  return divContentFrom(html, gt + 1)
+}
+
+// ── PeopleAdmin (University of Lethbridge) ───────────────────────────────────
+
+/**
+ * PeopleAdmin runs the applicant portals of most Canadian universities. The
+ * search page is a JavaScript grid, but the same query is published as an Atom
+ * feed at /postings/search.atom carrying the complete posting body — the only
+ * provider here that needs a single request for the whole board.
+ *
+ * The feed states no location. Every institution on it is a single campus
+ * employer, so the city comes from the board's `locationAliases`, after the
+ * matcher has had a look at the job title — which is what catches the
+ * occasional role advertised at a satellite campus in another city.
+ */
+async function fetchPeopleAdmin(board: AtsBoard): Promise<RawPosting[]> {
+  const origin = `https://${board.domain}`
+  const res = await fetch(`${origin}/postings/search.atom`, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: { 'user-agent': UA, accept: 'application/atom+xml' },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const xml = await res.text()
+
+  const postings: RawPosting[] = []
+  for (const m of xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {
+    const entry = m[1]
+    const url = entry.match(/<link[^>]+rel="alternate"[^>]+href="([^"]+)"/)?.[1]
+    const id = entry.match(/<id>[^<]*?\/postings\/(\d+)<\/id>/)?.[1]
+    const title = decodeEntities(entry.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    const content = decodeEntities(entry.match(/<content>([\s\S]*?)<\/content>/)?.[1] ?? '')
+    if (!id || !url || !title || !content.trim()) continue
+
+    postings.push({
+      id,
+      title,
+      location: '',
+      descriptionHtml: content,
+      applyUrl: url,
+      postedAt: entry.match(/<published>([^<]+)<\/published>/)?.[1] ?? null,
+      // PeopleAdmin has no employment-type field, but these titles state it
+      // outright — "Event Set Up Operator (Full-time, Continuing)".
+      employmentType: normaliseEmployment(title),
+    })
+  }
+  return postings
+}
+
+// ── Medicine Hat College (own CMS, no ATS) ───────────────────────────────────
+
+/** Detail fetches per run. Logged when hit, never silently truncated. */
+const MHC_MAX_DETAILS = 60
+
+/**
+ * Medicine Hat College runs no applicant tracking system at all — it publishes
+ * each opening as an ordinary page on its own website. This provider is
+ * therefore tuned to that one site's markup, which is why it is named after the
+ * employer rather than a vendor: unlike `phenom` or `cadient`, there is no
+ * product here that a second employer could also be using.
+ *
+ * It earns its keep because Medicine Hat is the thinnest of our seven cities
+ * and the college is one of its largest employers. The tradeoff is that a
+ * redesign of their site breaks this quietly, so the board reports zero rather
+ * than erroring — worth checking with the dry-run script now and then.
+ */
+async function fetchMedicineHatCollege(board: AtsBoard): Promise<RawPosting[]> {
+  const origin = `https://${board.domain}`
+  const listing = await fetch(`${origin}/about-mhc/careers/current-openings`, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: { 'user-agent': UA, accept: 'text/html' },
+  })
+  if (!listing.ok) throw new Error(`HTTP ${listing.status}`)
+  const html = await listing.text()
+
+  const paths = [
+    ...new Set(
+      [...html.matchAll(/href="(\/about-mhc\/careers\/current-openings\/(\d+)-[^"]*)"/g)]
+        .map(m => m[1])
+    ),
+  ]
+  if (paths.length > MHC_MAX_DETAILS) {
+    console.warn(
+      `[ats:${board.token}] ${paths.length} openings listed but only ${MHC_MAX_DETAILS} fetched this run`
+    )
+  }
+
+  return mapDetails(paths.slice(0, MHC_MAX_DETAILS), async path => {
+    const res = await fetch(`${origin}${path}`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { 'user-agent': UA, accept: 'text/html' },
+    })
+    if (!res.ok) return null
+    const page = await res.text()
+
+    // Several rich-text blocks share the same class; the posting is the one
+    // carrying the competition-number table, which no other block on the page
+    // has. Falling back to the first block would silently publish a sidebar.
+    let body: string | null = null
+    const opener = '<div class="wrapper padded simple-rich-text">'
+    for (let at = 0; ; ) {
+      const next = page.indexOf(opener, at)
+      if (next < 0) break
+      const block = extractBalancedDiv(page, opener, next)
+      if (block && /competition\s*number/i.test(block)) { body = block; break }
+      at = next + opener.length
+    }
+    if (!body?.trim()) return null
+
+    const title = decodeEntities(body.match(/<h2[^>]*>([\s\S]*?)<\/h2>/)?.[1]?.replace(/<[^>]+>/g, '') ?? '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    if (!title) return null
+
+    return {
+      id: path.match(/current-openings\/(\d+)-/)?.[1] ?? path,
+      title,
+      location: '',
+      descriptionHtml: body,
+      applyUrl: `${origin}${path}`,
+      // The pages state a closing date in the body but no posting date, so the
+      // date is left to extractClosingDate downstream rather than guessed here.
+      postedAt: null,
+      employmentType: normaliseEmployment(
+        body.replace(/<[^>]+>/g, ' ').match(/Type:\s*([^<\n]{0,60})/i)?.[1] ?? null
+      ),
+    }
+  })
+}
+
+// ── Avanti Career Connector (Keyano College) ─────────────────────────────────
+
+/** Detail fetches per run. Logged when hit, never silently truncated. */
+const AVANTI_MAX_DETAILS = 120
+
+/**
+ * Avanti is Canadian payroll/HR software whose Career Connector module several
+ * smaller institutions use. The listing page is a Kendo grid that renders
+ * client-side, so the HTML carries no jobs — but the grid is fed by a plain
+ * `POST /careers/Job/Search` that answers with the whole board as JSON, no
+ * session or token required. The detail page keys on the job code as a path
+ * segment, not a query parameter.
+ */
+async function fetchAvanti(
+  board: AtsBoard,
+  isAlberta: (location: string) => boolean
+): Promise<RawPosting[]> {
+  const origin = `https://${board.domain}`
+
+  interface AvantiJob {
+    Job?: string
+    Title?: string
+    Location?: string
+    ClosingDate?: string
+    Category?: string
+  }
+
+  const res = await fetch(`${origin}/careers/Job/Search`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: { 'user-agent': UA, 'content-type': 'application/json', accept: 'application/json' },
+    body: '{}',
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const list = (await res.json()) as AvantiJob[]
+
+  const wanted = (Array.isArray(list) ? list : []).filter(
+    j => j.Job && j.Title && isAlberta(j.Location ?? '')
+  )
+  if (wanted.length > AVANTI_MAX_DETAILS) {
+    console.warn(
+      `[ats:${board.token}] ${wanted.length} Alberta jobs matched but only ${AVANTI_MAX_DETAILS} descriptions fetched this run`
+    )
+  }
+
+  return mapDetails(wanted.slice(0, AVANTI_MAX_DETAILS), async job => {
+    const url = `${origin}/careers/Job/Details/${encodeURIComponent(job.Job!.trim())}`
+    const page = await fetch(url, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { 'user-agent': UA, accept: 'text/html' },
+    })
+    if (!page.ok) return null
+    const html = await page.text()
+
+    const description = extractDivById(html, 'jobDescriptions')
+    if (!description?.trim()) return null
+
+    return {
+      id: job.Job!.trim(),
+      title: job.Title!.trim(),
+      location: job.Location ?? '',
+      descriptionHtml: description,
+      applyUrl: url,
+      // The feed states no posting date, only a closing date, and that is
+      // frequently blank for continuous postings.
+      postedAt: null,
+      employmentType: normaliseEmployment(job.Category),
+      validThrough: parseIsoish(job.ClosingDate),
+    }
+  })
+}
+
+/** Lenient date parse for feeds that use a blank string to mean "no deadline". */
+function parseIsoish(raw: string | null | undefined): string | null {
+  if (!raw || !raw.trim()) return null
+  const d = new Date(raw.trim())
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+// ── RSS careers feed (MacEwan University) ────────────────────────────────────
+
+/**
+ * Some employers publish their whole board as an ordinary RSS feed with the
+ * full posting in each item — the cheapest possible source, one request for
+ * everything, and explicitly meant to be read by machines.
+ *
+ * `site` carries the feed path rather than a career-site name, because a feed
+ * URL is what identifies this board. The feed states no location; single-campus
+ * employers supply the city through the board's `locationAliases`.
+ */
+async function fetchRssFeed(board: AtsBoard): Promise<RawPosting[]> {
+  const res = await fetch(`https://${board.domain}${board.site ?? ''}`, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: { 'user-agent': UA, accept: 'application/rss+xml, application/xml' },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const xml = await res.text()
+
+  const postings: RawPosting[] = []
+  for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+    const item = m[1]
+    const pick = (tag: string) =>
+      decodeEntities(item.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`))?.[1] ?? '').trim()
+
+    const title = pick('title').replace(/\s+/g, ' ')
+    const link = pick('link')
+    const description = pick('description')
+    // guid is the employer's competition number and is stable across edits;
+    // the link carries the same value as a query parameter.
+    const id = pick('guid') || link
+    if (!title || !link || !description.trim() || !id) continue
+
+    postings.push({
+      id,
+      title,
+      location: '',
+      descriptionHtml: description,
+      applyUrl: link,
+      postedAt: parseIsoish(pick('pubDate')),
+      // Category is stated inside the body ("Category: Full-Time Continuing"),
+      // which is also where the employment type has to be read from.
+      employmentType: normaliseEmployment(
+        description.match(/Category:\s*<\/strong>\s*([^<]{0,60})/i)?.[1] ?? null
+      ),
+    })
+  }
+  return postings
+}
+
+// ── HRsmart / Deltek Talent (Mount Royal, Northwestern Polytechnic) ──────────
+
+const HRSMART_PAGE = 100
+const HRSMART_MAX_PAGES = 6
+/** Detail fetches per run. Logged when hit, never silently truncated. */
+const HRSMART_MAX_DETAILS = 150
+
+/**
+ * HRsmart, sold now as Deltek Talent Management, runs several Alberta
+ * post-secondary boards.
+ *
+ * It looks unreadable at first and isn't: the landing page shouts that
+ * JavaScript and cookies are required, and the job list genuinely is absent
+ * from `/hr/ats/JobSearch/index`. But `/hr/ats/JobSearch/viewAll` renders the
+ * whole thing server-side as an ordinary table, needing neither a cookie nor a
+ * token. The postings are simply linked as `/hr/ats/Posting/view/{id}` rather
+ * than any of the usual "viewJob"-style paths.
+ *
+ * Columns differ per tenant, so the header row is read rather than assumed:
+ * Northwestern Polytechnic publishes a Location column, Mount Royal doesn't.
+ * A tenant without one falls back to the board's `locationAliases`, which is
+ * safe for the single-campus institutions and is why Mount Royal declares one.
+ */
+async function fetchHrsmart(
+  board: AtsBoard,
+  isAlberta: (location: string) => boolean
+): Promise<RawPosting[]> {
+  const origin = `https://${board.domain}`
+
+  interface Row { id: string; title: string; location: string; opened: string | null; closes: string | null }
+  const rows: Row[] = []
+  const seen = new Set<string>()
+  let statesLocation = false
+
+  for (let page = 1; page <= HRSMART_MAX_PAGES; page++) {
+    const res = await fetch(
+      `${origin}/hr/ats/JobSearch/viewAll` +
+      `/jobSearchPaginationExternal_pageSize:${HRSMART_PAGE}` +
+      `/jobSearchPaginationExternal_page:${page}`,
+      { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'user-agent': UA } }
+    )
+    if (!res.ok) break
+    const html = await res.text()
+
+    // Column order varies per tenant; find the ones we care about by name.
+    const headers = [...(html.match(/<thead[\s\S]*?<\/thead>/)?.[0] ?? '').matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/g)]
+      .map(h => decodeEntities(h[1].replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim().toLowerCase())
+    const col = (...names: string[]) => headers.findIndex(h => names.some(n => h.startsWith(n)))
+    const iLocation = col('location')
+    const iOpened = col('date opened', 'posted')
+    const iCloses = col('closing date')
+    if (iLocation >= 0) statesLocation = true
+
+    const body = html.match(/<tbody[\s\S]*?<\/tbody>/)?.[0] ?? ''
+    let fresh = 0
+    for (const tr of body.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g)) {
+      const cells = [...tr[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)].map(c => c[1])
+      const link = cells.find(c => /\/hr\/ats\/Posting\/view\/\d+/.test(c))
+      const id = link?.match(/\/hr\/ats\/Posting\/view\/(\d+)/)?.[1]
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      fresh++
+
+      const text = (s?: string) =>
+        decodeEntities((s ?? '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
+      rows.push({
+        id,
+        title: text(link),
+        location: iLocation >= 0 ? text(cells[iLocation]) : '',
+        opened: iOpened >= 0 ? text(cells[iOpened]) || null : null,
+        closes: iCloses >= 0 ? text(cells[iCloses]) || null : null,
+      })
+    }
+    if (fresh === 0) break
+  }
+
+  // Only pre-filter when the tenant actually said where the job is; otherwise
+  // every row has to go through and the board's aliases decide the city.
+  const wanted = rows.filter(r => r.title && (!statesLocation || isAlberta(r.location)))
+  if (wanted.length > HRSMART_MAX_DETAILS) {
+    console.warn(
+      `[ats:${board.token}] ${wanted.length} jobs matched but only ${HRSMART_MAX_DETAILS} descriptions fetched this run`
+    )
+  }
+
+  return mapDetails(wanted.slice(0, HRSMART_MAX_DETAILS), async row => {
+    const res = await fetch(`${origin}/hr/ats/Posting/view/${row.id}`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { 'user-agent': UA },
+    })
+    if (!res.ok) return null
+    const html = await res.text()
+
+    const description = extractDivById(html, 'job_details_ats_requisition_description')
+    if (!description?.trim()) return null
+
+    return {
+      id: row.id,
+      title: row.title,
+      location: row.location,
+      descriptionHtml: description,
+      applyUrl: `${origin}/hr/ats/Posting/view/${row.id}`,
+      postedAt: parseUsDate(row.opened),
+      employmentType: normaliseEmployment(
+        decodeEntities(extractDivById(html, 'job_details_hua_job_type_id') ?? '').replace(/<[^>]+>/g, '')
+      ),
+      // "Open until filled" is the common value and states no deadline, so it
+      // parses to null rather than being read as a date.
+      validThrough: parseUsDate(row.closes),
+    }
+  })
+}
+
+/** "8/13/2026" → ISO. Anything else, including "Open until filled", is null. */
+function parseUsDate(raw: string | null): string | null {
+  const m = raw?.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (!m) return null
+  const d = new Date(Date.UTC(Number(m[3]), Number(m[1]) - 1, Number(m[2])))
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+// ── Cadient Talent (Costco Wholesale Canada) ─────────────────────────────────
+
+/** Detail fetches per run. Logged when hit, never silently truncated. */
+const CADIENT_MAX_DETAILS = 80
+
+/**
+ * Cadient runs the hourly-hiring boards of large retailers, and it is not a
+ * requisition system: an employer publishes one entry per ROLE, listing every
+ * store that accepts applications for it, and candidates join a rolling pool
+ * rather than answering a dated vacancy. Costco Wholesale Canada posts all of
+ * its warehouse hiring this way — the only route to Costco's Alberta jobs,
+ * since it publishes no per-store openings anywhere.
+ *
+ * The consequences run through the rest of the pipeline, so they're worth
+ * stating plainly:
+ *
+ *   - There is no posting date and no closing date, and none is invented. Both
+ *     stay null, the way the AHS board is handled.
+ *   - One role legitimately covers many cities. The location list is handed to
+ *     the matcher whole and ./index.ts fans it out into one row per city, which
+ *     is the same path a multi-office Ashby posting already takes.
+ *   - These rows are deliberately NOT offered to Google — see isIndexableJob in
+ *     lib/jobs.ts. A candidate pool is not a job opening, and JobPosting markup
+ *     on one would be a policy breach.
+ */
+async function fetchCadient(board: AtsBoard): Promise<RawPosting[]> {
+  const origin = `https://${board.domain}`
+  const url = (params: Record<string, string>) =>
+    `${origin}/index.jsp?${new URLSearchParams({
+      applicationName: board.token,
+      locale: 'en_US',
+      ...params,
+    })}`
+
+  const getHtml = async (target: string): Promise<string> => {
+    const res = await fetch(target, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { 'user-agent': UA, accept: 'text/html' },
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.text()
+  }
+
+  // One request lists every role on the board.
+  const index = await getHtml(url({ seq: 'allOpenJobs', allOpenJobs: 'true' }))
+  const ids = [...new Set([...index.matchAll(/POSTING_ID=(\d+)/g)].map(m => m[1]))]
+  if (ids.length > CADIENT_MAX_DETAILS) {
+    console.warn(
+      `[ats:${board.token}] ${ids.length} roles listed but only ${CADIENT_MAX_DETAILS} descriptions fetched this run`
+    )
+  }
+
+  return mapDetails(ids.slice(0, CADIENT_MAX_DETAILS), async id => {
+    const detail = await getHtml(url({ POSTING_ID: id, SEQ: 'positionDetails' }))
+
+    // The page opens with a <h1>No JavaScript</h1> in a noscript banner; the
+    // role's own heading is the next one.
+    const title = [...detail.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/g)]
+      .map(m => decodeEntities(m[1].replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim())
+      .find(t => t && t !== 'No JavaScript')
+    if (!title) return null
+
+    // Cadient splits long postings across several formatted blocks.
+    let body = ''
+    for (let at = 0; ; ) {
+      const opener = '<div class="formattedContent formRow">'
+      const next = detail.indexOf(opener, at)
+      if (next < 0) break
+      body += extractBalancedDiv(detail, opener, next) ?? ''
+      at = next + opener.length
+    }
+    if (!body.trim()) return null
+
+    const locations = [
+      ...detail.matchAll(
+        /class="location-item[^"]*"[\s\S]*?<span class="small fw-medium text-dark">([\s\S]*?)<\/span>/g
+      ),
+    ].map(m => decodeEntities(m[1].replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim())
+    if (locations.length === 0) return null
+
+    return {
+      id,
+      title,
+      location: [...new Set(locations)].join('; '),
+      // The pool caveat goes after the description rather than before it, so
+      // the card snippet still shows the actual work — 25 Costco rows in one
+      // city all leading with the same disclaimer would be unreadable.
+      descriptionHtml:
+        `${body}<p><em>${board.company} accepts applications for this role on an ongoing ` +
+        `basis rather than posting a dated vacancy. Applying adds you to the pool the ` +
+        `location draws on when a shift opens. Choose the location you want on ` +
+        `${board.company}'s page before you apply.</em></p>`,
+      applyUrl: url({ POSTING_ID: id, SEQ: 'positionDetails' }),
+      // A pool entry has no posting date and no deadline. Neither is guessed.
+      postedAt: null,
+      employmentType: null,
+    }
+  })
 }
 
 // ── Dispatch ─────────────────────────────────────────────────────────────────
@@ -800,6 +1439,12 @@ export async function fetchBoard(
     case 'phenom': return fetchPhenom(board, isAlberta)
     case 'oracle': return fetchOracle(board, isAlberta)
     case 'otss': return fetchOtss(board, isAlberta)
+    case 'peopleadmin': return fetchPeopleAdmin(board)
+    case 'cadient': return fetchCadient(board)
+    case 'hrsmart': return fetchHrsmart(board, isAlberta)
+    case 'avanti': return fetchAvanti(board, isAlberta)
+    case 'rss': return fetchRssFeed(board)
+    case 'mhc': return fetchMedicineHatCollege(board)
     default: return []
   }
 }

@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAdmin } from "@/lib/admin-auth"
+import { getServiceClient } from "@/lib/supabase-admin"
 
 // POST /api/admin/articles/[id]/tag  — add a project tag to an article by slug
 // Body: { tag: string }   e.g. { tag: "project:10715" }
 
 export const dynamic = "force-dynamic"
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://itdmwpbsnviassgqfhxk.supabase.co",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo"
-  )
-}
+// Service role, not the public anon key: the anon key ships in the browser
+// bundle, so anything it can write, the internet can write.
+const getSupabase = getServiceClient
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const { id: slug } = await params
     const { tag } = await request.json()

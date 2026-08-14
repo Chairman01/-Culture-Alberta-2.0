@@ -3,17 +3,13 @@ import { createClient } from '@supabase/supabase-js'
 import { loadOptimizedFallback } from '@/lib/optimized-fallback'
 import { quickSyncArticle } from '@/lib/auto-sync'
 import { requireAdmin, requireAdminOrContributor } from '@/lib/admin-auth'
+import { getServiceClient } from '@/lib/supabase-admin'
 
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase environment variables are not configured')
-  }
-
-  return createClient(supabaseUrl, supabaseKey)
-}
+// Admin reads and writes go through the service role, not the anon key. The
+// anon key is public (it ships in the browser bundle), so every table it can
+// write is a table the internet can write — which is why the articles RLS
+// policy had to be `USING (true)` for this route to work at all.
+const getSupabaseClient = getServiceClient
 
 export async function GET(request: NextRequest) {
   const auth = requireAdminOrContributor(request)

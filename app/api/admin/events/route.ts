@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { createClient } from '@supabase/supabase-js'
 
@@ -13,7 +14,10 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseKey)
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   console.log('🔄 Admin API: Loading events with fallback system...')
 
   // Try Supabase first
@@ -54,7 +58,10 @@ export async function GET() {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const { id } = await request.json()
     console.log(`🔧 Admin API: Delete event request for ID: ${id}`)
