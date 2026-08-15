@@ -4,26 +4,49 @@ import { getAllEvents } from '@/lib/events'
 import { getActiveJobSlugs, getJobCountsByCity, getCompaniesWithJobs, JOB_CITIES, CITY_PAGE_MIN_INDEXABLE_JOBS } from '@/lib/jobs'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 
-export const revalidate = 3600
+/**
+ * Fifteen minutes, not an hour.
+ *
+ * Bing's "important pages missing in sitemaps" report is a point-in-time scan:
+ * publishing pings IndexNow immediately, Bing comes straight over, and for up
+ * to the length of this window the sitemap it reads is the one generated before
+ * the article existed. Twelve of the fourteen URLs it flagged on 2026-08-15
+ * were already present by the time the report was read — they were new, not
+ * missing. A shorter window shrinks that race; the queries behind it no longer
+ * transfer any description HTML, so regenerating is cheap.
+ */
+export const revalidate = 900
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.culturealberta.com'
 
-  // Fetch articles directly from Supabase (always fresh, no fallback file)
-  let articles: any[] = []
+  // Fetch articles directly from Supabase (always fresh, no fallback file).
+  //
+  // Paged, because PostgREST caps a response at 1,000 rows whatever the query
+  // asks for. At 680 published articles this had not started losing anything
+  // yet — it would simply have begun dropping the oldest article from the
+  // sitemap on the day the 1,001st was published, silently and with nothing to
+  // show for it in the logs.
+  const articles: any[] = []
   try {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('id, title, slug, created_at, updated_at, status, type, category, categories')
-      .eq('status', 'published')
-      .order('created_at', { ascending: false })
+    const PAGE = 1000
+    for (let page = 0; ; page++) {
+      const { data, error } = await supabase
+        .from('articles')
+        .select('id, title, slug, created_at, updated_at, status, type, category, categories')
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .range(page * PAGE, (page + 1) * PAGE - 1)
 
-    if (error) {
-      console.error('Sitemap: Failed to fetch articles from Supabase:', error)
-    } else {
-      articles = data || []
-      console.log(`Sitemap: Fetched ${articles.length} articles from Supabase`)
+      if (error) {
+        console.error('Sitemap: Failed to fetch articles from Supabase:', error)
+        break
+      }
+      if (!data || data.length === 0) break
+      articles.push(...data)
+      if (data.length < PAGE) break
     }
+    console.log(`Sitemap: Fetched ${articles.length} articles from Supabase`)
   } catch (err) {
     console.error('Sitemap: Error fetching articles:', err)
   }
