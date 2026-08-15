@@ -122,14 +122,20 @@ export function scoreJob(job: ScorableJob, prefs: JobPreferences): MatchResult {
     }
   }
 
+  // Keywords rank, they do not gate.
+  //
+  // City, category and hours are picked from values the board actually holds,
+  // so requiring them is safe. Keywords are free text — "admin", a job title
+  // that only appears as "Administrative Assistant", a typo — and ANDing them
+  // with the other three is how someone ends up staring at "0 of 500 match
+  // what you told us". A keyword miss now costs sort position instead of
+  // hiding the job.
   if (prefs.keywords.length > 0) {
     const haystack = `${job.title} ${job.company}`.toLowerCase()
     const hits = prefs.keywords.filter(k => k && haystack.includes(k.toLowerCase()))
     if (hits.length > 0) {
       score += WEIGHTS.keyword * hits.length
       reasons.push(...hits)
-    } else {
-      qualifies = false
     }
   }
 
