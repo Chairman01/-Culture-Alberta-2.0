@@ -302,8 +302,11 @@ export default async function AlbertaPage() {
                     </div>
                   </div>
 
+                  {/* defaultCity is deliberately blank rather than "other-alberta":
+                      that bucket is a holding pen the send route never delivers to,
+                      so defaulting to it silently subscribed readers to nothing. */}
                   <NewsletterSignup
-                    defaultCity="other-alberta"
+                    defaultCity=""
                     title="Newsletter"
                     description="Stay updated with the latest stories from communities across Alberta."
                   />

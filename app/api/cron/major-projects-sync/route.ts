@@ -5,29 +5,21 @@
  * Inventory, diffs it against the snapshot, and flags new/changed projects so
  * the admin dashboard "ping" stays accurate without anyone visiting the page.
  *
- * Auth: Bearer {AUTOMATION_CRON_SECRET}
+ * Auth: Bearer {CRON_SECRET} (or AUTOMATION_CRON_SECRET)
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import { isCronAuthorized } from "@/lib/cron-auth"
 import { syncMajorProjects } from "@/lib/major-projects/sync"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.AUTOMATION_CRON_SECRET
-  // Vercel Cron sends this header automatically; allow it through too.
-  const isVercelCron = req.headers.get("x-vercel-cron") === "1"
-  if (isVercelCron) return true
-  if (!secret) {
-    console.error("[major-projects-sync cron] AUTOMATION_CRON_SECRET is not set")
-    return false
-  }
-  return req.headers.get("authorization") === `Bearer ${secret}`
-}
-
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  // Previously this route also accepted an `x-vercel-cron: 1` header. Vercel
+  // does not strip that header from inbound requests, so it left the sync
+  // publicly triggerable by anyone — bearer token only now.
+  if (!isCronAuthorized(req, "major-projects-sync cron")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   try {

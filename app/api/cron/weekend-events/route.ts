@@ -4,7 +4,7 @@
  * Called automatically by Vercel Cron every Thursday at 8pm UTC (2pm MST).
  * Can also be triggered manually from the admin dashboard.
  *
- * Auth: Bearer {AUTOMATION_CRON_SECRET}
+ * Auth: Bearer {CRON_SECRET} (or AUTOMATION_CRON_SECRET)
  *
  * Query params:
  *   ?city=calgary          → single city
@@ -18,6 +18,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import {
   generateWeekendArticleForCity,
   generateWeekendArticlesForAllCities,
@@ -36,18 +37,8 @@ const VALID_CITIES = [
   'red-deer',
 ]
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.AUTOMATION_CRON_SECRET
-  if (!secret) {
-    console.error('[weekend-events cron] AUTOMATION_CRON_SECRET is not set')
-    return false
-  }
-  const authHeader = req.headers.get('authorization')
-  return authHeader === `Bearer ${secret}`
-}
-
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isCronAuthorized(req, 'weekend-events cron')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

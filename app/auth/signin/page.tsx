@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase-browser'
@@ -14,7 +14,20 @@ export default function SignInPage() {
   const [needsConfirmation, setNeedsConfirmation] = useState(false)
   const [resendSent, setResendSent] = useState(false)
   const [loading, setLoading] = useState(false)
+  // Carry ?next=/?src= through to sign-up. Without this a visitor sent here from
+  // a job posting loses their return path, their signup attribution and the
+  // jobs newsletter opt-in the moment they realise they need an account.
+  const [signUpHref, setSignUpHref] = useState('/auth/signup')
   const router = useRouter()
+
+  useEffect(() => {
+    try {
+      const search = window.location.search
+      setSignUpHref(search ? `/auth/signup${search}` : '/auth/signup')
+    } catch {
+      /* window unavailable — plain link is fine */
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -119,7 +132,7 @@ export default function SignInPage() {
       </form>
       <p className="mt-8 text-center text-sm text-gray-600">
         Don&apos;t have an account?{' '}
-        <Link href="/auth/signup" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">
+        <Link href={signUpHref} className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">
           Create one
         </Link>
       </p>

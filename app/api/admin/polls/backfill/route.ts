@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import { getServiceClient } from '@/lib/supabase-admin'
 import { generatePollForArticle } from '@/lib/poll-generator'
 
@@ -10,14 +11,8 @@ export const maxDuration = 300
 // have one yet, newest first. Bounded per run (Claude call per article); call
 // repeatedly until remaining is 0. Auth: admin session OR the automation cron
 // secret (so backfills can be scripted).
-function isCronAuthorized(req: NextRequest): boolean {
-    const secret = process.env.AUTOMATION_CRON_SECRET
-    if (!secret) return false
-    return req.headers.get('authorization') === `Bearer ${secret}`
-}
-
 export async function POST(request: NextRequest) {
-    if (!isCronAuthorized(request)) {
+    if (!isCronAuthorized(request, 'polls backfill')) {
         const auth = requireAdmin(request)
         if (!auth.ok) return auth.response
     }
