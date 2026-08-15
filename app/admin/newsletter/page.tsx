@@ -8,6 +8,7 @@ import {
   computeCampaignStats, computeSubscriberEngagement, getCampaignDetails,
   type CampaignStat, type EmailEvent, type SubscriberEngagement, type CampaignRecipient,
 } from "@/lib/newsletter-analytics"
+import { isOrphanNewsletterCity } from "@/lib/newsletter-cities"
 import { triggerCityNewsletter, triggerAllNewsletters, sendTestNewsletter } from "./_actions"
 import {
   loadAllConfigs,
@@ -31,7 +32,7 @@ import {
   Send, CheckCircle, AlertCircle, Loader2, Eye, X, FlaskConical,
   ChevronDown, ChevronUp, Settings, Star, ArrowUp, ArrowDown, Leaf,
   BarChart2, MousePointerClick, Copy, Check, Filter, AlertTriangle, TrendingUp, HelpCircle,
-  ExternalLink,
+  ExternalLink, Pencil,
 } from "lucide-react"
 import Link from "next/link"
 import type { SendResult } from "@/lib/newsletter/send-newsletter"
@@ -202,6 +203,11 @@ export default function NewsletterAdmin() {
   const [subscriberSort, setSubscriberSort] = useState<'needs_review' | 'newest' | 'oldest' | 'opens' | 'clicks' | 'email'>('needs_review')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
+  // Inline subscriber editor — one row at a time, id of the row being edited
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState<{ email: string; city: string }>({ email: '', city: '' })
+  const [editError, setEditError] = useState<string | null>(null)
+  const [savingEdit, setSavingEdit] = useState(false)
   const [activeTab, setActiveTab] = useState<'subscribers' | 'campaigns' | 'analytics'>('subscribers')
   const [expandedBounces, setExpandedBounces] = useState<CityKey | null>(null)
   const [emailEventsTableMissing, setEmailEventsTableMissing] = useState(false)
@@ -581,6 +587,52 @@ export default function NewsletterAdmin() {
       console.error('Failed to update subscription:', err)
     } finally {
       setUpdatingEmail(null)
+    }
+  }
+
+  function startEdit(sub: NewsletterSubscription) {
+    if (!sub.id) return
+    setEditingId(sub.id)
+    setEditDraft({ email: sub.email, city: sub.city })
+    setEditError(null)
+  }
+
+  /**
+   * Writes the address and edition through the admin route.
+   *
+   * Both fields go in one request so a row can be retyped and re-filed in a
+   * single save. Stats are re-pulled afterwards because moving someone between
+   * editions changes the audience count printed on the send buttons.
+   */
+  async function saveSubscriberEdit(sub: NewsletterSubscription) {
+    if (!sub.id) return
+    const email = editDraft.email.trim().toLowerCase()
+    const city  = editDraft.city
+
+    if (email === sub.email && city === sub.city) { setEditingId(null); return }
+
+    setSavingEdit(true)
+    setEditError(null)
+    try {
+      const res = await fetch('/api/admin/newsletter/subscriber', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: sub.id, email, city }),
+      })
+      const json = await res.json()
+      if (!res.ok) { setEditError(json.error || `Update failed (${res.status})`); return }
+
+      setSubscriptions(prev => prev.map(s =>
+        s.id === sub.id ? { ...s, email: json.subscriber.email, city: json.subscriber.city } : s
+      ))
+      setEditingId(null)
+
+      const statsRes = await fetch('/api/admin/newsletter/data?only=stats')
+      if (statsRes.ok) setStats((await statsRes.json()).stats)
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Network error')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -1667,8 +1719,10 @@ export default function NewsletterAdmin() {
                         {filtered.map(sub => {
                           const eng = engagement[sub.email]
                           const campaignStatus = getSubscriberCampaignStatus(sub)
+                          const isEditing = editingId === sub.id
                           return (
-                            <div key={sub.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                            <div key={sub.id} className={`p-3 border rounded-lg transition-colors ${isEditing ? 'border-blue-300 bg-blue-50/30' : 'hover:bg-muted/30'}`}>
+                            <div className="flex items-center justify-between">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                                   <span className="font-medium text-sm truncate">{sub.email}</span>
@@ -1690,25 +1744,95 @@ export default function NewsletterAdmin() {
                                   {eng?.last_campaign && <span className="text-gray-500 truncate max-w-[420px]">last: {eng.last_campaign}</span>}
                                 </div>
                               </div>
-                              {sub.status === 'unsubscribed' && engagement[sub.email]?.bounced ? (
-                                <span className="text-[10px] text-gray-400 ml-2 shrink-0 flex items-center gap-1">
-                                  <AlertTriangle className="h-3 w-3 text-orange-400" /> bounced — cannot re-add
-                                </span>
-                              ) : sub.status === 'unsubscribed' ? (
+                              <div className="flex items-center gap-2 ml-2 shrink-0">
                                 <Button
-                                  size="sm"
-                                  className="text-xs h-7 ml-2 flex-shrink-0 bg-green-600 hover:bg-green-700 text-white"
-                                  disabled={updatingEmail===sub.email}
-                                  onClick={() => toggleStatus(sub)}
+                                  variant="outline" size="sm" className="text-xs h-7 text-gray-500 hover:text-blue-600 hover:border-blue-300"
+                                  disabled={!sub.id || isEditing}
+                                  onClick={() => startEdit(sub)}
                                 >
-                                  {updatingEmail===sub.email ? '…' : 'Resubscribe'}
+                                  <Pencil className="h-3 w-3 mr-1" /> Edit
                                 </Button>
-                              ) : (
-                                <Button variant="outline" size="sm" className="text-xs h-7 ml-2 flex-shrink-0 text-gray-500 hover:text-red-600 hover:border-red-300"
-                                  disabled={updatingEmail===sub.email} onClick={() => toggleStatus(sub)}>
-                                  {updatingEmail===sub.email ? '…' : 'Unsubscribe'}
-                                </Button>
-                              )}
+                                {sub.status === 'unsubscribed' && engagement[sub.email]?.bounced ? (
+                                  <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                                    <AlertTriangle className="h-3 w-3 text-orange-400" /> bounced — cannot re-add
+                                  </span>
+                                ) : sub.status === 'unsubscribed' ? (
+                                  <Button
+                                    size="sm"
+                                    className="text-xs h-7 bg-green-600 hover:bg-green-700 text-white"
+                                    disabled={updatingEmail===sub.email}
+                                    onClick={() => toggleStatus(sub)}
+                                  >
+                                    {updatingEmail===sub.email ? '…' : 'Resubscribe'}
+                                  </Button>
+                                ) : (
+                                  <Button variant="outline" size="sm" className="text-xs h-7 text-gray-500 hover:text-red-600 hover:border-red-300"
+                                    disabled={updatingEmail===sub.email} onClick={() => toggleStatus(sub)}>
+                                    {updatingEmail===sub.email ? '…' : 'Unsubscribe'}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+
+                            {isEditing && (
+                              <div className="mt-3 pt-3 border-t border-blue-200 space-y-2">
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <label className="text-[10px] uppercase tracking-wide text-gray-500">Email address</label>
+                                    <Input
+                                      type="email"
+                                      value={editDraft.email}
+                                      onChange={e => setEditDraft(d => ({ ...d, email: e.target.value }))}
+                                      onKeyDown={e => { if (e.key === 'Enter') saveSubscriberEdit(sub); if (e.key === 'Escape') setEditingId(null) }}
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div className="sm:w-56">
+                                    <label className="text-[10px] uppercase tracking-wide text-gray-500">Newsletter edition</label>
+                                    <select
+                                      value={editDraft.city}
+                                      onChange={e => setEditDraft(d => ({ ...d, city: e.target.value }))}
+                                      className="h-8 w-full rounded-md border bg-white px-2 text-sm"
+                                    >
+                                      {CITY_FILTERS.filter(c => c.value !== 'all').map(c => (
+                                        <option key={c.value} value={c.value}>{c.label}</option>
+                                      ))}
+                                      {/* Legacy rows can hold a value the filter list does not offer */}
+                                      {!CITY_FILTERS.some(c => c.value === editDraft.city) && (
+                                        <option value={editDraft.city}>{getCityLabel(editDraft.city)}</option>
+                                      )}
+                                    </select>
+                                  </div>
+                                </div>
+
+                                {isOrphanNewsletterCity(editDraft.city) && (
+                                  <p className="text-xs text-amber-700 flex items-start gap-1">
+                                    <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                                    {getCityLabel(editDraft.city)} has no edition of its own — nothing is ever sent to this bucket.
+                                  </p>
+                                )}
+                                {editDraft.email.trim().toLowerCase() !== sub.email && (
+                                  <p className="text-xs text-gray-500 flex items-start gap-1">
+                                    <HelpCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                                    Open and click history stays filed under {sub.email} — it is recorded per address.
+                                  </p>
+                                )}
+                                {editError && (
+                                  <p className="text-xs text-red-600 flex items-start gap-1">
+                                    <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" /> {editError}
+                                  </p>
+                                )}
+
+                                <div className="flex gap-2">
+                                  <Button size="sm" className="h-7 text-xs" disabled={savingEdit} onClick={() => saveSubscriberEdit(sub)}>
+                                    {savingEdit ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save changes'}
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={savingEdit} onClick={() => setEditingId(null)}>
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                             </div>
                           )
                         })}
