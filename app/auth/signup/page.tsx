@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase-browser'
@@ -9,6 +9,7 @@ import { SocialAuthButtons } from '@/components/social-auth-buttons'
 import { CitySelect } from '@/components/city-select'
 import { isValidCity } from '@/lib/alberta-municipalities'
 import { toNewsletterCity } from '@/lib/newsletter-cities'
+import { resolveSignupSource, type SignupSource, type NewsletterTopic } from '@/lib/signup-source'
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -16,12 +17,30 @@ export default function SignUpPage() {
   const [name, setName] = useState('')
   const [city, setCity] = useState('')
   // Deliberately starts unchecked: under CASL a pre-ticked box is not valid
-  // express consent, so the reader has to opt in themselves.
+  // express consent, so the reader has to opt in themselves. The two lists are
+  // separate consents — ticking one must never enrol them in the other.
   const [newsletterOptIn, setNewsletterOptIn] = useState(false)
+  const [jobsOptIn, setJobsOptIn] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
+  // Which surface sent them here. Read after mount — this is a client component
+  // and useSearchParams would force the whole page behind a Suspense boundary.
+  const [source, setSource] = useState<SignupSource>('site')
+  const [nextPath, setNextPath] = useState<string | null>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    try {
+      const resolved = resolveSignupSource(window.location.search)
+      setSource(resolved.source)
+      setNextPath(resolved.path)
+    } catch {
+      /* window unavailable — keep the 'site' default */
+    }
+  }, [])
+
+  const fromJobs = source === 'jobs'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,14 +55,27 @@ export default function SignUpPage() {
       const { data, error } = await supabaseBrowser.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name, city: city.trim() } }
+        options: {
+          data: {
+            full_name: name,
+            city: city.trim(),
+            // Attribution: which surface earned this account. Recorded once at
+            // creation — it can't be reconstructed afterwards.
+            signup_source: source,
+            signup_path: nextPath,
+          },
+        },
       })
       if (error) throw error
 
-      // Express consent only — this runs solely when the reader ticked the box.
-      // Fire-and-forget: a newsletter failure must never block account creation,
-      // and /api/newsletter already handles bounced addresses and re-subscribes.
-      if (newsletterOptIn) {
+      // Express consent only — one topic per box actually ticked. Fire-and-forget:
+      // a newsletter failure must never block account creation, and /api/newsletter
+      // already handles bounced addresses and re-subscribes.
+      const topics: NewsletterTopic[] = [
+        ...(newsletterOptIn ? (['culture'] as const) : []),
+        ...(jobsOptIn ? (['jobs'] as const) : []),
+      ]
+      if (topics.length > 0) {
         try {
           await fetch('/api/newsletter', {
             method: 'POST',
@@ -52,7 +84,10 @@ export default function SignUpPage() {
               email,
               city: toNewsletterCity(city),
               optIn: true,
+              topics,
               source: 'account-signup',
+              signupSource: source,
+              signupPath: nextPath,
             }),
           })
         } catch {
@@ -87,7 +122,11 @@ export default function SignUpPage() {
   return (
     <AuthLayout
       title="Create Account"
-      subtitle="Join the Alberta culture community. Comment on articles and share your perspective."
+      subtitle={
+        fromJobs
+          ? 'Apply to Alberta jobs, save the ones you like, and track every application in one place.'
+          : 'Join the Alberta culture community. Comment on articles and share your perspective.'
+      }
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
@@ -141,6 +180,28 @@ export default function SignUpPage() {
           <p className="mt-1.5 text-xs text-gray-500">Minimum 6 characters</p>
         </div>
         <SocialAuthButtons />
+
+        {/* Two independent consents. Someone here for jobs should not start
+            receiving culture email, or the reverse — so neither box implies
+            the other and both start unticked. */}
+        {fromJobs && (
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3.5 hover:border-gray-300">
+            <input
+              type="checkbox"
+              checked={jobsOptIn}
+              onChange={e => setJobsOptIn(e.target.checked)}
+              className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">
+              <span className="font-semibold text-gray-900">Email me new Alberta jobs</span>
+              <span className="mt-0.5 block text-gray-600">
+                New openings{city ? ` in ${city}` : ' in your city'}, once a week. Jobs only —
+                nothing else. Unsubscribe any time.
+              </span>
+            </span>
+          </label>
+        )}
+
         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3.5 hover:border-gray-300">
           <input
             type="checkbox"

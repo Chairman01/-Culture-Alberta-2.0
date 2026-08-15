@@ -89,6 +89,64 @@ export function isIndexableJob(
   return true
 }
 
+/**
+ * Every active job row, in pages.
+ *
+ * PostgREST answers with at most 1,000 rows however large a `.limit()` you ask
+ * for, and says nothing about the truncation. Four callers here asked for
+ * `.limit(5000)`, read like they wanted the lot, and quietly saw the first
+ * thousand of 1,397 — which is why five employers were missing from the
+ * sitemap and their pages came back empty. Anything that must see every
+ * posting pages through this instead.
+ *
+ * Ordered by id because `range()` needs a stable sort to page over; posted_at
+ * is nullable and would shuffle rows between pages.
+ */
+const ROW_PAGE_SIZE = 1000
+
+async function selectAllActiveJobs<T>(
+  columns: string,
+  refine?: (q: any) => any
+): Promise<T[]> {
+  const out: T[] = []
+  for (let page = 0; ; page++) {
+    let query = supabase
+      .from('jobs')
+      .select(columns)
+      .eq('status', 'active')
+      .order('id', { ascending: true })
+      .range(page * ROW_PAGE_SIZE, (page + 1) * ROW_PAGE_SIZE - 1)
+    if (refine) query = refine(query)
+
+    const { data, error } = await query
+    if (error) {
+      console.error('[jobs] selectAllActiveJobs failed:', error.message)
+      break
+    }
+    if (!data || data.length === 0) break
+    out.push(...(data as T[]))
+    if (data.length < ROW_PAGE_SIZE) break
+  }
+  return out
+}
+
+/**
+ * The columns isIndexableJob reads, minus the description itself.
+ *
+ * Descriptions average 7.5KB and the whole board is over 10MB of them. The
+ * indexability test only asks whether one is present, so presence is settled in
+ * SQL and the bytes are never transferred — a count of eligible city postings
+ * has no reason to download every job ad in Alberta.
+ */
+type IndexableCheckRow = Pick<Job, 'source' | 'ats_provider' | 'status' | 'valid_through'>
+
+const hasDescription = (q: any) => q.not('description_html', 'is', null)
+
+/** Re-attaches what the SQL filter already proved, so isIndexableJob stays the
+ *  single place the rules live. */
+const withDescription = <T extends IndexableCheckRow>(row: T) =>
+  ({ ...row, description_html: 'present' })
+
 /** Active jobs, featured/manual first, newest first. */
 export async function getActiveJobs(opts: { city?: JobCity; limit?: number } = {}): Promise<Job[]> {
   try {
@@ -153,15 +211,9 @@ export interface CompanySummary {
 /** Employers with at least one open role, most jobs first. */
 export async function getCompaniesWithJobs(): Promise<CompanySummary[]> {
   try {
-    const { data, error } = await supabase
-      .from('jobs')
-      .select('company, city, ats_board')
-      .eq('status', 'active')
-      .limit(5000)
-    if (error) {
-      console.error('[jobs] getCompaniesWithJobs failed:', error.message)
-      return []
-    }
+    const data = await selectAllActiveJobs<{ company: string; city: string; ats_board: string | null }>(
+      'company, city, ats_board'
+    )
 
     const byCompany = new Map<string, CompanySummary>()
     for (const row of data ?? []) {
@@ -190,23 +242,31 @@ export async function getCompaniesWithJobs(): Promise<CompanySummary[]> {
 /**
  * All open roles at one employer, looked up by slug.
  *
- * Matched in memory rather than by a WHERE clause: the slug is derived from the
- * display name, so there is no column to filter on. Fine at this scale, and it
- * keeps the slug and the name from ever drifting apart.
+ * The slug is derived from the display name, so there is no column to filter
+ * on directly. Resolving the name first and then querying for it keeps that
+ * property while reading two small results instead of every active row —
+ * pulling `*` for the whole board meant ~10MB of description HTML on every
+ * company page render, and, capped at 1,000 rows, an empty page for any
+ * employer whose postings fell outside the first thousand.
  */
 export async function getJobsByCompanySlug(slug: string): Promise<Job[]> {
   try {
+    const names = await selectAllActiveJobs<{ company: string }>('company')
+    const match = names.find(r => companySlug(r.company) === slug)
+    if (!match) return []
+
     const { data, error } = await supabase
       .from('jobs')
       .select('*')
       .eq('status', 'active')
-      .order('posted_at', { ascending: false })
-      .limit(5000)
+      .eq('company', match.company)
+      .order('posted_at', { ascending: false, nullsFirst: false })
+      .limit(ROW_PAGE_SIZE)
     if (error) {
       console.error('[jobs] getJobsByCompanySlug failed:', error.message)
       return []
     }
-    return ((data ?? []) as Job[]).filter(j => companySlug(j.company) === slug)
+    return (data ?? []) as Job[]
   } catch (err) {
     console.error('[jobs] getJobsByCompanySlug error:', err)
     return []
@@ -249,18 +309,13 @@ export async function getMoreJobsAtCompany(
  */
 export async function getJobCountsByCity(): Promise<Partial<Record<JobCity, number>>> {
   try {
-    const { data, error } = await supabase
-      .from('jobs')
-      .select('city, source, description_html, status, valid_through, ats_provider')
-      .eq('status', 'active')
-      .limit(5000)
-    if (error) {
-      console.error('[jobs] getJobCountsByCity failed:', error.message)
-      return {}
-    }
+    const rows = await selectAllActiveJobs<IndexableCheckRow & { city: string }>(
+      'city, source, ats_provider, status, valid_through',
+      hasDescription
+    )
     const counts: Partial<Record<JobCity, number>> = {}
-    for (const row of data ?? []) {
-      if (!isIndexableJob(row as Pick<Job, 'source' | 'description_html' | 'status' | 'valid_through' | 'ats_provider'>)) continue
+    for (const row of rows) {
+      if (!isIndexableJob(withDescription(row))) continue
       const city = row.city as JobCity
       counts[city] = (counts[city] ?? 0) + 1
     }
@@ -276,21 +331,23 @@ export async function getJobCountsByCity(): Promise<Partial<Record<JobCity, numb
  *
  * Aggregator postings are deliberately excluded — see isIndexableJob. They stay
  * live and browsable on /jobs, they just aren't offered to Google.
+ *
+ * This returned nothing at all for as long as it has existed, so the sitemap
+ * carried zero job postings against 1,269 eligible ones. Two faults stacked:
+ * the select omitted `source`, so isIndexableJob's first test — is this manual
+ * or ATS — read `undefined` and rejected every row; and `.eq('is_manual', true)`
+ * predates ATS ingestion and would have thrown away the other 1,250 postings
+ * even if the rows had been complete. isIndexableJob is the policy; this query
+ * has no business restating a stricter version of it.
  */
 export async function getActiveJobSlugs(): Promise<Array<{ slug: string; updated_at: string }>> {
   try {
-    const { data, error } = await supabase
-      .from('jobs')
-      .select('slug, updated_at, valid_through, is_manual, description_html, status')
-      .eq('status', 'active')
-      .eq('is_manual', true)
-      .limit(1000)
-    if (error) {
-      console.error('[jobs] getActiveJobSlugs failed:', error.message)
-      return []
-    }
-    return (data ?? [])
-      .filter(isIndexableJob)
+    const rows = await selectAllActiveJobs<
+      IndexableCheckRow & { slug: string; updated_at: string }
+    >('slug, updated_at, source, ats_provider, status, valid_through', hasDescription)
+
+    return rows
+      .filter(r => isIndexableJob(withDescription(r)))
       .map(j => ({ slug: j.slug, updated_at: j.updated_at }))
   } catch (err) {
     console.error('[jobs] getActiveJobSlugs error:', err)

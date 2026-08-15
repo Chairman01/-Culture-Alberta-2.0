@@ -4,30 +4,21 @@
  * Called by Vercel Cron every Thursday (see vercel.json), just before the
  * weekend-events run, so both drafts land together for review.
  *
- * Auth: Bearer {AUTOMATION_CRON_SECRET}
+ * Auth: Bearer {CRON_SECRET} (or AUTOMATION_CRON_SECRET)
  *
  * Query params:
  *   ?status=published → publish immediately (default: draft)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import { generateWeekendWeatherArticle } from '@/lib/automation/weekend-weather'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.AUTOMATION_CRON_SECRET
-  if (!secret) {
-    console.error('[weekend-weather cron] AUTOMATION_CRON_SECRET is not set')
-    return false
-  }
-  const authHeader = req.headers.get('authorization')
-  return authHeader === `Bearer ${secret}`
-}
-
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isCronAuthorized(req, 'weekend-weather cron')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

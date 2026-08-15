@@ -4,29 +4,20 @@
  * Called by Vercel Cron every morning (see vercel.json). Closes the current
  * active poll and activates the next approved question from the bank.
  *
- * Auth: Bearer {AUTOMATION_CRON_SECRET}
+ * Auth: Bearer {CRON_SECRET} (or AUTOMATION_CRON_SECRET)
  *
  * Safety: if the approved queue is empty, the current poll STAYS active
  * (a stale question beats an empty card) and the response flags needsRefill.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import { getServiceClient } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.AUTOMATION_CRON_SECRET
-  if (!secret) {
-    console.error('[rotate-poll cron] AUTOMATION_CRON_SECRET is not set')
-    return false
-  }
-  const authHeader = req.headers.get('authorization')
-  return authHeader === `Bearer ${secret}`
-}
-
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isCronAuthorized(req, 'rotate-poll cron')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

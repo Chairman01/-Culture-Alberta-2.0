@@ -6,6 +6,7 @@ import { PerformanceOptimizer } from '@/components/seo/performance-optimizer'
 import { CookieConsent } from '@/components/cookie-consent'
 import { CityPrompt } from '@/components/city-prompt'
 import { WelcomeMailer } from '@/components/welcome-mailer'
+import { AdBlockMonitor } from '@/components/analytics/adblock-monitor'
 import { Analytics } from '@vercel/analytics/next'
 import Script from 'next/script'
 import { Metadata } from 'next'
@@ -152,6 +153,9 @@ export default function RootLayout({
           <CookieConsent />
           <CityPrompt />
           <WelcomeMailer />
+          {/* Renders nothing. One beacon per session measuring ad-blocker
+              share, so monetisation decisions rest on our own numbers. */}
+          <AdBlockMonitor />
         </AuthProvider>
         {/* Vercel Web Analytics only — Speed Insights intentionally left off to control cost */}
         <Analytics />

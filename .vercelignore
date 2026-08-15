@@ -23,3 +23,10 @@ exported-events.json
 .claude/worktrees
 .next-dev-out.log
 .next-dev-err.log
+
+# Local scratch that CLI deploys would otherwise upload from the working tree
+.tmp-localappdata
+.tmp-localappdata */
+psi-desktop.json
+facebook_groups_performance.xlsx
+*.xlsx
