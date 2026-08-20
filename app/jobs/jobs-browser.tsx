@@ -133,7 +133,6 @@ export default function JobsBrowser({
         if (typeof s.union === 'string') setUnion(s.union)
         if (typeof s.page === 'number') setPage(s.page)
         if (typeof s.selectedId === 'string') setSelectedId(s.selectedId)
-        if (typeof s.onlyMatches === 'boolean') setOnlyMatches(s.onlyMatches)
         if (s.sortBy === 'match' || s.sortBy === 'newest') setSortBy(s.sortBy)
         // After the restored rows have been laid out, not before — scrolling to
         // 4,000px on a page still rendering its first twenty rows lands at the
@@ -193,14 +192,12 @@ export default function JobsBrowser({
   const [prefs, setPrefs] = useState<JobPreferences | null>(null)
   const [showPrefsCard, setShowPrefsCard] = useState(false)
   const [editingPrefs, setEditingPrefs] = useState(false)
-  const [onlyMatches, setOnlyMatches] = useState(false)
   const [sortBy, setSortBy] = useState<'newest' | 'match'>('newest')
 
   useEffect(() => {
     let active = true
     if (!user) {
       setPrefs(null)
-      setOnlyMatches(false)
       setSortBy('newest')
       // Signed-out visitors still see the pitch, once, until they wave it off.
       setShowPrefsCard(!sessionStorage.getItem('jobs_prefs_dismissed'))
@@ -210,26 +207,21 @@ export default function JobsBrowser({
       .then(p => {
         if (!active) return
         setPrefs(p)
-        if (hasAnswers(p) && !restoredState.current) {
-          setSortBy('match')
-          // Only the province-wide board narrows itself. /jobs/lethbridge is a
-          // request to see Lethbridge, and someone whose answers say Edmonton
-          // would otherwise land on a city page showing them nothing — or worse,
-          // showing them Edmonton jobs under a Lethbridge heading.
-          if (initialCity === 'all') setOnlyMatches(true)
-
-          // The dropdowns are deliberately left alone. Pre-selecting them from
-          // the same answers the match filter already applies narrowed the
-          // board twice over the one set of preferences: Edmonton AND
-          // Government & Public Service AND Full-time AND "fits me", which is
-          // how a 1,397-job board rendered as "Showing 0-0 of 0". The match
-          // filter expresses the preferences; the dropdowns stay the reader's.
-        }
+        // Answers reorder the board. They never take anything off it.
+        //
+        // There was a "only show roles that fit me" filter that switched itself
+        // on here, and on any short list — an employer's nine roles, a small
+        // city — it could qualify nothing and hand the reader "Showing 0-0 of
+        // 0" as their reward for answering a few questions. Sorting puts the
+        // same roles at the top and leaves every other one reachable, so the
+        // answers can only ever help. The dropdowns stay the reader's for the
+        // same reason: nothing narrows this board except what they choose.
+        if (hasAnswers(p) && !restoredState.current) setSortBy('match')
         setShowPrefsCard(!p || (!hasAnswers(p) && !p.dismissedAt))
       })
       .catch(() => {})
     return () => { active = false }
-  }, [user, initialCity])
+  }, [user])
 
   const dismissPrefs = useCallback(() => {
     setShowPrefsCard(false)
@@ -247,10 +239,7 @@ export default function JobsBrowser({
     setShowPrefsCard(false)
     setEditingPrefs(false)
     setPage(1)
-    if (hasAnswers(saved)) {
-      setOnlyMatches(true)
-      setSortBy('match')
-    }
+    if (hasAnswers(saved)) setSortBy('match')
   }, [])
 
   const matching = hasAnswers(prefs)
@@ -274,8 +263,7 @@ export default function JobsBrowser({
 
   const filtersActive =
     keyword.trim() !== '' || city !== initialCity || category !== 'all' ||
-    postedWithin !== 'all' || hasSalary || employment !== 'all' || union !== 'all' ||
-    onlyMatches
+    postedWithin !== 'all' || hasSalary || employment !== 'all' || union !== 'all'
 
   const clearFilters = () => {
     setKeyword('')
@@ -285,7 +273,6 @@ export default function JobsBrowser({
     setHasSalary(false)
     setEmployment('all')
     setUnion('all')
-    setOnlyMatches(false)
     setPage(1)
   }
 
@@ -294,10 +281,9 @@ export default function JobsBrowser({
    *
    * An empty job board is a dead end — there is nothing to click, nothing to
    * read, and on a short page nothing to scroll, so it reads as broken rather
-   * than as a filter being too tight. When a combination excludes everything,
-   * the narrowest thing gets dropped and the reader is told what happened:
-   * first the match filter, then their own filters, ending at the whole board.
-   * Something is always on screen.
+   * than as a filter being too tight. When the reader's filters exclude
+   * everything, they are dropped, the whole board is shown, and the reader is
+   * told what happened. Something is always on screen.
    */
   const { filtered, fallback } = useMemo(() => {
     const kw = keyword.trim().toLowerCase()
@@ -318,7 +304,6 @@ export default function JobsBrowser({
         return (b.postedAt || '').localeCompare(a.postedAt || '')
       })
 
-    // The reader's own filters, without the preference-driven narrowing.
     const own = jobs.filter(j => {
       if (city !== 'all' && j.city !== city) return false
       if (category !== 'all' && j.category !== category) return false
@@ -333,15 +318,9 @@ export default function JobsBrowser({
       return true
     })
 
-    const narrowed =
-      onlyMatches && matching
-        ? own.filter(j => matches.get(j.id)?.qualifies)
-        : own
-
-    if (narrowed.length > 0) return { filtered: sort(narrowed), fallback: null as null | 'matches' | 'filters' }
-    if (own.length > 0) return { filtered: sort(own), fallback: 'matches' as const }
-    return { filtered: sort(jobs), fallback: 'filters' as const }
-  }, [jobs, keyword, city, category, postedWithin, hasSalary, employment, union, onlyMatches, matching, matches, sortBy])
+    if (own.length > 0) return { filtered: sort(own), fallback: false }
+    return { filtered: sort(jobs), fallback: true }
+  }, [jobs, keyword, city, category, postedWithin, hasSalary, employment, union, matching, matches, sortBy])
 
   /**
    * Options come from the data, never a fixed list. The board currently holds
@@ -407,14 +386,14 @@ export default function JobsBrowser({
         keyword, city, category, postedWithin, hasSalary, employment, union,
         page: safePage,
         selectedId: selected?.id ?? null,
-        onlyMatches, sortBy,
+        sortBy,
         scrollY: window.scrollY,
       }))
     } catch {
       /* quota or private mode — losing the place is survivable, throwing isn't */
     }
   }, [hydrated, stateKey, keyword, city, category, postedWithin, hasSalary,
-      employment, union, safePage, selected?.id, onlyMatches, sortBy])
+      employment, union, safePage, selected?.id, sortBy])
 
   useEffect(() => { persistState() }, [persistState])
 
@@ -668,21 +647,16 @@ export default function JobsBrowser({
         )}
       </div>
 
-      {/* Match controls — only once there are answers to match against. */}
+      {/* Match note — only once there are answers to match against. It says
+          what the answers did; it offers no way to hide jobs, because they
+          never should. */}
       {matching && (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3">
           <Sparkles className="h-4 w-4 flex-shrink-0 text-blue-600" />
-          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
-            <input
-              type="checkbox"
-              checked={onlyMatches}
-              onChange={e => { setOnlyMatches(e.target.checked); resetPage() }}
-              className="h-4 w-4 rounded border-gray-300"
-            />
-            Only show roles that fit me
-          </label>
-          <span className="text-sm text-gray-600">
-            {matchCount} of {jobs.length} match what you told us
+          <span className="text-sm text-gray-800">
+            {matchCount > 0
+              ? <><span className="font-medium">{matchCount} of {jobs.length}</span> {matchCount === 1 ? 'role fits' : 'roles fit'} what you told us — {sortBy === 'match' ? 'those are at the top' : 'sort by best matches to bring them up'}.</>
+              : <>Nothing here matches your answers, so every job is shown as usual.</>}
           </span>
           <button
             type="button"
@@ -699,16 +673,14 @@ export default function JobsBrowser({
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
           <AlertCircle className="h-4 w-4 flex-shrink-0 text-amber-600" />
           <span className="text-amber-900">
-            {fallback === 'matches'
-              ? 'Nothing here fits your answers exactly, so every job is shown instead.'
-              : 'Nothing matches those filters, so every job is shown instead.'}
+            Nothing matches those filters, so every job is shown instead.
           </span>
           <button
             type="button"
-            onClick={fallback === 'matches' ? () => setOnlyMatches(false) : clearFilters}
+            onClick={clearFilters}
             className="font-medium text-amber-900 underline underline-offset-2 hover:text-amber-950"
           >
-            {fallback === 'matches' ? 'Stop filtering by fit' : 'Clear filters'}
+            Clear filters
           </button>
         </div>
       )}
