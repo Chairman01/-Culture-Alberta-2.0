@@ -1,9 +1,21 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 import { getQuickArticles } from '@/lib/supabase-optimized'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { Article } from '@/lib/types/article'
 
-export async function POST() {
+/**
+ * Admin only.
+ *
+ * This was open to the internet and does real work on every call -- Supabase
+ * reads over the whole article set, in some cases including full article
+ * bodies. Unauthenticated, it is free compute for anyone who finds it and a
+ * standing invitation to run up the hosting bill.
+ */
+export async function POST(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     console.log('🔄 Refreshing articles cache...')
     

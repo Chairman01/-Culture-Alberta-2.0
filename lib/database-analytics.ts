@@ -1,4 +1,10 @@
-import { supabase } from './supabase'
+import { getServiceClient } from './supabase-admin'
+
+// Server-side writes run on the service role, never the public anon key: the
+// anon key ships in the browser bundle, so any table it can write is a table
+// the internet can write.
+const supabase = getServiceClient()
+
 
 const isInternalAnalyticsEnabled = () =>
   process.env.NEXT_PUBLIC_ENABLE_INTERNAL_ANALYTICS === 'true' ||

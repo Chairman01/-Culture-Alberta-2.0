@@ -1,4 +1,10 @@
-import { supabase } from '@/lib/supabase'
+import { getServiceClient } from '@/lib/supabase-admin'
+
+// Server-side writes run on the service role, never the public anon key: the
+// anon key ships in the browser bundle, so any table it can write is a table
+// the internet can write.
+const supabase = getServiceClient()
+
 
 /**
  * A sendable edition.

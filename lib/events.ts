@@ -1,6 +1,12 @@
-import { supabase } from './supabase'
+import { getServiceClient } from './supabase-admin'
+
 import { Event, EventFormData } from './types/event'
 import { createSlug } from './utils/slug'
+
+// Server-side writes run on the service role, never the public anon key: the
+// anon key ships in the browser bundle, so any table it can write is a table
+// the internet can write.
+const supabase = getServiceClient()
 
 // Cache for events
 const eventsCache = new Map<string, Event[]>()

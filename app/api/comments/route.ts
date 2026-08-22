@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getServiceClient } from '@/lib/supabase-admin'
+
 import { sendReplyEmail } from '@/lib/reply-email'
+
+// Server-side writes run on the service role, never the public anon key: the
+// anon key ships in the browser bundle, so any table it can write is a table
+// the internet can write.
+const supabase = getServiceClient()
 
 export const dynamic = 'force-dynamic'
 

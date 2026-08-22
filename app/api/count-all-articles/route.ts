@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-auth'
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+/**
+ * Admin only.
+ *
+ * This was open to the internet and does real work on every call -- Supabase
+ * reads over the whole article set, in some cases including full article
+ * bodies. Unauthenticated, it is free compute for anyone who finds it and a
+ * standing invitation to run up the hosting bill.
+ */
 export async function GET(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     console.log('🔍 Counting ALL articles in Supabase...');
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'

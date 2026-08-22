@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 import fs from 'fs'
 import path from 'path'
 
@@ -28,7 +29,18 @@ async function fetchContentFromProd(id: string, timeoutMs = 10000): Promise<stri
   }
 }
 
+/**
+ * Admin only.
+ *
+ * This was open to the internet and does real work on every call -- Supabase
+ * reads over the whole article set, in some cases including full article
+ * bodies. Unauthenticated, it is free compute for anyone who finds it and a
+ * standing invitation to run up the hosting bill.
+ */
 export async function POST(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     if (!fs.existsSync(FALLBACK_PATH)) {
       return NextResponse.json({ error: 'optimized-fallback.json not found' }, { status: 404 })
@@ -91,7 +103,18 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+/**
+ * Admin only.
+ *
+ * This was open to the internet and does real work on every call -- Supabase
+ * reads over the whole article set, in some cases including full article
+ * bodies. Unauthenticated, it is free compute for anyone who finds it and a
+ * standing invitation to run up the hosting bill.
+ */
+export async function GET(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   if (!fs.existsSync(FALLBACK_PATH)) {
     return NextResponse.json({ error: 'optimized-fallback.json not found' }, { status: 404 })
   }

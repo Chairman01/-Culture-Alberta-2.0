@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
-import { createClient } from '@supabase/supabase-js'
+import { getServiceClient } from '@/lib/supabase-admin'
 
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase environment variables are not configured')
-  }
-
-  return createClient(supabaseUrl, supabaseKey)
-}
+// Admin event writes run on the service role. They used the public anon key,
+// which is the only reason the events table needed a policy letting anyone
+// write to it -- and that policy was `USING (true)`, so the whole calendar was
+// editable and deletable by anyone who read the browser bundle.
+const getSupabaseClient = getServiceClient
 
 export async function GET(request: NextRequest) {
   const auth = requireAdmin(request)

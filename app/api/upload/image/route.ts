@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getServiceClient } from '@/lib/supabase-admin'
 import { requireAdminOrContributor } from '@/lib/admin-auth'
 
-// Initialize Supabase client for storage operations
-const supabaseUrl = 'https://itdmwpbsnviassgqfhxk.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZG13cGJzbnZpYXNzZ3FmaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0ODU5NjUsImV4cCI6MjA2OTA2MTk2NX0.pxAXREQJrXJFZEBB3s7iwfm3rV_C383EbWCwf6ayPQo'
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Uploads run on the service role. They used the public anon key, which is why
+// the storage bucket needed a policy letting anon write to it -- and that policy
+// checked only the bucket name, so anyone on the internet could put files in it.
+// With the upload authenticated here and performed as the service role, the
+// bucket needs no anon write policy at all.
+const supabase = getServiceClient()
 
 // Bucket name - matches what user created in Supabase dashboard
 const BUCKET_NAME = 'Article-image'

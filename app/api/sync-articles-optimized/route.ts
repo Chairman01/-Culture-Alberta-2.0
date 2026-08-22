@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 import { revalidatePath } from 'next/cache'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -6,7 +7,18 @@ import { join } from 'node:path'
 export const revalidate = 0
 
 // OPTIMIZED sync endpoint to prevent timeouts
+/**
+ * Admin only.
+ *
+ * This was open to the internet and does real work on every call -- Supabase
+ * reads over the whole article set, in some cases including full article
+ * bodies. Unauthenticated, it is free compute for anyone who finds it and a
+ * standing invitation to run up the hosting bill.
+ */
 export async function POST(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     console.log('🔄 OPTIMIZED SYNC: Syncing articles and events from Supabase...')
     

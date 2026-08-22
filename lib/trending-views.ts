@@ -6,7 +6,13 @@
 
 import { unstable_cache } from 'next/cache'
 import { getMostViewedArticlePathsFromGA4 } from './google-analytics'
-import { supabase } from './supabase'
+import { getServiceClient } from './supabase-admin'
+
+// Server-side writes run on the service role, never the public anon key: the
+// anon key ships in the browser bundle, so any table it can write is a table
+// the internet can write.
+const supabase = getServiceClient()
+
 
 const CACHE_REVALIDATE_SECONDS = 300 // 5 min
 

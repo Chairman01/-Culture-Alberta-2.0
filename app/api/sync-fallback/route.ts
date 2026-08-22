@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 import { getAllArticles } from '@/lib/supabase-articles'
 import fs from 'fs'
 import path from 'path'
@@ -8,7 +9,18 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 // POST /api/sync-fallback - Sync latest articles from Supabase to articles.json fallback file
+/**
+ * Admin only.
+ *
+ * This was open to the internet and does real work on every call -- Supabase
+ * reads over the whole article set, in some cases including full article
+ * bodies. Unauthenticated, it is free compute for anyone who finds it and a
+ * standing invitation to run up the hosting bill.
+ */
 export async function POST(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     console.log('🔄 Syncing latest articles from Supabase to articles.json...')
     
@@ -54,7 +66,18 @@ export async function POST(request: NextRequest) {
 }
 
 // GET /api/sync-fallback - Check current status of articles.json file
+/**
+ * Admin only.
+ *
+ * This was open to the internet and does real work on every call -- Supabase
+ * reads over the whole article set, in some cases including full article
+ * bodies. Unauthenticated, it is free compute for anyone who finds it and a
+ * standing invitation to run up the hosting bill.
+ */
 export async function GET(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const articlesJsonPath = path.join(process.cwd(), 'articles.json')
     

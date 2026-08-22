@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { verifyAdminUser, recordLogin } from '@/lib/admin-users'
+import { clientKey, retryAfterSeconds, recordFailure, recordSuccess } from '@/lib/login-throttle'
 
 function isBcryptHash(value: string) {
   return /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(value)
@@ -38,6 +39,17 @@ export async function POST(request: NextRequest) {
     if (!jwtSecret) {
       console.error('[login] JWT_SECRET not configured in environment variables')
       return NextResponse.json({ message: 'Service unavailable' }, { status: 503 })
+    }
+
+    // Refuse before doing any password work, so a locked-out caller cannot use
+    // the endpoint's response time to learn anything either.
+    const throttleKey = clientKey(request)
+    const retryAfter = retryAfterSeconds(throttleKey)
+    if (retryAfter > 0) {
+      return NextResponse.json(
+        { message: 'Too many failed attempts. Try again shortly.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+      )
     }
 
     let matched: Matched | null = null
@@ -87,8 +99,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (!matched) {
+      recordFailure(throttleKey)
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 })
     }
+
+    // A correct password clears the counter, so ordinary mistyping never
+    // accumulates toward a lockout for someone who does know the password.
+    recordSuccess(throttleKey)
 
     const token = jwt.sign(
       { username: matched.username, name: matched.name, uid: matched.userId, role: matched.role },
