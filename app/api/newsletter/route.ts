@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase-admin'
+import { requireAdmin } from '@/lib/admin-auth'
 
 // newsletter_subscriptions holds subscriber emails: service role only, never
 // the public anon key.
@@ -162,7 +163,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Change a subscriber's status. Admin only.
+ *
+ * This was open to anyone. Because it runs on the service role it is not
+ * covered by the RLS lockdown -- the row policies stop the anon key, not a
+ * request to our own API. Unauthenticated, it let a stranger unsubscribe all
+ * ~1,700 subscribers, or quietly re-subscribe people who had opted out, which
+ * is a CASL problem rather than merely a nuisance.
+ */
 export async function PATCH(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const { email, status } = await request.json()
 
@@ -196,7 +209,18 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-export async function GET() {
+/**
+ * The full subscriber list. Admin only.
+ *
+ * This answered any request on the open internet with every subscriber's email
+ * address. It reads on the service role, so the RLS lockdown does not touch it
+ * -- locking the table stops the public anon key, not an unauthenticated call
+ * to our own API, which is the easier door of the two to find.
+ */
+export async function GET(request: NextRequest) {
+  const auth = requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const { data, error } = await supabase
       .from('newsletter_subscriptions')
