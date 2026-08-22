@@ -6,6 +6,7 @@ import Image from "next/image"
 import {
   CheckCircle2,
   CornerUpLeft,
+  Trash2,
   Edit,
   Loader2,
   Inbox,
@@ -56,6 +57,7 @@ export default function ReviewQueue() {
   const [loadingPreview, setLoadingPreview] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<PendingArticle | null>(null)
   const [rejectReason, setRejectReason] = useState("")
+  const [deleteTarget, setDeleteTarget] = useState<PendingArticle | null>(null)
   const { toast } = useToast()
 
   const load = useCallback(async (quiet = false) => {
@@ -184,6 +186,39 @@ export default function ReviewQueue() {
     } finally {
       setBusyId(null)
       setRejectTarget(null)
+    }
+  }
+
+  /**
+   * Throws the draft away for good.
+   *
+   * Separate from "Send back", which hands work to its author with a note. That
+   * is the right move for a person's draft and the wrong one for the automated
+   * weekend guides, which have no author to hear it and would otherwise sit in
+   * the queue forever once they go stale.
+   */
+  const remove = async (article: PendingArticle) => {
+    setBusyId(article.id)
+    try {
+      const res = await fetch(`/api/admin/articles/${article.id}`, { method: "DELETE" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `Request failed (${res.status})`)
+      }
+      setArticles((prev) => prev.filter((a) => a.id !== article.id))
+      toast({
+        title: "Deleted",
+        description: `“${article.title}” is gone for good.`,
+      })
+    } catch (error) {
+      toast({
+        title: "Could not delete the draft",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      })
+    } finally {
+      setBusyId(null)
+      setDeleteTarget(null)
     }
   }
 
@@ -334,6 +369,17 @@ export default function ReviewQueue() {
                         <CornerUpLeft className="h-4 w-4 mr-2" />
                         Send back
                       </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDeleteTarget(article)}
+                        disabled={isBusy}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -409,6 +455,34 @@ export default function ReviewQueue() {
               }}
             >
               Send back
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete “{deleteTarget?.title}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This one really is permanent — the draft is removed from the database and cannot be
+              recovered. If {deleteTarget?.author} wrote it and it just needs work, send it back
+              instead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={(e) => {
+                e.preventDefault()
+                if (deleteTarget) remove(deleteTarget)
+              }}
+            >
+              Delete for good
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
