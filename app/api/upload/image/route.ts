@@ -81,7 +81,14 @@ export async function POST(request: NextRequest) {
             if (error.message?.includes('Bucket not found')) {
                 userMessage = 'Storage bucket "Article-image" not found. Please create it in Supabase Dashboard.'
             } else if (error.message?.includes('row-level security') || error.message?.includes('policy')) {
-                userMessage = 'Storage permissions error. Please add an INSERT policy to the bucket.'
+                // Uploads run as the service role, which ignores bucket policies
+                // entirely. Being refused by one means the key is missing and the
+                // request fell back to the anon key -- so the old advice here, to
+                // add an INSERT policy, pointed at the wrong thing and would have
+                // reopened the bucket to the internet.
+                userMessage = process.env.SUPABASE_SERVICE_ROLE_KEY
+                    ? 'The storage bucket refused the upload. Check the Article-image bucket still exists.'
+                    : 'Uploads are not configured on this environment: SUPABASE_SERVICE_ROLE_KEY is missing.'
             } else if (error.message) {
                 userMessage = error.message
             }
