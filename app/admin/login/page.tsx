@@ -32,6 +32,9 @@ export default function AdminLogin() {
         localStorage.setItem("admin_login_time", Date.now().toString())
         localStorage.setItem("admin_token", data.token)
         localStorage.setItem("admin_role", data.role ?? "admin")
+        // The byline, which is not always the username: Tiffany signs in as
+        // "tiffany" but her articles are written by "Tiffany".
+        localStorage.setItem("admin_name", data.name ?? data.username)
         router.push(data.role === "contributor" ? "/admin/articles" : "/admin")
       } else {
         if (response.status === 503) {

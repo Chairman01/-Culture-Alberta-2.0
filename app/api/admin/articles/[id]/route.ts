@@ -53,11 +53,21 @@ function hasMeaningfulContent(content: unknown) {
   return text.length >= 50 || content.includes('<img')
 }
 
+/**
+ * A writer may only touch their own work.
+ *
+ * Ownership is the account id where there is one. The byline fallback is for
+ * articles written before per-writer accounts existed, under the single shared
+ * contributor login -- those rows have no author_user_id to match on.
+ */
 function contributorCanAccessArticle(
-  auth: { role: 'admin' | 'contributor'; username: string },
-  article: { author?: string | null } | null | undefined
+  auth: { role: 'admin' | 'contributor'; username: string; name: string; userId: string | null },
+  article: { author?: string | null; author_user_id?: string | null } | null | undefined
 ) {
-  return auth.role === 'admin' || !!article?.author && article.author === auth.username
+  if (auth.role === 'admin') return true
+  if (!article) return false
+  if (article.author_user_id) return !!auth.userId && article.author_user_id === auth.userId
+  return !!article.author && (article.author === auth.name || article.author === auth.username)
 }
 
 export async function GET(
@@ -146,7 +156,7 @@ export async function PUT(
     // trending/featured flags so a caller that omits them doesn't wipe them.
     const { data: existingArticle } = await supabase
       .from('articles')
-      .select('title, slug, author, status, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+      .select('title, slug, author, author_user_id, status, review_status, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
       .eq('id', articleId)
       .single()
 
@@ -156,7 +166,7 @@ export async function PUT(
 
     const nextSlug = articleData.slug || await generateArticleSlug(supabase, articleData.title, articleId)
     const articleAuthor = authCheck.role === 'contributor'
-      ? authCheck.username
+      ? authCheck.name
       : articleData.author
 
     // A contributor's save never changes publication state — only an admin
@@ -172,10 +182,19 @@ export async function PUT(
       ? sanitizeAdminHtml(articleData.content || '')
       : articleData.content
 
+    // A writer who reworks a rejected draft puts it back in the queue, and the
+    // note they were fixing goes with it. An admin's save leaves the review
+    // trail untouched, so an empty object here means "change nothing".
+    const reviewFields =
+      authCheck.role === 'contributor' && existingArticle?.review_status === 'rejected'
+        ? { review_status: 'pending', review_note: null, reviewed_at: null, reviewed_by: null }
+        : {}
+
     // Update the article in Supabase
     const { data, error } = await supabase
       .from('articles')
       .update({
+        ...reviewFields,
         title: articleData.title,
         content: articleContent,
         excerpt: articleData.excerpt,

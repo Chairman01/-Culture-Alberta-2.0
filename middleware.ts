@@ -42,7 +42,12 @@ async function verifyAdminJWT(token: string, secret: string): Promise<{ valid: b
   }
 }
 
-const CONTRIBUTOR_ALLOWED = ['/admin/articles']
+// Writers get their own articles and the newsletter *prepare* page. Note what
+// is not here: '/admin/newsletter' itself, which holds the subscriber list and
+// the send buttons. Listing the parent would have handed both to every writer,
+// because a Server Action is reachable by anyone allowed to open the page it
+// lives in.
+const CONTRIBUTOR_ALLOWED = ['/admin/articles', '/admin/newsletter/prepare']
 
 // ── Renamed-article redirects ──────────────────────────────────────────────
 // When an article's title (and therefore its slug) changes, the admin API saves

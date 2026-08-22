@@ -45,7 +45,16 @@ export async function PATCH(
   // Update status to published
   const { error: updateError } = await supabase
     .from('articles')
-    .update({ status: 'published', updated_at: new Date().toISOString() })
+    .update({
+      status: 'published',
+      // Closes the review trail: approving clears any earlier rejection note so
+      // the writer is not left looking at a complaint about a piece that went
+      // on to be published.
+      review_status: 'approved',
+      review_note: null,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id)
 
   if (updateError) {

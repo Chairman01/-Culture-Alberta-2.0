@@ -179,6 +179,11 @@ export default function NewsletterAdmin() {
     byEdition(() => emptyDraft())
   )
   const [albertaDraft, setAlbertaDraft] = useState<AlbertaDraft>({ ids: null, items: [], isDirty: false })
+  // Editions a writer has prepared since the last send: their subject line and
+  // note, which live nowhere else.
+  const [handedOver, setHandedOver] = useState<
+    { city: CityKey; subject: string; note: string; preparedBy: string }[]
+  >([])
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -251,6 +256,26 @@ export default function NewsletterAdmin() {
           else sentAt[city] = dbTime || lsTime || null
         }
         setLastSentAt(sentAt)
+
+        // A handover only counts while it is still ahead of the last send.
+        // Without that comparison every edition would keep advertising the note
+        // from the edition that already went out.
+        setHandedOver(
+          cities
+            .filter(city => {
+              const preparedAt = configData[city]?.prepared_at
+              if (!preparedAt) return false
+              const sent = sentAt[city]
+              return !sent || preparedAt > sent
+            })
+            .map(city => ({
+              city,
+              subject: configData[city]?.proposed_subject || '',
+              note: configData[city]?.prepare_note || '',
+              preparedBy: configData[city]?.prepared_by || '',
+            })),
+        )
+
         const newDrafts: Record<CityKey, CityConfigDraft> = byEdition(() => emptyDraft())
         const allArticleIds = new Set<string>()
 
@@ -875,6 +900,37 @@ export default function NewsletterAdmin() {
             <p className="text-muted-foreground">Manage subscribers and send newsletters</p>
           </div>
         </div>
+
+        {/* What the writers handed over. Their picks are already loaded into the
+            editions below — this is the subject line and note that come with
+            them, which would otherwise only exist in a chat message. */}
+        {handedOver.length > 0 && (
+          <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <p className="font-medium text-blue-900">
+                {handedOver.length === 1 ? "One edition is" : `${handedOver.length} editions are`}{" "}
+                prepared and waiting on you
+              </p>
+              <Link href="/admin/newsletter/prepare" className="text-blue-800 underline underline-offset-2 whitespace-nowrap">
+                Open the prepare view →
+              </Link>
+            </div>
+            <ul className="space-y-2">
+              {handedOver.map(entry => (
+                <li key={entry.city} className="rounded-md border border-blue-200 bg-white/70 px-3 py-2">
+                  <p className="font-medium capitalize text-blue-950">
+                    {entry.city.replace("-", " ")}
+                    <span className="font-normal text-blue-800">
+                      {" "}— {entry.preparedBy || "a writer"}
+                    </span>
+                  </p>
+                  {entry.subject && <p className="mt-1 text-blue-900">Subject: “{entry.subject}”</p>}
+                  {entry.note && <p className="mt-0.5 text-blue-800">{entry.note}</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* ── SEND NOW ──────────────────────────────────────────────────────── */}
         <Card className="mb-6 border-2 border-dashed border-gray-200">

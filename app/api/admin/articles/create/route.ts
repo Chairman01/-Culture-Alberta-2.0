@@ -48,8 +48,10 @@ function hasMeaningfulContent(content: unknown) {
 export async function POST(request: NextRequest) {
   const auth = requireAdminOrContributor(request)
   if (!auth.ok) return auth.response
+  // A writer's byline is their display name ("Tiffany"), never the username
+  // they type at the login form, and never whatever the request body claims.
   const articleOwner = auth.role === 'contributor'
-    ? auth.username
+    ? auth.name
     : undefined
 
   try {
@@ -106,9 +108,16 @@ export async function POST(request: NextRequest) {
         categories: articleData.categories,
         location: articleData.location,
         author: articleAuthor,
+        // Ownership by account id, not by byline. Scoping a writer to their own
+        // drafts on a name match breaks the moment two writers share a first
+        // name or somebody's display name is edited.
+        author_user_id: auth.userId,
         tags: articleData.tags,
         type: articleData.type || 'article',
         status: articleStatus,
+        // Where it sits in the review queue. An admin's own work is approved by
+        // definition; a writer's starts out waiting.
+        review_status: auth.role === 'contributor' ? 'pending' : 'approved',
         image_url: articleData.imageUrl,
         slug: articleSlug,
         image_source: articleData.imageSource || null,

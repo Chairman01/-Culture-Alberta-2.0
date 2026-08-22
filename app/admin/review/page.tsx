@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import {
   CheckCircle2,
-  Trash2,
+  CornerUpLeft,
   Edit,
   Loader2,
   Inbox,
@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +55,7 @@ export default function ReviewQueue() {
   const [previews, setPreviews] = useState<Record<string, string>>({})
   const [loadingPreview, setLoadingPreview] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<PendingArticle | null>(null)
+  const [rejectReason, setRejectReason] = useState("")
   const { toast } = useToast()
 
   const load = useCallback(async (quiet = false) => {
@@ -154,10 +156,14 @@ export default function ReviewQueue() {
   }
 
   const reject = async (article: PendingArticle) => {
+    const reason = rejectReason.trim()
+    if (!reason) return
     setBusyId(article.id)
     try {
-      const res = await fetch(`/api/admin/articles/${article.id}`, {
-        method: "DELETE",
+      const res = await fetch(`/api/admin/review/${article.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject", reason }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -165,12 +171,13 @@ export default function ReviewQueue() {
       }
       setArticles((prev) => prev.filter((a) => a.id !== article.id))
       toast({
-        title: "Draft rejected",
-        description: `“${article.title}” has been deleted.`,
+        title: `Sent back to ${article.author}`,
+        description: `They will see your note on “${article.title}”, and it returns here once they rework it.`,
       })
+      setRejectReason("")
     } catch (error) {
       toast({
-        title: "Could not reject the draft",
+        title: "Could not send that back",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       })
@@ -323,10 +330,9 @@ export default function ReviewQueue() {
                         variant="outline"
                         onClick={() => setRejectTarget(article)}
                         disabled={isBusy}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Reject
+                        <CornerUpLeft className="h-4 w-4 mr-2" />
+                        Send back
                       </Button>
                     </div>
                   </div>
@@ -359,23 +365,50 @@ export default function ReviewQueue() {
 
       <AlertDialog
         open={!!rejectTarget}
-        onOpenChange={(open) => !open && setRejectTarget(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejectTarget(null)
+            setRejectReason("")
+          }
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reject this draft?</AlertDialogTitle>
+            <AlertDialogTitle>Send “{rejectTarget?.title}” back?</AlertDialogTitle>
             <AlertDialogDescription>
-              “{rejectTarget?.title}” will be permanently deleted. This cannot be
-              undone.
+              Nothing is deleted. {rejectTarget?.author} keeps the draft, sees your note on their
+              articles list, and it comes back to this queue once they rework it.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <label htmlFor="reject-reason" className="text-sm font-medium">
+              What needs fixing?
+            </label>
+            <Textarea
+              id="reject-reason"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="One line is enough — “$1,800 figure isn't in the AISH release, check the source.”"
+              rows={3}
+              maxLength={500}
+              autoFocus
+            />
+            <p className="text-xs text-gray-500">
+              Required. This is the whole point — a draft that comes back with no reason teaches
+              nobody anything.
+            </p>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={() => rejectTarget && reject(rejectTarget)}
+              disabled={!rejectReason.trim()}
+              onClick={(e) => {
+                // Without this the dialog closes on click, unmounting mid-request.
+                e.preventDefault()
+                if (rejectTarget) reject(rejectTarget)
+              }}
             >
-              Delete draft
+              Send back
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

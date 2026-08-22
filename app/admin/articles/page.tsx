@@ -145,6 +145,9 @@ export default function AdminArticles() {
         location: a.location || '',
         type: a.type || '',
         status: a.status || '',
+        reviewStatus: a.reviewStatus || 'pending',
+        reviewNote: a.reviewNote || '',
+        reviewedBy: a.reviewedBy || '',
       }))
       console.log('Admin: Normalized articles:', normalized)
       setArticles(normalized)
@@ -365,6 +368,12 @@ export default function AdminArticles() {
     ? 0
     : articles.filter(a => a.status === 'draft').length
 
+  // Work an editor sent back. This is the only place a writer finds out why —
+  // so it goes at the top of their list, with the note itself, not a bare flag.
+  const sentBack = isContributor
+    ? articles.filter(a => (a as any).reviewStatus === 'rejected')
+    : []
+
   const filteredArticles = articles.filter(article => {
     if (!isContributor && article.status === 'draft') return false
     const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -427,6 +436,33 @@ export default function AdminArticles() {
           </span>
           <span className="font-medium whitespace-nowrap">Go to Review Queue →</span>
         </Link>
+      )}
+
+      {sentBack.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-3">
+          <p className="font-medium">
+            {sentBack.length === 1
+              ? "One piece came back with a note."
+              : `${sentBack.length} pieces came back with notes.`}{" "}
+            Nothing was deleted — fix it and save, and it goes straight back into the queue.
+          </p>
+          <ul className="space-y-2">
+            {sentBack.map(article => (
+              <li
+                key={article.id}
+                className="rounded-md border border-amber-200 bg-white/70 px-3 py-2"
+              >
+                <Link
+                  href={`/admin/articles/${article.id}`}
+                  className="font-medium underline underline-offset-2"
+                >
+                  {article.title}
+                </Link>
+                <p className="mt-1 text-amber-800">“{(article as any).reviewNote}”</p>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="flex justify-between items-center">

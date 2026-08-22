@@ -30,6 +30,13 @@ export interface NewsletterConfig {
   article_order: string[] | null
   alberta_article_ids: string[] | null
   last_sent_at?: string | null
+  // What the writer who prepared this edition handed over. Nothing here sends
+  // anything — it is the subject line they suggest and the note they leave for
+  // whoever does.
+  proposed_subject?: string | null
+  prepare_note?: string | null
+  prepared_by?: string | null
+  prepared_at?: string | null
   updated_at: string
 }
 
@@ -57,7 +64,7 @@ const empty = (city: NewsletterCity): NewsletterConfig => ({
 export async function getNewsletterConfig(city: NewsletterCity): Promise<NewsletterConfig> {
   const { data, error } = await supabase
     .from('newsletter_config')
-    .select('city, featured_article_id, article_order, alberta_article_ids, last_sent_at, updated_at')
+    .select('city, featured_article_id, article_order, alberta_article_ids, last_sent_at, proposed_subject, prepare_note, prepared_by, prepared_at, updated_at')
     .eq('city', city)
     .single()
 
@@ -68,7 +75,7 @@ export async function getNewsletterConfig(city: NewsletterCity): Promise<Newslet
 export async function getAllNewsletterConfigs(): Promise<Record<NewsletterCity, NewsletterConfig>> {
   const { data } = await supabase
     .from('newsletter_config')
-    .select('city, featured_article_id, article_order, alberta_article_ids, last_sent_at, updated_at')
+    .select('city, featured_article_id, article_order, alberta_article_ids, last_sent_at, proposed_subject, prepare_note, prepared_by, prepared_at, updated_at')
 
   const result: Record<NewsletterCity, NewsletterConfig> = {
     edmonton: empty('edmonton'),
