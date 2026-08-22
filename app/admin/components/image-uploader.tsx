@@ -12,65 +12,127 @@ interface ImageUploaderProps {
 
 // Convert all images to JPEG for maximum social media compatibility
 // Reddit's crawler has issues with PNG format for Open Graph images
+/**
+ * How long to wait for the browser to decode an image before giving up.
+ *
+ * There has to be a limit. The decode is driven by `onload`/`onerror`, and for
+ * a file the browser cannot read, neither always fires -- the promise then
+ * never settles and the dialog sits on its spinner forever with nothing to
+ * report. A visible failure beats a silent hang.
+ */
+const CONVERT_TIMEOUT_MS = 20000
+
+/**
+ * Cap on the longest edge before conversion.
+ *
+ * Canvas has a maximum area -- around 16.7 million pixels on iOS Safari, which
+ * a modern phone photo exceeds on its own. Past it `toBlob` hands back null and
+ * the upload fails for no reason the writer can act on. Downscaling first also
+ * keeps the JPEG from coming out larger than the PNG that went in.
+ */
+const MAX_DIMENSION = 2400
+
+/** Formats no browser will decode, whatever the extension claims. */
+function undecodableFormat(file: File): string | null {
+  if (/heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name)) {
+    return 'iPhone photos (HEIC) cannot be read by browsers. On the phone, share it as JPEG, or take a screenshot of it and upload that.'
+  }
+  if (/tiff?$/i.test(file.type) || /\.tiff?$/i.test(file.name)) {
+    return 'TIFF images cannot be read by browsers. Save it as JPEG or PNG first.'
+  }
+  return null
+}
+
+// Convert all images to JPEG for maximum social media compatibility.
+// Reddit's crawler has issues with PNG format for Open Graph images.
 async function convertToJpeg(file: File): Promise<File> {
   // Only skip if already JPEG - convert PNG and other formats to JPEG for Reddit compatibility
   if (file.type === 'image/jpeg') {
     return file
   }
 
+  const unsupported = undecodableFormat(file)
+  if (unsupported) throw new Error(unsupported)
+
   console.log('🔄 Converting image from', file.type, 'to JPEG for social media compatibility')
 
   return new Promise((resolve, reject) => {
     const img = new Image()
     const url = URL.createObjectURL(file)
+    let settled = false
+
+    const finish = (fn: () => void) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      URL.revokeObjectURL(url)
+      fn()
+    }
+
+    const timer = setTimeout(() => {
+      finish(() =>
+        reject(
+          new Error(
+            'The browser could not read this image (it timed out). Try re-saving it as a JPEG or PNG and uploading again.',
+          ),
+        ),
+      )
+    }, CONVERT_TIMEOUT_MS)
 
     img.onload = () => {
-      // Create canvas with image dimensions
+      // Scale the longest edge down to MAX_DIMENSION, keeping the aspect ratio.
+      const scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height))
+      const width = Math.max(1, Math.round(img.width * scale))
+      const height = Math.max(1, Math.round(img.height * scale))
+
       const canvas = document.createElement('canvas')
-      canvas.width = img.width
-      canvas.height = img.height
+      canvas.width = width
+      canvas.height = height
 
       const ctx = canvas.getContext('2d')
       if (!ctx) {
-        URL.revokeObjectURL(url)
-        reject(new Error('Failed to get canvas context'))
+        finish(() => reject(new Error('Failed to get canvas context')))
         return
       }
 
       // Fill with white background (for transparency in WebP/PNG)
       ctx.fillStyle = '#FFFFFF'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.fillRect(0, 0, width, height)
+      ctx.drawImage(img, 0, 0, width, height)
 
-      // Draw image
-      ctx.drawImage(img, 0, 0)
-
-      // Convert to JPEG blob
       canvas.toBlob(
         (blob) => {
-          URL.revokeObjectURL(url)
           if (!blob) {
-            reject(new Error('Failed to convert image'))
+            finish(() =>
+              reject(
+                new Error(
+                  'The browser ran out of room converting this image. Try a smaller one, or save it as a JPEG first.',
+                ),
+              ),
+            )
             return
           }
 
-          // Create new file with .jpg extension
-          const jpegFile = new File(
-            [blob],
-            file.name.replace(/\.[^.]+$/, '.jpg'),
-            { type: 'image/jpeg' }
-          )
+          const jpegFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+            type: 'image/jpeg',
+          })
 
           console.log('✅ Image converted to JPEG:', jpegFile.name, 'Size:', jpegFile.size)
-          resolve(jpegFile)
+          finish(() => resolve(jpegFile))
         },
         'image/jpeg',
-        0.9 // Quality: 90%
+        0.9, // Quality: 90%
       )
     }
 
     img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('Failed to load image for conversion'))
+      finish(() =>
+        reject(
+          new Error(
+            'The browser could not read this image. Try re-saving it as a JPEG or PNG and uploading again.',
+          ),
+        ),
+      )
     }
 
     img.src = url
@@ -119,6 +181,16 @@ export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
       // Reddit/Embedly don't reliably support WebP for Open Graph previews
       setUploadProgress('Converting to JPEG for social media compatibility...')
       const convertedFile = await convertToJpeg(file)
+
+      // The size check before this ran against the file the writer picked. What
+      // gets sent is the converted one, and a big PNG can come out of the
+      // encoder larger than it went in -- which the server then rejects with a
+      // message that makes no sense next to a file that was under the limit.
+      if (convertedFile.size > MAX_SIZE_MB * 1024 * 1024) {
+        throw new Error(
+          `This image is still ${(convertedFile.size / 1024 / 1024).toFixed(1)}MB after conversion, over the ${MAX_SIZE_MB}MB limit. Try resizing it first.`,
+        )
+      }
 
       setUploadProgress('Uploading image...')
       const formData = new FormData()
