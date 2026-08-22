@@ -84,11 +84,20 @@ export const FigureWithCredit = Node.create({
         ({ src, alt, credit }) =>
         ({ chain }) =>
           chain()
-            .insertContent({
-              type: this.name,
-              attrs: { src, alt: alt ?? null },
-              content: credit?.trim() ? [{ type: 'text', text: credit.trim() }] : [],
-            })
+            .insertContent([
+              {
+                type: this.name,
+                attrs: { src, alt: alt ?? null },
+                content: credit?.trim() ? [{ type: 'text', text: credit.trim() }] : [],
+              },
+              // A paragraph always follows the image, and the cursor lands in
+              // it. Without one, an image inserted at the end of the article
+              // leaves nowhere to type: the figure is `isolating`, so the
+              // selection cannot cross out of it, and the writer is left
+              // pressing keys with nothing happening. Escaping otherwise means
+              // knowing about the gap cursor, which nobody does.
+              { type: 'paragraph' },
+            ])
             .run(),
     }
   },

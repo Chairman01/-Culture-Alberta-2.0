@@ -253,8 +253,13 @@ body {
   }
 
   /* An image inserted without a credit still produces an empty figcaption.
-     Collapse it so it leaves no gap under the picture. */
-  .article-content-wrapper figure.article-figure figcaption:empty,
+     Collapse it on the published page so it leaves no gap under the picture.
+
+     Scoped to .article-content — the PUBLIC wrapper — and deliberately NOT to
+     .article-content-wrapper, which the admin editor also uses. Hiding it there
+     hid the caption's editable content, which is exactly where the editor puts
+     the cursor for that image: typing went into something with no size and no
+     visible position, and the editor read as frozen. */
   .article-content figure.article-figure figcaption:empty {
     display: none;
   }

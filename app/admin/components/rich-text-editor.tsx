@@ -253,6 +253,34 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
           max-width: 100%;
           height: auto;
         }
+        /* An image that carries a credit. The caption is the editable part of
+           the block, so it must always be visible and clickable here even when
+           it is empty -- an invisible caption is a place the cursor can go and
+           the writer cannot see, which makes the editor look frozen. */
+        .ProseMirror figure.article-figure {
+          margin: 2rem 0;
+        }
+        .ProseMirror figure.article-figure img {
+          margin: 0;
+        }
+        .ProseMirror figure.article-figure figcaption {
+          display: block;
+          min-height: 1.5rem;
+          margin-top: 0.5rem;
+          padding: 0.125rem 0.25rem;
+          border-bottom: 1px dashed #d1d5db;
+          font-size: 0.875rem;
+          color: #6b7280;
+          text-align: right;
+          outline: none;
+        }
+        /* Says what the empty box is for, without becoming real content. */
+        .ProseMirror figure.article-figure figcaption:empty::before {
+          content: 'Photo credit (optional)';
+          color: #9ca3af;
+          font-style: italic;
+          pointer-events: none;
+        }
         .ProseMirror span[style*="font-family"] {
           font-family: inherit;
         }
