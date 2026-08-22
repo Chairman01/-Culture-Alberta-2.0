@@ -228,6 +228,37 @@ body {
     margin-right: auto;
   }
 
+  /* In-body images that carry a photo credit. The caption has to read as
+     attribution rather than body copy, so it is smaller, grey, and tucked
+     against the image instead of floating in the text. */
+  .article-content-wrapper figure.article-figure,
+  .article-content figure.article-figure {
+    margin: 2rem 0;
+  }
+
+  .article-content-wrapper figure.article-figure img,
+  .article-content figure.article-figure img {
+    margin-bottom: 0;
+  }
+
+  .article-content-wrapper figure.article-figure figcaption,
+  .article-content figure.article-figure figcaption,
+  .article-content-wrapper .article-figure-credit,
+  .article-content .article-figure-credit {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #6b7280;
+    text-align: right;
+  }
+
+  /* An image inserted without a credit still produces an empty figcaption.
+     Collapse it so it leaves no gap under the picture. */
+  .article-content-wrapper figure.article-figure figcaption:empty,
+  .article-content figure.article-figure figcaption:empty {
+    display: none;
+  }
+
   .twitter-tweet {
     min-height: 420px;
   }

@@ -198,7 +198,11 @@ function heroSection(article: NewsletterArticle, accentColor: string, accentColo
               width="600"
               style="display:block;width:100%;max-width:600px;height:auto;border:0;" />
           </a>
-          ${article.imageSource ? `<div style="padding:4px 10px;background-color:#f5f5f5;text-align:right;"><span style="font-size:10px;color:#999;letter-spacing:0.2px;">📷 ${escapeHtml(article.imageSource)}</span></div>` : ''}
+<!-- No image credit here on purpose. The credit is still recorded and still
+           shows under the image on the article page, which is where attribution
+           belongs; in the email it was a grey strip under every picture that
+           bought nothing and broke up the layout. -->
+
         </td>
       </tr>`
     : ''
@@ -242,7 +246,8 @@ function cityStoriesSection(articles: NewsletterArticle[], cityLabel: string, ac
                 <img src="${escapeHtml(a.imageUrl)}" alt="" width="88" height="66"
                   style="display:block;width:88px;height:66px;object-fit:cover;border-radius:6px;border:0;" />
               </a>
-              ${a.imageSource ? `<div style="margin-top:3px;text-align:center;"><span style="font-size:9px;color:#bbb;">📷 ${escapeHtml(a.imageSource)}</span></div>` : ''}
+<!-- Credit deliberately omitted; see the note on the featured image above. -->
+
             </td>` : `<td width="32" style="padding:18px 0 18px 32px;"></td>`}
             <td style="padding:18px 32px 18px ${a.imageUrl ? '0' : '0'};vertical-align:top;">
               <h3 style="margin:0 0 6px 0;font-size:15px;font-weight:700;line-height:1.35;color:#0a0a0a;">

@@ -573,7 +573,7 @@ export default function NewArticlePage() {
               placeholder="e.g. CBC, City of Edmonton, Photo: Jane Smith"
             />
             <p className="text-sm text-gray-500 mt-1">
-              Optional. Shown as a small 📷 credit beneath the image in the newsletter.
+              Optional. Shown under the image on the article page, as “Photo: …”. Not shown in the newsletter.
             </p>
           </div>
         </div>

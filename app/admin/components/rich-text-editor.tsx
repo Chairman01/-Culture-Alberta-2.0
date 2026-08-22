@@ -63,6 +63,7 @@ const FontSize = Extension.create({
 })
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ImageUploader } from './image-uploader'
+import { FigureWithCredit } from './figure-with-credit'
 import { useState, useEffect } from 'react'
 import { 
   Bold,
@@ -94,6 +95,9 @@ interface RichTextEditorProps {
 export function RichTextEditor({ content, onChange, placeholder = "Write your article content here..." }: RichTextEditorProps) {
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
+  // An uploaded image waiting on its credit before it goes into the article.
+  const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null)
+  const [pendingCredit, setPendingCredit] = useState("")
 
   const editor = useEditor({
     extensions: [
@@ -108,6 +112,10 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
           class: 'max-w-full h-auto rounded-lg my-4',
         },
       }),
+      // Newly inserted images become figures so they can carry a credit. The
+      // plain Image node above stays registered: every image in every existing
+      // article is a bare <img>, and dropping it would empty them on open.
+      FigureWithCredit,
       Placeholder.configure({
         placeholder,
       }),
@@ -146,11 +154,24 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
     }
   }, [content]) // Remove editor from dependencies to prevent loops
 
+  // Two steps on purpose: pick the picture, then say where it came from. Asking
+  // for the credit at the moment of insert is the only point the writer still
+  // has the source in front of them -- afterwards it gets left blank.
   const handleImageSelect = (url: string) => {
-    if (editor) {
-      editor.chain().focus().setImage({ src: url }).run()
-    }
     setShowImageUploader(false)
+    setPendingImageUrl(url)
+    setPendingCredit("")
+  }
+
+  const insertPendingImage = () => {
+    if (editor && pendingImageUrl) {
+      editor.chain().focus().setFigureWithCredit({
+        src: pendingImageUrl,
+        credit: pendingCredit,
+      }).run()
+    }
+    setPendingImageUrl(null)
+    setPendingCredit("")
   }
 
   if (!editor) {
@@ -531,10 +552,61 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
 
       {/* Image Uploader Modal */}
       {showImageUploader && (
-        <ImageUploader 
-          onSelect={handleImageSelect} 
-          onClose={() => setShowImageUploader(false)} 
+        <ImageUploader
+          onSelect={handleImageSelect}
+          onClose={() => setShowImageUploader(false)}
         />
+      )}
+
+      {/* Credit prompt — shown between choosing the image and inserting it. */}
+      {pendingImageUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl space-y-4">
+            <div>
+              <h3 className="font-semibold">Where did this image come from?</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Shown as a small credit under the image in the article. Leave it blank only if the
+                photo is ours.
+              </p>
+            </div>
+
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={pendingImageUrl}
+              alt=""
+              className="max-h-40 w-full rounded-md object-cover bg-gray-100"
+            />
+
+            <input
+              autoFocus
+              value={pendingCredit}
+              onChange={(e) => setPendingCredit(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") insertPendingImage()
+                if (e.key === "Escape") setPendingImageUrl(null)
+              }}
+              placeholder="e.g. Photo: City of Edmonton"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
+            />
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingImageUrl(null)}
+                className="rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={insertPendingImage}
+                className="rounded-md bg-black px-4 py-2 text-sm text-white hover:bg-gray-800"
+              >
+                {pendingCredit.trim() ? "Insert with credit" : "Insert without credit"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
