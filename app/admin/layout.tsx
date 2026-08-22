@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { BarChart2, FileText, Calendar, Award, Mail, MessageSquare, RefreshCw, LogOut, Menu, X, Zap, Pin, Building2, Wrench, Users, Briefcase, Inbox } from "lucide-react"
+import { BarChart2, FileText, Calendar, Award, Mail, MessageSquare, RefreshCw, LogOut, Menu, X, Zap, Pin, Building2, Wrench, Users, UserCog, Briefcase, Inbox } from "lucide-react"
 import { Toaster } from "@/components/ui/toaster"
 
 export default function AdminLayout({
@@ -95,6 +95,7 @@ export default function AdminLayout({
     localStorage.removeItem('admin_user')
     localStorage.removeItem('admin_login_time')
     localStorage.removeItem('admin_role')
+    localStorage.removeItem('admin_name')
 
 
     router.push('/admin/login')
@@ -112,6 +113,7 @@ export default function AdminLayout({
     { name: 'Comments', href: '/admin/comments', icon: MessageSquare },
     { name: 'Daily Poll', href: '/admin/polls', icon: BarChart2 },
     { name: 'Members', href: '/admin/users', icon: Users },
+    { name: 'Team', href: '/admin/team', icon: UserCog },
     { name: 'Tools', href: '/admin/tools', icon: Wrench },
     { name: 'Link in Bio', href: '/admin/link-in-bio', icon: Pin },
     { name: 'Newsletter', href: '/admin/newsletter', icon: Mail },
@@ -119,6 +121,7 @@ export default function AdminLayout({
   ]
   const contributorNavigation = [
     { name: 'Articles', href: '/admin/articles', icon: FileText },
+    { name: 'Newsletter', href: '/admin/newsletter/prepare', icon: Mail },
   ]
   const navigation = adminRole === 'contributor' ? contributorNavigation : adminNavigation
 

@@ -14,7 +14,12 @@ const getSupabaseClient = getServiceClient
 export async function GET(request: NextRequest) {
   const auth = requireAdminOrContributor(request)
   if (!auth.ok) return auth.response
-  const contributorAuthor = auth.role === 'contributor' ? auth.username : null
+  // A writer sees only their own work. Scope by account id where the article
+  // has one; fall back to the byline for articles written under the old shared
+  // contributor login, which predate per-writer accounts.
+  const isContributor = auth.role === 'contributor'
+  const contributorUserId = isContributor ? auth.userId : null
+  const contributorAuthor = isContributor ? (auth.name || auth.username) : null
 
   try {
     const { searchParams } = new URL(request.url)
@@ -29,10 +34,12 @@ export async function GET(request: NextRequest) {
       // Fetch all articles with essential fields only (EXCLUDE image data for performance)
       let query = supabase
         .from('articles')
-        .select('id,title,excerpt,content,category,categories,location,author,tags,type,status,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary')
+        .select('id,title,excerpt,content,category,categories,location,author,author_user_id,tags,type,status,review_status,review_note,reviewed_at,reviewed_by,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary')
         .order('created_at', { ascending: false })
 
-      if (contributorAuthor) {
+      if (contributorUserId) {
+        query = query.eq('author_user_id', contributorUserId)
+      } else if (contributorAuthor) {
         query = query.eq('author', contributorAuthor)
       }
 
@@ -54,6 +61,12 @@ export async function GET(request: NextRequest) {
           featuredHome: article.featured_home || false,
           featuredEdmonton: article.featured_edmonton || false,
           featuredCalgary: article.featured_calgary || false,
+          // The review trail, so a writer can see the one-line reason a draft
+          // came back instead of having to ask what happened to it.
+          reviewStatus: article.review_status || 'pending',
+          reviewNote: article.review_note || '',
+          reviewedAt: article.reviewed_at || null,
+          reviewedBy: article.reviewed_by || '',
           createdAt: article.created_at,
           updatedAt: article.updated_at || article.created_at,
         }))

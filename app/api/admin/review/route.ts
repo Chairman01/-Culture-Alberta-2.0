@@ -6,6 +6,11 @@
  * Admin only. Contributors submit into this queue (their creates are forced to
  * 'draft' in ../articles/create) but must never be able to read it, since it
  * holds every contributor's unpublished work, not just their own.
+ *
+ * The queue is drafts that are still waiting, not every draft. A rejected piece
+ * keeps status='draft' — which is what hides it from the public site — and
+ * leaves the queue by way of review_status instead, so it stops reappearing
+ * here every time the editor reloads.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -26,6 +31,7 @@ export async function GET(request: NextRequest) {
       .from('articles')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'draft')
+      .eq('review_status', 'pending')
 
     if (error) {
       console.error('❌ Review queue count failed:', error.message)
@@ -41,6 +47,7 @@ export async function GET(request: NextRequest) {
     .from('articles')
     .select('id, title, excerpt, author, category, categories, location, image_url, slug, created_at, updated_at, tags')
     .eq('status', 'draft')
+    .eq('review_status', 'pending')
     .order('created_at', { ascending: false })
 
   if (error) {

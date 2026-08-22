@@ -11,11 +11,11 @@ import {
   getJobPreferences, saveJobPreferences, scoreJob, hasAnswers,
   type JobPreferences, type MatchResult,
 } from '@/lib/job-preferences'
-import { JOB_CITY_LABELS } from '@/lib/jobs'
 import type { SavedJobStatus } from '@/lib/types/job'
 import Link from 'next/link'
 import {
   Search, MapPin, Clock, X, Building2, ExternalLink, Loader2, Sparkles, SlidersHorizontal,
+  AlertCircle,
 } from 'lucide-react'
 
 /**
@@ -100,6 +100,54 @@ export default function JobsBrowser({
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   /**
+   * Where the reader was, kept across a trip off the board.
+   *
+   * Every bit of this screen lived in React memory, so opening a posting page
+   * and pressing Back — or applying and coming back to the tab after the app
+   * had been evicted — rebuilt it from scratch: page 1, no filters, first row
+   * selected, scrolled to the top. Someone twelve rows into page 3 lost all of
+   * it for the crime of applying to a job.
+   *
+   * sessionStorage rather than the URL: the filters change on every keystroke
+   * and pushing each one through the router would refetch the server component
+   * for a purely client-side change. Keyed by initialCity so /jobs and
+   * /jobs/calgary keep their own place.
+   */
+  const stateKey = `jobs_board_state_${initialCity}`
+  const restoredState = useRef(false)
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    if (restoredState.current) return
+    try {
+      const raw = sessionStorage.getItem(stateKey)
+      if (raw) {
+        const s = JSON.parse(raw)
+        restoredState.current = true
+        if (typeof s.keyword === 'string') setKeyword(s.keyword)
+        if (typeof s.city === 'string') setCity(s.city)
+        if (typeof s.category === 'string') setCategory(s.category)
+        if (typeof s.postedWithin === 'string') setPostedWithin(s.postedWithin)
+        if (typeof s.hasSalary === 'boolean') setHasSalary(s.hasSalary)
+        if (typeof s.employment === 'string') setEmployment(s.employment)
+        if (typeof s.union === 'string') setUnion(s.union)
+        if (typeof s.page === 'number') setPage(s.page)
+        if (typeof s.selectedId === 'string') setSelectedId(s.selectedId)
+        if (s.sortBy === 'match' || s.sortBy === 'newest') setSortBy(s.sortBy)
+        // After the restored rows have been laid out, not before — scrolling to
+        // 4,000px on a page still rendering its first twenty rows lands at the
+        // bottom of a short document and the browser clamps it back to the top.
+        if (typeof s.scrollY === 'number' && s.scrollY > 0) {
+          requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, s.scrollY)))
+        }
+      }
+    } catch {
+      /* private mode, quota, corrupt entry — the default board is fine */
+    }
+    setHydrated(true)
+  }, [stateKey])
+
+  /**
    * The signed-in user's tracker state, so a job they've already applied to is
    * obvious while scanning. One query for every tracked job rather than one per
    * card — the board runs to hundreds of rows and nobody tracks more than a few
@@ -144,14 +192,12 @@ export default function JobsBrowser({
   const [prefs, setPrefs] = useState<JobPreferences | null>(null)
   const [showPrefsCard, setShowPrefsCard] = useState(false)
   const [editingPrefs, setEditingPrefs] = useState(false)
-  const [onlyMatches, setOnlyMatches] = useState(false)
   const [sortBy, setSortBy] = useState<'newest' | 'match'>('newest')
 
   useEffect(() => {
     let active = true
     if (!user) {
       setPrefs(null)
-      setOnlyMatches(false)
       setSortBy('newest')
       // Signed-out visitors still see the pitch, once, until they wave it off.
       setShowPrefsCard(!sessionStorage.getItem('jobs_prefs_dismissed'))
@@ -161,26 +207,21 @@ export default function JobsBrowser({
       .then(p => {
         if (!active) return
         setPrefs(p)
-        if (hasAnswers(p)) {
-          setSortBy('match')
-          // Only the province-wide board narrows itself. /jobs/lethbridge is a
-          // request to see Lethbridge, and someone whose answers say Edmonton
-          // would otherwise land on a city page showing them nothing — or worse,
-          // showing them Edmonton jobs under a Lethbridge heading.
-          if (initialCity === 'all') {
-            setOnlyMatches(true)
-            // A single stated city or category maps cleanly onto the existing
-            // dropdowns; several can't, and the match filter covers those.
-            if (p!.cities.length === 1) setCity(JOB_CITY_LABELS[p!.cities[0]] ?? initialCity)
-          }
-          if (p!.categories.length === 1) setCategory(p!.categories[0])
-          if (p!.employmentTypes.length === 1) setEmployment(p!.employmentTypes[0])
-        }
+        // Answers reorder the board. They never take anything off it.
+        //
+        // There was a "only show roles that fit me" filter that switched itself
+        // on here, and on any short list — an employer's nine roles, a small
+        // city — it could qualify nothing and hand the reader "Showing 0-0 of
+        // 0" as their reward for answering a few questions. Sorting puts the
+        // same roles at the top and leaves every other one reachable, so the
+        // answers can only ever help. The dropdowns stay the reader's for the
+        // same reason: nothing narrows this board except what they choose.
+        if (hasAnswers(p) && !restoredState.current) setSortBy('match')
         setShowPrefsCard(!p || (!hasAnswers(p) && !p.dismissedAt))
       })
       .catch(() => {})
     return () => { active = false }
-  }, [user, initialCity])
+  }, [user])
 
   const dismissPrefs = useCallback(() => {
     setShowPrefsCard(false)
@@ -198,10 +239,7 @@ export default function JobsBrowser({
     setShowPrefsCard(false)
     setEditingPrefs(false)
     setPage(1)
-    if (hasAnswers(saved)) {
-      setOnlyMatches(true)
-      setSortBy('match')
-    }
+    if (hasAnswers(saved)) setSortBy('match')
   }, [])
 
   const matching = hasAnswers(prefs)
@@ -225,8 +263,7 @@ export default function JobsBrowser({
 
   const filtersActive =
     keyword.trim() !== '' || city !== initialCity || category !== 'all' ||
-    postedWithin !== 'all' || hasSalary || employment !== 'all' || union !== 'all' ||
-    onlyMatches
+    postedWithin !== 'all' || hasSalary || employment !== 'all' || union !== 'all'
 
   const clearFilters = () => {
     setKeyword('')
@@ -236,24 +273,43 @@ export default function JobsBrowser({
     setHasSalary(false)
     setEmployment('all')
     setUnion('all')
-    setOnlyMatches(false)
     setPage(1)
   }
 
-  const filtered = useMemo(() => {
+  /**
+   * The board never renders empty.
+   *
+   * An empty job board is a dead end — there is nothing to click, nothing to
+   * read, and on a short page nothing to scroll, so it reads as broken rather
+   * than as a filter being too tight. When the reader's filters exclude
+   * everything, they are dropped, the whole board is shown, and the reader is
+   * told what happened. Something is always on screen.
+   */
+  const { filtered, fallback } = useMemo(() => {
     const kw = keyword.trim().toLowerCase()
     const cutoff =
       postedWithin === 'all'
         ? null
         : Date.now() - Number(postedWithin) * 24 * 60 * 60 * 1000
 
-    const results = jobs.filter(j => {
+    const rank = (j: BrowserJob) => (j.featured ? 0 : j.manual ? 1 : 2)
+    const sort = (list: BrowserJob[]) =>
+      [...list].sort((a, b) => {
+        const r = rank(a) - rank(b)
+        if (r !== 0) return r
+        if (sortBy === 'match' && matching) {
+          const d = (matches.get(b.id)?.score ?? 0) - (matches.get(a.id)?.score ?? 0)
+          if (d !== 0) return d
+        }
+        return (b.postedAt || '').localeCompare(a.postedAt || '')
+      })
+
+    const own = jobs.filter(j => {
       if (city !== 'all' && j.city !== city) return false
       if (category !== 'all' && j.category !== category) return false
       if (employment !== 'all' && j.employmentType !== employment) return false
       if (union !== 'all' && j.unionStatus !== union) return false
       if (hasSalary && !j.salaryText) return false
-      if (onlyMatches && matching && !matches.get(j.id)?.qualifies) return false
       if (cutoff && (!j.postedAt || new Date(j.postedAt).getTime() < cutoff)) return false
       if (kw) {
         const haystack = `${j.title} ${j.company} ${j.category} ${j.city}`.toLowerCase()
@@ -262,18 +318,9 @@ export default function JobsBrowser({
       return true
     })
 
-    // Featured/manual postings pinned first, then newest first
-    const rank = (j: BrowserJob) => (j.featured ? 0 : j.manual ? 1 : 2)
-    return results.sort((a, b) => {
-      const r = rank(a) - rank(b)
-      if (r !== 0) return r
-      if (sortBy === 'match' && matching) {
-        const d = (matches.get(b.id)?.score ?? 0) - (matches.get(a.id)?.score ?? 0)
-        if (d !== 0) return d
-      }
-      return (b.postedAt || '').localeCompare(a.postedAt || '')
-    })
-  }, [jobs, keyword, city, category, postedWithin, hasSalary, employment, union, onlyMatches, matching, matches, sortBy])
+    if (own.length > 0) return { filtered: sort(own), fallback: false }
+    return { filtered: sort(jobs), fallback: true }
+  }, [jobs, keyword, city, category, postedWithin, hasSalary, employment, union, matching, matches, sortBy])
 
   /**
    * Options come from the data, never a fixed list. The board currently holds
@@ -323,6 +370,42 @@ export default function JobsBrowser({
   const selected = pageJobs.find(j => j.id === selectedId) || pageJobs[0] || null
 
   const resetPage = () => setPage(1)
+
+  /**
+   * Save the reader's place.
+   *
+   * Written whenever the board changes, and again on the way out — `pagehide`
+   * covers clicking through to a posting and Back, `visibilitychange` covers
+   * switching to the employer's tab after Apply, which on mobile is often the
+   * last event before the page is evicted from memory.
+   */
+  const persistState = useCallback(() => {
+    if (!hydrated) return
+    try {
+      sessionStorage.setItem(stateKey, JSON.stringify({
+        keyword, city, category, postedWithin, hasSalary, employment, union,
+        page: safePage,
+        selectedId: selected?.id ?? null,
+        sortBy,
+        scrollY: window.scrollY,
+      }))
+    } catch {
+      /* quota or private mode — losing the place is survivable, throwing isn't */
+    }
+  }, [hydrated, stateKey, keyword, city, category, postedWithin, hasSalary,
+      employment, union, safePage, selected?.id, sortBy])
+
+  useEffect(() => { persistState() }, [persistState])
+
+  useEffect(() => {
+    const onHide = () => persistState()
+    window.addEventListener('pagehide', onHide)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      window.removeEventListener('pagehide', onHide)
+      document.removeEventListener('visibilitychange', onHide)
+    }
+  }, [persistState])
 
   // ── Full posting, fetched per selection ─────────────────────────────────────
 
@@ -564,21 +647,16 @@ export default function JobsBrowser({
         )}
       </div>
 
-      {/* Match controls — only once there are answers to match against. */}
+      {/* Match note — only once there are answers to match against. It says
+          what the answers did; it offers no way to hide jobs, because they
+          never should. */}
       {matching && (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3">
           <Sparkles className="h-4 w-4 flex-shrink-0 text-blue-600" />
-          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
-            <input
-              type="checkbox"
-              checked={onlyMatches}
-              onChange={e => { setOnlyMatches(e.target.checked); resetPage() }}
-              className="h-4 w-4 rounded border-gray-300"
-            />
-            Only show roles that fit me
-          </label>
-          <span className="text-sm text-gray-600">
-            {matchCount} of {jobs.length} match what you told us
+          <span className="text-sm text-gray-800">
+            {matchCount > 0
+              ? <><span className="font-medium">{matchCount} of {jobs.length}</span> {matchCount === 1 ? 'role fits' : 'roles fit'} what you told us — {sortBy === 'match' ? 'those are at the top' : 'sort by best matches to bring them up'}.</>
+              : <>Nothing here matches your answers, so every job is shown as usual.</>}
           </span>
           <button
             type="button"
@@ -586,6 +664,23 @@ export default function JobsBrowser({
             className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:text-blue-900"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" /> Change my answers
+          </button>
+        </div>
+      )}
+
+      {/* Said plainly, because the list below is not what was asked for. */}
+      {fallback && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+          <AlertCircle className="h-4 w-4 flex-shrink-0 text-amber-600" />
+          <span className="text-amber-900">
+            Nothing matches those filters, so every job is shown instead.
+          </span>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="font-medium text-amber-900 underline underline-offset-2 hover:text-amber-950"
+          >
+            Clear filters
           </button>
         </div>
       )}
@@ -610,21 +705,6 @@ export default function JobsBrowser({
           <p className="mt-2 text-sm text-gray-500">
             The board updates daily with new openings across Alberta. Check back soon.
           </p>
-        </div>
-      ) : pageJobs.length === 0 ? (
-        <div className="py-16 text-center">
-          <p className="text-gray-600">
-            {onlyMatches && matching
-              ? 'No jobs match what you told us — try widening your answers or turning the match filter off.'
-              : 'No jobs match your filters.'}
-          </p>
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="mt-3 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
-          >
-            Clear all filters
-          </button>
         </div>
       ) : (
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-6 lg:items-start">
