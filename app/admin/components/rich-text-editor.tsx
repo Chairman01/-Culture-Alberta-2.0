@@ -141,18 +141,38 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
     immediatelyRender: false, // Fix SSR hydration mismatch
   })
 
-  // Update editor content when prop changes (only if different)
+  /**
+   * Pull content in from the prop — but only when the writer is not typing.
+   *
+   * `setContent` replaces the whole document. Doing that while the editor has
+   * focus throws away the selection, so the caret jumps to the top and the next
+   * keystroke lands somewhere else. Repeated often enough the editor stops
+   * responding to typing altogether, which is what "I can't add a space" looks
+   * like from the outside.
+   *
+   * That was reachable because the guard compared the prop against the editor's
+   * own serialisation on every change: any difference at all -- and a document
+   * does not always serialise back byte-identically -- meant a full replacement
+   * on a 100ms timer, keystroke after keystroke. The old "use a timeout to
+   * prevent infinite loops" comment was the symptom of it.
+   *
+   * While the editor is focused it is the source of truth, so nothing is pulled
+   * in. The prop still loads normally on mount and whenever focus is elsewhere,
+   * which is the case this was written for -- opening an existing article.
+   */
   useEffect(() => {
-    if (editor && content && content !== editor.getHTML()) {
-      console.log('🔧 RichTextEditor: Updating content from prop:', content)
-      // Use a timeout to prevent infinite loops
-      const timeoutId = setTimeout(() => {
-        editor.commands.setContent(content, { emitUpdate: false }) // prevents emitting update event
-      }, 100)
-      
-      return () => clearTimeout(timeoutId)
-    }
-  }, [content]) // Remove editor from dependencies to prevent loops
+    if (!editor || !content) return
+    if (editor.isFocused) return
+    if (content === editor.getHTML()) return
+
+    const timeoutId = setTimeout(() => {
+      // Re-check: focus can arrive during the wait.
+      if (editor.isFocused || content === editor.getHTML()) return
+      editor.commands.setContent(content, { emitUpdate: false })
+    }, 100)
+
+    return () => clearTimeout(timeoutId)
+  }, [content, editor])
 
   // Two steps on purpose: pick the picture, then say where it came from. Asking
   // for the credit at the moment of insert is the only point the writer still
