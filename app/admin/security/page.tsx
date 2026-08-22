@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 
 type State = { mode: "env" | "account"; enabled: boolean; backupCodesLeft: number | null }
-type Setup = { secret: string; formatted: string; uri: string; mode: "env" | "account" }
+type Setup = { secret: string; formatted: string; uri: string; qr?: string; mode: "env" | "account" }
 
 export default function SecurityPage() {
   const [state, setState] = useState<State | null>(null)
@@ -158,27 +158,46 @@ export default function SecurityPage() {
               <div>
                 <p className="font-medium text-sm">1. Add it to your authenticator</p>
                 <p className="text-sm text-gray-600 mt-1">
-                  On your phone, tap the link below and it will add itself. On a computer, type the
-                  key into your app by hand.
+                  Open your authenticator app, choose to add an account, and scan this.
                 </p>
               </div>
 
-              <a
-                href={setup.uri}
-                className="inline-block text-sm underline underline-offset-2 break-all"
-              >
-                Add to authenticator app
-              </a>
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                {setup.qr && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={setup.qr}
+                    alt="QR code for two-factor setup"
+                    width={220}
+                    height={220}
+                    className="rounded-md border bg-white p-2 shrink-0"
+                  />
+                )}
 
-              <div>
-                <Label className="text-xs">Setup key</Label>
-                <div className="flex gap-2 mt-1">
-                  <code className="flex-1 rounded border bg-white px-3 py-2 text-sm tracking-wider break-all">
-                    {setup.formatted}
-                  </code>
-                  <Button variant="outline" size="sm" onClick={() => copy(setup.secret, "secret")}>
-                    {copied === "secret" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-600">
+                      On the phone itself, where there is nothing to scan, tap this instead:
+                    </p>
+                    <a
+                      href={setup.uri}
+                      className="inline-block mt-1 text-sm underline underline-offset-2"
+                    >
+                      Add to authenticator app
+                    </a>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs">Or type the key by hand</Label>
+                    <div className="flex gap-2 mt-1">
+                      <code className="flex-1 rounded border bg-white px-3 py-2 text-sm tracking-wider break-all">
+                        {setup.formatted}
+                      </code>
+                      <Button variant="outline" size="sm" onClick={() => copy(setup.secret, "secret")}>
+                        {copied === "secret" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
 

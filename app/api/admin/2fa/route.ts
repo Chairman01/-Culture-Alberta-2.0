@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import QRCode from 'qrcode'
 import { requireAdmin } from '@/lib/admin-auth'
 import { getTotp, stageTotpSecret, enableTotp, disableTotp } from '@/lib/admin-users'
 import { generateSecret, verifyCode, otpauthUri, formatSecret, generateBackupCodes } from '@/lib/totp'
@@ -57,16 +58,30 @@ export async function POST(request: NextRequest) {
 
   if (body.action === 'begin') {
     const secret = generateSecret()
+    const uri = otpauthUri(secret, account)
 
     // For a database account the secret is stored straight away but stays
     // switched off until a code proves the app actually holds it. For the owner
     // it is only shown — they put it in Vercel themselves.
     if (!isEnvOwner(auth)) await stageTotpSecret(auth.userId!, secret)
 
+    // Rendered here rather than in the browser: the QR encodes the secret, so
+    // generating it server-side keeps the secret out of any client-side library
+    // and out of the page's JavaScript. Inlined as a data URI so it needs no
+    // second request and never touches an external service.
+    const svg = await QRCode.toString(uri, {
+      type: 'svg',
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: 220,
+    })
+    const qr = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`
+
     return NextResponse.json({
       secret,
       formatted: formatSecret(secret),
-      uri: otpauthUri(secret, account),
+      uri,
+      qr,
       mode: isEnvOwner(auth) ? 'env' : 'account',
     })
   }
