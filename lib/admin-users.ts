@@ -198,3 +198,87 @@ export async function countActiveAdmins(): Promise<number> {
   }
   return count ?? 0
 }
+
+// ── Two-factor ────────────────────────────────────────────────────────────────
+
+export type AdminTotp = {
+  secret: string | null
+  enabled: boolean
+  backupCodes: string[]
+}
+
+/** Reads the 2FA state for one account. Never exposed to the client. */
+export async function getTotp(id: string): Promise<AdminTotp | null> {
+  const supabase = getServiceClient()
+  const { data, error } = await supabase
+    .from('admin_users')
+    .select('totp_secret, totp_enabled, totp_backup_codes')
+    .eq('id', id)
+    .maybeSingle()
+  if (error || !data) return null
+  return {
+    secret: data.totp_secret ?? null,
+    enabled: !!data.totp_enabled,
+    backupCodes: data.totp_backup_codes ?? [],
+  }
+}
+
+/** Stores a secret without switching 2FA on — enrolment is confirmed separately. */
+export async function stageTotpSecret(id: string, secret: string): Promise<void> {
+  const supabase = getServiceClient()
+  const { error } = await supabase
+    .from('admin_users')
+    .update({ totp_secret: secret, totp_enabled: false })
+    .eq('id', id)
+  if (error) throw new Error('Could not start two-factor setup')
+}
+
+/**
+ * Switches 2FA on. Called only after the person has proved they can produce a
+ * current code, so nobody can lock themselves out by enrolling a secret their
+ * app never actually received.
+ */
+export async function enableTotp(id: string, backupCodeHashes: string[]): Promise<void> {
+  const supabase = getServiceClient()
+  const { error } = await supabase
+    .from('admin_users')
+    .update({
+      totp_enabled: true,
+      totp_backup_codes: backupCodeHashes,
+      totp_enabled_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+  if (error) throw new Error('Could not enable two-factor authentication')
+}
+
+export async function disableTotp(id: string): Promise<void> {
+  const supabase = getServiceClient()
+  const { error } = await supabase
+    .from('admin_users')
+    .update({ totp_secret: null, totp_enabled: false, totp_backup_codes: [], totp_enabled_at: null })
+    .eq('id', id)
+  if (error) throw new Error('Could not turn off two-factor authentication')
+}
+
+/**
+ * Spends a recovery code if it matches, and returns whether it did.
+ *
+ * Single use: a matching hash is removed before the login is allowed through,
+ * so a code read over someone's shoulder cannot be reused.
+ */
+export async function consumeBackupCode(id: string, submitted: string): Promise<boolean> {
+  const totp = await getTotp(id)
+  if (!totp?.backupCodes.length) return false
+
+  const candidate = submitted.trim().toLowerCase()
+  for (const hash of totp.backupCodes) {
+    if (await bcrypt.compare(candidate, hash)) {
+      const remaining = totp.backupCodes.filter(h => h !== hash)
+      const supabase = getServiceClient()
+      await supabase.from('admin_users').update({ totp_backup_codes: remaining }).eq('id', id)
+      console.warn(`[admin-users] Recovery code used for ${id}; ${remaining.length} left`)
+      return true
+    }
+  }
+  return false
+}

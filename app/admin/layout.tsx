@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { BarChart2, FileText, Calendar, Award, Mail, MessageSquare, RefreshCw, LogOut, Menu, X, Zap, Pin, Building2, Wrench, Users, UserCog, Briefcase, Inbox } from "lucide-react"
+import { BarChart2, FileText, Calendar, Award, Mail, MessageSquare, RefreshCw, LogOut, Menu, X, Zap, Pin, Building2, Wrench, Users, UserCog, ShieldCheck, Briefcase, Inbox } from "lucide-react"
 import { Toaster } from "@/components/ui/toaster"
 
 export default function AdminLayout({
@@ -114,6 +114,7 @@ export default function AdminLayout({
     { name: 'Daily Poll', href: '/admin/polls', icon: BarChart2 },
     { name: 'Members', href: '/admin/users', icon: Users },
     { name: 'Team', href: '/admin/team', icon: UserCog },
+    { name: 'Security', href: '/admin/security', icon: ShieldCheck },
     { name: 'Tools', href: '/admin/tools', icon: Wrench },
     { name: 'Link in Bio', href: '/admin/link-in-bio', icon: Pin },
     { name: 'Newsletter', href: '/admin/newsletter', icon: Mail },

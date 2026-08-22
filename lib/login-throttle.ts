@@ -3,24 +3,35 @@
  *
  * The login form accepted unlimited attempts, so the admin password was the
  * only thing between the internet and full control of the site -- and it could
- * be guessed at machine speed. A few thousand attempts a minute is nothing to
- * an attacker and invisible to us.
+ * be guessed at machine speed.
  *
- * Deliberately in-memory rather than a table. A serverless instance handles a
- * burst of attempts on one connection, which is exactly the shape of an
- * automated attack, and this stops that without adding a database round-trip to
- * every sign-in or a dependency to install. It is not perfect -- an attacker
- * spread across many cold instances gets more attempts than the number below
- * suggests -- but it turns an unlimited guess rate into a slow one, and it
- * cannot itself fail in a way that locks the owner out permanently.
+ * The response escalates rather than slamming shut. Three attempts are free,
+ * because ordinary people mistype passwords and a password manager can misfire;
+ * the fourth and fifth each cost a short wait; past that it is a real lockout.
+ * A very low hard limit is worse than it sounds -- it locks the owner out over
+ * typos, and it hands anyone who knows the username a way to lock them out
+ * deliberately. What actually defeats guessing is that the rate collapses, not
+ * that the wall arrives on attempt two.
+ *
+ * Deliberately in-memory rather than a table. A burst of attempts on one
+ * connection is the shape of an automated attack, and this stops it without
+ * putting a database round-trip in front of every sign-in. An attacker spread
+ * across many cold instances gets more attempts than the numbers suggest, which
+ * is the accepted trade -- it still turns unlimited guessing into a crawl, and
+ * it cannot fail in a way that locks the owner out permanently.
  */
 
 type Attempt = { count: number; firstAt: number; blockedUntil: number }
 
-const MAX_ATTEMPTS = 8
-const WINDOW_MS = 10 * 60 * 1000 // attempts are counted over 10 minutes
-const BLOCK_MS = 15 * 60 * 1000 // then a 15-minute lockout
-const MAX_TRACKED = 5000 // bound the map so it cannot grow without limit
+/** Attempts before the wait starts. */
+const FREE_ATTEMPTS = 3
+/** Attempts before the full lockout. */
+const MAX_ATTEMPTS = 5
+/** Escalating waits for attempts 4 and 5. */
+const COOLDOWNS_MS = [30 * 1000, 2 * 60 * 1000]
+const BLOCK_MS = 15 * 60 * 1000
+const WINDOW_MS = 10 * 60 * 1000
+const MAX_TRACKED = 5000
 
 const attempts = new Map<string, Attempt>()
 
@@ -40,17 +51,19 @@ function sweep(now: number) {
   for (const [key, a] of attempts) {
     if (now > a.blockedUntil && now - a.firstAt > WINDOW_MS) attempts.delete(key)
   }
-  // Still full of live entries: drop the oldest rather than grow unbounded.
   if (attempts.size >= MAX_TRACKED) {
     const oldest = [...attempts.entries()].sort((a, b) => a[1].firstAt - b[1].firstAt)
     for (let i = 0; i < Math.floor(MAX_TRACKED / 4); i++) attempts.delete(oldest[i][0])
   }
 }
 
-/** Seconds remaining on a lockout, or 0 when the caller may try again. */
+/** Seconds the caller must wait, or 0 when they may try now. */
 export function retryAfterSeconds(key: string, now = Date.now()): number {
   const a = attempts.get(key)
-  if (!a || now >= a.blockedUntil) return 0
+  if (!a) return 0
+  // An expired counting window is a clean slate.
+  if (now >= a.blockedUntil && now - a.firstAt > WINDOW_MS) return 0
+  if (now >= a.blockedUntil) return 0
   return Math.ceil((a.blockedUntil - now) / 1000)
 }
 
@@ -64,11 +77,18 @@ export function recordFailure(key: string, now = Date.now()): void {
   }
 
   a.count += 1
+
   if (a.count >= MAX_ATTEMPTS) {
     a.blockedUntil = now + BLOCK_MS
     a.count = 0
     a.firstAt = now
-    console.warn(`[login] Too many failed attempts from ${key} — locked out for ${BLOCK_MS / 60000}m`)
+    console.warn(`[login] ${key} hit the attempt limit — locked out for ${BLOCK_MS / 60000}m`)
+    return
+  }
+
+  if (a.count > FREE_ATTEMPTS) {
+    const cooldown = COOLDOWNS_MS[a.count - FREE_ATTEMPTS - 1] ?? COOLDOWNS_MS[COOLDOWNS_MS.length - 1]
+    a.blockedUntil = now + cooldown
   }
 }
 
