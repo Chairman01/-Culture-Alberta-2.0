@@ -94,6 +94,9 @@ interface RichTextEditorProps {
 export function RichTextEditor({ content, onChange, placeholder = "Write your article content here..." }: RichTextEditorProps) {
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
+  // Credit editing for the selected image. Deliberately not tied to uploading.
+  const [editingCredit, setEditingCredit] = useState(false)
+  const [creditDraft, setCreditDraft] = useState('')
 
   const editor = useEditor({
     extensions: [
@@ -171,6 +174,24 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
       editor.chain().focus().setImage({ src: url }).run()
     }
     setShowImageUploader(false)
+  }
+
+  /**
+   * The credit for the image the writer currently has selected.
+   *
+   * Stored in the image's own `title` attribute, which the Image extension
+   * already supports — so this needs no custom node, no new schema, and cannot
+   * affect how images are inserted or saved. The published page turns a titled
+   * image into a captioned figure; here it is simply an attribute.
+   */
+  const selectedImageCredit: string = editor?.getAttributes('image')?.title || ''
+
+  const applyCredit = () => {
+    if (!editor) return
+    const credit = creditDraft.trim()
+    editor.chain().focus().updateAttributes('image', { title: credit || null }).run()
+    setEditingCredit(false)
+    setCreditDraft('')
   }
 
   if (!editor) {
@@ -433,6 +454,24 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
           <ImageIcon className="h-4 w-4" />
         </Button>
 
+        {/* Credit for the selected image. Appears only once an image is in the
+            article and clicked, so nothing sits between choosing a file and
+            seeing it land — that ordering is what broke this before. */}
+        {editor.isActive('image') && (
+          <Button
+            variant={selectedImageCredit ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => {
+              setCreditDraft(selectedImageCredit)
+              setEditingCredit(true)
+            }}
+            title="Add or change the photo credit for this image"
+          >
+            <Quote className="h-4 w-4 mr-1.5" />
+            {selectedImageCredit ? `Credit: ${selectedImageCredit}` : 'Add credit'}
+          </Button>
+        )}
+
         <div className="w-px h-6 bg-border mx-1" />
 
         {/* Table Buttons */}
@@ -555,6 +594,47 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
           onSelect={handleImageSelect}
           onClose={() => setShowImageUploader(false)}
         />
+      )}
+
+      {/* Credit editor. A strip under the toolbar rather than a modal: it is an
+          afterthought to an image already in the article, so it must never feel
+          like a gate. Dismissing it leaves the image exactly as it is. */}
+      {editingCredit && (
+        <div className="flex flex-wrap items-center gap-2 border-b bg-amber-50 px-3 py-2">
+          <label htmlFor="image-credit" className="text-sm font-medium text-amber-900">
+            Photo credit
+          </label>
+          <input
+            id="image-credit"
+            autoFocus
+            value={creditDraft}
+            onChange={(e) => setCreditDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); applyCredit() }
+              if (e.key === 'Escape') { setEditingCredit(false); setCreditDraft('') }
+            }}
+            placeholder="e.g. City of Edmonton, or Photo: Jane Smith"
+            className="flex-1 min-w-[14rem] rounded-md border border-amber-300 px-2 py-1 text-sm"
+          />
+          <Button size="sm" onClick={applyCredit}>Save</Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => { setEditingCredit(false); setCreditDraft('') }}
+          >
+            Cancel
+          </Button>
+          {selectedImageCredit && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-600"
+              onClick={() => { setCreditDraft(''); applyCredit() }}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
       )}
     </div>
   )

@@ -328,11 +328,38 @@ export function processInstagramLinks(content: string): string {
  * Main function to process all YouTube/Twitter/Instagram/Facebook content and fix images for CLS
  * This is a pure string manipulation function that works on both server and client
  */
+/**
+ * Turns an in-body image that carries a credit into a captioned figure.
+ *
+ * The editor stores the credit in the image's own `title` attribute — an
+ * attribute the image node already had, so crediting a photo needs no custom
+ * node and cannot affect how images are inserted or saved. The caption is built
+ * here, at render time, which means the stored article is always just an <img>
+ * and nothing about this can break the editor.
+ *
+ * Only wraps images that actually have a non-empty title, so uncredited images
+ * pass through untouched.
+ */
+function captionCreditedImages(html: string): string {
+  return html.replace(
+    /<img\b([^>]*?)\btitle="([^"]+)"([^>]*?)>/gi,
+    (whole, before: string, title: string, after: string) => {
+      const credit = title.trim()
+      if (!credit) return whole
+      // Already inside a figure (from an earlier pass or hand-written HTML):
+      // leave it alone rather than nesting one figure inside another.
+      return `<figure class="article-figure"><img${before}${after}><figcaption class="article-figure-credit">${credit}</figcaption></figure>`
+    },
+  )
+}
+
 export function processArticleContent(content: string): string {
   if (!content) return content
 
   // Restore trusted Mediavine video placeholders if the editor escaped them.
   let processed = processMediavineVideoEmbeds(content)
+
+  processed = captionCreditedImages(processed)
 
   // First process anchor tags (more specific patterns, must run before standalone URL patterns)
   processed = processYouTubeAnchors(processed)
