@@ -23,7 +23,22 @@ export function getServiceClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://itdmwpbsnviassgqfhxk.supabase.co'
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!serviceKey && !warnedAboutFallback) {
+  // Reaching this in a browser is always a bug: the service key is not exposed
+  // to the client, so it silently becomes an extra anon client -- a second
+  // GoTrue instance sharing the real one's storage key, which Supabase warns
+  // about and which has no business existing. It happened by importing a module
+  // that builds its client at module scope from a client component, so say
+  // plainly what to look for rather than leaving a puzzling anon-key warning.
+  if (typeof window !== 'undefined') {
+    if (!warnedAboutFallback) {
+      warnedAboutFallback = true
+      console.error(
+        '[supabase] getServiceClient() was called in the browser. Something client-side is ' +
+          'importing a server-only module — look for a module that builds its client at import ' +
+          'time and make it lazy.',
+      )
+    }
+  } else if (!serviceKey && !warnedAboutFallback) {
     warnedAboutFallback = true
     console.warn(
       '[supabase] SUPABASE_SERVICE_ROLE_KEY is not set — falling back to the anon key. ' +

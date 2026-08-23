@@ -1,9 +1,24 @@
 import { getServiceClient } from './supabase-admin'
 
-// Server-side writes run on the service role, never the public anon key: the
-// anon key ships in the browser bundle, so any table it can write is a table
-// the internet can write.
-const supabase = getServiceClient()
+/**
+ * Built on first use, never on import.
+ *
+ * This module is reached from the browser: `page-tracker` is a client component
+ * and pulls in `generateSessionId` from here, which drags the whole file along.
+ * Creating the client at module scope therefore built a Supabase client on every
+ * page load in every visitor's browser -- a second GoTrue instance alongside the
+ * real one ("Multiple GoTrueClient instances detected"), sharing its storage key,
+ * for a helper that only formats a string.
+ *
+ * The writes below are server-side and run on the service role; the anon key
+ * ships in the browser bundle, so any table it can write is a table the internet
+ * can write. Deferring construction keeps both facts true at once.
+ */
+let client: ReturnType<typeof getServiceClient> | null = null
+function db() {
+  if (!client) client = getServiceClient()
+  return client
+}
 
 
 const isInternalAnalyticsEnabled = () =>
@@ -112,7 +127,7 @@ export const checkAnalyticsTables = async () => {
       return false
     }
 
-    if (!supabase) {
+    if (!db()) {
       console.warn('Supabase not available')
       return false
     }
@@ -120,7 +135,7 @@ export const checkAnalyticsTables = async () => {
     console.log('Checking if analytics tables exist...')
 
     // Try to query the analytics_events table
-    const { error } = await supabase
+    const { error } = await db()
       .from('analytics_events')
       .select('id')
       .limit(1)
@@ -210,7 +225,7 @@ export const trackAnalyticsEvent = async (event: AnalyticsEvent) => {
       return false
     }
 
-    if (!supabase) {
+    if (!db()) {
       console.warn('Supabase not available, falling back to localStorage')
       return false
     }
@@ -228,7 +243,7 @@ export const trackAnalyticsEvent = async (event: AnalyticsEvent) => {
       created_at: new Date().toISOString()
     }
 
-    const { error } = await supabase
+    const { error } = await db()
       .from('analytics_events')
       .insert([eventData])
 
@@ -251,12 +266,12 @@ export const trackPageView = async (pageView: PageView) => {
       return false
     }
 
-    if (!supabase) {
+    if (!db()) {
       console.warn('Supabase not available, falling back to localStorage')
       return false
     }
 
-    const { error } = await supabase
+    const { error } = await db()
       .from('analytics_page_views')
       .insert([{
         ...pageView,
@@ -282,12 +297,12 @@ export const trackContentView = async (contentView: ContentView) => {
       return false
     }
 
-    if (!supabase) {
+    if (!db()) {
       console.warn('Supabase not available, falling back to localStorage')
       return false
     }
 
-    const { error } = await supabase
+    const { error } = await db()
       .from('analytics_content_views')
       .insert([{
         ...contentView,
@@ -313,7 +328,7 @@ export const trackSession = async (session: Session) => {
       return false
     }
 
-    if (!supabase) {
+    if (!db()) {
       console.warn('Supabase not available, falling back to localStorage')
       return false
     }
@@ -327,7 +342,7 @@ export const trackSession = async (session: Session) => {
     console.log('Attempting to track session:', session.id)
 
     // Check if session exists
-    const { data: existingSession, error: selectError } = await supabase
+    const { data: existingSession, error: selectError } = await db()
       .from('analytics_sessions')
       .select('id')
       .eq('id', session.id)
@@ -346,7 +361,7 @@ export const trackSession = async (session: Session) => {
     if (existingSession) {
       console.log('Updating existing session')
       // Update existing session
-      const { error } = await supabase
+      const { error } = await db()
         .from('analytics_sessions')
         .update({
           page_count: session.page_count,
@@ -384,7 +399,7 @@ export const trackSession = async (session: Session) => {
 
              console.log('Session data to insert:', cleanSessionData)
 
-       const { data, error } = await supabase
+       const { data, error } = await db()
          .from('analytics_sessions')
          .insert([cleanSessionData])
          .select()
@@ -417,7 +432,7 @@ export const trackSession = async (session: Session) => {
 // Get analytics data for dashboard
 export const getAnalyticsData = async () => {
   try {
-    if (!supabase) {
+    if (!db()) {
       console.warn('Supabase not available, returning null')
       return null
     }
@@ -428,7 +443,7 @@ export const getAnalyticsData = async () => {
     const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
     // Get total page views
-    const { data: totalViews, error: totalError } = await supabase
+    const { data: totalViews, error: totalError } = await db()
       .from('analytics_page_views')
       .select('id')
 
@@ -438,7 +453,7 @@ export const getAnalyticsData = async () => {
     }
 
     // Get weekly page views
-    const { data: weeklyViews, error: weeklyError } = await supabase
+    const { data: weeklyViews, error: weeklyError } = await db()
       .from('analytics_page_views')
       .select('id')
       .gte('created_at', lastWeek.toISOString())
@@ -449,7 +464,7 @@ export const getAnalyticsData = async () => {
     }
 
     // Get daily page views
-    const { data: dailyViews, error: dailyError } = await supabase
+    const { data: dailyViews, error: dailyError } = await db()
       .from('analytics_page_views')
       .select('id')
       .gte('created_at', lastDay.toISOString())
@@ -460,7 +475,7 @@ export const getAnalyticsData = async () => {
     }
 
     // Get unique sessions
-    const { data: sessions, error: sessionsError } = await supabase
+    const { data: sessions, error: sessionsError } = await db()
       .from('analytics_sessions')
       .select('id')
 
@@ -470,7 +485,7 @@ export const getAnalyticsData = async () => {
     }
 
     // Get popular pages (last 30 days)
-    const { data: popularPages, error: pagesError } = await supabase
+    const { data: popularPages, error: pagesError } = await db()
       .from('analytics_page_views')
       .select('page_path, page_title')
       .gte('created_at', lastMonth.toISOString())
@@ -497,7 +512,7 @@ export const getAnalyticsData = async () => {
       }))
 
     // Get content stats
-    const { data: contentViews, error: contentError } = await supabase
+    const { data: contentViews, error: contentError } = await db()
       .from('analytics_content_views')
       .select('content_type, content_id')
 
