@@ -23,6 +23,15 @@ interface ImageUploaderProps {
 const CONVERT_TIMEOUT_MS = 20000
 
 /**
+ * Deadline for the upload request itself.
+ *
+ * Generous, because a large image on a slow connection is a real thing and
+ * cutting off a working upload is worse than waiting. But finite: an unbounded
+ * fetch is how the dialog ended up stuck on "Uploading image..." indefinitely.
+ */
+const UPLOAD_TIMEOUT_MS = 60000
+
+/**
  * Cap on the longest edge before conversion.
  *
  * Canvas has a maximum area -- around 16.7 million pixels on iOS Safari, which
@@ -196,10 +205,31 @@ export function ImageUploader({ onSelect, onClose }: ImageUploaderProps) {
       const formData = new FormData()
       formData.append('image', convertedFile)
 
-      const response = await fetch('/api/upload/image', {
-        method: 'POST',
-        body: formData,
-      })
+      // The request needs its own deadline. Converting was given one, but this
+      // is the step that was actually hanging: the file reaches storage, the
+      // response never arrives, and the dialog sits on "Uploading image..."
+      // with no way back. fetch has no default timeout, so without this there
+      // is nothing to stop it waiting forever.
+      const abort = new AbortController()
+      const uploadTimer = setTimeout(() => abort.abort(), UPLOAD_TIMEOUT_MS)
+
+      let response: Response
+      try {
+        response = await fetch('/api/upload/image', {
+          method: 'POST',
+          body: formData,
+          signal: abort.signal,
+        })
+      } catch (err) {
+        if (abort.signal.aborted) {
+          throw new Error(
+            'The upload timed out. It may still have gone through — close this, check whether the image appeared, and try again if not.',
+          )
+        }
+        throw err
+      } finally {
+        clearTimeout(uploadTimer)
+      }
 
       const result = await getUploadResult(response)
 
