@@ -94,9 +94,6 @@ interface RichTextEditorProps {
 export function RichTextEditor({ content, onChange, placeholder = "Write your article content here..." }: RichTextEditorProps) {
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
-  // Credit editing for the selected image. Deliberately not tied to uploading.
-  const [editingCredit, setEditingCredit] = useState(false)
-  const [creditDraft, setCreditDraft] = useState('')
 
   const editor = useEditor({
     extensions: [
@@ -177,21 +174,44 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
   }
 
   /**
-   * The credit for the image the writer currently has selected.
+   * Every image in the article, with wherever it sits and whatever credit it
+   * carries.
    *
-   * Stored in the image's own `title` attribute, which the Image extension
-   * already supports — so this needs no custom node, no new schema, and cannot
-   * affect how images are inserted or saved. The published page turns a titled
-   * image into a captioned figure; here it is simply an attribute.
+   * Listing them beats crediting whichever one happens to be selected: the
+   * writer can fill in all of them in one pass, and — more usefully — see at a
+   * glance which ones are still missing a credit, which is the actual job.
+   *
+   * The credit is the image's own `title` attribute, which the Image extension
+   * has always had. No custom node, no schema change, and a saved article is
+   * still just an <img>; the caption is built at render time.
    */
-  const selectedImageCredit: string = editor?.getAttributes('image')?.title || ''
+  const bodyImages: { pos: number; src: string; credit: string }[] = []
+  if (editor) {
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image') {
+        bodyImages.push({ pos, src: node.attrs.src || '', credit: node.attrs.title || '' })
+      }
+    })
+  }
 
-  const applyCredit = () => {
+  /**
+   * Writes a credit onto one specific image, addressed by position.
+   *
+   * By position rather than by selection, so nothing depends on what the writer
+   * happens to have clicked and editing one image can never touch another.
+   */
+  const setCreditAt = (pos: number, credit: string) => {
     if (!editor) return
-    const credit = creditDraft.trim()
-    editor.chain().focus().updateAttributes('image', { title: credit || null }).run()
-    setEditingCredit(false)
-    setCreditDraft('')
+    const trimmed = credit.trim()
+    editor
+      .chain()
+      .command(({ tr }) => {
+        const node = tr.doc.nodeAt(pos)
+        if (!node || node.type.name !== 'image') return false
+        tr.setNodeMarkup(pos, undefined, { ...node.attrs, title: trimmed || null })
+        return true
+      })
+      .run()
   }
 
   if (!editor) {
@@ -454,24 +474,6 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
           <ImageIcon className="h-4 w-4" />
         </Button>
 
-        {/* Credit for the selected image. Appears only once an image is in the
-            article and clicked, so nothing sits between choosing a file and
-            seeing it land — that ordering is what broke this before. */}
-        {editor.isActive('image') && (
-          <Button
-            variant={selectedImageCredit ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={() => {
-              setCreditDraft(selectedImageCredit)
-              setEditingCredit(true)
-            }}
-            title="Add or change the photo credit for this image"
-          >
-            <Quote className="h-4 w-4 mr-1.5" />
-            {selectedImageCredit ? `Credit: ${selectedImageCredit}` : 'Add credit'}
-          </Button>
-        )}
-
         <div className="w-px h-6 bg-border mx-1" />
 
         {/* Table Buttons */}
@@ -588,53 +590,64 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
         <EditorContent editor={editor} />
       )}
 
+      {/* Photo credits — one row per image in the article, so they can all be
+          filled in at once and the missing ones are obvious. Appears only when
+          the article has images, and never gets between choosing a file and
+          seeing it land. */}
+      {bodyImages.length > 0 && !isPreviewMode && (
+        <div className="border-t bg-gray-50 px-3 py-3">
+          <p className="text-sm font-medium text-gray-700 mb-2">
+            Photo credits
+            <span className="ml-2 font-normal text-gray-500">
+              {bodyImages.filter(i => !i.credit).length === 0
+                ? 'all images credited'
+                : `${bodyImages.filter(i => !i.credit).length} of ${bodyImages.length} still missing`}
+            </span>
+          </p>
+
+          <div className="space-y-2">
+            {bodyImages.map((image, index) => (
+              <div key={`${image.pos}-${image.src}`} className="flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={image.src}
+                  alt=""
+                  className="h-10 w-14 shrink-0 rounded border bg-white object-cover"
+                />
+                <input
+                  // Uncontrolled, committed on blur: a transaction per keystroke
+                  // would put an undo step between every character.
+                  defaultValue={image.credit}
+                  onBlur={(e) => {
+                    if (e.target.value.trim() !== image.credit) {
+                      setCreditAt(image.pos, e.target.value)
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+                  }}
+                  placeholder={`Image ${index + 1} — credit, e.g. City of Edmonton`}
+                  className={`flex-1 rounded-md border px-2 py-1 text-sm ${
+                    image.credit ? 'border-gray-300' : 'border-amber-300 bg-amber-50'
+                  }`}
+                />
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-2 text-xs text-gray-500">
+            Shown as small grey text under the image on the published article. Leave blank if the
+            photo is ours.
+          </p>
+        </div>
+      )}
+
       {/* Image Uploader Modal */}
       {showImageUploader && (
         <ImageUploader
           onSelect={handleImageSelect}
           onClose={() => setShowImageUploader(false)}
         />
-      )}
-
-      {/* Credit editor. A strip under the toolbar rather than a modal: it is an
-          afterthought to an image already in the article, so it must never feel
-          like a gate. Dismissing it leaves the image exactly as it is. */}
-      {editingCredit && (
-        <div className="flex flex-wrap items-center gap-2 border-b bg-amber-50 px-3 py-2">
-          <label htmlFor="image-credit" className="text-sm font-medium text-amber-900">
-            Photo credit
-          </label>
-          <input
-            id="image-credit"
-            autoFocus
-            value={creditDraft}
-            onChange={(e) => setCreditDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); applyCredit() }
-              if (e.key === 'Escape') { setEditingCredit(false); setCreditDraft('') }
-            }}
-            placeholder="e.g. City of Edmonton, or Photo: Jane Smith"
-            className="flex-1 min-w-[14rem] rounded-md border border-amber-300 px-2 py-1 text-sm"
-          />
-          <Button size="sm" onClick={applyCredit}>Save</Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => { setEditingCredit(false); setCreditDraft('') }}
-          >
-            Cancel
-          </Button>
-          {selectedImageCredit && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-red-600"
-              onClick={() => { setCreditDraft(''); applyCredit() }}
-            >
-              Remove
-            </Button>
-          )}
-        </div>
       )}
     </div>
   )
