@@ -28,6 +28,7 @@ export function JobPanelActions({
   expired,
   status,
   onStatusChange,
+  onApplyClick,
 }: {
   jobId: string
   applyUrl: string | null
@@ -35,6 +36,8 @@ export function JobPanelActions({
   expired: boolean
   status: SavedJobStatus | null
   onStatusChange: (jobId: string, status: SavedJobStatus | null) => void
+  /** Told when the employer's form is opened, so the board can ask about it later. */
+  onApplyClick?: (jobId: string) => void
 }) {
   const { user } = useAuth()
   const { toast } = useToast()
@@ -97,13 +100,14 @@ export function JobPanelActions({
       e.preventDefault()
       return requireAccount('apply')
     }
+    onApplyClick?.(jobId)
     try {
       const now = await advanceSavedJobStatus(user.id, jobId, 'started')
       onStatusChange(jobId, now)
     } catch {
       // Tracking is best-effort — never block the application itself.
     }
-  }, [user, jobId, onStatusChange, requireAccount])
+  }, [user, jobId, onStatusChange, onApplyClick, requireAccount])
 
   return (
     <div className="mt-6 space-y-3">

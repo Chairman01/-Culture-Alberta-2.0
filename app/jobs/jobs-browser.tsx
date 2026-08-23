@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CompanyLogo } from '@/components/jobs/company-logo'
-import { TrackBadge, BOARD_BADGE_STATUSES } from '@/components/jobs/track-badge'
+import { TrackBadge, BOARD_BADGE_STATUSES, TRACK_LABELS } from '@/components/jobs/track-badge'
+import { JobTrackSummary } from '@/components/jobs/track-summary'
 import { JobPanelActions } from '@/components/jobs/panel-actions'
 import { JobPreferencesCard } from '@/components/jobs/job-preferences-card'
 import { useAuth } from '@/components/auth-provider'
-import { listJobTrackStatuses } from '@/lib/saved-jobs'
+import { listJobTrackStatuses, advanceSavedJobStatus } from '@/lib/saved-jobs'
 import {
   getJobPreferences, saveJobPreferences, scoreJob, hasAnswers,
   type JobPreferences, type MatchResult,
@@ -167,6 +168,63 @@ export default function JobsBrowser({
       .catch(() => {})
     return () => { active = false }
   }, [user])
+
+  /** Narrows the board to one tracker status, set from the summary strip. */
+  const [trackFilter, setTrackFilter] = useState<SavedJobStatus | null>(null)
+
+  /**
+   * Ask once, on the way back from the employer's site.
+   *
+   * Clicking Apply only proves the form was opened, so it records 'started'.
+   * Whether they finished is something only they know, and the moment they
+   * return to this tab is the one moment they still remember — an hour later
+   * the board is just a list of jobs that all look equally untouched.
+   *
+   * Only ever asked for a job still sitting at 'started', so answering "not
+   * yet" is final and nobody gets nagged twice about the same job.
+   */
+  const [applyAsk, setApplyAsk] = useState<{ id: string; title: string } | null>(null)
+  const pendingApply = useRef<{ id: string; title: string } | null>(null)
+
+  const notePendingApply = useCallback((jobId: string, title: string) => {
+    pendingApply.current = { id: jobId, title }
+  }, [])
+
+  useEffect(() => {
+    const onReturn = () => {
+      if (document.visibilityState !== 'visible') return
+      const pending = pendingApply.current
+      if (!pending) return
+      pendingApply.current = null
+      // Re-read from state at the moment of return: they may have marked it
+      // applied on the panel themselves while they were away.
+      setTracked(current => {
+        if (current[pending.id] === 'started') setApplyAsk(pending)
+        return current
+      })
+    }
+    document.addEventListener('visibilitychange', onReturn)
+    return () => document.removeEventListener('visibilitychange', onReturn)
+  }, [])
+
+  const answerApplyAsk = useCallback(async (didApply: boolean) => {
+    const asked = applyAsk
+    setApplyAsk(null)
+    if (!asked || !didApply || !user) return
+    try {
+      const now = await advanceSavedJobStatus(user.id, asked.id, 'applied')
+      setTracked(prev => ({ ...prev, [asked.id]: now }))
+    } catch {
+      // Tracking is best-effort — never surface a failure here.
+    }
+  }, [applyAsk, user])
+
+  // Signing out, or clearing the last job of the filtered status, must not
+  // leave the reader staring at an empty board with no obvious way back.
+  useEffect(() => {
+    if (!trackFilter) return
+    if (!user || !Object.values(tracked).includes(trackFilter)) setTrackFilter(null)
+  }, [user, tracked, trackFilter])
 
   /** Marks made in the panel land here so the list badges update immediately. */
   const handleStatusChange = useCallback((jobId: string, status: SavedJobStatus | null) => {
@@ -358,11 +416,21 @@ export default function JobsBrowser({
     return n
   }, [jobs, matches, matching])
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  /**
+   * "Which ones?" — clicking a tally in the summary narrows the board to just
+   * those. Applied last, on top of every other filter, so it reads as "of what
+   * I'm looking at, show me the ones I've applied to".
+   */
+  const visible = useMemo(
+    () => (trackFilter ? filtered.filter(j => tracked[j.id] === trackFilter) : filtered),
+    [filtered, trackFilter, tracked]
+  )
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
-  const pageJobs = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
-  const showingFrom = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
-  const showingTo = Math.min(safePage * PAGE_SIZE, filtered.length)
+  const pageJobs = visible.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const showingFrom = visible.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
+  const showingTo = Math.min(safePage * PAGE_SIZE, visible.length)
 
   // Falling back to the first row (rather than setting state in an effect) keeps
   // the panel present in the server-rendered HTML and avoids a first-paint flash.
@@ -685,12 +753,17 @@ export default function JobsBrowser({
         </div>
       )}
 
+      {/* The reader's own tally, pinned so it stays readable down the page. */}
+      <JobTrackSummary tracked={tracked} activeFilter={trackFilter} onFilter={setTrackFilter} />
+
       {/* Result count — also the anchor paging scrolls back to. */}
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <p id="job-results-top" className="scroll-mt-24 text-sm text-gray-600">
-          {filtered.length === jobs.length
-            ? `${jobs.length} open ${jobs.length === 1 ? 'job' : 'jobs'} in Alberta`
-            : `Showing ${showingFrom}-${showingTo} of ${filtered.length} matching jobs`}
+          {trackFilter
+            ? `${visible.length} ${TRACK_LABELS[trackFilter].toLowerCase()} ${visible.length === 1 ? 'job' : 'jobs'}`
+            : visible.length === jobs.length
+              ? `${jobs.length} open ${jobs.length === 1 ? 'job' : 'jobs'} in Alberta`
+              : `Showing ${showingFrom}-${showingTo} of ${visible.length} matching jobs`}
         </p>
         <p className="hidden text-xs text-gray-500 lg:block">
           Use <kbd className="rounded border border-gray-300 bg-gray-50 px-1">↑</kbd>{' '}
@@ -713,6 +786,11 @@ export default function JobsBrowser({
             {pageJobs.map(job => {
               const active = selected?.id === job.id
               const match = matching ? matches.get(job.id) : undefined
+              // Dealt-with rows stay in the list but recede, so scanning finds
+              // what is left to do. Removing them outright loses the answer to
+              // "where did I apply?", which is the other half of the question.
+              const settled =
+                !active && (tracked[job.id] === 'applied' || tracked[job.id] === 'rejected')
               return (
                 <li key={job.id} id={`job-row-${job.id}`} className="scroll-mt-24">
                   <Link
@@ -723,7 +801,7 @@ export default function JobsBrowser({
                       active
                         ? 'border-l-blue-600 bg-blue-50/70'
                         : 'border-l-transparent hover:bg-gray-50'
-                    }`}
+                    } ${settled ? 'bg-gray-50/60 opacity-60 hover:opacity-100' : ''}`}
                   >
                     <div className="flex gap-3">
                       <CompanyLogo company={job.company} domain={job.logoDomain} src={job.logoSrc} size={44} className="mt-0.5" />
@@ -882,6 +960,7 @@ export default function JobsBrowser({
                   expired={detail?.expired ?? false}
                   status={tracked[selected.id] ?? null}
                   onStatusChange={handleStatusChange}
+                  onApplyClick={id => notePendingApply(id, selected.title)}
                 />
 
                 <div className="mt-3 flex items-center justify-between gap-2 text-xs text-gray-500">
@@ -919,6 +998,36 @@ export default function JobsBrowser({
           >
             Next →
           </button>
+        </div>
+      )}
+
+      {/* Asked once, when they come back from the employer's site. A strip at
+          the bottom rather than a modal: they may have come back to keep
+          browsing, and a dialog in the way would punish them for applying. */}
+      {applyAsk && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] backdrop-blur">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
+            <p className="min-w-0 flex-1 text-sm text-gray-800">
+              Did you finish applying to{' '}
+              <span className="font-semibold">{applyAsk.title}</span>?
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => answerApplyAsk(true)}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Yes, mark as applied
+              </button>
+              <button
+                type="button"
+                onClick={() => answerApplyAsk(false)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Not yet
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
