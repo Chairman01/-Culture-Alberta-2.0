@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchNewsletterContent } from '@/lib/newsletter/fetch-articles'
 import { generateNewsletterHtml, type NewsletterCity } from '@/lib/newsletter/template'
+import { requireAdminOrContributor } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,9 +10,19 @@ const VALID_CITIES: NewsletterCity[] = ['edmonton', 'calgary', 'lethbridge', 'me
 /**
  * GET /api/newsletter/preview?city=edmonton
  * Returns fully rendered newsletter HTML for admin preview.
- * No auth required — preview only, no data is sent.
+ *
+ * Signed-in staff only. It sends nothing and exposes no subscriber data, but it
+ * renders a whole edition on every call — a fair amount of work to leave open to
+ * anyone who finds the URL. Contributors are included: preparing an edition
+ * without being able to look at it is not really preparing it.
+ *
+ * Both callers are in-app (an iframe on the admin newsletter page, a new tab
+ * from the prepare page), so the session cookie rides along either way.
  */
 export async function GET(req: NextRequest) {
+  const auth = requireAdminOrContributor(req)
+  if (!auth.ok) return auth.response
+
   const city = req.nextUrl.searchParams.get('city') as NewsletterCity | null
   const customNote = req.nextUrl.searchParams.get('note') ?? undefined
 
