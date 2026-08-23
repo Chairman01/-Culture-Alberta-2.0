@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast"
 import {
   loadAllConfigs,
   saveArticleOrder,
+  saveFeaturedArticle,
   saveAlbertaArticles,
   savePreparedEdition,
   searchArticles,
@@ -157,11 +158,26 @@ export default function PrepareNewsletterPage() {
     setter(prev => prev.filter(p => p.id !== id))
   }
 
-  const save = async () => {
+  /**
+   * Writes the edition. Returns whether it worked, so preview can save first.
+   *
+   * `quiet` suppresses the confirmation toast when this runs as a step inside
+   * previewing rather than as the writer deliberately handing over.
+   */
+  const persist = async (quiet = false): Promise<boolean> => {
     setIsSaving(true)
     try {
       const order = await saveArticleOrder(city, picks.map(p => p.id))
       if (order.error) throw new Error(order.error)
+
+      // The list is the running order, so the story at the top is the lead.
+      // A separate pinned "featured" article overrides article_order in
+      // fetch-articles — it is forced to the front, and prepended if it is not
+      // even in the list — so leaving it unmanaged meant the email could lead
+      // with something the writer had removed. Pinning the first pick keeps the
+      // list and the email saying the same thing.
+      const featured = await saveFeaturedArticle(city, picks[0]?.id ?? null)
+      if (featured.error) throw new Error(featured.error)
 
       // Alberta picks are shared: saved onto every edition's row, so the same
       // stories appear wherever they are read.
@@ -188,28 +204,38 @@ export default function PrepareNewsletterPage() {
             }
           : prev,
       )
-      toast({
-        title: "Handed over",
-        description: "Adam sees your picks, subject line and note. Nothing has been emailed.",
-      })
+      if (!quiet) {
+        toast({
+          title: "Handed over",
+          description: "Adam sees your picks, subject line and note. Nothing has been emailed.",
+        })
+      }
+      return true
     } catch (error) {
       toast({
         title: "Could not save",
         description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       })
+      return false
     } finally {
       setIsSaving(false)
     }
   }
 
+  const save = () => persist()
+
   /**
    * Opens the real rendered email in a new tab.
    *
-   * Reads from what is saved, so unsaved reordering will not show — save first.
-   * Nothing here sends anything; it renders the same HTML the email would use.
+   * Saves first, because the preview is rendered server-side from the stored
+   * edition. Without that it happily shows the previous running order while the
+   * new one sits unsaved on screen — a preview that disagrees with the page is
+   * worse than none, and telling the writer to remember to save first is not a
+   * fix. Saving emails nobody, so there is nothing to lose by doing it here.
    */
-  const preview = () => {
+  const preview = async () => {
+    if (!(await persist(true))) return
     const params = new URLSearchParams({ city })
     if (note.trim()) params.set("note", note.trim())
     window.open(`/api/newsletter/preview?${params.toString()}`, "_blank", "noopener")
@@ -298,8 +324,7 @@ export default function PrepareNewsletterPage() {
         <Info className="h-4 w-4 shrink-0 mt-0.5" />
         <p>
           Saving here never emails anyone. Lead with the strongest story rather than the newest, and
-          put an evergreen or benefits piece further down — those keep getting clicked. Preview
-          shows what is <em>saved</em>, so hand over first if you have just reordered.
+          put an evergreen or benefits piece further down — those keep getting clicked. Preview saves your picks first, then shows the real email.
         </p>
       </div>
 
