@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import Image from 'next/image'
+import { Clock, Bookmark } from 'lucide-react'
 import { getServiceClient } from '@/lib/supabase-admin'
 import { processArticleContent } from '@/lib/utils/youtube'
 import { ArticleEmbedActivator } from '@/components/article-embed-activator'
@@ -13,12 +15,16 @@ type PreviewArticle = {
   title: string
   content: string | null
   excerpt: string | null
+  description: string | null
   category: string | null
   location: string | null
   author: string | null
   status: string | null
   slug: string | null
   image_url: string | null
+  image_source: string | null
+  read_time: string | null
+  date: string | null
   created_at: string | null
 }
 
@@ -30,12 +36,27 @@ async function getArticleForPreview(id: string): Promise<PreviewArticle | null> 
   const supabase = getServiceClient()
   const { data, error } = await supabase
     .from('articles')
-    .select('id, title, content, excerpt, category, location, author, status, slug, image_url, created_at')
+    // One string literal, not a concatenation — the client infers the row type
+    // from the literal and silently gives up on anything it has to evaluate.
+    .select('id, title, content, excerpt, description, category, location, author, status, slug, image_url, image_source, read_time, date, created_at')
     .eq('id', id)
     .maybeSingle()
 
   if (error || !data) return null
   return data as PreviewArticle
+}
+
+/** Same format and timezone the public article page prints. */
+function formatDate(value: string | null): string {
+  if (!value?.trim()) return ''
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'America/Edmonton',
+  }).format(date)
 }
 
 export default async function AdminArticlePreview({
@@ -59,86 +80,119 @@ export default async function AdminArticlePreview({
   }
 
   const isDraft = article.status !== 'published'
+  const published = formatDate(article.date || article.created_at)
+  const lead = article.description || article.excerpt
+  const hasBody = !!article.content && article.content.trim().length > 10
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* The one thing a reader would not see, kept deliberately loud so nobody
+          mistakes this page for the live article. */}
       <div
-        className={`sticky top-0 z-10 border-b px-4 py-3 ${
+        className={`sticky top-0 z-30 border-b px-4 py-3 ${
           isDraft ? 'bg-amber-100 border-amber-300' : 'bg-green-100 border-green-300'
         }`}
       >
-        <div className="max-w-3xl mx-auto flex flex-wrap items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
           <div className="text-sm">
             <strong>{isDraft ? 'DRAFT PREVIEW' : 'PUBLISHED'}</strong>
             <span className="text-gray-700">
               {isDraft
-                ? ' — this is not visible to the public. Only you can see this page.'
+                ? ' — this is how it will look once approved. Nobody else can see this page.'
                 : ' — this article is live on the site.'}
             </span>
           </div>
           <div className="flex gap-3 text-sm">
-            <Link href={`/admin/edit-post/${article.id}`} className="text-blue-700 hover:underline">
+            <Link href={`/admin/articles/${article.id}`} className="text-blue-700 hover:underline">
               Edit
             </Link>
-            <Link href="/admin/articles" className="text-blue-700 hover:underline">
-              All articles
+            <Link href="/admin/review" className="text-blue-700 hover:underline">
+              Review queue
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm p-6 sm:p-10">
-          <div className="mb-2 text-sm text-gray-500">
-            {[article.category, article.location].filter(Boolean).join(' · ')}
+      {/* Below this line the markup mirrors app/articles/[slug]/page.tsx — same
+          classes, same order, same date and byline formatting — so what an
+          editor approves is what the page will render. */}
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+            {article.category && (
+              <span className="rounded-full bg-blue-100 px-3 py-1 font-medium text-blue-800">
+                {article.category}
+              </span>
+            )}
+            {published && (
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                {published}
+              </span>
+            )}
+            {article.read_time && (
+              <span className="flex items-center gap-1">
+                <Bookmark className="h-4 w-4" />
+                {article.read_time} read
+              </span>
+            )}
+            {article.author && <span className="font-medium">By {article.author}</span>}
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-bold leading-tight mb-4">{article.title}</h1>
+          <h1 className="text-4xl font-bold leading-tight text-gray-900 lg:text-5xl">
+            {article.title}
+          </h1>
 
-          {article.excerpt && (
-            <p className="text-lg text-gray-700 mb-6">{article.excerpt}</p>
-          )}
+          {lead && <p className="max-w-3xl text-xl leading-relaxed text-gray-600">{lead}</p>}
+        </div>
 
-          <div className="text-sm text-gray-500 border-b pb-4 mb-6">
-            {article.author || 'Culture Alberta'}
-            {article.created_at && ` · ${new Date(article.created_at).toLocaleDateString('en-CA', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}`}
-          </div>
-
-          {article.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={article.image_url}
-              alt={article.title}
-              className="w-full rounded-lg mb-6"
-            />
-          ) : (
-            <div className="mb-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">
-              No cover image set. Add one in the editor before publishing.
-            </div>
-          )}
-
-          {article.content ? (
+        <div className="mt-6">
+          {article.image_url && !article.image_url.startsWith('data:image') ? (
             <>
-              {/* Same processing + embed activation as the live article page, so
-                  the preview renders Instagram/YouTube exactly as it will publish. */}
-              <div
-                className="prose prose-lg max-w-none article-content-wrapper"
-                dangerouslySetInnerHTML={{ __html: processArticleContent(article.content) }}
-              />
-              <ArticleEmbedActivator />
+              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-gray-100">
+                <Image
+                  src={article.image_url}
+                  alt={article.title || 'Article image'}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 900px"
+                  quality={85}
+                  unoptimized
+                />
+              </div>
+              {article.image_source && (
+                <p className="mt-2 text-right text-sm text-gray-500">
+                  Photo: {article.image_source}
+                </p>
+              )}
             </>
           ) : (
-            <p className="text-gray-500">This article has no content.</p>
+            // Not a reader-facing state — it is the single most common thing
+            // missing from a draft, and the preview is where it gets noticed.
+            <div className="rounded-lg border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-500">
+              No cover image set. Add one in the editor before approving.
+            </div>
           )}
         </div>
 
+        <div className="mt-6 rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
+          <div className="article-content">
+            {hasBody ? (
+              <>
+                <div
+                  className="prose prose-lg max-w-none article-content-wrapper"
+                  dangerouslySetInnerHTML={{ __html: processArticleContent(article.content!) }}
+                />
+                <ArticleEmbedActivator />
+              </>
+            ) : (
+              <p className="text-gray-500">This article has no content yet.</p>
+            )}
+          </div>
+        </div>
+
         <div className="mt-6 text-sm text-gray-500">
-          Slug: <code>{article.slug || '(none)'}</code>
-          {isDraft && ' · Publishing is done from the admin articles list.'}
+          Will publish at <code>/articles/{article.slug || '(no slug yet)'}</code>
         </div>
       </div>
     </div>

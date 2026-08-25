@@ -126,8 +126,13 @@ export default function AdminLayout({
   ]
   const navigation = adminRole === 'contributor' ? contributorNavigation : adminNavigation
 
-  // Don't show the layout on the login page
-  if (pathname === '/admin/login') {
+  // Don't show the layout on the login page, or on a draft preview — the
+  // preview exists to show an editor exactly what a reader will see, and a
+  // sidebar down the left side of it defeats the point. Dropping this wrapper
+  // drops its client-side auth check with it, which is fine: /admin/* is gated
+  // server-side by the JWT check in middleware.ts, and that is what actually
+  // keeps drafts private.
+  if (pathname === '/admin/login' || pathname?.startsWith('/admin/preview')) {
     return <>{children}</>
   }
 

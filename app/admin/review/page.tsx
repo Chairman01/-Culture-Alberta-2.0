@@ -8,6 +8,7 @@ import {
   CornerUpLeft,
   Trash2,
   Edit,
+  Eye,
   Loader2,
   Inbox,
   RefreshCw,
@@ -352,6 +353,22 @@ export default function ReviewQueue() {
                         )}
                         {isExpanded ? "Hide" : "Read"}
                       </Button>
+
+                      {/* "Read" shows the copy; this shows the page. Approving is
+                          a publishing decision — whether the images sit right,
+                          whether the lead reads under the headline — and that is
+                          not answerable from a column of raw paragraphs. Opens in
+                          its own tab so the queue keeps its place. */}
+                      <a
+                        href={`/admin/preview/${article.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button size="sm" variant="outline" disabled={isBusy}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Preview
+                        </Button>
+                      </a>
 
                       <Link href={`/admin/articles/${article.id}`}>
                         <Button size="sm" variant="outline" disabled={isBusy}>
