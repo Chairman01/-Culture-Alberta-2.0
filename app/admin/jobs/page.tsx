@@ -68,11 +68,15 @@ export default function AdminJobsPage() {
       const cities = Object.entries(r?.byCity ?? {})
         .map(([city, n]) => `${city} ${n}`)
         .join(', ')
-      // Surface failing boards by name — a silently unreachable employer looks
-      // exactly like an employer with no openings, and only one of those is a bug.
+      // Surface failing boards by name AND reason — a silently unreachable
+      // employer looks exactly like an employer with no openings, and only one
+      // of those is a bug. The name alone told us which employer to go and
+      // debug but not what to look at, which meant reproducing a failure that
+      // by definition doesn't reproduce off the deployment's own network.
       const failed = (r?.boards ?? []).filter((b: any) => b.error)
       const failedNote = failed.length
-        ? ` · ${failed.length} board(s) failed: ${failed.map((b: any) => b.board).join(', ')}`
+        ? ` · ${failed.length} board(s) failed: ` +
+          failed.map((b: any) => `${b.board} (${b.error})`).join(', ')
         : ''
 
       setMessage(

@@ -1515,6 +1515,10 @@ async function fetchTalentBrew(
         return res.text()
       } catch (err) {
         lastError = err
+        // A pause before the second try. An immediate retry against whatever
+        // refused the first one — a rate limiter, a warming edge — just
+        // collects the same answer a few milliseconds later.
+        if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 750))
       }
     }
     throw lastError instanceof Error ? lastError : new Error(String(lastError))
