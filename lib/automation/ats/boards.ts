@@ -258,17 +258,26 @@ export const ATS_BOARDS: AtsBoard[] = [
   // `domain` is the board origin, as with SuccessFactors above.
   //
   // The University of Calgary, enabled 2026-08-25 after being blocked out since
-  // 2026-08-14. The old finding was real — careers.ucalgary.ca answered 403
-  // behind a Cloudflare challenge on /search/jobs, robots.txt included — but it
-  // no longer holds: robots.txt now reads "Disallow:" (allow everything) and
-  // names a sitemap, and both the listing and every posting page serve our real
-  // User-Agent as plain HTML. Nothing about this entry spoofs a browser, so if
-  // the challenge returns the board errors visibly rather than reading zero.
+  // 2026-08-14.
   //
-  // Every one of its 115 postings sits on a Calgary campus — Main, Foothills,
-  // Spy Hill, Downtown — and none of them names a municipality, hence the
-  // blanket alias, exactly as for Mount Royal. The posting pages' JSON-LD does
-  // state a real locality, and the provider prefers it where present.
+  // The old finding was that /search/jobs answered 403 behind a Cloudflare
+  // challenge. That is still true — but only from some networks. It serves our
+  // real User-Agent 115 postings from a laptop and 403s the identical request
+  // from Vercel, so the block is decided by where the request comes from, not
+  // by what it asks for. The first version of this entry read the search pages,
+  // passed every dry run, and failed every production sync.
+  //
+  // robots.txt reads "Disallow:" and names sitemap.xml, so postings are
+  // enumerated from the sitemap instead — the route the operator publishes for
+  // exactly this. It lists 100 where the search page lists 115; that ceiling is
+  // accepted on purpose. Nothing here spoofs a browser. If the sitemap is
+  // walled off too, the board reports the status rather than reading zero, and
+  // the answer is to ask UCalgary for the feed they give Indeed and Google.
+  //
+  // Every posting sits on a Calgary campus — Main, Foothills, Spy Hill,
+  // Downtown — and none names a municipality, hence the blanket alias, exactly
+  // as for Mount Royal. The posting pages' JSON-LD does state a real locality,
+  // and the provider prefers it where present.
   {
     provider: 'talentbrew',
     token: 'university-of-calgary',

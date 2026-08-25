@@ -1477,18 +1477,29 @@ const TALENTBREW_MAX_DETAILS = 200
 /**
  * Radancy's TalentBrew — the career-site product behind careers.ucalgary.ca.
  *
- * The University of Calgary was left out of this list for months on the finding
- * that `/search/jobs` answered 403 behind a Cloudflare challenge. Re-checked
- * 2026-08-25 and that is no longer true: robots.txt reads "Disallow:" (allow
- * everything), names a sitemap, and every listing and posting page serves our
- * real User-Agent as plain HTML. Nothing here spoofs a browser; if the
- * challenge ever returns, the fetch fails and the board reports an error rather
- * than quietly reading zero.
+ * Postings are enumerated from the site's own sitemap, not from its search
+ * page, and the reason matters.
  *
- * The listing carries title, location and the posting URL but only a truncated
- * blurb, so the description comes from the JSON-LD JobPosting on each posting
- * page — which also states the real municipality, where the listing says only
- * which campus.
+ * `/search/jobs` sits behind Cloudflare bot management that is decided by where
+ * the request comes from, not by what it asks for. It serves this exact
+ * User-Agent from a laptop — 115 postings, every time — and answers 403 to the
+ * same code running on Vercel. Building on it meant a board that passed every
+ * dry run and failed every real sync, which is the worst of both: the thing you
+ * can test is not the thing that runs.
+ *
+ * robots.txt reads "Disallow:" and names sitemap.xml, so the sitemap is the
+ * enumeration route the operator publishes on purpose. It is also one request
+ * instead of five. It caps at 100 URLs where the search page lists 115, and
+ * that ceiling is accepted deliberately: 100 readable postings beat 115
+ * unreadable ones. The search pages stay as a fallback for wherever they still
+ * work.
+ *
+ * Nothing here spoofs a browser. If the sitemap is walled off too, the board
+ * reports the status rather than quietly reading zero, and the honest answer is
+ * to ask UCalgary for the feed they already give Indeed and Google for Jobs.
+ *
+ * Either route yields only URLs and campus names, so title, municipality and
+ * description all come from the JSON-LD JobPosting on each posting page.
  */
 async function fetchTalentBrew(
   board: AtsBoard,
@@ -1524,39 +1535,84 @@ async function fetchTalentBrew(
     throw lastError instanceof Error ? lastError : new Error(String(lastError))
   }
 
-  const listed: Array<{ id: string; url: string; title: string; location: string }> = []
-  const seen = new Set<string>()
+  type Listed = { id: string; url: string; title: string; location: string }
 
-  for (let page = 1; page <= TALENTBREW_MAX_PAGES; page++) {
-    const html = await getHtml(`/search/jobs?page=${page}`)
-
-    // Each result is one `.jobs-section__item` block. Splitting on the class
-    // rather than matching hrefs across the whole document keeps a posting's
-    // title and location tied to its own card — the "Learn More" link repeats
-    // the same href further down the same block, which a flat href scan would
-    // have counted twice.
-    let fresh = 0
-    for (const card of html.split('jobs-section__item').slice(1)) {
-      const link = card.match(/<a href="(https?:\/\/[^"]+\/jobs\/(\d+)-[^"]*)"[^>]*>([\s\S]*?)<\/a>/)
-      if (!link) continue
-      const [, url, id, rawTitle] = link
+  /** The route the operator publishes: one request, every posting it lists. */
+  const fromSitemap = async (): Promise<Listed[]> => {
+    const xml = await getHtml('/sitemap.xml')
+    const out: Listed[] = []
+    const seen = new Set<string>()
+    for (const m of xml.matchAll(/<loc>\s*(https?:\/\/[^<\s]*\/jobs\/(\d+)-[^<\s]*)\s*<\/loc>/g)) {
+      const [, url, id] = m
       if (seen.has(id)) continue
       seen.add(id)
-      fresh++
-
-      const title = decodeEntities(rawTitle.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim()
-      const location = decodeEntities(
-        card.match(/<strong>\s*Location:\s*<\/strong>\s*([^<]*)</)?.[1] ?? ''
-      ).replace(/\s+/g, ' ').trim()
-      if (title) listed.push({ id, url, title, location })
+      // Title and location are on the posting page; the sitemap states neither.
+      out.push({ id, url, title: '', location: '' })
     }
-    if (fresh === 0) break
+    return out
   }
 
-  // UCalgary states a campus ("Main Campus", "Foothills Campus"), never a city,
-  // so this only filters at all on a board whose sites span municipalities.
-  // The board's own alias supplies the city for the ones that name none.
-  const candidates = listed.filter(row => isAlberta(row.location) || isAlberta(row.title))
+  /** The search pages, for wherever they are still readable. */
+  const fromSearchPages = async (): Promise<Listed[]> => {
+    const out: Listed[] = []
+    const seen = new Set<string>()
+
+    for (let page = 1; page <= TALENTBREW_MAX_PAGES; page++) {
+      const html = await getHtml(`/search/jobs?page=${page}`)
+
+      // Each result is one `.jobs-section__item` block. Splitting on the class
+      // rather than matching hrefs across the whole document keeps a posting's
+      // title and location tied to its own card — the "Learn More" link repeats
+      // the same href further down the same block, which a flat href scan would
+      // have counted twice.
+      let fresh = 0
+      for (const card of html.split('jobs-section__item').slice(1)) {
+        const link = card.match(/<a href="(https?:\/\/[^"]+\/jobs\/(\d+)-[^"]*)"[^>]*>([\s\S]*?)<\/a>/)
+        if (!link) continue
+        const [, url, id, rawTitle] = link
+        if (seen.has(id)) continue
+        seen.add(id)
+        fresh++
+
+        const title = decodeEntities(rawTitle.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim()
+        const location = decodeEntities(
+          card.match(/<strong>\s*Location:\s*<\/strong>\s*([^<]*)</)?.[1] ?? ''
+        ).replace(/\s+/g, ' ').trim()
+        if (title) out.push({ id, url, title, location })
+      }
+      if (fresh === 0) break
+    }
+    return out
+  }
+
+  let listed: Listed[] = []
+  let sitemapError: unknown
+  try {
+    listed = await fromSitemap()
+  } catch (err) {
+    sitemapError = err
+  }
+
+  if (listed.length === 0) {
+    try {
+      listed = await fromSearchPages()
+      if (sitemapError) {
+        console.warn(`[ats:${board.token}] sitemap unreadable (${sitemapError}); used the search pages`)
+      }
+    } catch (searchError) {
+      // Both routes gone means the board is genuinely unreachable, and that has
+      // to surface as an error. A board reporting zero is indistinguishable
+      // from an employer with nothing open, and sync would expire every row.
+      throw sitemapError ?? searchError
+    }
+  }
+
+  // A campus name ("Main Campus") is not a city, and the sitemap states nothing
+  // at all, so almost everything reaches the detail fetch and the real filter
+  // runs downstream on the municipality the posting page states.
+  const candidates = listed.filter(
+    row => !row.location || isAlberta(row.location) || isAlberta(row.title)
+  )
   if (candidates.length > TALENTBREW_MAX_DETAILS) {
     console.warn(
       `[ats:${board.token}] ${candidates.length} roles listed but only ${TALENTBREW_MAX_DETAILS} descriptions fetched this run`
@@ -1593,13 +1649,27 @@ async function fetchTalentBrew(
       ? schema.employmentType[0]
       : schema?.employmentType
 
+    // The sitemap route supplies neither a title nor a campus, so both are read
+    // off the posting page. The <h1> is the role and nothing else — the page
+    // carries no other one — and the campus sits in the same labelled line the
+    // search results use.
+    const heading = decodeEntities(
+      html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)?.[1]?.replace(/<[^>]+>/g, '') ?? ''
+    ).replace(/\s+/g, ' ').trim()
+    const campus = decodeEntities(
+      html.match(/<strong>\s*Location:\s*<\/strong>\s*([^<]*)</)?.[1] ?? ''
+    ).replace(/\s+/g, ' ').trim()
+
+    const title = row.title || schema?.title?.trim() || heading
+    if (!title) return null
+
     return {
       id: row.id,
       // The posting's own address beats the campus name — it is the only thing
       // on either page that names a municipality, and it is what keeps a role
       // at an off-campus site off the Calgary page by accident of the alias.
-      location: locality ? [locality, region].filter(Boolean).join(', ') : row.location,
-      title: row.title,
+      location: locality ? [locality, region].filter(Boolean).join(', ') : (row.location || campus),
+      title,
       // Real HTML once JSON.parse has run — unlike Greenhouse, nothing here is
       // entity-encoded a second time.
       descriptionHtml,
