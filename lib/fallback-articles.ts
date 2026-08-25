@@ -159,10 +159,23 @@ export async function getCityArticlesWithFallback(city: string): Promise<Article
         articles = excludeOtherCityArticles(articles, validCity)
         console.log(`✅ Loaded ${articles.length} ${city} articles from Supabase (excluded events + other cities)`)
 
-        // Update optimized fallback with fresh data
-        updateOptimizedFallback(raw).catch(err =>
-          console.warn('⚠️ Background update of fallback failed:', err)
-        )
+        // The fallback file is deliberately NOT written here.
+        //
+        // It used to be — with `raw`, which is one city's articles — and
+        // updateOptimizedFallback replaces the file rather than merging into
+        // it. So whichever city page rendered last left a whole-site fallback
+        // containing only that city, and every other city's fallback was gone.
+        //
+        // On Vercel that is harmless at runtime (the filesystem is read-only)
+        // but not during `next build`, where it is writable: prerendering
+        // /calgary shrank the file from 500 articles to 172 Calgary ones and
+        // zero Edmonton ones, and /edmonton then prerendered off that empty
+        // fallback and shipped a city page with no articles on it. It is also
+        // why a local `next dev` or `next build` kept leaving this file
+        // rewritten in the working tree.
+        //
+        // Every other caller passes the full article set, which is what this
+        // file is for. The city pages have nothing to add to it.
 
         return articles
       }

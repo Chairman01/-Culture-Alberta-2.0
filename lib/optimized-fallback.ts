@@ -80,6 +80,24 @@ function optimizeArticle(article: Article): OptimizedArticle {
 }
 
 /**
+ * A write this much smaller than what is already on disk is rejected.
+ *
+ * This file is the whole site's last resort when Supabase is unreachable, and
+ * the write is a replace, not a merge — so one caller passing a filtered
+ * subset silently destroys every article outside that subset. That happened:
+ * a city page wrote its own city's rows here, and during `next build` (where,
+ * unlike at runtime on Vercel, the filesystem is writable) it left a fallback
+ * holding 172 Calgary articles and no Edmonton ones. The Edmonton page then
+ * prerendered off it and shipped empty.
+ *
+ * The offending caller is gone, but a partial write is an easy mistake to make
+ * again and its symptom — one city quietly blank — is a long way from its
+ * cause. Half is well clear of the normal churn of a full refresh, where the
+ * count moves by a handful of articles at a time.
+ */
+const MIN_KEEP_RATIO = 0.5
+
+/**
  * Update the optimized fallback file with fresh articles
  */
 export async function updateOptimizedFallback(articles: Article[]): Promise<void> {
@@ -92,6 +110,13 @@ export async function updateOptimizedFallback(articles: Article[]): Promise<void
       try {
         const existingArticles = JSON.parse(fs.readFileSync(OPTIMIZED_FALLBACK_PATH, 'utf-8'))
         if (Array.isArray(existingArticles)) {
+          if (articles.length < existingArticles.length * MIN_KEEP_RATIO) {
+            console.warn(
+              `⚠️ Refusing to shrink optimized fallback from ${existingArticles.length} to ` +
+              `${articles.length} articles — this looks like a filtered subset, not a full refresh`
+            )
+            return
+          }
           existingContentById = new Map(
             existingArticles
               .filter((article: any) => article?.id && typeof article.content === 'string' && article.content.trim().length > 0)
