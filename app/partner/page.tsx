@@ -216,13 +216,18 @@ export default function PartnerPage() {
               <div className="grid grid-cols-3 gap-4">
                 {clients.map((client, index) => {
                   const href = client.article ?? client.url
-                  const isExternal = href.startsWith("http")
 
                   return (
                     <Link
                       key={index}
                       href={href}
-                      {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                      // Always a new tab, our own articles included. This grid is
+                      // proof for a business deciding whether to work with us, and
+                      // following a client's story used to replace the pitch they
+                      // were halfway through reading — with no way back except the
+                      // back button and a scroll to find their place again.
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-center justify-center h-28 p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md hover:scale-105 transition-all duration-300"
                       title={client.article ? `Read our story on ${client.name}` : client.name}
                     >
