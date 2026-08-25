@@ -17,6 +17,7 @@
  *   PeopleAdmin  {token}.peopleadmin.ca            → /postings/search.atom
  *   HRsmart      {tenant}.hua.hrsmart.com          → /hr/ats/JobSearch/viewAll
  *   Avanti       {tenant}.myavanti.ca/careers      → POST /careers/Job/Search
+ *   TalentBrew   careers.{domain}                 → /search/jobs?page=N
  *
  * Finding one is the hard part, not adding it. Fetch the site ROOT and follow
  * its careers links — guessing `careers.{domain}` almost never resolves — then
@@ -127,10 +128,10 @@ export const ATS_BOARDS: AtsBoard[] = [
   // openings today, for six list requests a sync.
   { provider: 'workday', token: 'canadiantirecorporation', company: 'Canadian Tire', domain: 'canadiantire.ca', datacenter: 'wd3', site: 'Enterprise_External_Careers_Site' },
 
-  // Added while looking for the University of Calgary, whose own board turned
-  // out to be unreadable (see the note further down). Bow Valley College is the
-  // nearest thing we can legitimately read: a downtown Calgary post-secondary
-  // with ~15,000 students, 18 of its 20 postings in Calgary.
+  // Added while the University of Calgary was still unreadable — a downtown
+  // Calgary post-secondary with ~15,000 students, 18 of its 20 postings in
+  // Calgary. UCalgary is now carried too (TalentBrew, below); this stays,
+  // because it is a different employer and not a stand-in.
   { provider: 'workday', token: 'bowvalleycollege', company: 'Bow Valley College', domain: 'bowvalleycollege.ca', datacenter: 'wd10', site: 'BowValleyCollege' },
 
   // Calgary-weighted additions, confirmed live 2026-08-11. The board skewed
@@ -253,30 +254,29 @@ export const ATS_BOARDS: AtsBoard[] = [
   //
   // If a feed is granted, add the boards back here and the provider handles it.
 
-  // ── University of Calgary — DELIBERATELY NOT ENABLED ──────────────────────
+  // ── Radancy TalentBrew ─────────────────────────────────────────────────────
+  // `domain` is the board origin, as with SuccessFactors above.
   //
-  // Asked for on 2026-08-14 and genuinely wanted: it's the largest employer in
-  // Calgary we don't carry. It is left out for the same reason as AHS below,
-  // and the finding is recorded here so it isn't rediscovered from scratch.
+  // The University of Calgary, enabled 2026-08-25 after being blocked out since
+  // 2026-08-14. The old finding was real — careers.ucalgary.ca answered 403
+  // behind a Cloudflare challenge on /search/jobs, robots.txt included — but it
+  // no longer holds: robots.txt now reads "Disallow:" (allow everything) and
+  // names a sitemap, and both the listing and every posting page serve our real
+  // User-Agent as plain HTML. Nothing about this entry spoofs a browser, so if
+  // the challenge returns the board errors visibly rather than reading zero.
   //
-  // careers.ucalgary.ca sits behind a Cloudflare bot challenge. The site root
-  // serves our User-Agent fine, but `/search/jobs` — the only path that
-  // enumerates postings — answered 403 with the "Just a moment…" interstitial
-  // on first contact, before any repeated requests. Sustained probing then had
-  // robots.txt and sitemap.xml return 403 too, so we cannot even read their
-  // stated crawl policy.
-  //
-  // Reading the listing therefore needs a spoofed browser User-Agent or a
-  // solved JS challenge, which is defeating their bot protection, so we don't.
-  //
-  // Legitimate routes back in:
-  //   - ask UCalgary HR for the syndication feed they already give Indeed and
-  //     Google for Jobs, or to allow our User-Agent
-  //   - the federal Job Bank XML feed (access application), which carries them
-  //   - post individual headline roles by hand via /admin/jobs
-  //
-  // NOTE: the University of ALBERTA (Oracle, above) and the University of
-  // LETHBRIDGE (PeopleAdmin, below) are both enabled and unaffected by this.
+  // Every one of its 115 postings sits on a Calgary campus — Main, Foothills,
+  // Spy Hill, Downtown — and none of them names a municipality, hence the
+  // blanket alias, exactly as for Mount Royal. The posting pages' JSON-LD does
+  // state a real locality, and the provider prefers it where present.
+  {
+    provider: 'talentbrew',
+    token: 'university-of-calgary',
+    company: 'University of Calgary',
+    domain: 'careers.ucalgary.ca',
+    logoDomain: 'ucalgary.ca',
+    locationAliases: [{ pattern: /^/, city: 'calgary' }],
+  },
 
   // ── Phenom People ──────────────────────────────────────────────────────────
   // `domain` is the board origin, as with SuccessFactors above.

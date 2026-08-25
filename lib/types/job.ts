@@ -13,7 +13,7 @@ export type JobSource = 'adzuna' | 'manual' | 'jobbank' | 'ats'
 export type AtsProvider =
   | 'greenhouse' | 'lever' | 'ashby' | 'workable' | 'workday'
   | 'successfactors' | 'phenom' | 'oracle' | 'otss'
-  | 'peopleadmin' | 'cadient' | 'hrsmart' | 'avanti' | 'rss' | 'mhc'
+  | 'peopleadmin' | 'cadient' | 'hrsmart' | 'avanti' | 'talentbrew' | 'rss' | 'mhc'
 
 export type JobStatus = 'active' | 'expired' | 'draft'
 

@@ -98,6 +98,43 @@ async function mapDetails<T, R>(
   return out.filter((r): r is R => r !== null)
 }
 
+/**
+ * The JobPosting JSON-LD a career site embeds in its own posting page.
+ *
+ * Career sites publish this so Google for Jobs can read them, which makes it
+ * the one field set on these pages that is a contract rather than markup we
+ * happen to be able to parse. A page can carry several blocks (breadcrumbs,
+ * the organisation), so this returns the first one that is actually a
+ * JobPosting rather than the first script tag.
+ */
+interface JobPostingSchema {
+  title?: string
+  description?: string
+  datePosted?: string
+  validThrough?: string
+  employmentType?: string | string[]
+  jobLocation?: SchemaPlace | SchemaPlace[]
+}
+
+interface SchemaPlace {
+  address?: {
+    addressLocality?: string
+    addressRegion?: string
+  }
+}
+
+function jobPostingSchema(html: string): JobPostingSchema | null {
+  for (const m of html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
+    try {
+      const parsed = JSON.parse(m[1])
+      if (parsed?.['@type'] === 'JobPosting') return parsed as JobPostingSchema
+    } catch {
+      /* keep looking — one malformed block must not hide a later valid one */
+    }
+  }
+  return null
+}
+
 function normaliseEmployment(value: string | null | undefined): string | null {
   if (!value) return null
   const v = value.toLowerCase().replace(/[\s_-]/g, '')
@@ -1425,6 +1462,151 @@ async function fetchCadient(board: AtsBoard): Promise<RawPosting[]> {
   })
 }
 
+// ── Radancy TalentBrew ───────────────────────────────────────────────────────
+
+/**
+ * Pages of the listing to walk. Twenty-five rows a page, so this covers 300
+ * postings — well clear of UCalgary's ~115 — and the loop stops early the
+ * moment a page adds nothing new.
+ */
+const TALENTBREW_MAX_PAGES = 12
+
+/** Detail fetches per run. Logged when hit, never silently truncated. */
+const TALENTBREW_MAX_DETAILS = 200
+
+/**
+ * Radancy's TalentBrew — the career-site product behind careers.ucalgary.ca.
+ *
+ * The University of Calgary was left out of this list for months on the finding
+ * that `/search/jobs` answered 403 behind a Cloudflare challenge. Re-checked
+ * 2026-08-25 and that is no longer true: robots.txt reads "Disallow:" (allow
+ * everything), names a sitemap, and every listing and posting page serves our
+ * real User-Agent as plain HTML. Nothing here spoofs a browser; if the
+ * challenge ever returns, the fetch fails and the board reports an error rather
+ * than quietly reading zero.
+ *
+ * The listing carries title, location and the posting URL but only a truncated
+ * blurb, so the description comes from the JSON-LD JobPosting on each posting
+ * page — which also states the real municipality, where the listing says only
+ * which campus.
+ */
+async function fetchTalentBrew(
+  board: AtsBoard,
+  isAlberta: (location: string) => boolean
+): Promise<RawPosting[]> {
+  const origin = `https://${board.domain}`
+
+  /**
+   * One retry, because this board pays a request per posting and a transient
+   * failure is expensive here in a way it isn't elsewhere: the first dry run
+   * lost 35 of 115 postings to connection failures that a plain re-run did not
+   * reproduce. Silently reading 80 postings looks exactly like an employer
+   * having 80 openings.
+   */
+  const getHtml = async (path: string): Promise<string> => {
+    let lastError: unknown
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch(`${origin}${path}`, {
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+          headers: { 'user-agent': UA, accept: 'text/html' },
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.text()
+      } catch (err) {
+        lastError = err
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError))
+  }
+
+  const listed: Array<{ id: string; url: string; title: string; location: string }> = []
+  const seen = new Set<string>()
+
+  for (let page = 1; page <= TALENTBREW_MAX_PAGES; page++) {
+    const html = await getHtml(`/search/jobs?page=${page}`)
+
+    // Each result is one `.jobs-section__item` block. Splitting on the class
+    // rather than matching hrefs across the whole document keeps a posting's
+    // title and location tied to its own card — the "Learn More" link repeats
+    // the same href further down the same block, which a flat href scan would
+    // have counted twice.
+    let fresh = 0
+    for (const card of html.split('jobs-section__item').slice(1)) {
+      const link = card.match(/<a href="(https?:\/\/[^"]+\/jobs\/(\d+)-[^"]*)"[^>]*>([\s\S]*?)<\/a>/)
+      if (!link) continue
+      const [, url, id, rawTitle] = link
+      if (seen.has(id)) continue
+      seen.add(id)
+      fresh++
+
+      const title = decodeEntities(rawTitle.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim()
+      const location = decodeEntities(
+        card.match(/<strong>\s*Location:\s*<\/strong>\s*([^<]*)</)?.[1] ?? ''
+      ).replace(/\s+/g, ' ').trim()
+      if (title) listed.push({ id, url, title, location })
+    }
+    if (fresh === 0) break
+  }
+
+  // UCalgary states a campus ("Main Campus", "Foothills Campus"), never a city,
+  // so this only filters at all on a board whose sites span municipalities.
+  // The board's own alias supplies the city for the ones that name none.
+  const candidates = listed.filter(row => isAlberta(row.location) || isAlberta(row.title))
+  if (candidates.length > TALENTBREW_MAX_DETAILS) {
+    console.warn(
+      `[ats:${board.token}] ${candidates.length} roles listed but only ${TALENTBREW_MAX_DETAILS} descriptions fetched this run`
+    )
+  }
+
+  return mapDetails(candidates.slice(0, TALENTBREW_MAX_DETAILS), async row => {
+    const html = await getHtml(new URL(row.url).pathname)
+    const schema = jobPostingSchema(html)
+
+    /**
+     * The rendered block, for when the JSON-LD can't be read. Three of
+     * UCalgary's 115 postings carry a stray backslash in the employer's own
+     * rich text, which makes JSON.parse throw on the whole block — losing a
+     * real Calgary job to that is not a tradeoff worth making. This is the
+     * same markup the schema is generated from, so the text is identical.
+     */
+    const rendered = (() => {
+      const at = html.search(/<div class="job-description\b/)
+      if (at < 0) return null
+      const inner = html.indexOf('>', at)
+      return inner < 0 ? null : divContentFrom(html, inner + 1)
+    })()
+
+    // No description is no posting: a row without one is just a link, and the
+    // whole point of reading the board directly is the text Google indexes.
+    const descriptionHtml = schema?.description ?? rendered
+    if (!descriptionHtml?.trim()) return null
+
+    const place = Array.isArray(schema?.jobLocation) ? schema.jobLocation[0] : schema?.jobLocation
+    const locality = place?.address?.addressLocality?.trim()
+    const region = place?.address?.addressRegion?.trim()
+    const type = Array.isArray(schema?.employmentType)
+      ? schema.employmentType[0]
+      : schema?.employmentType
+
+    return {
+      id: row.id,
+      // The posting's own address beats the campus name — it is the only thing
+      // on either page that names a municipality, and it is what keeps a role
+      // at an off-campus site off the Calgary page by accident of the alias.
+      location: locality ? [locality, region].filter(Boolean).join(', ') : row.location,
+      title: row.title,
+      // Real HTML once JSON.parse has run — unlike Greenhouse, nothing here is
+      // entity-encoded a second time.
+      descriptionHtml,
+      applyUrl: row.url,
+      postedAt: schema?.datePosted ?? null,
+      employmentType: normaliseEmployment(type),
+      validThrough: schema?.validThrough ?? null,
+    }
+  })
+}
+
 // ── Dispatch ─────────────────────────────────────────────────────────────────
 export async function fetchBoard(
   board: AtsBoard,
@@ -1445,6 +1627,7 @@ export async function fetchBoard(
     case 'avanti': return fetchAvanti(board, isAlberta)
     case 'rss': return fetchRssFeed(board)
     case 'mhc': return fetchMedicineHatCollege(board)
+    case 'talentbrew': return fetchTalentBrew(board, isAlberta)
     default: return []
   }
 }
