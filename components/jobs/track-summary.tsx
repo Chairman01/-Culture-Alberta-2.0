@@ -11,6 +11,13 @@ import type { SavedJobStatus } from '@/lib/types/job'
  * screen, so this sticks to the top of the list rather than sitting at the top
  * of the page where it scrolls away exactly when it becomes useful.
  *
+ * `top` clears the site header, which is itself sticky at `top-0` with a much
+ * higher z-index — 57px tall, 65px from the sm breakpoint, borders included.
+ * Pinned at top-0 this stuck correctly and then slid straight underneath the
+ * navbar, so it was invisible from the first scroll, which looks exactly like
+ * a strip that doesn't stick. The few extra pixels leave it reading as a
+ * separate bar rather than as part of the nav.
+ *
  * Each tally is also a filter — "which ones?" is the immediate next question
  * after "how many?", and answering it any other way means making them
  * remember, or leave for /account.
@@ -40,7 +47,7 @@ export function JobTrackSummary({
   const applied = counts.find(c => c.status === 'applied')?.count ?? 0
 
   return (
-    <div className="sticky top-0 z-20 -mx-1 mb-3 rounded-lg border border-gray-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <div className="sticky top-[3.75rem] z-30 -mx-1 mb-3 rounded-lg border border-gray-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 sm:top-[4.25rem]">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="text-sm font-semibold text-gray-900">
           {applied > 0 ? (

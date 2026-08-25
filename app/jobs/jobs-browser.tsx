@@ -440,6 +440,46 @@ export default function JobsBrowser({
   const resetPage = () => setPage(1)
 
   /**
+   * Clicking a tally narrows the board. Clicking it off has to put the reader
+   * back exactly where they were, not at the top.
+   *
+   * Filtering five hundred rows down to the one they applied to collapses the
+   * document, so the browser clamps their scroll to the new bottom — and
+   * "Show all jobs" then returned them to the top of a board they had been
+   * forty rows into. Answering "which ones?" should cost nothing; the place is
+   * captured on the way in and replayed on the way out.
+   */
+  const placeBeforeTrackFilter = useRef<{ scrollY: number; selectedId: string | null } | null>(null)
+
+  const changeTrackFilter = useCallback((status: SavedJobStatus | null) => {
+    if (status) {
+      // Only on the way in — switching straight from one tally to another must
+      // not overwrite the board position they started from.
+      if (!trackFilter) {
+        placeBeforeTrackFilter.current = { scrollY: window.scrollY, selectedId: selected?.id ?? null }
+      }
+      setTrackFilter(status)
+      // The narrowed list is short, so put them at the top of it rather than
+      // wherever the collapse happens to leave them.
+      requestAnimationFrame(() => {
+        document.getElementById('job-results-top')?.scrollIntoView({ block: 'start' })
+      })
+      return
+    }
+
+    const back = placeBeforeTrackFilter.current
+    placeBeforeTrackFilter.current = null
+    setTrackFilter(null)
+    if (!back) return
+    // The row they were reading, not just the scroll offset — the panel is half
+    // of "where I was".
+    if (back.selectedId) setSelectedId(back.selectedId)
+    // Two frames, for the same reason the session restore needs them: the full
+    // list has to be laid out before the document is tall enough to scroll to.
+    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, back.scrollY)))
+  }, [trackFilter, selected?.id])
+
+  /**
    * Save the reader's place.
    *
    * Written whenever the board changes, and again on the way out — `pagehide`
@@ -754,7 +794,7 @@ export default function JobsBrowser({
       )}
 
       {/* The reader's own tally, pinned so it stays readable down the page. */}
-      <JobTrackSummary tracked={tracked} activeFilter={trackFilter} onFilter={setTrackFilter} />
+      <JobTrackSummary tracked={tracked} activeFilter={trackFilter} onFilter={changeTrackFilter} />
 
       {/* Result count — also the anchor paging scrolls back to. */}
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
