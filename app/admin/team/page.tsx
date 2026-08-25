@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Loader2, UserPlus, KeyRound, Copy, Check, Users, ShieldAlert } from "lucide-react"
+import { Loader2, UserPlus, KeyRound, PenLine, Copy, Check, Users, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -49,6 +49,8 @@ export default function TeamPage() {
   const [copied, setCopied] = useState(false)
   const [credential, setCredential] = useState<NewCredential | null>(null)
   const [disableTarget, setDisableTarget] = useState<TeamMember | null>(null)
+  const [renameTarget, setRenameTarget] = useState<TeamMember | null>(null)
+  const [renameValue, setRenameValue] = useState("")
   const [form, setForm] = useState({ displayName: "", username: "", role: "contributor" as "admin" | "contributor" })
   const { toast } = useToast()
 
@@ -111,13 +113,17 @@ export default function TeamPage() {
     }
   }
 
-  const patch = async (member: TeamMember, action: "enable" | "disable" | "reset-password") => {
+  const patch = async (
+    member: TeamMember,
+    action: "enable" | "disable" | "reset-password" | "rename",
+    extra?: Record<string, unknown>,
+  ) => {
     setBusyId(member.id)
     try {
       const res = await fetch(`/api/admin/team/${member.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...extra }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -125,6 +131,13 @@ export default function TeamPage() {
       if (action === "reset-password") {
         setCredential({ displayName: member.displayName, username: member.username, password: data.password })
         setCopied(false)
+      } else if (action === "rename") {
+        toast({
+          title: `Now publishing as ${extra?.displayName}`,
+          description: data.articlesUpdated
+            ? `${data.articlesUpdated} existing article${data.articlesUpdated === 1 ? "" : "s"} rebylined.`
+            : "No existing articles to update.",
+        })
       } else {
         toast({
           title: action === "disable" ? `${member.displayName} can no longer sign in` : `${member.displayName} can sign in again`,
@@ -140,6 +153,7 @@ export default function TeamPage() {
     } finally {
       setBusyId(null)
       setDisableTarget(null)
+      setRenameTarget(null)
     }
   }
 
@@ -242,6 +256,22 @@ export default function TeamPage() {
                 <p className="text-xs text-gray-500 mt-1">Last signed in: {formatWhen(member.lastLoginAt)}</p>
               </div>
               <div className="flex items-center gap-2">
+                {/* A writer's byline comes from their account and never from
+                    what they type into the author field, which is what stops
+                    anyone publishing under someone else's name. Until now that
+                    also made the name permanent — a writer wanting a pen name
+                    had no way to ask for one. */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busyId === member.id}
+                  onClick={() => {
+                    setRenameValue(member.displayName)
+                    setRenameTarget(member)
+                  }}
+                >
+                  <PenLine className="h-4 w-4 mr-1.5" /> Byline
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -296,6 +326,40 @@ export default function TeamPage() {
               {copied ? "Copied" : "Copy"}
             </Button>
             <AlertDialogAction onClick={() => setCredential(null)}>Done</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Byline ──────────────────────────────────────────────────────── */}
+      <AlertDialog open={!!renameTarget} onOpenChange={open => !open && setRenameTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Byline for @{renameTarget?.username}</AlertDialogTitle>
+            <AlertDialogDescription>
+              The name readers see on everything they write. Changing it also rewrites the byline on
+              their existing articles, so the same person never appears under two names.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="byline">Name</Label>
+            <Input
+              id="byline"
+              value={renameValue}
+              onChange={e => setRenameValue(e.target.value)}
+              placeholder="Erica Reed"
+              maxLength={80}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!renameValue.trim() || renameValue.trim() === renameTarget?.displayName}
+              onClick={() =>
+                renameTarget && patch(renameTarget, "rename", { displayName: renameValue.trim() })
+              }
+            >
+              Save byline
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

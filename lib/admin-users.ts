@@ -169,6 +169,52 @@ export async function setAdminUserActive(id: string, isActive: boolean): Promise
   }
 }
 
+/**
+ * Change a writer's byline, on their account and on everything they have
+ * already written.
+ *
+ * A contributor's byline is taken from their account, never from the request
+ * body — that is deliberate, so nobody can publish under someone else's name.
+ * The cost was that the display name entered when the account was created was
+ * permanent: a writer who wanted to publish under a pen name typed it into the
+ * author field, watched the server ignore it, and had no way to say otherwise.
+ *
+ * The back catalogue is rewritten in the same breath because a half-renamed
+ * writer is worse than an unrenamed one — the same person would appear under
+ * two names, and readers and the author pages would treat them as two people.
+ * Matched on author_user_id so it only ever touches that account's own work.
+ */
+export async function setAdminUserDisplayName(
+  id: string,
+  displayName: string
+): Promise<{ articlesUpdated: number }> {
+  const name = displayName.trim()
+  if (!name) throw new Error('A name is required')
+  if (name.length > 80) throw new Error('That name is too long')
+
+  const supabase = getServiceClient()
+  const { error } = await supabase.from('admin_users').update({ display_name: name }).eq('id', id)
+  if (error) {
+    console.error('[admin-users] Rename failed:', error.message)
+    throw new Error('Could not rename the account')
+  }
+
+  const { data, error: articlesError } = await supabase
+    .from('articles')
+    .update({ author: name })
+    .eq('author_user_id', id)
+    .select('id')
+
+  if (articlesError) {
+    // The account is renamed either way; say so rather than reporting a clean
+    // rename that left the back catalogue under the old name.
+    console.error('[admin-users] Byline backfill failed:', articlesError.message)
+    throw new Error('Renamed the account, but could not update their existing articles')
+  }
+
+  return { articlesUpdated: data?.length ?? 0 }
+}
+
 export async function setAdminUserPassword(id: string, password: string): Promise<void> {
   const supabase = getServiceClient()
   const { error } = await supabase

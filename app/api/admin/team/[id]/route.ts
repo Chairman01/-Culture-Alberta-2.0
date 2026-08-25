@@ -2,6 +2,7 @@
  * PATCH /api/admin/team/:id
  *   { action: 'enable' | 'disable' }        → turn an account on or off
  *   { action: 'reset-password' }            → new password, returned ONCE
+ *   { action: 'rename', displayName }       → new byline, applied to their work too
  *
  * Admin only. Accounts are disabled, never deleted, so the articles someone
  * wrote keep a resolvable author after they leave.
@@ -13,6 +14,7 @@ import {
   listAdminUsers,
   setAdminUserActive,
   setAdminUserPassword,
+  setAdminUserDisplayName,
   generatePassword,
   countActiveAdmins,
 } from '@/lib/admin-users'
@@ -61,6 +63,13 @@ export async function PATCH(
       await setAdminUserPassword(id, password)
       console.log(`[team] ${auth.username} reset the password for "${target.username}"`)
       return NextResponse.json({ ok: true, password })
+    }
+
+    if (action === 'rename') {
+      const displayName = String(body.displayName ?? '')
+      const { articlesUpdated } = await setAdminUserDisplayName(id, displayName)
+      console.log(`[team] ${auth.username} renamed "${target.username}" to "${displayName.trim()}" (${articlesUpdated} article(s) rebylined)`)
+      return NextResponse.json({ ok: true, articlesUpdated })
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
