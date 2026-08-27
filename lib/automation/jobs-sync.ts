@@ -128,6 +128,18 @@ export async function syncAllJobs(): Promise<JobsSyncResult> {
     const insertRows = toInsert.map(row => ({
       ...row,
       slug: buildJobSlug(row.title, row.company),
+      // Some employers publish no posting date at all — the City of Calgary
+      // states one nowhere on the posting or in its own index, and Costco,
+      // Mount Royal, MacEwan, Keyano, Wood Buffalo and Medicine Hat College are
+      // the same. Leaving it null is truthful and useless: every listing sorts
+      // by posted_at with nulls last, so a whole board lands past the end of a
+      // 500-row page and is invisible. The City of Calgary's 72 openings went
+      // straight to page 20-of-25 on the day they were added.
+      //
+      // First seen is the honest stand-in — this is only ever set on insert,
+      // never on update, so it stays the date we actually first saw the role
+      // and a posting that appears tomorrow sorts above one we found today.
+      posted_at: row.posted_at ?? nowIso,
       last_seen_at: nowIso,
       status: 'active',
       is_manual: false,

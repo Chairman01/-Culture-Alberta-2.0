@@ -283,17 +283,36 @@ export const ATS_BOARDS: AtsBoard[] = [
   // default 25 to all 111. It is the feed the previous note said to go and ask
   // UCalgary for; it was already public.
   //
-  // The blanket alias stays as a backstop for the sitemap fallback, whose
-  // campus names ("Main Campus", "Foothills") name no municipality. The feed
-  // states "Calgary, AB" on all 111, so it never fires on the primary route.
-  {
-    provider: 'talentbrew',
-    token: 'university-of-calgary',
-    company: 'University of Calgary',
-    domain: 'careers.ucalgary.ca',
-    logoDomain: 'ucalgary.ca',
-    locationAliases: [{ pattern: /^/, city: 'calgary' }],
-  },
+  // DISABLED 2026-08-27. The feed reader is correct and reads all 111 postings
+  // from a laptop in 1.6 seconds. It cannot read any of them from Vercel.
+  //
+  // The production run that settled it reported "feed: HTTP 403; sitemap: HTTP
+  // 403" — both routes, same answer. Cloudflare blocks this origin by where the
+  // request comes from, and it blocks the whole origin, not a path. The hope
+  // that the aggregator feed would be waved through because Indeed fetches it
+  // from a datacentre too was simply wrong.
+  //
+  // Three readers have now been written against this board and all three failed
+  // in production for the same reason. There is no fourth to write: no parser
+  // changes an IP block. The way in is to ask UCalgary HR to allow our
+  // User-Agent, or for the feed they already give Indeed and Google.
+  //
+  // Left here rather than deleted because the code behind it works — restore
+  // the entry the day access is granted and it reads 111 postings immediately.
+  // Enabled, it costs ~10 seconds of retries per sync to fail, and reports a
+  // failed board every day.
+  //
+  // {
+  //   provider: 'talentbrew',
+  //   token: 'university-of-calgary',
+  //   company: 'University of Calgary',
+  //   domain: 'careers.ucalgary.ca',
+  //   logoDomain: 'ucalgary.ca',
+  //   // Backstop for the sitemap fallback, whose campus names ("Main Campus",
+  //   // "Foothills") name no municipality. The feed states "Calgary, AB" on all
+  //   // 111, so it never fires on the primary route.
+  //   locationAliases: [{ pattern: /^/, city: 'calgary' }],
+  // },
 
   // ── PeopleSoft HCM ─────────────────────────────────────────────────────────
   // `domain` is the board origin, as with SuccessFactors above.
