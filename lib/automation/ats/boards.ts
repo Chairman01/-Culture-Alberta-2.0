@@ -17,7 +17,8 @@
  *   PeopleAdmin  {token}.peopleadmin.ca            → /postings/search.atom
  *   HRsmart      {tenant}.hua.hrsmart.com          → /hr/ats/JobSearch/viewAll
  *   Avanti       {tenant}.myavanti.ca/careers      → POST /careers/Job/Search
- *   TalentBrew   careers.{domain}                 → /search/jobs?page=N
+ *   TalentBrew   careers.{domain}                 → /jobs.xml?per_page=N
+ *   PeopleSoft   recruiting.{domain}              → no feed; needs an indexUrl
  *
  * Finding one is the hard part, not adding it. Fetch the site ROOT and follow
  * its careers links — guessing `careers.{domain}` almost never resolves — then
@@ -73,6 +74,16 @@ export interface AtsBoard {
    * that usually states a real city is unaffected.
    */
   locationAliases?: Array<{ pattern: RegExp; city: JobCity }>
+  /**
+   * PeopleSoft only: a machine-readable list of the employer's open postings,
+   * because PeopleSoft itself publishes none. The City of Calgary puts one on
+   * its own open data portal, which is a better source than its careers page —
+   * the City keeps it current, and nobody promises the page's markup.
+   *
+   * It supplies ids, titles and closing dates; the descriptions still come from
+   * the posting pages it links to.
+   */
+  indexUrl?: string
 }
 
 export const ATS_BOARDS: AtsBoard[] = [
@@ -257,27 +268,24 @@ export const ATS_BOARDS: AtsBoard[] = [
   // ── Radancy TalentBrew ─────────────────────────────────────────────────────
   // `domain` is the board origin, as with SuccessFactors above.
   //
-  // The University of Calgary, enabled 2026-08-25 after being blocked out since
-  // 2026-08-14.
+  // The University of Calgary, enabled 2026-08-25 and producing nothing until
+  // 2026-08-27 — not one row ever reached the table.
   //
-  // The old finding was that /search/jobs answered 403 behind a Cloudflare
-  // challenge. That is still true — but only from some networks. It serves our
-  // real User-Agent 115 postings from a laptop and 403s the identical request
-  // from Vercel, so the block is decided by where the request comes from, not
-  // by what it asks for. The first version of this entry read the search pages,
-  // passed every dry run, and failed every production sync.
+  // Two readers looked for a way past Cloudflare and both missed the door.
+  // /search/jobs is blocked by where the request comes from rather than what it
+  // asks for: it serves our User-Agent 115 postings from a laptop and 403s the
+  // identical request from Vercel, so that reader passed every dry run and
+  // failed every production sync. The sitemap that replaced it enumerated URLs
+  // but no content, so it still paid a request per posting.
   //
-  // robots.txt reads "Disallow:" and names sitemap.xml, so postings are
-  // enumerated from the sitemap instead — the route the operator publishes for
-  // exactly this. It lists 100 where the search page lists 115; that ceiling is
-  // accepted on purpose. Nothing here spoofs a browser. If the sitemap is
-  // walled off too, the board reports the status rather than reading zero, and
-  // the answer is to ask UCalgary for the feed they give Indeed and Google.
+  // /jobs.xml is the StandOut feed Radancy publishes for the aggregators. One
+  // request, full descriptions, real localities, and ?per_page= lifts the
+  // default 25 to all 111. It is the feed the previous note said to go and ask
+  // UCalgary for; it was already public.
   //
-  // Every posting sits on a Calgary campus — Main, Foothills, Spy Hill,
-  // Downtown — and none names a municipality, hence the blanket alias, exactly
-  // as for Mount Royal. The posting pages' JSON-LD does state a real locality,
-  // and the provider prefers it where present.
+  // The blanket alias stays as a backstop for the sitemap fallback, whose
+  // campus names ("Main Campus", "Foothills") name no municipality. The feed
+  // states "Calgary, AB" on all 111, so it never fires on the primary route.
   {
     provider: 'talentbrew',
     token: 'university-of-calgary',
@@ -285,6 +293,30 @@ export const ATS_BOARDS: AtsBoard[] = [
     domain: 'careers.ucalgary.ca',
     logoDomain: 'ucalgary.ca',
     locationAliases: [{ pattern: /^/, city: 'calgary' }],
+  },
+
+  // ── PeopleSoft HCM ─────────────────────────────────────────────────────────
+  // `domain` is the board origin, as with SuccessFactors above.
+  //
+  // The City of Calgary, added 2026-08-27 — the counterpart to the City of
+  // Edmonton, and the largest single employer missing from the Calgary page.
+  //
+  // PeopleSoft publishes no feed, so the postings are enumerated from the
+  // City's own open data portal instead of its careers page. `indexUrl` is the
+  // "City of Calgary Careers" dataset: 73 rows on the day this was added, the
+  // same list the careers page renders, maintained by the City.
+  //
+  // Two quirks the provider handles and this entry depends on: PeopleSoft needs
+  // a cookie round-trip before it will serve a posting, and a posting past its
+  // closing date renders the search page instead of a 404 — so every page is
+  // checked to be the one that was asked for.
+  {
+    provider: 'peoplesoft',
+    token: 'city-of-calgary',
+    company: 'City of Calgary',
+    domain: 'recruiting.calgary.ca',
+    logoDomain: 'calgary.ca',
+    indexUrl: 'https://data.calgary.ca/resource/5fsi-n9xm.json?$limit=500',
   },
 
   // ── Phenom People ──────────────────────────────────────────────────────────
