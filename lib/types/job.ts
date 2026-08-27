@@ -14,6 +14,7 @@ export type AtsProvider =
   | 'greenhouse' | 'lever' | 'ashby' | 'workable' | 'workday'
   | 'successfactors' | 'phenom' | 'oracle' | 'otss'
   | 'peopleadmin' | 'cadient' | 'hrsmart' | 'avanti' | 'talentbrew' | 'rss' | 'mhc'
+  | 'peoplesoft'
 
 export type JobStatus = 'active' | 'expired' | 'draft'
 

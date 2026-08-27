@@ -1465,221 +1465,421 @@ async function fetchCadient(board: AtsBoard): Promise<RawPosting[]> {
 // ── Radancy TalentBrew ───────────────────────────────────────────────────────
 
 /**
- * Pages of the listing to walk. Twenty-five rows a page, so this covers 300
- * postings — well clear of UCalgary's ~115 — and the loop stops early the
- * moment a page adds nothing new.
+ * Postings to ask the feed for. UCalgary lists ~111; 250 leaves room to grow
+ * and the feed returns everything it has in one response either way.
  */
-const TALENTBREW_MAX_PAGES = 12
+const TALENTBREW_FEED_SIZE = 250
 
-/** Detail fetches per run. Logged when hit, never silently truncated. */
+/** Detail fetches per run, on the fallback route only. Logged when hit. */
 const TALENTBREW_MAX_DETAILS = 200
 
 /**
  * Radancy's TalentBrew — the career-site product behind careers.ucalgary.ca.
  *
- * Postings are enumerated from the site's own sitemap, not from its search
- * page, and the reason matters.
+ * Read from `/jobs.xml`, the StandOut XML feed Radancy publishes for the
+ * aggregators. Two earlier versions of this reader went looking for a way in
+ * and missed it: `/search/jobs` sits behind Cloudflare bot management that is
+ * decided by where the request comes from rather than what it asks for — it
+ * serves this exact User-Agent from a laptop and answers 403 from Vercel — and
+ * the sitemap route that replaced it enumerated URLs but no content, so it
+ * still paid a request per posting and never produced a single row in
+ * production.
  *
- * `/search/jobs` sits behind Cloudflare bot management that is decided by where
- * the request comes from, not by what it asks for. It serves this exact
- * User-Agent from a laptop — 115 postings, every time — and answers 403 to the
- * same code running on Vercel. Building on it meant a board that passed every
- * dry run and failed every real sync, which is the worst of both: the thing you
- * can test is not the thing that runs.
+ * The feed is the endpoint built for exactly this. It is one request, it
+ * carries the full description, the locality and the region inline, and
+ * `?per_page=` lifts the default 25 to the whole board: 111 postings where the
+ * sitemap saw 100 and the search pages saw 115. Being the aggregator feed also
+ * makes it the route least likely to be challenged, since Indeed and Google
+ * fetch it from datacentres too.
  *
- * robots.txt reads "Disallow:" and names sitemap.xml, so the sitemap is the
- * enumeration route the operator publishes on purpose. It is also one request
- * instead of five. It caps at 100 URLs where the search page lists 115, and
- * that ceiling is accepted deliberately: 100 readable postings beat 115
- * unreadable ones. The search pages stay as a fallback for wherever they still
- * work.
- *
- * Nothing here spoofs a browser. If the sitemap is walled off too, the board
- * reports the status rather than quietly reading zero, and the honest answer is
- * to ask UCalgary for the feed they already give Indeed and Google for Jobs.
- *
- * Either route yields only URLs and campus names, so title, municipality and
- * description all come from the JSON-LD JobPosting on each posting page.
+ * The sitemap route is kept as the fallback for a tenant that publishes no
+ * feed. The search pages are gone: they are confirmed blocked from where this
+ * actually runs, and a route that only works in a dry run is worse than none.
  */
-async function fetchTalentBrew(
-  board: AtsBoard,
-  isAlberta: (location: string) => boolean
-): Promise<RawPosting[]> {
+async function fetchTalentBrew(board: AtsBoard): Promise<RawPosting[]> {
   const origin = `https://${board.domain}`
 
   /**
-   * One retry, because this board pays a request per posting and a transient
-   * failure is expensive here in a way it isn't elsewhere: the first dry run
-   * lost 35 of 115 postings to connection failures that a plain re-run did not
-   * reproduce. Silently reading 80 postings looks exactly like an employer
-   * having 80 openings.
+   * Retries, because Cloudflare throttles this origin by volume and flaps in
+   * and out of it: hammering it during development turned a working /jobs.xml
+   * into a run of 403s that cleared on its own a minute later, while the
+   * sitemap alternated 200 and 403 request by request.
+   *
+   * `attempts` is per-route on purpose. The feed is one request for the whole
+   * board, so losing it to a single flap costs everything and waiting seconds
+   * costs nothing against the 300-second sync budget. The fallback route pays a
+   * request per posting, where the same patience would blow that budget — it
+   * gets the cheap version, which is still enough for what it was written for
+   * (an early dry run lost 35 of 115 postings to connection failures that a
+   * plain re-run did not reproduce).
    */
-  const getHtml = async (path: string): Promise<string> => {
+  const getText = async (
+    path: string,
+    accept: string,
+    attempts = 2,
+    backoffMs = 750
+  ): Promise<string> => {
     let lastError: unknown
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
       try {
         const res = await fetch(`${origin}${path}`, {
           signal: AbortSignal.timeout(TIMEOUT_MS),
-          headers: { 'user-agent': UA, accept: 'text/html' },
+          headers: { 'user-agent': UA, accept },
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.text()
       } catch (err) {
         lastError = err
-        // A pause before the second try. An immediate retry against whatever
-        // refused the first one — a rate limiter, a warming edge — just
-        // collects the same answer a few milliseconds later.
-        if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 750))
+        // A pause before trying again, growing each time. An immediate retry
+        // against whatever refused the first one just collects the same answer
+        // a few milliseconds later.
+        if (attempt < attempts - 1) {
+          await new Promise(resolve => setTimeout(resolve, backoffMs * (attempt + 1)))
+        }
       }
     }
     throw lastError instanceof Error ? lastError : new Error(String(lastError))
   }
 
-  type Listed = { id: string; url: string; title: string; location: string }
+  /** Text of one child element, CDATA unwrapped. The feed wraps prose, not ids. */
+  const child = (block: string, tag: string): string => {
+    const m = block.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`))
+    if (!m) return ''
+    const raw = m[1].trim()
+    const cdata = raw.match(/^<!\[CDATA\[([\s\S]*)\]\]>$/)
+    return (cdata ? cdata[1] : decodeEntities(raw)).trim()
+  }
 
-  /** The route the operator publishes: one request, every posting it lists. */
-  const fromSitemap = async (): Promise<Listed[]> => {
-    const xml = await getHtml('/sitemap.xml')
-    const out: Listed[] = []
+  /** The route the operator publishes for aggregators: one request, everything. */
+  const fromFeed = async (): Promise<RawPosting[]> => {
+    // Four tries, backing off 1.5s / 3s / 4.5s — nine seconds at worst to hold
+    // on to the entire board.
+    const xml = await getText(
+      `/jobs.xml?per_page=${TALENTBREW_FEED_SIZE}`,
+      'application/xml',
+      4,
+      1_500
+    )
+    const out: RawPosting[] = []
+
+    for (const m of xml.matchAll(/<job>([\s\S]*?)<\/job>/g)) {
+      const block = m[1]
+      const id = child(block, 'id')
+      const title = child(block, 'title')
+      const descriptionHtml = child(block, 'description')
+      // A row without a description is just a link, and the whole point of
+      // reading the board directly is the text Google indexes.
+      if (!id || !title || !descriptionHtml) continue
+
+      // The feed states a real municipality, which is what the campus names on
+      // the posting pages never did.
+      const location = [child(block, 'locality'), child(block, 'region')]
+        .filter(Boolean)
+        .join(', ')
+
+      const updated = child(block, 'updated_at')
+      const updatedAt = updated && !Number.isNaN(new Date(updated).getTime())
+        ? new Date(updated).toISOString()
+        : null
+
+      out.push({
+        id,
+        title,
+        location,
+        descriptionHtml,
+        applyUrl: child(block, 'apply_url') || child(block, 'detail_url'),
+        // The only date the feed carries. It moves when an employer edits a
+        // posting, so it reads slightly newer than the true publication date —
+        // still the best available, and the board itself governs expiry.
+        postedAt: updatedAt,
+        employmentType: null,
+      })
+    }
+    return out.filter(row => row.applyUrl)
+  }
+
+  /**
+   * Sitemap plus a request per posting, for a tenant with no feed. Yields only
+   * URLs, so title, municipality and description all come off the posting page.
+   */
+  const fromSitemap = async (): Promise<RawPosting[]> => {
+    const xml = await getText('/sitemap.xml', 'application/xml')
+    const listed: Array<{ id: string; url: string }> = []
     const seen = new Set<string>()
     for (const m of xml.matchAll(/<loc>\s*(https?:\/\/[^<\s]*\/jobs\/(\d+)-[^<\s]*)\s*<\/loc>/g)) {
       const [, url, id] = m
       if (seen.has(id)) continue
       seen.add(id)
-      // Title and location are on the posting page; the sitemap states neither.
-      out.push({ id, url, title: '', location: '' })
+      listed.push({ id, url })
     }
-    return out
-  }
+    if (listed.length === 0) throw new Error('sitemap listed no postings')
 
-  /** The search pages, for wherever they are still readable. */
-  const fromSearchPages = async (): Promise<Listed[]> => {
-    const out: Listed[] = []
-    const seen = new Set<string>()
+    if (listed.length > TALENTBREW_MAX_DETAILS) {
+      console.warn(
+        `[ats:${board.token}] ${listed.length} roles listed but only ${TALENTBREW_MAX_DETAILS} descriptions fetched this run`
+      )
+    }
 
-    for (let page = 1; page <= TALENTBREW_MAX_PAGES; page++) {
-      const html = await getHtml(`/search/jobs?page=${page}`)
+    return mapDetails(listed.slice(0, TALENTBREW_MAX_DETAILS), async row => {
+      const html = await getText(new URL(row.url).pathname, 'text/html')
+      const schema = jobPostingSchema(html)
 
-      // Each result is one `.jobs-section__item` block. Splitting on the class
-      // rather than matching hrefs across the whole document keeps a posting's
-      // title and location tied to its own card — the "Learn More" link repeats
-      // the same href further down the same block, which a flat href scan would
-      // have counted twice.
-      let fresh = 0
-      for (const card of html.split('jobs-section__item').slice(1)) {
-        const link = card.match(/<a href="(https?:\/\/[^"]+\/jobs\/(\d+)-[^"]*)"[^>]*>([\s\S]*?)<\/a>/)
-        if (!link) continue
-        const [, url, id, rawTitle] = link
-        if (seen.has(id)) continue
-        seen.add(id)
-        fresh++
+      /**
+       * The rendered block, for when the JSON-LD can't be read. Three of
+       * UCalgary's postings carry a stray backslash in the employer's own rich
+       * text, which makes JSON.parse throw on the whole block — losing a real
+       * Calgary job to that is not a tradeoff worth making. This is the same
+       * markup the schema is generated from, so the text is identical.
+       */
+      const rendered = (() => {
+        const at = html.search(/<div class="job-description\b/)
+        if (at < 0) return null
+        const inner = html.indexOf('>', at)
+        return inner < 0 ? null : divContentFrom(html, inner + 1)
+      })()
 
-        const title = decodeEntities(rawTitle.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim()
-        const location = decodeEntities(
-          card.match(/<strong>\s*Location:\s*<\/strong>\s*([^<]*)</)?.[1] ?? ''
-        ).replace(/\s+/g, ' ').trim()
-        if (title) out.push({ id, url, title, location })
+      const descriptionHtml = schema?.description ?? rendered
+      if (!descriptionHtml?.trim()) return null
+
+      const place = Array.isArray(schema?.jobLocation) ? schema.jobLocation[0] : schema?.jobLocation
+      const locality = place?.address?.addressLocality?.trim()
+      const region = place?.address?.addressRegion?.trim()
+      const type = Array.isArray(schema?.employmentType)
+        ? schema.employmentType[0]
+        : schema?.employmentType
+
+      // The <h1> is the role and nothing else — the page carries no other one —
+      // and the campus sits in the same labelled line the search results use.
+      const heading = decodeEntities(
+        html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)?.[1]?.replace(/<[^>]+>/g, '') ?? ''
+      ).replace(/\s+/g, ' ').trim()
+      const campus = decodeEntities(
+        html.match(/<strong>\s*Location:\s*<\/strong>\s*([^<]*)</)?.[1] ?? ''
+      ).replace(/\s+/g, ' ').trim()
+
+      const title = schema?.title?.trim() || heading
+      if (!title) return null
+
+      return {
+        id: row.id,
+        // The posting's own address beats the campus name — it is the only
+        // thing on the page that names a municipality.
+        location: locality ? [locality, region].filter(Boolean).join(', ') : campus,
+        title,
+        descriptionHtml,
+        applyUrl: row.url,
+        postedAt: schema?.datePosted ?? null,
+        employmentType: normaliseEmployment(type),
+        validThrough: schema?.validThrough ?? null,
       }
-      if (fresh === 0) break
-    }
-    return out
+    })
   }
 
-  let listed: Listed[] = []
-  let sitemapError: unknown
+  let feedError: unknown
   try {
-    listed = await fromSitemap()
+    const rows = await fromFeed()
+    if (rows.length > 0) return rows
+    feedError = new Error('feed listed no postings')
   } catch (err) {
-    sitemapError = err
+    feedError = err
   }
 
-  if (listed.length === 0) {
-    try {
-      listed = await fromSearchPages()
-      if (sitemapError) {
-        console.warn(`[ats:${board.token}] sitemap unreadable (${sitemapError}); used the search pages`)
+  try {
+    const rows = await fromSitemap()
+    console.warn(`[ats:${board.token}] feed unusable (${feedError}); read the sitemap instead`)
+    return rows
+  } catch (sitemapError) {
+    // Both routes gone means the board is genuinely unreachable, and that has
+    // to surface as an error. A board reporting zero is indistinguishable from
+    // an employer with nothing open, and sync would expire every row.
+    throw new Error(`feed: ${feedError}; sitemap: ${sitemapError}`)
+  }
+}
+
+// ── Oracle PeopleSoft HCM ────────────────────────────────────────────────────
+
+/** Detail fetches per run. The City of Calgary lists ~73. Logged when hit. */
+const PEOPLESOFT_MAX_DETAILS = 200
+
+/**
+ * PeopleSoft HCM recruiting — the careers site behind recruiting.calgary.ca.
+ *
+ * PeopleSoft has no job feed and no search API worth reading: its listing is a
+ * stateful component page that answers nothing useful to a plain GET. So the
+ * board is enumerated from `indexUrl` instead — for the City of Calgary that is
+ * the "City of Calgary Careers" dataset the employer publishes on its own open
+ * data portal, which is the same list its careers page renders, kept current by
+ * the City rather than scraped off a page whose markup nobody promises.
+ *
+ * The index states id, title, category and closing date but only a link for the
+ * description, so each posting page is still fetched. Two things about that:
+ *
+ *  1. PeopleSoft requires a cookie round-trip. The first request answers 302
+ *     and sets a session cookie; a follower that drops it lands on
+ *     `?cmd=login&errorPg=ckreq` and reads an error page as if it were a job.
+ *     `fetch` does not carry cookies across redirects, so the hops are walked
+ *     by hand.
+ *
+ *  2. A posting whose closing date has passed does not 404 — it silently
+ *     renders the search page, which still parses. Every page is therefore
+ *     checked to be the posting that was asked for, by its own Job ID field,
+ *     and closed rows are skipped before the request is even made. On the day
+ *     this was written that was exactly the 9 of 73 rows whose closing date was
+ *     yesterday, and without the check all 9 would have been stored carrying
+ *     the search page's markup.
+ */
+async function fetchPeopleSoft(board: AtsBoard): Promise<RawPosting[]> {
+  if (!board.indexUrl) throw new Error('peoplesoft board has no indexUrl')
+
+  /**
+   * A GET that walks its own redirects, carrying the cookies each hop sets.
+   * PeopleSoft refuses the request otherwise — see the note above.
+   */
+  const getHtml = async (url: string): Promise<string> => {
+    const jar = new Map<string, string>()
+    let target = url
+    for (let hop = 0; hop < 5; hop++) {
+      const headers: Record<string, string> = { 'user-agent': UA, accept: 'text/html' }
+      if (jar.size) headers.cookie = [...jar].map(([k, v]) => `${k}=${v}`).join('; ')
+
+      const res = await fetch(target, {
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        headers,
+        redirect: 'manual',
+      })
+      for (const cookie of res.headers.getSetCookie?.() ?? []) {
+        const [pair] = cookie.split(';')
+        const eq = pair.indexOf('=')
+        if (eq > 0) jar.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim())
       }
-    } catch (searchError) {
-      // Both routes gone means the board is genuinely unreachable, and that has
-      // to surface as an error. A board reporting zero is indistinguishable
-      // from an employer with nothing open, and sync would expire every row.
-      throw sitemapError ?? searchError
+
+      const location = res.headers.get('location')
+      if (res.status >= 300 && res.status < 400 && location) {
+        target = new URL(location, target).toString()
+        continue
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return res.text()
     }
+    throw new Error('too many redirects')
   }
 
-  // A campus name ("Main Campus") is not a city, and the sitemap states nothing
-  // at all, so almost everything reaches the detail fetch and the real filter
-  // runs downstream on the municipality the posting page states.
-  const candidates = listed.filter(
-    row => !row.location || isAlberta(row.location) || isAlberta(row.title)
-  )
-  if (candidates.length > TALENTBREW_MAX_DETAILS) {
+  /**
+   * A labelled field off the posting page. PeopleSoft renders the label and its
+   * value as siblings inside one box, so the value is the first `ps_box-value`
+   * after the label — which is also why the span between them is bounded.
+   */
+  const field = (html: string, label: string): string | null => {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
+    const m = html.match(
+      new RegExp(
+        `<span\\s+class='ps-label'>${escaped}</span>[\\s\\S]{0,600}?<span class='ps_box-value'[^>]*>([\\s\\S]{0,400}?)</span>`
+      )
+    )
+    if (!m) return null
+    return decodeEntities(m[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim() || null
+  }
+
+  interface IndexRow {
+    job_opening_id?: string | number
+    title?: string
+    area?: string
+    closing_date?: string
+    job_description?: string
+  }
+
+  /** The calendar day the index states, kept as a date and nothing more. */
+  const closingDay = (value: string | undefined): string | null => {
+    const day = value?.slice(0, 10)
+    return day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null
+  }
+
+  const index = (await getJson(board.indexUrl)) as IndexRow[]
+  if (!Array.isArray(index)) throw new Error('index did not return a list')
+
+  // A closed posting is not a posting, and asking for one gets the search page
+  // back rather than a 404 — cheaper and safer to drop it here.
+  const todayIso = new Date().toISOString().slice(0, 10)
+  const open = index.filter(row => {
+    if (!row.job_opening_id || !row.job_description) return false
+    const closing = closingDay(row.closing_date)
+    // A posting stays open through its closing day — the rows that had gone
+    // unreadable were the ones whose date was yesterday, not today.
+    return !closing || closing >= todayIso
+  })
+
+  if (open.length > PEOPLESOFT_MAX_DETAILS) {
     console.warn(
-      `[ats:${board.token}] ${candidates.length} roles listed but only ${TALENTBREW_MAX_DETAILS} descriptions fetched this run`
+      `[ats:${board.token}] ${open.length} roles listed but only ${PEOPLESOFT_MAX_DETAILS} descriptions fetched this run`
     )
   }
 
-  return mapDetails(candidates.slice(0, TALENTBREW_MAX_DETAILS), async row => {
-    const html = await getHtml(new URL(row.url).pathname)
-    const schema = jobPostingSchema(html)
+  const postings = await mapDetails(open.slice(0, PEOPLESOFT_MAX_DETAILS), async row => {
+    const id = String(row.job_opening_id)
+    const closing = closingDay(row.closing_date)
+    const html = await getHtml(row.job_description!)
+
+    // The page PeopleSoft serves for a posting that has closed since the index
+    // was published is the search page, and it parses without complaint. The
+    // only thing that tells them apart is whose Job ID is on it.
+    if (field(html, 'Job ID') !== id) return null
 
     /**
-     * The rendered block, for when the JSON-LD can't be read. Three of
-     * UCalgary's 115 postings carry a stray backslash in the employer's own
-     * rich text, which makes JSON.parse throw on the whole block — losing a
-     * real Calgary job to that is not a tradeoff worth making. This is the
-     * same markup the schema is generated from, so the text is identical.
+     * The description is split across several rich-text fields — the standard
+     * blurb, the role, the qualifications, the pay — each rendered as its own
+     * `HRS_SCH_PSTDSC_DESCRLONG$N` value. Read in order and joined, they are
+     * the posting as a candidate sees it; taking only the first would drop the
+     * qualifications and the salary.
      */
-    const rendered = (() => {
-      const at = html.search(/<div class="job-description\b/)
-      if (at < 0) return null
-      const inner = html.indexOf('>', at)
-      return inner < 0 ? null : divContentFrom(html, inner + 1)
-    })()
+    const sections: string[] = []
+    for (let n = 0; n < 12; n++) {
+      const at = html.indexOf(`id=HRS_SCH_PSTDSC_DESCRLONG$${n} >`)
+      if (at < 0) continue
+      const body = balancedFrom(html, html.indexOf('>', at) + 1, 'span')
+      if (body?.trim()) sections.push(body.trim())
+    }
+    const descriptionHtml = sections.join('\n')
+    if (!descriptionHtml.trim()) return null
 
-    // No description is no posting: a row without one is just a link, and the
-    // whole point of reading the board directly is the text Google indexes.
-    const descriptionHtml = schema?.description ?? rendered
-    if (!descriptionHtml?.trim()) return null
-
-    const place = Array.isArray(schema?.jobLocation) ? schema.jobLocation[0] : schema?.jobLocation
-    const locality = place?.address?.addressLocality?.trim()
-    const region = place?.address?.addressRegion?.trim()
-    const type = Array.isArray(schema?.employmentType)
-      ? schema.employmentType[0]
-      : schema?.employmentType
-
-    // The sitemap route supplies neither a title nor a campus, so both are read
-    // off the posting page. The <h1> is the role and nothing else — the page
-    // carries no other one — and the campus sits in the same labelled line the
-    // search results use.
-    const heading = decodeEntities(
-      html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)?.[1]?.replace(/<[^>]+>/g, '') ?? ''
-    ).replace(/\s+/g, ' ').trim()
-    const campus = decodeEntities(
-      html.match(/<strong>\s*Location:\s*<\/strong>\s*([^<]*)</)?.[1] ?? ''
-    ).replace(/\s+/g, ' ').trim()
-
-    const title = row.title || schema?.title?.trim() || heading
-    if (!title) return null
+    // "Full-Time" / "Part-Time" is what a candidate filters on, so it wins.
+    // "On-Call" means nothing to schema.org, and those postings are all
+    // temporary, so the second field answers for them.
+    const fullPart = field(html, 'Full/Part Time')
+    const regularTemp = field(html, 'Regular/Temporary')
 
     return {
-      id: row.id,
-      // The posting's own address beats the campus name — it is the only thing
-      // on either page that names a municipality, and it is what keeps a role
-      // at an off-campus site off the Calgary page by accident of the alias.
-      location: locality ? [locality, region].filter(Boolean).join(', ') : (row.location || campus),
-      title,
-      // Real HTML once JSON.parse has run — unlike Greenhouse, nothing here is
-      // entity-encoded a second time.
+      id,
+      title: decodeEntities(row.title ?? field(html, 'Job Title') ?? '').trim(),
+      // "Calgary, Alberta, Canada" — a real municipality, no alias needed.
+      location: field(html, 'Location') ?? '',
       descriptionHtml,
-      applyUrl: row.url,
-      postedAt: schema?.datePosted ?? null,
-      employmentType: normaliseEmployment(type),
-      validThrough: schema?.validThrough ?? null,
+      applyUrl: row.job_description!,
+      // PeopleSoft states no posting date anywhere a visitor can see.
+      postedAt: null,
+      employmentType: normaliseEmployment(fullPart) ?? normaliseEmployment(regularTemp),
+      // The index states the real closing date, so these postings drop out on
+      // their own deadline instead of waiting to leave the board. The date is
+      // taken apart rather than parsed whole: the index writes it with no zone
+      // ("2026-09-08T00:00:00.000"), which a UTC server and a Mountain one read
+      // as different instants, and either way midnight would expire the posting
+      // at the START of its closing day. Deadlines run to the end of the stated
+      // day in Alberta, as extractClosingDate already has it.
+      validThrough: closing ? `${closing}T23:59:59.000Z` : null,
     }
   })
+
+  // mapDetails drops unreadable postings rather than throwing, which is right
+  // for one bad page and wrong for all of them: an index listing open roles
+  // and not one readable page means PeopleSoft moved its markup or stopped
+  // answering, and returning zero would tell sync the City closed every job it
+  // has. Two things here are single points of failure — the labelled-field
+  // markup and the Job ID check — so this says so out loud instead.
+  if (open.length > 0 && postings.length === 0) {
+    throw new Error(`index listed ${open.length} open roles but no posting page could be read`)
+  }
+  return postings
 }
+
 
 // ── Dispatch ─────────────────────────────────────────────────────────────────
 export async function fetchBoard(
@@ -1701,7 +1901,8 @@ export async function fetchBoard(
     case 'avanti': return fetchAvanti(board, isAlberta)
     case 'rss': return fetchRssFeed(board)
     case 'mhc': return fetchMedicineHatCollege(board)
-    case 'talentbrew': return fetchTalentBrew(board, isAlberta)
+    case 'talentbrew': return fetchTalentBrew(board)
+    case 'peoplesoft': return fetchPeopleSoft(board)
     default: return []
   }
 }
