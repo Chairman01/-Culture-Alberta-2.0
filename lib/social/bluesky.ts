@@ -1,4 +1,5 @@
 import type { SocialArticle } from './index'
+import { collectHashtags } from './hashtags'
 
 // ---------------------------------------------------------------------------
 // Bluesky — link post with a rich link card (external embed), matching the
@@ -22,46 +23,6 @@ interface TagFacet {
 }
 
 /**
- * "grande prairie" → "GrandePrairie". Bluesky tags can't hold spaces or
- * punctuation, and it rejects a tag with no letter in it.
- */
-export function toHashtag(raw: string): string | null {
-  const words = raw
-    .trim()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .split(' ')
-    .filter(Boolean)
-  if (words.length === 0) return null
-
-  const tag = words.map((w) => w[0].toUpperCase() + w.slice(1)).join('')
-  if (tag.length > 64 || !/\p{L}/u.test(tag)) return null
-  return tag
-}
-
-/** City first — it's the tag a local reader is most likely to follow. */
-function collectHashtags(article: SocialArticle): string[] {
-  const tags: string[] = []
-  const seen = new Set<string>()
-
-  for (const raw of [article.category, ...(article.tags ?? [])]) {
-    if (tags.length >= MAX_HASHTAGS) break
-    if (!raw) continue
-
-    const tag = toHashtag(raw)
-    if (!tag) continue
-
-    // The category is usually repeated in the tag list — keep the first only.
-    const key = tag.toLowerCase()
-    if (seen.has(key)) continue
-
-    seen.add(key)
-    tags.push(tag)
-  }
-
-  return tags
-}
-
-/**
  * Headline first, then a line of hashtags.
  *
  * A "#tag" typed into the body is inert on Bluesky — it only becomes a real,
@@ -70,7 +31,7 @@ function collectHashtags(article: SocialArticle): string[] {
  * must not include it, and the offsets are UTF-8 bytes rather than characters.
  */
 export function buildPost(article: SocialArticle): { text: string; facets: TagFacet[] } {
-  const hashtags = collectHashtags(article)
+  const hashtags = collectHashtags(article, MAX_HASHTAGS)
   const suffix = hashtags.map((t) => `#${t}`).join(' ')
   // +2 for the blank line between the headline and the tags.
   const suffixLength = suffix ? [...suffix].length + 2 : 0

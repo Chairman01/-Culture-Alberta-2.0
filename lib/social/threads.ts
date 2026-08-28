@@ -1,4 +1,5 @@
 import type { SocialArticle } from './index'
+import { collectHashtags } from './hashtags'
 
 // ---------------------------------------------------------------------------
 // Threads (Meta) — link post with a preview card, matching the Bluesky format
@@ -75,17 +76,37 @@ async function getPermalink(postId: string): Promise<string | undefined> {
   }
 }
 
+/**
+ * Headline, then the city as a single hashtag.
+ *
+ * Threads promotes only ONE tag per post to a real topic tag — deliberately,
+ * to stop tag stuffing — so unlike Bluesky there's nothing to gain from listing
+ * the article's other tags. The city is the one worth spending it on.
+ */
+export function buildThreadsText(article: SocialArticle): string {
+  const [cityTag] = collectHashtags(article, 1)
+  const suffix = cityTag ? `\n\n#${cityTag}` : ''
+
+  let title = article.title.trim()
+  if ([...title].length + [...suffix].length > MAX_TEXT) {
+    const room = Math.max(0, MAX_TEXT - [...suffix].length - 1)
+    title = [...title].slice(0, room).join('').trimEnd() + '…'
+  }
+
+  return `${title}${suffix}`
+}
+
 export async function postToThreads(
   article: SocialArticle,
   articleUrl: string
 ): Promise<string | undefined> {
   const userId = process.env.THREADS_USER_ID!
 
-  // The body is the headline; the link rides in link_attachment so Threads
-  // renders the preview card rather than a bare URL.
+  // The body is the headline plus the city tag; the link rides in
+  // link_attachment so Threads renders the preview card rather than a bare URL.
   const container = await callThreads(`${userId}/threads`, {
     media_type: 'TEXT',
-    text: article.title.slice(0, MAX_TEXT),
+    text: buildThreadsText(article),
     link_attachment: articleUrl,
   })
 
