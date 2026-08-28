@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
+import { getSocialImageUrl } from "@/lib/social-image-url"
 
 export const revalidate = 3600 // refresh hourly
 
@@ -28,7 +29,10 @@ export async function GET() {
       const pubDate = new Date(a.created_at).toUTCString()
       const description = a.excerpt || a.description || ""
       const category = a.category || "Culture"
-      const imageUrl = a.image_url || `${BASE_URL}/images/culture-alberta-og.jpg`
+      // Route through the og-image proxy: images live in Supabase Storage, which
+      // sends an x-robots-tag that stops aggregator crawlers (Flipboard included)
+      // from fetching them. Advertising the raw URL means an item with no image.
+      const imageUrl = getSocialImageUrl(a.image_url)
 
       return `
     <item>
@@ -38,8 +42,9 @@ export async function GET() {
       <pubDate>${pubDate}</pubDate>
       <description>${escapeXml(description)}</description>
       <category>${escapeXml(category)}</category>
-      ${a.author ? `<author>${escapeXml(a.author)}</author>` : ""}
+      ${a.author ? `<dc:creator>${escapeXml(a.author)}</dc:creator>` : ""}
       <media:content url="${escapeXml(imageUrl)}" medium="image" />
+      <media:thumbnail url="${escapeXml(imageUrl)}" />
     </item>`
     })
     .join("\n")
@@ -47,7 +52,8 @@ export async function GET() {
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"
   xmlns:atom="http://www.w3.org/2005/Atom"
-  xmlns:media="http://search.yahoo.com/mrss/">
+  xmlns:media="http://search.yahoo.com/mrss/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Culture Alberta</title>
     <link>${BASE_URL}</link>

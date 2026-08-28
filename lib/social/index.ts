@@ -1,5 +1,6 @@
 import { getServiceClient } from '@/lib/supabase-admin'
 import { postToBluesky } from './bluesky'
+import { postToThreads } from './threads'
 import { postToTelegram } from './telegram'
 import { postToX } from './x'
 import { postToReddit } from './reddit'
@@ -35,6 +36,11 @@ const PLATFORMS: Platform[] = [
     name: 'bluesky',
     enabled: () => !!(process.env.BLUESKY_HANDLE && process.env.BLUESKY_APP_PASSWORD),
     post: postToBluesky,
+  },
+  {
+    name: 'threads',
+    enabled: () => !!(process.env.THREADS_USER_ID && process.env.THREADS_ACCESS_TOKEN),
+    post: postToThreads,
   },
   {
     name: 'telegram',
