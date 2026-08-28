@@ -21,6 +21,10 @@ export interface SocialArticle {
   slug: string
   excerpt?: string | null
   imageUrl?: string | null
+  /** City, e.g. "Grande Prairie" — becomes the leading hashtag. */
+  category?: string | null
+  /** Article tags, e.g. ["sports", "oilers"] — become the trailing hashtags. */
+  tags?: string[] | null
 }
 
 const BASE_URL = 'https://www.culturealberta.com'

@@ -463,6 +463,8 @@ export async function PUT(
           slug: data.slug || nextSlug,
           excerpt: data.excerpt,
           imageUrl: data.image_url,
+          category: data.category,
+          tags: data.tags,
         }))
         .catch(err => console.warn('⚠️ Social posting failed (non-fatal):', err))
       // Polls are editor-controlled: no automatic generation on publish

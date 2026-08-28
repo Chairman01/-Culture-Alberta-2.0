@@ -34,7 +34,7 @@ export async function PATCH(
   // Fetch current article to get the slug and confirm it exists
   const { data: article, error: fetchError } = await supabase
     .from('articles')
-    .select('id, slug, status, title, excerpt, image_url')
+    .select('id, slug, status, title, excerpt, image_url, category, tags')
     .eq('id', id)
     .single()
 
@@ -94,6 +94,8 @@ export async function PATCH(
         slug: article.slug,
         excerpt: article.excerpt,
         imageUrl: article.image_url,
+        category: article.category,
+        tags: article.tags,
       }))
       .catch((err) => console.warn('⚠️ Social posting failed (non-fatal):', err))
   }
