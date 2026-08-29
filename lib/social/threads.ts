@@ -27,6 +27,12 @@ const API = 'https://graph.threads.net/v1.0'
 // Threads caps post bodies at 500 characters.
 const MAX_TEXT = 500
 
+// Threads promotes only the FIRST hashtag to a real topic tag — it appears
+// beside the account name in the header and is stripped out of the body. The
+// rest stay as visible plain-text hashtags, which is still what a reader scans
+// for, so carry the same five Bluesky does with the city leading.
+const MAX_HASHTAGS = 5
+
 export interface ThreadsAccount {
   /** Which account this is, for error messages: "alberta" | "yyc". */
   label: string
@@ -86,15 +92,15 @@ async function getPermalink(postId: string, account: ThreadsAccount): Promise<st
 }
 
 /**
- * Headline, then the city as a single hashtag.
+ * Headline, then a line of hashtags with the city first.
  *
- * Threads promotes only ONE tag per post to a real topic tag — deliberately,
- * to stop tag stuffing — so unlike Bluesky there's nothing to gain from listing
- * the article's other tags. The city is the one worth spending it on.
+ * The city leads because Threads turns the first hashtag into the post's topic
+ * tag — the one shown next to the account name — and a local reader is likelier
+ * to follow #Calgary than #Arson.
  */
 export function buildThreadsText(article: SocialArticle): string {
-  const [cityTag] = collectHashtags(article, 1)
-  const suffix = cityTag ? `\n\n#${cityTag}` : ''
+  const hashtags = collectHashtags(article, MAX_HASHTAGS)
+  const suffix = hashtags.length > 0 ? `\n\n${hashtags.map((t) => `#${t}`).join(' ')}` : ''
 
   let title = article.title.trim()
   if ([...title].length + [...suffix].length > MAX_TEXT) {
