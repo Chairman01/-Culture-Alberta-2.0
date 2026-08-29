@@ -32,8 +32,16 @@ const BASE_URL = 'https://www.culturealberta.com'
 interface Platform {
   name: string
   enabled: () => boolean
+  /**
+   * Which articles belong on this account. Omitted means everything.
+   * Used to split coverage across the two Threads accounts.
+   */
+  accepts?: (article: SocialArticle) => boolean
   post: (article: SocialArticle, articleUrl: string) => Promise<string | undefined>
 }
+
+const isCalgary = (article: SocialArticle) =>
+  (article.category ?? '').trim().toLowerCase() === 'calgary'
 
 const PLATFORMS: Platform[] = [
   {
@@ -41,10 +49,30 @@ const PLATFORMS: Platform[] = [
     enabled: () => !!(process.env.BLUESKY_HANDLE && process.env.BLUESKY_APP_PASSWORD),
     post: postToBluesky,
   },
+  // Two Threads accounts, split by city. @cultureyyc._ carries Calgary;
+  // @culturealberta._ carries everything else, so no article falls through.
   {
-    name: 'threads',
-    enabled: () => !!(process.env.THREADS_USER_ID && process.env.THREADS_ACCESS_TOKEN),
-    post: postToThreads,
+    name: 'threads_alberta',
+    enabled: () =>
+      !!(process.env.THREADS_ALBERTA_USER_ID && process.env.THREADS_ALBERTA_ACCESS_TOKEN),
+    accepts: (article) => !isCalgary(article),
+    post: (article, articleUrl) =>
+      postToThreads(article, articleUrl, {
+        label: 'alberta',
+        userId: process.env.THREADS_ALBERTA_USER_ID!,
+        accessToken: process.env.THREADS_ALBERTA_ACCESS_TOKEN!,
+      }),
+  },
+  {
+    name: 'threads_yyc',
+    enabled: () => !!(process.env.THREADS_YYC_USER_ID && process.env.THREADS_YYC_ACCESS_TOKEN),
+    accepts: isCalgary,
+    post: (article, articleUrl) =>
+      postToThreads(article, articleUrl, {
+        label: 'yyc',
+        userId: process.env.THREADS_YYC_USER_ID!,
+        accessToken: process.env.THREADS_YYC_ACCESS_TOKEN!,
+      }),
   },
   {
     name: 'telegram',
@@ -79,7 +107,7 @@ export async function postArticleToSocial(article: SocialArticle): Promise<void>
   if (process.env.SOCIAL_AUTOPOST !== 'true') return
   if (!article.id || !article.title || !article.slug) return
 
-  const enabled = PLATFORMS.filter((p) => p.enabled())
+  const enabled = PLATFORMS.filter((p) => p.enabled() && (p.accepts?.(article) ?? true))
   if (enabled.length === 0) return
 
   const articleUrl = `${BASE_URL}/articles/${article.slug}`
