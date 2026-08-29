@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { quickSyncArticle } from '@/lib/auto-sync'
@@ -11,6 +11,10 @@ import { requireAdmin, requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 import { sanitizeAdminHtml } from '@/lib/sanitize-html'
 import { getServiceClient } from '@/lib/supabase-admin'
+
+// The social posting in after() polls Threads until its container is ready,
+// so this needs materially more than the default budget.
+export const maxDuration = 60
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -450,23 +454,34 @@ export async function PUT(
     // Auto-notify search engines about the updated article (non-blocking)
     // Use the slug derived from the title (same as public URL), not the raw DB id
     if (data.status === 'published') {
-      notifySearchEngines(`/articles/${data.slug || nextSlug}`).catch(err =>
-        console.warn('⚠️ Search engine notification failed (non-fatal):', err)
-      )
-      // Warm the CDN first so Reddit's crawler gets a fast og:image and renders the
-      // large image card, then auto-post (non-blocking; the social_posts unique
-      // constraint means re-saving an already-shared article never reposts)
-      warmSocialPreview(data.image_url, data.slug || nextSlug)
-        .then(() => postArticleToSocial({
-          id: data.id,
-          title: data.title,
-          slug: data.slug || nextSlug,
-          excerpt: data.excerpt,
-          imageUrl: data.image_url,
-          category: data.category,
-          tags: data.tags,
-        }))
-        .catch(err => console.warn('⚠️ Social posting failed (non-fatal):', err))
+      // after() keeps the invocation alive once the response has been sent. A
+      // bare floating promise here looked fine but could be frozen mid-flight
+      // the moment we returned, so the posting silently never happened.
+      after(async () => {
+        try {
+          await notifySearchEngines(`/articles/${data.slug || nextSlug}`)
+        } catch (err) {
+          console.warn('⚠️ Search engine notification failed (non-fatal):', err)
+        }
+
+        try {
+          // Warm the CDN first so a crawler gets a fast og:image and renders the
+          // large image card, then auto-post (the social_posts unique constraint
+          // means re-saving an already-shared article never reposts)
+          await warmSocialPreview(data.image_url, data.slug || nextSlug)
+          await postArticleToSocial({
+            id: data.id,
+            title: data.title,
+            slug: data.slug || nextSlug,
+            excerpt: data.excerpt,
+            imageUrl: data.image_url,
+            category: data.category,
+            tags: data.tags,
+          })
+        } catch (err) {
+          console.warn('⚠️ Social posting failed (non-fatal):', err)
+        }
+      })
       // Polls are editor-controlled: no automatic generation on publish
     }
 

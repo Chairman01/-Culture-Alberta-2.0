@@ -4,13 +4,17 @@
  * Requires admin auth (JWT cookie).
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/admin-auth'
 import { notifySearchEngines } from '@/lib/indexing'
 import { postArticleToSocial } from '@/lib/social'
 import { warmSocialPreview } from '@/lib/social-image-url'
+
+// The social posting in after() polls Threads until its container is ready,
+// so this needs materially more than the default budget.
+export const maxDuration = 60
 
 export const dynamic = 'force-dynamic'
 
@@ -78,26 +82,34 @@ export async function PATCH(
     clearArticlesCache()
   } catch { /* non-fatal */ }
 
-  // Notify search engines
+  // after() keeps the invocation alive once the response has been sent — a
+  // floating promise can be frozen the moment we return, silently skipping both.
   if (article.slug) {
-    notifySearchEngines(`/articles/${article.slug}`).catch(() => {})
-  }
+    after(async () => {
+      try {
+        await notifySearchEngines(`/articles/${article.slug}`)
+      } catch {
+        /* non-fatal */
+      }
 
-  // Warm the CDN first, then auto-post (non-blocking; deduped per article+platform).
-  // Order matters: posting is what sends crawlers at us, and Reddit only renders the
-  // large image card if it can fetch og:image quickly — so the cache must be hot first.
-  if (article.slug) {
-    warmSocialPreview(article.image_url, article.slug)
-      .then(() => postArticleToSocial({
-        id: article.id,
-        title: article.title,
-        slug: article.slug,
-        excerpt: article.excerpt,
-        imageUrl: article.image_url,
-        category: article.category,
-        tags: article.tags,
-      }))
-      .catch((err) => console.warn('⚠️ Social posting failed (non-fatal):', err))
+      try {
+        // Warm the CDN first, then auto-post (deduped per article+platform).
+        // Order matters: posting is what sends crawlers at us, and they only render
+        // the large image card if og:image fetches quickly — cache must be hot first.
+        await warmSocialPreview(article.image_url, article.slug)
+        await postArticleToSocial({
+          id: article.id,
+          title: article.title,
+          slug: article.slug,
+          excerpt: article.excerpt,
+          imageUrl: article.image_url,
+          category: article.category,
+          tags: article.tags,
+        })
+      } catch (err) {
+        console.warn('⚠️ Social posting failed (non-fatal):', err)
+      }
+    })
   }
 
   return NextResponse.json({ success: true, slug: article.slug })

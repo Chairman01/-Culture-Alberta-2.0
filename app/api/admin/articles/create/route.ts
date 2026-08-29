@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { quickSyncArticle } from '@/lib/auto-sync'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
@@ -11,6 +11,10 @@ import { requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 import { sanitizeAdminHtml } from '@/lib/sanitize-html'
 import { getServiceClient } from '@/lib/supabase-admin'
+
+// The social posting in after() polls Threads until its container is ready,
+// so this needs materially more than the default budget.
+export const maxDuration = 60
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -243,22 +247,33 @@ export async function POST(request: NextRequest) {
 
     // Auto-notify search engines about the new article (non-blocking)
     if (data.status === 'published') {
-      notifySearchEngines(`/articles/${data.slug || articleSlug}`).catch(err =>
-        console.warn('⚠️ Search engine notification failed (non-fatal):', err)
-      )
-      // Warm the CDN first so Reddit's crawler gets a fast og:image and renders the
-      // large image card, then auto-post (non-blocking; deduped per article+platform)
-      warmSocialPreview(data.image_url, data.slug || articleSlug)
-        .then(() => postArticleToSocial({
-          id: data.id,
-          title: data.title,
-          slug: data.slug || articleSlug,
-          excerpt: data.excerpt,
-          imageUrl: data.image_url,
-          category: data.category,
-          tags: data.tags,
-        }))
-        .catch(err => console.warn('⚠️ Social posting failed (non-fatal):', err))
+      // after() keeps the invocation alive once the response has been sent — a
+      // floating promise can be frozen the moment we return, silently skipping
+      // both the ping and the post.
+      after(async () => {
+        try {
+          await notifySearchEngines(`/articles/${data.slug || articleSlug}`)
+        } catch (err) {
+          console.warn('⚠️ Search engine notification failed (non-fatal):', err)
+        }
+
+        try {
+          // Warm the CDN first so a crawler gets a fast og:image and renders the
+          // large image card, then auto-post (deduped per article+platform)
+          await warmSocialPreview(data.image_url, data.slug || articleSlug)
+          await postArticleToSocial({
+            id: data.id,
+            title: data.title,
+            slug: data.slug || articleSlug,
+            excerpt: data.excerpt,
+            imageUrl: data.image_url,
+            category: data.category,
+            tags: data.tags,
+          })
+        } catch (err) {
+          console.warn('⚠️ Social posting failed (non-fatal):', err)
+        }
+      })
       // Polls are editor-controlled: no automatic generation on publish. The
       // article has a poll only if the editor ticked the box and wrote one.
     }
