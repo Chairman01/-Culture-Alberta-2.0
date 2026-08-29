@@ -33,6 +33,10 @@ const MAX_TEXT = 500
 // for, so carry the same five Bluesky does with the city leading.
 const MAX_HASHTAGS = 5
 
+// How long to let Meta finish building the container before publishing.
+const CONTAINER_POLL_MS = 2_000
+const CONTAINER_MAX_WAIT_MS = 24_000
+
 export interface ThreadsAccount {
   /** Which account this is, for error messages: "alberta" | "yyc". */
   label: string
@@ -50,14 +54,63 @@ function describeError(status: number, json: { error?: ThreadsError }, account: 
   const err = json?.error
   if (!err) return `${status} ${JSON.stringify(json).slice(0, 300)}`
 
-  // An expired 60-day token is the single most likely failure in production,
-  // and the raw Meta message doesn't say to re-generate it — so spell it out,
-  // including which account's token it is.
-  const expired = err.type === 'OAuthException' || err.code === 190
-  const hint = expired
-    ? ` — the ${account} Threads token looks expired or revoked; run scripts/threads-token.mjs to issue a new one`
-    : ''
+  // Only code 190 actually means the token is gone. Meta reports plenty of
+  // transient failures as OAuthException too — notably code -1 "Fatal" — and
+  // blaming the token for those sends you off regenerating a working one.
+  let hint = ''
+  if (err.code === 190) {
+    hint = ` — the ${account} Threads token is expired or revoked; run scripts/threads-token.mjs to issue a new one`
+  } else if (err.code === -1) {
+    hint = ` — Meta's generic transient error, not necessarily the token; verify with scripts/threads-token.mjs check before regenerating anything`
+  }
   return `${status} ${err.type ?? 'Error'} ${err.code ?? ''}: ${err.message ?? ''}${hint}`.trim()
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Meta builds the container asynchronously — for a link post it has to go and
+ * fetch the article to render the preview card — and publishing before that
+ * finishes fails with a generic OAuthException. So wait for FINISHED.
+ *
+ * Meta suggests polling once a minute for up to five, but that's sized for
+ * video; a link preview resolves in seconds and this runs inside a serverless
+ * request, so poll faster over a much shorter window.
+ */
+async function waitForContainer(
+  creationId: string,
+  account: ThreadsAccount
+): Promise<string | undefined> {
+  const deadline = Date.now() + CONTAINER_MAX_WAIT_MS
+
+  for (;;) {
+    let status: string | undefined
+    let errorMessage: string | undefined
+    try {
+      const res = await fetch(
+        `${API}/${creationId}?fields=status,error_message&access_token=${encodeURIComponent(
+          account.accessToken
+        )}`
+      )
+      if (res.ok) {
+        const json = await res.json()
+        status = json.status
+        errorMessage = json.error_message
+      }
+    } catch {
+      // A failed status check is not itself fatal — fall through and retry.
+    }
+
+    if (status === 'FINISHED' || status === 'PUBLISHED') return status
+    if (status === 'ERROR' || status === 'EXPIRED') {
+      throw new Error(`Threads container ${status}: ${errorMessage ?? 'no detail given'}`)
+    }
+    // Publish anyway once the window closes: the status field is undocumented
+    // enough that a missing value shouldn't block an otherwise fine post.
+    if (Date.now() >= deadline) return status
+
+    await sleep(CONTAINER_POLL_MS)
+  }
 }
 
 async function callThreads(
@@ -133,11 +186,30 @@ export async function postToThreads(
     throw new Error(`Threads container returned no id: ${JSON.stringify(container).slice(0, 200)}`)
   }
 
-  const published = await callThreads(
-    `${account.userId}/threads_publish`,
-    { creation_id: creationId },
-    account
-  )
+  await waitForContainer(creationId, account)
+
+  let published: Record<string, unknown>
+  try {
+    published = await callThreads(
+      `${account.userId}/threads_publish`,
+      { creation_id: creationId },
+      account
+    )
+  } catch (err) {
+    // One retry: Meta's transient failures here clear in seconds. Re-check the
+    // container first — if that flaky response actually landed, publishing
+    // again would duplicate the post, so stop and treat it as sent.
+    await sleep(CONTAINER_POLL_MS)
+    if ((await waitForContainer(creationId, account)) === 'PUBLISHED') return undefined
+
+    published = await callThreads(
+      `${account.userId}/threads_publish`,
+      { creation_id: creationId },
+      account
+    ).catch(() => {
+      throw err // surface the original failure, not the retry's
+    })
+  }
 
   const postId = published.id
   if (typeof postId !== 'string') {
