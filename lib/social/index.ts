@@ -40,8 +40,11 @@ interface Platform {
   post: (article: SocialArticle, articleUrl: string) => Promise<string | undefined>
 }
 
-const isCalgary = (article: SocialArticle) =>
-  (article.category ?? '').trim().toLowerCase() === 'calgary'
+// @cultureyyc._ covers southern Alberta; @culturealberta._ takes the rest.
+const YYC_CITIES = new Set(['calgary', 'lethbridge', 'medicine hat'])
+
+const isYycCity = (article: SocialArticle) =>
+  YYC_CITIES.has((article.category ?? '').trim().toLowerCase())
 
 const PLATFORMS: Platform[] = [
   {
@@ -49,13 +52,13 @@ const PLATFORMS: Platform[] = [
     enabled: () => !!(process.env.BLUESKY_HANDLE && process.env.BLUESKY_APP_PASSWORD),
     post: postToBluesky,
   },
-  // Two Threads accounts, split by city. @cultureyyc._ carries Calgary;
+  // Two Threads accounts, split by city. @cultureyyc._ carries southern Alberta;
   // @culturealberta._ carries everything else, so no article falls through.
   {
     name: 'threads_alberta',
     enabled: () =>
       !!(process.env.THREADS_ALBERTA_USER_ID && process.env.THREADS_ALBERTA_ACCESS_TOKEN),
-    accepts: (article) => !isCalgary(article),
+    accepts: (article) => !isYycCity(article),
     post: (article, articleUrl) =>
       postToThreads(article, articleUrl, {
         label: 'alberta',
@@ -66,7 +69,7 @@ const PLATFORMS: Platform[] = [
   {
     name: 'threads_yyc',
     enabled: () => !!(process.env.THREADS_YYC_USER_ID && process.env.THREADS_YYC_ACCESS_TOKEN),
-    accepts: isCalgary,
+    accepts: isYycCity,
     post: (article, articleUrl) =>
       postToThreads(article, articleUrl, {
         label: 'yyc',
