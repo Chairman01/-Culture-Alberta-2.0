@@ -106,6 +106,97 @@ const PLATFORMS: Platform[] = [
   },
 ]
 
+// A publish route is capped at 60s, so anything still 'pending' well past that
+// is dead rather than running.
+const STALE_PENDING_MS = 15 * 60 * 1000
+// How far back to look for an article that missed a platform entirely.
+const MISSED_WINDOW_MS = 48 * 60 * 60 * 1000
+
+/**
+ * Find articles that reached some platforms but never claimed others, and file
+ * the gap as a failed row so the retry loop below picks it up.
+ *
+ * The scoping matters more than the sweeping. An article can be missing a
+ * platform for two very different reasons: the attempt was lost, or that
+ * platform did not exist yet when it published. Only the first is a fault.
+ * Every platform is therefore bounded by its own first-ever post, so switching
+ * on a new account can never drag the back catalogue onto it — which a dry run
+ * showed would otherwise have dumped six day-old stories onto Threads at once.
+ */
+async function claimMissedPlatforms(
+  supabase: ReturnType<typeof getServiceClient>
+): Promise<void> {
+  const since = new Date(Date.now() - MISSED_WINDOW_MS).toISOString()
+
+  const { data: recent } = await supabase
+    .from('social_posts')
+    .select('article_id')
+    .gte('created_at', since)
+
+  const articleIds = [...new Set((recent ?? []).map((r) => r.article_id))]
+  if (articleIds.length === 0) return
+
+  const { data: existing } = await supabase
+    .from('social_posts')
+    .select('article_id, platform')
+    .in('article_id', articleIds)
+
+  const claimed = new Set((existing ?? []).map((r) => `${r.article_id}:${r.platform}`))
+
+  // When each platform first posted anything. An article older than that was
+  // never a candidate for it, so its absence is history, not a failure.
+  const liveSince = new Map<string, string>()
+  for (const platform of PLATFORMS) {
+    const { data: first } = await supabase
+      .from('social_posts')
+      .select('created_at')
+      .eq('platform', platform.name)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    // No history at all means a brand-new account: nothing to backfill onto it.
+    if (first?.created_at) liveSince.set(platform.name, first.created_at)
+  }
+
+  const { data: articles } = await supabase
+    .from('articles')
+    .select('id, title, slug, excerpt, image_url, category, tags, status, created_at')
+    .in('id', articleIds)
+
+  for (const article of articles ?? []) {
+    if (article.status !== 'published' || !article.slug) continue
+
+    const payload: SocialArticle = {
+      id: article.id,
+      title: article.title,
+      slug: article.slug,
+      excerpt: article.excerpt,
+      imageUrl: article.image_url,
+      category: article.category,
+      tags: article.tags,
+    }
+
+    for (const platform of PLATFORMS) {
+      if (!platform.enabled()) continue
+      if (!(platform.accepts?.(payload) ?? true)) continue
+      if (claimed.has(`${article.id}:${platform.name}`)) continue
+
+      // The article predates this account going live — it was never missed.
+      const since = liveSince.get(platform.name)
+      if (!since || new Date(article.created_at) < new Date(since)) continue
+
+      await supabase.from('social_posts').insert({
+        article_id: article.id,
+        platform: platform.name,
+        status: 'failed',
+        error: 'never attempted — filed by the retry sweeper',
+      })
+      console.log(`🔁 Social sweeper: ${platform.name} was never attempted for "${article.title}"`)
+    }
+  }
+}
+
 /**
  * Retry posts that failed earlier.
  *
@@ -124,6 +215,23 @@ export async function retryFailedSocialPosts(
   if (process.env.SOCIAL_AUTOPOST !== 'true') return result
 
   const supabase = getServiceClient()
+
+  // A row left in 'pending' means the attempt died before it could record an
+  // outcome. It is not in flight — the route that writes it is capped at 60s —
+  // and left alone it would both block future attempts and be invisible here,
+  // which is the original bug one state over. Demote it so it gets picked up.
+  await supabase
+    .from('social_posts')
+    .update({ status: 'failed', error: 'attempt did not finish' })
+    .eq('status', 'pending')
+    .lt('created_at', new Date(Date.now() - STALE_PENDING_MS).toISOString())
+
+  // Platforms that were never even claimed: an article that reached some
+  // accounts but not others. Only articles that already have a row are
+  // considered, which is what proves autoposting was live when they published —
+  // without that, enabling a new platform would backfire and post the archive.
+  await claimMissedPlatforms(supabase)
+
   const { data: rows } = await supabase
     .from('social_posts')
     .select('article_id, platform, attempts')
