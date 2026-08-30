@@ -106,6 +106,93 @@ const PLATFORMS: Platform[] = [
   },
 ]
 
+/**
+ * Retry posts that failed earlier.
+ *
+ * Threads rejects a container now and then for no stated reason and accepts the
+ * identical post moments later. Recovery used to depend on somebody noticing a
+ * missing post and re-saving the article; this sweeps them up on a schedule so
+ * a transient failure heals itself.
+ *
+ * Rows carry an attempt counter: a post that is genuinely unpublishable stops
+ * being retried rather than being hammered forever.
+ */
+export async function retryFailedSocialPosts(
+  { maxAttempts = 5, limit = 20 } = {}
+): Promise<{ retried: number; recovered: number; stillFailing: number }> {
+  const result = { retried: 0, recovered: 0, stillFailing: 0 }
+  if (process.env.SOCIAL_AUTOPOST !== 'true') return result
+
+  const supabase = getServiceClient()
+  const { data: rows } = await supabase
+    .from('social_posts')
+    .select('article_id, platform, attempts')
+    .eq('status', 'failed')
+    .lt('attempts', maxAttempts)
+    .order('created_at', { ascending: true })
+    .limit(limit)
+
+  for (const row of rows ?? []) {
+    const platform = PLATFORMS.find((p) => p.name === row.platform)
+    if (!platform?.enabled()) continue
+
+    // The article may have been deleted or unpublished since it failed — in
+    // which case there is nothing to post and the row should stop retrying.
+    const { data: article } = await supabase
+      .from('articles')
+      .select('id, title, slug, excerpt, image_url, category, tags, status')
+      .eq('id', row.article_id)
+      .single()
+
+    if (!article || article.status !== 'published' || !article.slug) {
+      await supabase
+        .from('social_posts')
+        .update({ attempts: maxAttempts, error: 'article deleted or unpublished — not retrying' })
+        .eq('article_id', row.article_id)
+        .eq('platform', row.platform)
+      continue
+    }
+
+    const payload: SocialArticle = {
+      id: article.id,
+      title: article.title,
+      slug: article.slug,
+      excerpt: article.excerpt,
+      imageUrl: article.image_url,
+      category: article.category,
+      tags: article.tags,
+    }
+
+    // Routing can change; don't post a Calgary story to the province account
+    // just because an old row exists for it.
+    if (!(platform.accepts?.(payload) ?? true)) continue
+
+    result.retried++
+    const attempts = (row.attempts ?? 0) + 1
+
+    try {
+      const externalUrl = await platform.post(payload, `${BASE_URL}/articles/${article.slug}`)
+      await supabase
+        .from('social_posts')
+        .update({ status: 'posted', external_url: externalUrl ?? null, error: null, attempts })
+        .eq('article_id', row.article_id)
+        .eq('platform', row.platform)
+      result.recovered++
+      console.log(`✅ Social retry: "${article.title}" → ${row.platform}`)
+    } catch (err) {
+      await supabase
+        .from('social_posts')
+        .update({ status: 'failed', error: String(err).slice(0, 500), attempts })
+        .eq('article_id', row.article_id)
+        .eq('platform', row.platform)
+      result.stillFailing++
+      console.warn(`❌ Social retry ${attempts}/${maxAttempts} failed for ${row.platform}:`, err)
+    }
+  }
+
+  return result
+}
+
 export async function postArticleToSocial(article: SocialArticle): Promise<void> {
   if (process.env.SOCIAL_AUTOPOST !== 'true') return
   if (!article.id || !article.title || !article.slug) return
