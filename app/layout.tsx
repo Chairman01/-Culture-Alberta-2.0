@@ -90,6 +90,9 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   other: {
     'google-adsense-account': 'ca-pub-6902227267422426',
+    // Pinterest domain claim — puts Culture Alberta's name and logo on every Pin
+    // that links here, and unlocks site analytics. Must stay on every page.
+    'p:domain_verify': '5a1c5044cc2131aabd1d0aad8eec1911',
     // Geographic meta tags — tell search engines and AI this site is about Alberta, Canada
     'geo.region': 'CA-AB',
     'geo.placename': 'Alberta, Canada',
