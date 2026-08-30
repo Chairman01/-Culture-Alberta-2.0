@@ -164,29 +164,52 @@ export function buildThreadsText(article: SocialArticle): string {
   return `${title}${suffix}`
 }
 
-export async function postToThreads(
+/** Build a container and wait for Meta to finish it, retrying once. */
+async function prepareContainer(
   article: SocialArticle,
   articleUrl: string,
   account: ThreadsAccount
-): Promise<string | undefined> {
-  // The body is the headline plus the city tag; the link rides in
-  // link_attachment so Threads renders the preview card rather than a bare URL.
-  const container = await callThreads(
-    `${account.userId}/threads`,
-    {
-      media_type: 'TEXT',
-      text: buildThreadsText(article),
-      link_attachment: articleUrl,
-    },
-    account
-  )
+): Promise<string> {
+  // The body is the headline plus hashtags; the link rides in link_attachment
+  // so Threads renders the preview card rather than a bare URL.
+  const params = {
+    media_type: 'TEXT',
+    text: buildThreadsText(article),
+    link_attachment: articleUrl,
+  }
 
+  const container = await callThreads(`${account.userId}/threads`, params, account)
   const creationId = container.id
   if (typeof creationId !== 'string') {
     throw new Error(`Threads container returned no id: ${JSON.stringify(container).slice(0, 200)}`)
   }
 
-  await waitForContainer(creationId, account)
+  try {
+    await waitForContainer(creationId, account)
+    return creationId
+  } catch (err) {
+    // A container can come back ERROR with no explanation and then build fine
+    // seconds later on identical input — verified by replaying a rejected post.
+    // Treat the first one as noise and build a second; the failed container is
+    // never published, so this cannot duplicate anything.
+    console.warn('⚠️ Threads container failed, rebuilding once:', err)
+    await sleep(CONTAINER_POLL_MS)
+
+    const retry = await callThreads(`${account.userId}/threads`, params, account)
+    const retryId = retry.id
+    if (typeof retryId !== 'string') throw err
+
+    await waitForContainer(retryId, account)
+    return retryId
+  }
+}
+
+export async function postToThreads(
+  article: SocialArticle,
+  articleUrl: string,
+  account: ThreadsAccount
+): Promise<string | undefined> {
+  const creationId = await prepareContainer(article, articleUrl, account)
 
   let published: Record<string, unknown>
   try {

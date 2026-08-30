@@ -117,12 +117,34 @@ export async function postArticleToSocial(article: SocialArticle): Promise<void>
   const supabase = getServiceClient()
 
   for (const platform of enabled) {
-    // Claim the (article, platform) slot first. If the row already exists,
-    // this article was already posted (or is being posted) there — skip.
+    // Claim the (article, platform) slot first. An existing row normally means
+    // this article is already done here — but a row left behind by a failed
+    // attempt is retried on the next save. Threads fails transiently often
+    // enough that without this, one bad minute keeps an article off that
+    // account permanently, with no way back short of deleting the row by hand.
     const { error: claimError } = await supabase
       .from('social_posts')
       .insert({ article_id: article.id, platform: platform.name })
-    if (claimError) continue
+
+    if (claimError) {
+      const { data: existing } = await supabase
+        .from('social_posts')
+        .select('status')
+        .eq('article_id', article.id)
+        .eq('platform', platform.name)
+        .single()
+
+      // Anything other than a previous failure is left alone: 'posted' is done,
+      // and 'pending' means an attempt is still in flight, which we must not
+      // race or we would post twice.
+      if (existing?.status !== 'failed') continue
+
+      await supabase
+        .from('social_posts')
+        .update({ status: 'pending', error: null })
+        .eq('article_id', article.id)
+        .eq('platform', platform.name)
+    }
 
     try {
       const externalUrl = await platform.post(article, articleUrl)
