@@ -31,15 +31,15 @@ const PHOTO_BAND = 780
 
 // Fetched once per lambda rather than per request. The renderer needs real font
 // data — it cannot use a CSS font the way the site does.
-let fontPromise: Promise<ArrayBuffer> | null = null
-function loadFont(origin: string): Promise<ArrayBuffer> {
-  if (!fontPromise) {
-    fontPromise = fetch(`${origin}/fonts/ArchivoBlack-Regular.ttf`).then((r) => {
-      if (!r.ok) throw new Error(`font fetch failed: ${r.status}`)
-      return r.arrayBuffer()
-    })
+let fontsPromise: Promise<{ black: ArrayBuffer; medium: ArrayBuffer }> | null = null
+function loadFonts(origin: string) {
+  if (!fontsPromise) {
+    fontsPromise = Promise.all([
+      fetch(`${origin}/fonts/LibreFranklin-Black.ttf`).then((r) => r.arrayBuffer()),
+      fetch(`${origin}/fonts/LibreFranklin-Medium.ttf`).then((r) => r.arrayBuffer()),
+    ]).then(([black, medium]) => ({ black, medium }))
   }
-  return fontPromise
+  return fontsPromise
 }
 
 /**
@@ -74,7 +74,7 @@ export async function GET(
   const title = (article.title ?? '').trim()
   const category = (article.category ?? 'Alberta').toUpperCase()
   const background = getSocialImageUrl(article.image_url)
-  const font = await loadFont(origin)
+  const fonts = await loadFonts(origin)
 
   return new ImageResponse(
     (
@@ -86,7 +86,7 @@ export async function GET(
           flexDirection: 'column',
           position: 'relative',
           backgroundColor: '#111111',
-          fontFamily: 'Archivo Black',
+          fontFamily: 'Libre Franklin',
         }}
       >
         {/*
@@ -156,6 +156,7 @@ export async function GET(
             color: '#ffffff',
             fontSize: 30,
             letterSpacing: 3,
+            fontWeight: 500,
           }}
         >
           {category}
@@ -191,6 +192,7 @@ export async function GET(
             color: '#ffffff',
             fontSize: headlineSize(title),
             lineHeight: 1.08,
+            fontWeight: 900,
           }}
         >
           {title}
@@ -205,6 +207,7 @@ export async function GET(
             color: '#ffffff',
             fontSize: 34,
             letterSpacing: 2,
+            fontWeight: 900,
           }}
         >
           CULTURE
@@ -214,7 +217,10 @@ export async function GET(
     {
       width: WIDTH,
       height: HEIGHT,
-      fonts: [{ name: 'Archivo Black', data: font, style: 'normal', weight: 400 }],
+      fonts: [
+        { name: 'Libre Franklin', data: fonts.black, style: 'normal', weight: 900 },
+        { name: 'Libre Franklin', data: fonts.medium, style: 'normal', weight: 500 },
+      ],
     }
   )
 }
