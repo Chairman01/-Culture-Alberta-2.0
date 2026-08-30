@@ -1,6 +1,7 @@
 import { getServiceClient } from '@/lib/supabase-admin'
 import { postToBluesky } from './bluesky'
 import { postToThreads } from './threads'
+import { getThreadsToken } from './threads-tokens'
 import { postToTelegram } from './telegram'
 import { postToX } from './x'
 import { postToReddit } from './reddit'
@@ -59,22 +60,24 @@ const PLATFORMS: Platform[] = [
     enabled: () =>
       !!(process.env.THREADS_ALBERTA_USER_ID && process.env.THREADS_ALBERTA_ACCESS_TOKEN),
     accepts: (article) => !isYycCity(article),
-    post: (article, articleUrl) =>
+    post: async (article, articleUrl) =>
       postToThreads(article, articleUrl, {
         label: 'alberta',
         userId: process.env.THREADS_ALBERTA_USER_ID!,
-        accessToken: process.env.THREADS_ALBERTA_ACCESS_TOKEN!,
+        // Read at post time, not at module load: the renewal cron rewrites this
+        // every few weeks and the env var is only the seed.
+        accessToken: (await getThreadsToken('threads_alberta'))!,
       }),
   },
   {
     name: 'threads_yyc',
     enabled: () => !!(process.env.THREADS_YYC_USER_ID && process.env.THREADS_YYC_ACCESS_TOKEN),
     accepts: isYycCity,
-    post: (article, articleUrl) =>
+    post: async (article, articleUrl) =>
       postToThreads(article, articleUrl, {
         label: 'yyc',
         userId: process.env.THREADS_YYC_USER_ID!,
-        accessToken: process.env.THREADS_YYC_ACCESS_TOKEN!,
+        accessToken: (await getThreadsToken('threads_yyc'))!,
       }),
   },
   {
