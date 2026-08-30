@@ -24,6 +24,11 @@ export const revalidate = 86400
 const WIDTH = 1000
 const HEIGHT = 1500
 
+// The band the untouched photo is fitted into. Sized so a 16:9 landscape shot —
+// 563px tall at this width — sits clear of both the badges and the headline.
+const PHOTO_TOP = 150
+const PHOTO_BAND = 780
+
 // Fetched once per lambda rather than per request. The renderer needs real font
 // data — it cannot use a CSS font the way the site does.
 let fontPromise: Promise<ArrayBuffer> | null = null
@@ -84,6 +89,15 @@ export async function GET(
           fontFamily: 'Archivo Black',
         }}
       >
+        {/*
+          Two layers, because article photos are landscape and this frame is
+          portrait. A single cover image would fill the frame by cropping the
+          sides — which is how a face or a sign gets cut off.
+
+          So: a cropped, heavily darkened copy fills the background, and the
+          WHOLE photo sits on top, contained. Nothing is ever cut off, and there
+          are no empty bars — the backdrop is the photo's own colours.
+        */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={background}
@@ -92,8 +106,35 @@ export async function GET(
           height={HEIGHT}
           style={{ position: 'absolute', top: 0, left: 0, width: WIDTH, height: HEIGHT, objectFit: 'cover' }}
         />
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: WIDTH,
+            height: HEIGHT,
+            backgroundColor: 'rgba(10,10,12,0.82)',
+          }}
+        />
 
-        {/* Without this the headline is unreadable over a bright sky. */}
+        {/* The photo in full, whatever its shape. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={background}
+          alt=""
+          width={WIDTH}
+          height={PHOTO_BAND}
+          style={{
+            position: 'absolute',
+            top: PHOTO_TOP,
+            left: 0,
+            width: WIDTH,
+            height: PHOTO_BAND,
+            objectFit: 'contain',
+          }}
+        />
+
+        {/* Keeps the corners readable regardless of what the photo does there. */}
         <div
           style={{
             position: 'absolute',
@@ -102,7 +143,7 @@ export async function GET(
             width: WIDTH,
             height: HEIGHT,
             background:
-              'linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.05) 30%, rgba(0,0,0,0.35) 62%, rgba(0,0,0,0.85) 100%)',
+              'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.6) 72%, rgba(0,0,0,0.92) 100%)',
           }}
         />
 
