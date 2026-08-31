@@ -4,7 +4,9 @@ import { getActiveJobs, getCompaniesWithJobs, JOB_CITY_LABELS } from '@/lib/jobs
 import { JobsItemListStructuredData } from '@/components/seo/structured-data'
 import { CompanyLogo } from '@/components/jobs/company-logo'
 import JobsBrowser from './jobs-browser'
-import { toBrowserJob, logoDomainFor } from './shared'
+import EmployerDirectory, { type DirectoryEmployer } from './employer-directory'
+import { sectorFor } from './employer-sectors'
+import { toBrowserJob, logoDomainFor, logoSrcFor } from './shared'
 
 export const metadata: Metadata = {
   title: 'Alberta Jobs Board | Who\'s Hiring in Calgary & Edmonton',
@@ -25,6 +27,21 @@ export default async function JobsPage() {
   const jobs = await getActiveJobs()
   const browserJobs = jobs.map(toBrowserJob)
   const companies = await getCompaniesWithJobs()
+
+  // Resolved here rather than in the client component so the logo and sector
+  // lookups — which read the ATS board registry — stay on the server.
+  const directoryEmployers: DirectoryEmployer[] = companies.map(c => ({
+    company: c.company,
+    slug: c.slug,
+    jobCount: c.jobCount,
+    cities: c.cities.map(city => JOB_CITY_LABELS[city]),
+    cityCounts: Object.fromEntries(
+      Object.entries(c.cityCounts).map(([city, n]) => [JOB_CITY_LABELS[city as keyof typeof JOB_CITY_LABELS], n])
+    ),
+    sector: sectorFor(c.company),
+    logoDomain: logoDomainFor({ ats_board: c.atsBoard, company: c.company }),
+    logoSrc: logoSrcFor({ company: c.company }),
+  }))
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -99,36 +116,8 @@ export default async function JobsPage() {
             {/* Employer directory. Gives readers a way to browse by name, and is
                 the crawl path to every company page — without it those pages
                 would only be reachable from individual postings. */}
-            {companies.length > 0 && (
-              <div className="mt-12 border-t border-gray-200 pt-8">
-                <h2 className="text-xl font-semibold">Browse by employer</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {companies.length} Alberta employers hiring right now.
-                </p>
-                <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {companies.map(c => (
-                    <li key={c.slug}>
-                      <Link
-                        href={`/jobs/company/${c.slug}`}
-                        className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-colors hover:border-gray-300 hover:bg-gray-50"
-                      >
-                        <CompanyLogo
-                          company={c.company}
-                          domain={logoDomainFor({ ats_board: c.atsBoard, company: c.company })}
-                          size={40}
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium text-gray-900">{c.company}</span>
-                          <span className="block text-sm text-gray-500">
-                            {c.jobCount} open role{c.jobCount === 1 ? '' : 's'} ·{' '}
-                            {c.cities.map(city => JOB_CITY_LABELS[city]).join(', ')}
-                          </span>
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            {directoryEmployers.length > 0 && (
+              <EmployerDirectory employers={directoryEmployers} />
             )}
           </div>
         </section>

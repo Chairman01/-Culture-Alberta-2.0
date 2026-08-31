@@ -205,6 +205,13 @@ export interface CompanySummary {
   slug: string
   jobCount: number
   cities: JobCity[]
+  /**
+   * Open roles per city. `jobCount` is the province-wide total, which reads as
+   * a lie once the directory is filtered to one city — Costco's 128 openings
+   * are spread over six of them. The directory shows this count instead
+   * whenever a city is selected.
+   */
+  cityCounts: Partial<Record<JobCity, number>>
   atsBoard: string | null
 }
 
@@ -218,16 +225,19 @@ export async function getCompaniesWithJobs(): Promise<CompanySummary[]> {
     const byCompany = new Map<string, CompanySummary>()
     for (const row of data ?? []) {
       const company = row.company as string
+      const city = row.city as JobCity
       const existing = byCompany.get(company)
       if (existing) {
         existing.jobCount++
-        if (!existing.cities.includes(row.city as JobCity)) existing.cities.push(row.city as JobCity)
+        existing.cityCounts[city] = (existing.cityCounts[city] ?? 0) + 1
+        if (!existing.cities.includes(city)) existing.cities.push(city)
       } else {
         byCompany.set(company, {
           company,
           slug: companySlug(company),
           jobCount: 1,
-          cities: [row.city as JobCity],
+          cities: [city],
+          cityCounts: { [city]: 1 },
           atsBoard: (row.ats_board as string) ?? null,
         })
       }
