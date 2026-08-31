@@ -82,8 +82,8 @@ const toolSchema = {
   offers: { "@type": "Offer", price: "0", priceCurrency: "CAD" },
   publisher: { "@type": "Organization", name: "Culture Alberta", url: "https://www.culturealberta.com" },
   areaServed: [
-    { "@type": "City", name: "Calgary", containedInPlace: { "@type": "Province", name: "Alberta" } },
-    { "@type": "City", name: "Edmonton", containedInPlace: { "@type": "Province", name: "Alberta" } },
+    { "@type": "City", name: "Calgary", containedInPlace: { "@type": "State", name: "Alberta" } },
+    { "@type": "City", name: "Edmonton", containedInPlace: { "@type": "State", name: "Alberta" } },
   ],
   speakable: {
     "@type": "SpeakableSpecification",
@@ -105,9 +105,15 @@ const datasetSchema = {
     { "@type": "CreativeWork", name: "CREA MLS Home Price Index 2025", publisher: { "@type": "Organization", name: "Canadian Real Estate Association" } },
     { "@type": "CreativeWork", name: "Statistics Canada Consumer Price Index", publisher: { "@type": "Organization", name: "Statistics Canada" } },
   ],
+  // "Province" is not a schema.org type — the vocabulary has Country, State,
+  // City and AdministrativeArea, and nothing else for this level. Bing read the
+  // undefined type as an invalid object and dropped the whole field
+  // ("Invalid object type for field spatialCoverage"). State is what
+  // schema.org intends for a province, and what the site-wide markup in
+  // components/seo/structured-data.tsx already uses for Alberta.
   spatialCoverage: [
-    { "@type": "City", name: "Calgary", containedInPlace: { "@type": "Province", name: "Alberta", containedInPlace: { "@type": "Country", name: "Canada" } } },
-    { "@type": "City", name: "Edmonton", containedInPlace: { "@type": "Province", name: "Alberta", containedInPlace: { "@type": "Country", name: "Canada" } } },
+    { "@type": "City", name: "Calgary", containedInPlace: { "@type": "State", name: "Alberta", containedInPlace: { "@type": "Country", name: "Canada" } } },
+    { "@type": "City", name: "Edmonton", containedInPlace: { "@type": "State", name: "Alberta", containedInPlace: { "@type": "Country", name: "Canada" } } },
   ],
   variableMeasured: [
     { "@type": "PropertyValue", name: "Average 1-Bedroom Rent — Calgary", value: "1920", unitText: "CAD/month" },

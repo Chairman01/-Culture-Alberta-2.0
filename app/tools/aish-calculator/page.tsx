@@ -98,7 +98,7 @@ const calculatorSchema = {
     },
   },
   areaServed: {
-    "@type": "Province",
+    "@type": "State",
     name: "Alberta",
     containedInPlace: {
       "@type": "Country",
@@ -121,7 +121,7 @@ const calculatorSchema = {
       url: "https://www.alberta.ca",
     },
     areaServed: {
-      "@type": "Province",
+      "@type": "State",
       name: "Alberta",
     },
   },

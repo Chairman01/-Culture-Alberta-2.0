@@ -89,15 +89,15 @@ const calculatorSchema = {
   offers: { "@type": "Offer", price: "0", priceCurrency: "CAD" },
   publisher: { "@type": "Organization", name: "Culture Alberta", url: "https://www.culturealberta.com" },
   areaServed: [
-    { "@type": "City", name: "Calgary", containedInPlace: { "@type": "Province", name: "Alberta" } },
-    { "@type": "City", name: "Edmonton", containedInPlace: { "@type": "Province", name: "Alberta" } },
-    { "@type": "Province", name: "Alberta", containedInPlace: { "@type": "Country", name: "Canada" } },
+    { "@type": "City", name: "Calgary", containedInPlace: { "@type": "State", name: "Alberta" } },
+    { "@type": "City", name: "Edmonton", containedInPlace: { "@type": "State", name: "Alberta" } },
+    { "@type": "State", name: "Alberta", containedInPlace: { "@type": "Country", name: "Canada" } },
   ],
   about: {
     "@type": "Legislation",
     name: "Alberta Residential Tenancies Act",
     identifier: "RSA 2000, c R-17.1",
-    jurisdiction: { "@type": "Province", name: "Alberta" },
+    jurisdiction: { "@type": "State", name: "Alberta" },
   },
   featureList: [
     "Notice period check by tenancy type",

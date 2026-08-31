@@ -105,7 +105,7 @@ const checkerSchema = {
     },
   },
   areaServed: {
-    "@type": "Province",
+    "@type": "State",
     name: "Alberta",
     containedInPlace: { "@type": "Country", name: "Canada" },
   },
@@ -126,7 +126,7 @@ const checkerSchema = {
       name: "Government of Alberta",
       url: "https://www.alberta.ca",
     },
-    areaServed: { "@type": "Province", name: "Alberta" },
+    areaServed: { "@type": "State", name: "Alberta" },
   },
 }
 

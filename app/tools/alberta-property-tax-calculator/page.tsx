@@ -97,7 +97,7 @@ const calculatorSchema = {
     },
   },
   areaServed: {
-    "@type": "Province",
+    "@type": "State",
     name: "Alberta",
     containedInPlace: {
       "@type": "Country",

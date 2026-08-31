@@ -98,7 +98,7 @@ const schema = {
     },
   },
   areaServed: {
-    "@type": "Province",
+    "@type": "State",
     name: "Alberta",
     containedInPlace: { "@type": "Country", name: "Canada" },
   },
