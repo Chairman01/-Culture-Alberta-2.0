@@ -8,6 +8,13 @@ export default function robots(): MetadataRoute.Robots {
       disallow: [
         '/admin/',
         '/api/',
+        // Sign-in and account pages. Every "Create a free account" link carries
+        // a ?next= parameter, so one page generates a new URL for every article
+        // and employer it is linked from — Bing had crawled 108 of them, all
+        // canonicalising back to the same two pages. Nothing here can rank, and
+        // an account page is private by definition.
+        '/auth/',
+        '/account/',
         // Next.js data routes - JSON API data, not content pages
         // NOTE: Do NOT block /_next/static/ - Google needs CSS/JS to render pages properly
         '/_next/data/*',

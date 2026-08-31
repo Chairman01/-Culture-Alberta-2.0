@@ -26,6 +26,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { isCronAuthorized } from '@/lib/cron-auth'
 import { submitUrlsToIndexNow } from '@/lib/indexing'
+import { isIndexableJob } from '@/lib/jobs'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -52,6 +53,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // ?dryRun=1 reports what this run would send and changes nothing — no
+  // submission, no stamps. The submitting path is otherwise impossible to
+  // inspect without actually notifying Bing.
+  const dryRun = req.nextUrl.searchParams.get('dryRun') === '1'
+
   const supabase = getSupabaseAdmin()
   const errors: string[] = []
 
@@ -70,19 +76,65 @@ export async function GET(req: NextRequest) {
   const articleRows = (articles ?? []) as Array<{ id: string; slug: string }>
   const jobBudget = Math.max(0, PER_RUN_CAP - articleRows.length)
 
+  // Not every active posting is offered to search engines. isIndexableJob is
+  // the policy — Cadient rows are rolling candidate pools rather than
+  // vacancies, and anything past its valid_through has closed — and the posting
+  // page renders `noindex` for both. Submitting those to IndexNow would ask
+  // Bing to crawl pages we then tell it not to index, which is exactly the
+  // "Excluded by 'noindex' tag" bucket that already holds 536 job URLs.
+  //
+  // The rules live in isIndexableJob and are not restated here; only the cheap
+  // half (is a description present) is pushed into SQL, so the ~7.5KB of
+  // description per row is never transferred. Same split the sitemap uses.
   let jobRows: Array<{ id: string; slug: string }> = []
+  let skippedJobIds: string[] = []
   if (jobBudget > 0) {
     const { data: jobs, error: jobErr } = await supabase
       .from('jobs')
-      .select('id, slug')
+      .select('id, slug, source, ats_provider, status, valid_through')
       .eq('status', 'active')
       .is('indexnow_submitted_at', null)
       .not('slug', 'is', null)
+      .not('description_html', 'is', null)
       .order('created_at', { ascending: false })
-      .limit(jobBudget)
+      // Over-fetch: roughly a tenth of active postings are non-indexable, and
+      // without headroom a run could fill its whole budget with rows it then
+      // discards and submit nothing.
+      .limit(jobBudget * 2)
     if (jobErr) errors.push(`Job lookup: ${jobErr.message}`)
-    jobRows = (jobs ?? []) as Array<{ id: string; slug: string }>
+
+    const candidates = (jobs ?? []) as Array<
+      { id: string; slug: string; source: string; ats_provider: string | null
+        status: string; valid_through: string | null }
+    >
+    const eligible: typeof candidates = []
+    for (const row of candidates) {
+      // description_html is proven present by the SQL filter above; re-attaching
+      // a placeholder keeps isIndexableJob the single place the rules live.
+      if (isIndexableJob({ ...row, description_html: 'present' } as never)) eligible.push(row)
+      else skippedJobIds.push(row.id)
+    }
+    jobRows = eligible.slice(0, jobBudget).map(r => ({ id: r.id, slug: r.slug }))
   }
+
+  const stamp = async (table: 'articles' | 'jobs', ids: string[], at: string) => {
+    if (dryRun || ids.length === 0) return
+    // Chunked to keep the `in` list off Supabase's URL length limit.
+    for (let i = 0; i < ids.length; i += 100) {
+      const { error } = await supabase
+        .from(table)
+        .update({ indexnow_submitted_at: at })
+        .in('id', ids.slice(i, i + 100))
+      if (error) errors.push(`Stamp ${table}: ${error.message}`)
+    }
+  }
+
+  // Rows rejected above are stamped as handled even though nothing was sent for
+  // them. Nothing about a Cadient pool or a closed posting will ever become
+  // indexable, so leaving them unstamped would mean re-reading the same
+  // permanently-ineligible rows on every run, forever, and starving the
+  // over-fetch of real candidates as they accumulated.
+  await stamp('jobs', skippedJobIds, new Date().toISOString())
 
   const urls = [
     ...articleRows.map(a => `${BASE_URL}/articles/${a.slug}`),
@@ -93,7 +145,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: errors.length === 0,
       submitted: 0,
+      skippedNonIndexable: skippedJobIds.length,
       message: 'Nothing pending',
+      errors,
+    })
+  }
+
+  if (dryRun) {
+    return NextResponse.json({
+      dryRun: true,
+      wouldSubmit: urls.length,
+      articles: articleRows.length,
+      jobs: jobRows.length,
+      skippedNonIndexable: skippedJobIds.length,
+      sample: urls.slice(0, 5),
       errors,
     })
   }
@@ -118,23 +183,13 @@ export async function GET(req: NextRequest) {
   }
 
   const stampedAt = new Date().toISOString()
-  const stamp = async (table: 'articles' | 'jobs', ids: string[]) => {
-    if (ids.length === 0) return
-    // Chunked to keep the `in` list off Supabase's URL length limit.
-    for (let i = 0; i < ids.length; i += 100) {
-      const { error } = await supabase
-        .from(table)
-        .update({ indexnow_submitted_at: stampedAt })
-        .in('id', ids.slice(i, i + 100))
-      if (error) errors.push(`Stamp ${table}: ${error.message}`)
-    }
-  }
-  await stamp('articles', articleRows.map(a => a.id))
-  await stamp('jobs', jobRows.map(j => j.id))
+  await stamp('articles', articleRows.map(a => a.id), stampedAt)
+  await stamp('jobs', jobRows.map(j => j.id), stampedAt)
 
   console.log(
     `[indexnow-sweep] Submitted ${urls.length} URL(s) — ` +
-    `${articleRows.length} article(s), ${jobRows.length} job(s), HTTP ${status}`
+    `${articleRows.length} article(s), ${jobRows.length} job(s), ` +
+    `${skippedJobIds.length} non-indexable skipped, HTTP ${status}`
   )
 
   return NextResponse.json({
@@ -142,6 +197,7 @@ export async function GET(req: NextRequest) {
     submitted: urls.length,
     articles: articleRows.length,
     jobs: jobRows.length,
+    skippedNonIndexable: skippedJobIds.length,
     indexnowStatus: status,
     errors,
   })

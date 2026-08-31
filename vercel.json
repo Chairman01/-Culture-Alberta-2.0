@@ -2,6 +2,21 @@
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "redirects": [
         {
+            "source": "/news",
+            "destination": "/alberta",
+            "permanent": true
+        },
+        {
+            "source": "/edmonton/food-drink",
+            "destination": "/food-drink",
+            "permanent": true
+        },
+        {
+            "source": "/edmonton/arts-culture",
+            "destination": "/culture",
+            "permanent": true
+        },
+        {
             "source": "/ads.txt",
             "destination": "https://adstxt.mediavine.com/sites/culturealberta/ads.txt",
             "statusCode": 301
