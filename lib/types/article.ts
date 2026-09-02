@@ -1,6 +1,7 @@
 export interface Article {
   id: string;
   title: string;
+  seoTitle?: string; // Editor-written <title> override (≤60 chars); see lib/seo/title.ts
   content: string;
   excerpt?: string;
   description?: string;
@@ -34,6 +35,7 @@ export interface Article {
 
 export interface CreateArticleInput {
   title: string;
+  seoTitle?: string;
   content: string;
   imageUrl?: string; // Keep for backward compatibility
   imageUrls?: string[]; // New field for multiple images

@@ -15,11 +15,13 @@ import { ImageUploader } from "@/app/admin/components/image-uploader"
 import { RichTextEditor } from "@/app/admin/components/rich-text-editor"
 import { useToast } from "@/hooks/use-toast"
 import { MAIN_CATEGORIES, TIER1_LOCATIONS, OTHER_COMMUNITY_LOCATIONS } from "@/lib/data"
+import { SeoTitleField } from "@/app/admin/components/seo-title-field"
 
 export default function NewArticlePage() {
   const router = useRouter()
   const { toast } = useToast()
   const [title, setTitle] = useState("")
+  const [seoTitle, setSeoTitle] = useState("")
   const [articleType, setArticleType] = useState<'story' | 'news'>('story')
   const [category, setCategory] = useState("")
   const [categories, setCategories] = useState<string[]>([])
@@ -201,6 +203,7 @@ export default function NewArticlePage() {
         },
         body: JSON.stringify({
           title,
+          seoTitle: seoTitle.trim() || null,
           category: category || categories[0] || "General",
           categories: categories.length > 0 ? categories : [category || "General"],
           location: location || "Alberta",
@@ -313,6 +316,8 @@ export default function NewArticlePage() {
               placeholder="Enter article title"
             />
           </div>
+
+          <SeoTitleField headline={title} value={seoTitle} onChange={setSeoTitle} />
 
           {/* Article Type Selector */}
           <div>

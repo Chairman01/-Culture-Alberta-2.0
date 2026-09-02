@@ -106,6 +106,8 @@ export async function POST(request: NextRequest) {
       .insert([{
         id: articleId,
         title: articleData.title,
+        // Editor's <title> override; null means "shorten the headline" (lib/seo/title.ts).
+        seo_title: typeof articleData.seoTitle === 'string' && articleData.seoTitle.trim() ? articleData.seoTitle.trim() : null,
         content: articleContent,
         excerpt: articleData.excerpt,
         category: articleData.category,

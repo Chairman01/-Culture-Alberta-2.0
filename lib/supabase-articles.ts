@@ -81,6 +81,7 @@ function validateImageUrl(imageUrl: any, articleTitle: string): string | undefin
 function mapArticleRow(article: any): Article {
   return {
     ...article,
+    seoTitle: article.seo_title || article.seoTitle || undefined,
     imageUrl: validateImageUrl(article.image_url || article.image || article.imageUrl, article.title),
     date: article.date || article.created_at || article.createdAt,
     createdAt: article.created_at || article.createdAt,
@@ -1091,7 +1092,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     // FAST PATH: Direct indexed slug lookup — single row, no scanning
     if (supabase) {
       try {
-        const fields = ensureImageFields('id, title, excerpt, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, slug')
+        const fields = ensureImageFields('id, title, seo_title, excerpt, category, categories, location, author, tags, type, status, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, slug')
         const { data, error } = await Promise.race([
           // Public read: this backs /articles/<slug>. Without the status filter a
           // draft is reachable by direct URL and crawlable.
@@ -1103,6 +1104,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
           console.log('✅ FAST PATH: Found article by slug index:', data.title)
           return {
             ...data,
+            seoTitle: data.seo_title || undefined,
             imageUrl: validateImageUrl(data.image_url || data.image, data.title),
             date: data.created_at,
             trendingHome: data.trending_home || false,

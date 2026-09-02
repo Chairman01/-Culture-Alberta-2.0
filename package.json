@@ -70,6 +70,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "embla-carousel-react": "8.5.1",
+    "google-auth-library": "10.5.0",
     "input-otp": "1.4.1",
     "js-cookie": "^3.0.5",
     "jsonwebtoken": "^9.0.2",

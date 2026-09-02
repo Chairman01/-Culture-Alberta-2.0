@@ -160,7 +160,7 @@ export async function PUT(
     // trending/featured flags so a caller that omits them doesn't wipe them.
     const { data: existingArticle } = await supabase
       .from('articles')
-      .select('title, slug, author, author_user_id, status, review_status, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+      .select('title, seo_title, slug, author, author_user_id, status, review_status, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
       .eq('id', articleId)
       .single()
 
@@ -200,6 +200,11 @@ export async function PUT(
       .update({
         ...reviewFields,
         title: articleData.title,
+        // Same `??`-style rule as the flags below: a caller that omits seoTitle
+        // keeps what is set; an explicit empty string or null clears it.
+        seo_title: articleData.seoTitle === undefined
+          ? (existingArticle?.seo_title ?? null)
+          : (typeof articleData.seoTitle === 'string' && articleData.seoTitle.trim() ? articleData.seoTitle.trim() : null),
         content: articleContent,
         excerpt: articleData.excerpt,
         category: articleData.category,
