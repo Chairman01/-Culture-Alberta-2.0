@@ -17,10 +17,12 @@ import { ImageUploader } from "@/app/admin/components/image-uploader"
 import { RichTextEditor } from "@/app/admin/components/rich-text-editor"
 import { useToast } from "@/hooks/use-toast"
 import { MAIN_CATEGORIES, TIER1_LOCATIONS, OTHER_COMMUNITY_LOCATIONS } from "@/lib/data"
+import { SeoTitleField } from "@/app/admin/components/seo-title-field"
 
 interface Article {
   id: string
   title: string
+  seo_title?: string | null
   excerpt?: string
   description?: string
   content?: string
@@ -52,6 +54,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const { toast } = useToast()
   const [article, setArticle] = useState<Article | null>(null)
   const [title, setTitle] = useState("")
+  const [seoTitle, setSeoTitle] = useState("")
   const [articleType, setArticleType] = useState<'story' | 'news'>('story')
   const [category, setCategory] = useState("")
   const [categories, setCategories] = useState<string[]>([])
@@ -153,6 +156,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
 
       setArticle(articleData)
       setTitle(articleData.title || "")
+      setSeoTitle(articleData.seo_title || "")
       setCategory(articleData.category || "")
       const loadedCats = articleData.categories || []
       setCategories(loadedCats)
@@ -307,6 +311,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       // Update article using the admin API
       const updateData = {
         title,
+        seoTitle: seoTitle.trim() || null,
         category: category || categories[0] || "General",
         categories: categories.length > 0 ? categories : [category || "General"],
         location: location || "Alberta",
@@ -439,6 +444,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               placeholder="Enter article title"
             />
           </div>
+
+          <SeoTitleField headline={title} value={seoTitle} onChange={setSeoTitle} />
 
           {/* Article Type Selector */}
           <div>

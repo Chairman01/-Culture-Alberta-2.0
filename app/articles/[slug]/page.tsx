@@ -15,6 +15,7 @@ import { Article } from '@/lib/types/article'
 import ArticleNewsletterSignup from '@/components/article-newsletter-signup'
 import { PreferredSourceCTA } from '@/components/preferred-source-cta'
 import { ArticleStructuredData, BreadcrumbStructuredData, ListicleStructuredData } from '@/components/seo/structured-data'
+import { buildSeoTitle } from '@/lib/seo/title'
 import { ArticleEmbedActivator } from '@/components/article-embed-activator'
 
 // ISR: cache rendered pages for 30 min, revalidate in background.
@@ -381,6 +382,7 @@ const getArticleFromDB = unstable_cache(
       if (!error && data) {
         article = {
           ...data,
+          seoTitle: data.seo_title || data.seoTitle || undefined,
           imageUrl: data.image_url || data.image || data.imageUrl,
           imageSource: data.image_source || data.imageSource || null,
           date: data.date || data.created_at,
@@ -574,6 +576,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       }
     }
 
+    // <title> is capped at 60 characters (lib/seo/title.ts) — Google truncates
+    // past that and Bing flags it. og:title / twitter:title below keep the full
+    // headline: social cards have their own limits and Reddit renders og:title.
+    const seoTitle = buildSeoTitle(loadedArticle.title, loadedArticle.seoTitle)
     const fullTitle = loadedArticle.title.includes('Culture Alberta') ? loadedArticle.title : `${loadedArticle.title} | Culture Alberta`
 
     // Create a proper description for social sharing
@@ -601,7 +607,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     })
 
     return {
-      title: fullTitle,
+      title: seoTitle,
       description: description,
       keywords: [...(loadedArticle.tags || []), loadedArticle.category, 'Alberta', 'Culture'].filter(Boolean).join(', '),
       authors: [{ name: normalizeArticleAuthor(loadedArticle.author) }],

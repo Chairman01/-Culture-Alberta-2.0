@@ -43,31 +43,17 @@ export default function robots(): MetadataRoute.Robots {
         // Invalid/junk URLs found in Google Search Console
         '/2',
         '/3',
-        // Remove specific article URLs from indexing (placeholder/test articles)
-        '/articles/article-1755471413706-6x340tv5w',
-        '/articles/article-1757443668525-it4u5nhfo',
-        '/articles/article-1754957054981-fturxi4mi',
-        '/articles/article-1755303180179-vp6mtvos2',
-        '/articles/article-1755479611660-ikidiacz0',
-        '/articles/article-1757236534668-edtcg186k',
-        '/articles/article-1757317159902-bzajewmw0',
-        '/articles/article-1754899686200-bvftipelh',
-        '/articles/article-1754906674364-96gpllbq3',
-        '/articles/article-1755044961288-d2jjptlq0',
-        '/articles/article-1755737833735-4dpy9893u',
-        '/articles/article-1755470408146-4r1ljnu1r',
-        '/articles/article-1755917044327-nw8ghveg1',
-        // Additional test articles from noindex report
-        '/articles/article-1765775179976-8ckzfvlun',
-        '/articles/article-1765435206227-z3f7y8f1e',
-        '/articles/article-2',
-        '/articles/article-1766002547858-dem6yogey',
-        // Inactive articles that should not be indexed
-        '/articles/redditors-top-romantic-edmonton-spots',
-        '/articles/the-5-best-brunch-spots-in-edmonton-you-need-to-try-at-least-once',
-        // Test articles to be deleted
-        '/articles/afro-music-fest',
-        '/articles/hello-this-is-a-tet',
+        // Individual /articles/... URLs are deliberately NOT listed here any more.
+        //
+        // Until 2026-09-01 this file blocked 21 test/placeholder article URLs.
+        // A robots.txt block stops the crawler fetching the page, so it can
+        // never see the 404 (19 of the 21 no longer exist in the database) or
+        // the 301 to the canonical slug (the other two were the raw-ID URLs of
+        // live articles). Blocked, they sit in the index as URL-only entries
+        // indefinitely — the "excluded" rows in Search Console. Unblocked, one
+        // crawl resolves each of them. Keep dead articles out of the index by
+        // deleting them (the page then 404s), not by listing them here.
+        //
         // NOTE: best-of pages re-enabled for indexing — they are valuable SEO landing pages
         // Only block specific best-of pages if they are genuinely empty/thin
         // '/best-of/shopping',  // unblocked - indexable content
