@@ -97,6 +97,9 @@ export default function JobsBrowser({
   const [hasSalary, setHasSalary] = useState(false)
   const [employment, setEmployment] = useState('all')
   const [union, setUnion] = useState('all')
+  // Presentation only, so it is not persisted with the filters below: on a
+  // phone the secondary selects fold behind a button.
+  const [showFilters, setShowFilters] = useState(false)
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -318,6 +321,25 @@ export default function JobsBrowser({
     }
     return [...counts.entries()].sort((a, b) => b[1] - a[1])
   }, [jobs])
+
+  /**
+   * Keep the chosen specialty on screen.
+   *
+   * The row scrolls sideways on a phone and resets to the left on every mount,
+   * so a specialty restored from the previous visit — or picked from the far end
+   * of the row — would sit off-screen while quietly filtering the board. A
+   * filter you cannot see is a filter you cannot clear.
+   */
+  const specialtyRowRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const active = specialtyRowRef.current?.querySelector('[aria-pressed="true"]')
+    active?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+  }, [category])
+
+  /** Count for the mobile Filters badge — specialty has its own chips. */
+  const secondaryFilterCount =
+    (city !== initialCity ? 1 : 0) + (postedWithin !== 'all' ? 1 : 0) +
+    (employment !== 'all' ? 1 : 0) + (union !== 'all' ? 1 : 0) + (hasSalary ? 1 : 0)
 
   const filtersActive =
     keyword.trim() !== '' || city !== initialCity || category !== 'all' ||
@@ -660,13 +682,84 @@ export default function JobsBrowser({
         />
       </div>
 
+      {/* Specialty chips.
+          Promoted out of the select it used to share with five other dropdowns:
+          picking a field is the one filter nearly every reader wants, and on a
+          phone a native select buried in a wrapped pill row was three taps and a
+          scroll away. */}
+      {categoryCounts.length > 1 && (
+        <div className="mb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+          {/* One swipeable row on a phone, where wrapping twenty-odd chips walled
+              off the listings behind five rows of pills; wrapped from sm up,
+              where there is width for them and nothing has to be scrolled to. */}
+          <div
+            ref={specialtyRowRef}
+            role="group"
+            aria-label="Filter by specialty"
+            className="flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-x-visible sm:pb-0"
+          >
+            <button
+              type="button"
+              onClick={() => { setCategory('all'); resetPage() }}
+              aria-pressed={category === 'all'}
+              className={`min-h-[40px] shrink-0 whitespace-nowrap rounded-full border px-4 text-sm font-medium transition-colors sm:min-h-[34px] sm:px-3 ${
+                category === 'all'
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+              }`}
+            >
+              All specialties
+            </button>
+            {categoryCounts.map(([c, n]) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => { setCategory(category === c ? 'all' : c); resetPage() }}
+                aria-pressed={category === c}
+                className={`min-h-[40px] shrink-0 whitespace-nowrap rounded-full border px-4 text-sm font-medium transition-colors sm:min-h-[34px] sm:px-3 ${
+                  category === c
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                }`}
+              >
+                {c}{' '}
+                <span className={category === c ? 'text-blue-100' : 'text-gray-500'}>{n}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Six selects wrapped into four rows on a phone and pushed the listings
+          below the fold. Below sm they fold behind this button, which carries a
+          count so a filter left on is never invisible; from sm up the row is
+          always shown and this button is not rendered at all. */}
+      <button
+        type="button"
+        onClick={() => setShowFilters(v => !v)}
+        aria-expanded={showFilters}
+        aria-controls="job-filter-row"
+        className="mb-3 inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 sm:hidden"
+      >
+        <SlidersHorizontal className="h-4 w-4" />
+        {showFilters ? 'Hide filters' : 'More filters'}
+        {secondaryFilterCount > 0 && (
+          <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-semibold text-white">
+            {secondaryFilterCount}
+          </span>
+        )}
+      </button>
+
       {/* Filter row */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div
+        id="job-filter-row"
+        className={`mb-4 flex-wrap items-center gap-3 sm:flex ${showFilters ? 'flex' : 'hidden'}`}
+      >
         <select
           value={city}
           onChange={e => { setCity(e.target.value); resetPage() }}
           aria-label="City"
-          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          className="min-h-[44px] rounded-md border border-gray-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none sm:min-h-0 sm:text-sm"
         >
           <option value="all">All of Alberta</option>
           {/* Only cities actually represented in this result set — an empty
@@ -676,19 +769,10 @@ export default function JobsBrowser({
           ))}
         </select>
         <select
-          value={category}
-          onChange={e => { setCategory(e.target.value); resetPage() }}
-          aria-label="Category"
-          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-        >
-          <option value="all">All categories</option>
-          {categoryCounts.map(([c, n]) => <option key={c} value={c}>{c} ({n})</option>)}
-        </select>
-        <select
           value={postedWithin}
           onChange={e => { setPostedWithin(e.target.value); resetPage() }}
           aria-label="Posted within"
-          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          className="min-h-[44px] rounded-md border border-gray-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none sm:min-h-0 sm:text-sm"
         >
           {POSTED_WITHIN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -698,7 +782,7 @@ export default function JobsBrowser({
             value={employment}
             onChange={e => { setEmployment(e.target.value); resetPage() }}
             aria-label="Employment type"
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className="min-h-[44px] rounded-md border border-gray-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none sm:min-h-0 sm:text-sm"
           >
             <option value="all">Any job type</option>
             {employmentOptions.map(([type, n]) => (
@@ -712,7 +796,7 @@ export default function JobsBrowser({
             value={union}
             onChange={e => { setUnion(e.target.value); resetPage() }}
             aria-label="Union status"
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className="min-h-[44px] rounded-md border border-gray-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none sm:min-h-0 sm:text-sm"
           >
             <option value="all">Union or not</option>
             {unionOptions.map(([status, n]) => (
@@ -728,14 +812,14 @@ export default function JobsBrowser({
             value={sortBy}
             onChange={e => { setSortBy(e.target.value as 'newest' | 'match'); resetPage() }}
             aria-label="Sort"
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className="min-h-[44px] rounded-md border border-gray-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none sm:min-h-0 sm:text-sm"
           >
             <option value="match">Best matches first</option>
             <option value="newest">Newest first</option>
           </select>
         )}
 
-        <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
+        <label className="inline-flex min-h-[44px] cursor-pointer items-center gap-2 text-sm font-medium text-gray-700 sm:min-h-0">
           <input
             type="checkbox"
             checked={hasSalary}
@@ -748,7 +832,7 @@ export default function JobsBrowser({
           <button
             type="button"
             onClick={clearFilters}
-            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+            className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 sm:min-h-0"
           >
             <X className="h-3.5 w-3.5" /> Clear filters
           </button>
