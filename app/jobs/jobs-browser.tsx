@@ -13,10 +13,11 @@ import {
   type JobPreferences, type MatchResult,
 } from '@/lib/job-preferences'
 import type { SavedJobStatus } from '@/lib/types/job'
+import { UNCATEGORISED } from '@/lib/job-categories'
 import Link from 'next/link'
 import {
   Search, MapPin, Clock, X, Building2, ExternalLink, Loader2, Sparkles, SlidersHorizontal,
-  AlertCircle,
+  AlertCircle, ChevronDown,
 } from 'lucide-react'
 
 /**
@@ -75,6 +76,13 @@ interface JobDetail {
 
 const PAGE_SIZE = 20
 const NEW_WITHIN_MS = 48 * 60 * 60 * 1000
+/**
+ * Specialties on the chip row itself; the rest open in a panel.
+ *
+ * Five is what fits one line at 1280px once "All specialties" and the opener
+ * are counted. Six wrapped, which is the wall this was meant to remove.
+ */
+const SPECIALTY_CHIP_LIMIT = 5
 
 const POSTED_WITHIN_OPTIONS = [
   { value: 'all', label: 'Any time' },
@@ -97,9 +105,11 @@ export default function JobsBrowser({
   const [hasSalary, setHasSalary] = useState(false)
   const [employment, setEmployment] = useState('all')
   const [union, setUnion] = useState('all')
-  // Presentation only, so it is not persisted with the filters below: on a
-  // phone the secondary selects fold behind a button.
+  // Presentation only, so neither is persisted with the filters below: on a
+  // phone the secondary selects fold behind a button, and the full specialty
+  // list opens in a panel rather than sitting expanded.
   const [showFilters, setShowFilters] = useState(false)
+  const [showAllSpecialties, setShowAllSpecialties] = useState(false)
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -313,14 +323,39 @@ export default function JobsBrowser({
     return out
   }, [jobs, prefs, matching])
 
-  // Top categories with counts, for the quick-filter chips
+  // Top categories with counts, for the quick-filter chips. Busiest first,
+  // except "Other" — it is where the classifier gave up, not a field anyone
+  // searches for, and at third place it was taking a slot on the chip row from
+  // a specialty someone actually wants.
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>()
     for (const j of jobs) {
       if (j.category) counts.set(j.category, (counts.get(j.category) || 0) + 1)
     }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1])
+    return [...counts.entries()].sort((a, b) => {
+      if (a[0] === UNCATEGORISED) return 1
+      if (b[0] === UNCATEGORISED) return -1
+      return b[1] - a[1]
+    })
   }, [jobs])
+
+  /**
+   * Chips shown on the row itself; the rest live behind "All specialties".
+   *
+   * Every specialty on the row meant four wrapped lines on a desktop and 340px
+   * of controls before the first listing — the board asking to be configured
+   * before it would show anything. The busiest few cover most of the traffic,
+   * and the chosen one is always on the row even when it comes from the tail,
+   * because a filter you cannot see is a filter you cannot clear.
+   */
+  const visibleSpecialties = useMemo(() => {
+    const head = categoryCounts.slice(0, SPECIALTY_CHIP_LIMIT)
+    if (category !== 'all' && !head.some(([c]) => c === category)) {
+      const active = categoryCounts.find(([c]) => c === category)
+      if (active) return [...head, active]
+    }
+    return head
+  }, [categoryCounts, category])
 
   /**
    * Keep the chosen specialty on screen.
@@ -710,7 +745,7 @@ export default function JobsBrowser({
             >
               All specialties
             </button>
-            {categoryCounts.map(([c, n]) => (
+            {visibleSpecialties.map(([c, n]) => (
               <button
                 key={c}
                 type="button"
@@ -726,7 +761,55 @@ export default function JobsBrowser({
                 <span className={category === c ? 'text-blue-100' : 'text-gray-500'}>{n}</span>
               </button>
             ))}
+            {categoryCounts.length > SPECIALTY_CHIP_LIMIT && (
+              <button
+                type="button"
+                onClick={() => setShowAllSpecialties(v => !v)}
+                aria-expanded={showAllSpecialties}
+                aria-controls="specialty-panel"
+                className="inline-flex min-h-[40px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-dashed border-gray-400 px-4 text-sm font-medium text-gray-700 hover:border-gray-500 hover:text-gray-900 sm:min-h-[34px] sm:px-3"
+              >
+                {showAllSpecialties
+                  ? 'Close'
+                  : `+${categoryCounts.length - SPECIALTY_CHIP_LIMIT} more`}
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${showAllSpecialties ? 'rotate-180' : ''}`}
+                />
+              </button>
+            )}
           </div>
+
+          {/* The full list, opened on request rather than shown by default.
+              A panel and not a dialog: a modal over the board on arrival is the
+              intrusive interstitial Google downranks on mobile, and this page
+              earns most of its accounts from organic search. */}
+          {showAllSpecialties && (
+            <div
+              id="specialty-panel"
+              className="mt-2 grid grid-cols-2 gap-1 rounded-xl border border-gray-200 bg-white p-2 sm:grid-cols-3 lg:grid-cols-4"
+            >
+              {categoryCounts.map(([c, n]) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => {
+                    setCategory(category === c ? 'all' : c)
+                    setShowAllSpecialties(false)
+                    resetPage()
+                  }}
+                  aria-pressed={category === c}
+                  className={`flex min-h-[40px] items-center justify-between gap-2 rounded-lg px-3 text-left text-sm transition-colors ${
+                    category === c
+                      ? 'bg-blue-600 font-medium text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="truncate">{c}</span>
+                  <span className={category === c ? 'text-blue-100' : 'text-gray-500'}>{n}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

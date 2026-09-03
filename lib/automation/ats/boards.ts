@@ -193,6 +193,19 @@ export const ATS_BOARDS: AtsBoard[] = [
   },
   // Red Deer's own municipality, and on its own the largest employer we can
   // reach there — 14 postings against the four the city page had in total.
+  // Calgary's largest head-office employer we can reach, and the strongest
+  // source of the professional roles the board was thin on. Verified 2026-09-02:
+  // 106 requisitions, overwhelmingly Calgary — royalty analysts, property
+  // accountants, area geologists, facilities engineers — plus Fort McMurray
+  // site work, which no other board here supplies.
+  {
+    provider: 'oracle',
+    token: 'canadian-natural',
+    company: 'Canadian Natural Resources',
+    domain: 'cnrl.com',
+    host: 'ehaa.fa.ca2.oraclecloud.com',
+    site: 'CNRL-Professional',
+  },
   {
     provider: 'oracle',
     token: 'city-of-red-deer',
@@ -237,6 +250,18 @@ export const ATS_BOARDS: AtsBoard[] = [
     company: 'Regional Municipality of Wood Buffalo',
     domain: 'jobs.rmwb.ca',
     logoDomain: 'rmwb.ca',
+  },
+  // Edmonton-headquartered and employee-owned, and the largest general
+  // contractor we can reach. Verified 2026-09-02: the board answers on
+  // /search/?startrow=0 and carries Edmonton and Calgary roles well beyond the
+  // trades — estimators, schedulers, integration developers, government
+  // relations. `domain` is the board origin, as with the entries above.
+  {
+    provider: 'successfactors',
+    token: 'pcl',
+    company: 'PCL Construction',
+    domain: 'careers.pcl.com',
+    logoDomain: 'pcl.com',
   },
 
   // ── Oracle Talent Social Sourcing — DELIBERATELY NOT ENABLED ──────────────
