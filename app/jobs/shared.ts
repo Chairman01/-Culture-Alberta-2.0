@@ -2,6 +2,7 @@ import { Job } from '@/lib/types/job'
 import { JOB_CITY_LABELS, formatSalary } from '@/lib/jobs'
 import { BOARD_DOMAINS } from '@/lib/automation/ats/boards'
 import { detectUnionStatus, inferEmploymentType, extractPay } from '@/lib/job-attributes'
+import { resolveCategory } from '@/lib/job-categories'
 import type { BrowserJob } from './jobs-browser'
 
 /**
@@ -79,7 +80,9 @@ export function toBrowserJob(job: Job): BrowserJob {
     city: JOB_CITY_LABELS[job.city] as BrowserJob['city'],
     logoDomain: logoDomainFor(job),
     logoSrc: logoSrcFor(job),
-    category: job.category || 'Other',
+    // Rows synced before the classifier existed hold null or a retired label;
+    // resolving here categorises the whole back catalogue without a migration.
+    category: resolveCategory(job.category, job.title),
     // Feed salary first, then whatever the employer stated in the body.
     salaryText: formatSalary(job) || extractPay(job.description_html) || undefined,
     postedAt: job.posted_at || undefined,

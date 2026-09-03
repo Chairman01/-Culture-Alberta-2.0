@@ -76,25 +76,23 @@ export default async function JobsPage() {
 
         <section className="w-full py-10 md:py-14">
           <div className="container mx-auto max-w-7xl px-4 md:px-6">
-            {/* 60,000 positions in all 87 divisions dwarfs everything else on the
-                board, and it has a hard October 10 deadline — it earns the top slot. */}
+            {/* 60,000 positions with an October 10 deadline is worth a standing
+                pointer, but as a full-width blue card with its own call-to-action
+                it read as the page's headline and pushed the search box and the
+                board itself down. One quiet line keeps the guide reachable
+                without competing with the thing readers came for. */}
             <Link
               href="/jobs/elections-alberta"
-              className="mb-8 flex flex-col gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 transition-colors hover:border-blue-300 hover:bg-blue-100/70 sm:flex-row sm:items-center"
+              className="mb-6 flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm transition-colors hover:border-gray-300 hover:bg-gray-100"
             >
-              <CompanyLogo company="Elections Alberta" domain="elections.ab.ca" size={56} />
-              <div className="min-w-0 flex-1">
-                <p className="text-lg font-bold text-gray-900">
+              <CompanyLogo company="Elections Alberta" domain="elections.ab.ca" size={28} />
+              <span className="min-w-0 flex-1 text-gray-700">
+                <span className="font-semibold text-gray-900">
                   Elections Alberta is hiring 60,000 Albertans
-                </p>
-                <p className="mt-0.5 text-sm text-gray-700">
-                  Referendum work in all 87 electoral divisions — every role, the October 10
-                  deadline, and a searchable map of your division.
-                </p>
-              </div>
-              <span className="flex-shrink-0 rounded-md bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white">
-                See the guide →
+                </span>{' '}
+                — every role and the October 10 deadline.
               </span>
+              <span className="flex-shrink-0 font-semibold text-blue-600">Guide →</span>
             </Link>
 
             {/* Server-rendered job list for SEO */}

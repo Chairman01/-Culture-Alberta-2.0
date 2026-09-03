@@ -15,6 +15,7 @@ import { ATS_BOARDS, AtsBoard } from './boards'
 import { fetchBoard, RawPosting } from './providers'
 import { matchJobCities } from './location'
 import { extractClosingDate, extractPay } from '@/lib/job-attributes'
+import { inferCategory } from '@/lib/job-categories'
 
 export interface AtsFetchResult {
   rows: JobUpsertRow[]
@@ -95,7 +96,10 @@ function toRows(posting: RawPosting, board: AtsBoard, city: JobCity): JobUpsertR
     company: board.company,
     city,
     location_raw: locationForCity(posting.location, city) || null,
-    category: null,
+    // No provider supplies a category, and storing null left the board's
+    // specialty filter empty. Derived from the title — the same function the
+    // read path falls back to, so a stored value and a derived one always agree.
+    category: inferCategory(posting.title),
     description_snippet: toSnippet(posting.descriptionHtml),
     description_html: posting.descriptionHtml || null,
     salary_min: null,
