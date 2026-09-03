@@ -119,6 +119,15 @@ export const ATS_BOARDS: AtsBoard[] = [
     ],
   },
   { provider: 'workday', token: 'suncor', company: 'Suncor', domain: 'suncor.com', datacenter: 'wd1', site: 'Suncor_External' },
+  // Provincial agencies. Both verified 2026-09-03.
+  //
+  // Deliberately no locationAliases on either. Workday states a bare count
+  // ("8 Locations") when a posting spans offices, and the fetcher matches on
+  // that string alone, so a catch-all would stamp every multi-office job with
+  // one city it may not be in. Losing those beats mislabelling them; the
+  // postings that name a real place still come through.
+  { provider: 'workday', token: 'aer', company: 'Alberta Energy Regulator', domain: 'aer.ca', datacenter: 'wd3', site: 'aer' },
+  { provider: 'workday', token: 'aimco', company: 'AIMCo', domain: 'aimco.ca', datacenter: 'wd10', site: 'AIMCoCareers' },
   { provider: 'workday', token: 'finning', company: 'Finning', domain: 'finning.com', datacenter: 'wd3', site: 'External' },
   { provider: 'workday', token: 'ledcor', company: 'Ledcor', domain: 'ledcor.com', datacenter: 'wd3', site: 'Ledcor_External' },
   { provider: 'workday', token: 'strathconaresources', company: 'Strathcona Resources', domain: 'strathconaresources.com', datacenter: 'wd10', site: 'Careers' },
@@ -193,6 +202,19 @@ export const ATS_BOARDS: AtsBoard[] = [
   },
   // Red Deer's own municipality, and on its own the largest employer we can
   // reach there — 14 postings against the four the city page had in total.
+  // Calgary's largest head-office employer we can reach, and the strongest
+  // source of the professional roles the board was thin on. Verified 2026-09-02:
+  // 106 requisitions, overwhelmingly Calgary — royalty analysts, property
+  // accountants, area geologists, facilities engineers — plus Fort McMurray
+  // site work, which no other board here supplies.
+  {
+    provider: 'oracle',
+    token: 'canadian-natural',
+    company: 'Canadian Natural Resources',
+    domain: 'cnrl.com',
+    host: 'ehaa.fa.ca2.oraclecloud.com',
+    site: 'CNRL-Professional',
+  },
   {
     provider: 'oracle',
     token: 'city-of-red-deer',
@@ -237,6 +259,18 @@ export const ATS_BOARDS: AtsBoard[] = [
     company: 'Regional Municipality of Wood Buffalo',
     domain: 'jobs.rmwb.ca',
     logoDomain: 'rmwb.ca',
+  },
+  // Edmonton-headquartered and employee-owned, and the largest general
+  // contractor we can reach. Verified 2026-09-02: the board answers on
+  // /search/?startrow=0 and carries Edmonton and Calgary roles well beyond the
+  // trades — estimators, schedulers, integration developers, government
+  // relations. `domain` is the board origin, as with the entries above.
+  {
+    provider: 'successfactors',
+    token: 'pcl',
+    company: 'PCL Construction',
+    domain: 'careers.pcl.com',
+    logoDomain: 'pcl.com',
   },
 
   // ── Oracle Talent Social Sourcing — DELIBERATELY NOT ENABLED ──────────────
@@ -328,6 +362,30 @@ export const ATS_BOARDS: AtsBoard[] = [
     domain: 'recruitment.edmonton.ca',
     logoDomain: 'edmonton.ca',
   },
+  // Both boards below carry their locale in the path, so `domain` includes it —
+  // the fetcher interpolates it straight into the origin, and the detail URLs
+  // (`/job/{id}/{slug}`) resolve underneath it. Verified 2026-09-03; dropping
+  // the prefix returns the marketing shell with no job payload at all.
+  //
+  // ATCO is one of the largest Alberta-headquartered utilities we can reach:
+  // 96 requisitions, 16 Edmonton and 4 Leduc on the first page alone.
+  {
+    provider: 'phenom',
+    token: 'atco',
+    company: 'ATCO',
+    domain: 'careers.atco.com/global/en',
+    logoDomain: 'atco.com',
+  },
+  // National rather than Alberta-based, so most of its board is Toronto,
+  // Montreal and Vancouver — kept because the Calgary and Edmonton airport
+  // roles it does post are ones no other board here carries.
+  {
+    provider: 'phenom',
+    token: 'air-canada',
+    company: 'Air Canada',
+    domain: 'careers.aircanada.com/ca/en',
+    logoDomain: 'aircanada.com',
+  },
 
   // ── PeopleAdmin ────────────────────────────────────────────────────────────
   // `domain` is the portal origin, as with SuccessFactors above. The Atom feed
@@ -366,6 +424,19 @@ export const ATS_BOARDS: AtsBoard[] = [
     company: 'Keyano College',
     domain: 'keyanocollege.myavanti.ca',
     logoDomain: 'keyano.ca',
+  },
+  // Spruce Grove states a department where every other board states a place —
+  // "Community and Protective Services - Transit" — so nothing here names a
+  // city and the location matcher would drop the whole board. The catch-all
+  // alias is correct rather than lazy: the town has one set of offices, and
+  // NAIT's entry above already routes Spruce Grove to Edmonton.
+  {
+    provider: 'avanti',
+    token: 'spruce-grove',
+    company: 'City of Spruce Grove',
+    domain: 'sprucegrove.myavanti.ca',
+    logoDomain: 'sprucegrove.org',
+    locationAliases: [{ pattern: /^/, city: 'edmonton' }],
   },
 
   // ── Medicine Hat College (own website) ─────────────────────────────────────
