@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { getAlbertaCityArticles } from '@/lib/alberta-cities'
 import { isRegularArticle } from '@/lib/utils/article-filters'
 import { getArticleUrl } from '@/lib/utils/article-url'
+import { formatArticleDate } from '@/lib/utils/article-date'
 import { Article } from '@/lib/types/article'
 import type { CityPageConfig } from '@/lib/city-pages'
 
@@ -12,22 +13,8 @@ interface CityArticle extends Article {
     location?: string
 }
 
-function formatDate(dateString: string): string {
-    try {
-        const date = new Date(dateString)
-        const diffDays = Math.ceil(Math.abs(Date.now() - date.getTime()) / (1000 * 60 * 60 * 24))
-        if (diffDays === 1) return '1 day ago'
-        if (diffDays < 7) return `${diffDays} days ago`
-        if (diffDays < 14) return '1 week ago'
-        if (diffDays < 31) return `${Math.floor(diffDays / 7)} weeks ago`
-        return date.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })
-    } catch {
-        return 'Recently'
-    }
-}
-
 export async function CityAllArticles({ config }: { config: CityPageConfig }) {
-    const all = (await getAlbertaCityArticles(config.eventLocation)) as CityArticle[]
+    const all = (await getAlbertaCityArticles(config.eventLocation, { complete: true })) as CityArticle[]
     const articles = all
         .filter((item) => item.type !== 'event' && item.type !== 'Event')
         .filter(isRegularArticle)
@@ -67,7 +54,7 @@ export async function CityAllArticles({ config }: { config: CityPageConfig }) {
                                             <div className="p-4">
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                                                     <span className="rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 text-xs font-semibold">{article.category}</span>
-                                                    <span>{formatDate(article.date || '')}</span>
+                                                    <span>{formatArticleDate(article.date || '')}</span>
                                                 </div>
                                                 <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors duration-300 line-clamp-2 leading-tight mb-2">{article.title}</h3>
                                                 <p className="text-sm text-muted-foreground line-clamp-3">{article.excerpt}</p>

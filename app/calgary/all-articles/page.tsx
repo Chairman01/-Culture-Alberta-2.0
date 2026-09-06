@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 import { getArticleUrl } from '@/lib/utils/article-url'
+import { formatArticleDate } from '@/lib/utils/article-date'
 import { Metadata } from 'next'
 
 // Proper App Router metadata export
@@ -29,22 +30,6 @@ export default async function CalgaryAllArticlesPage() {
 
   console.log(`✅ Calgary all articles loaded: ${articles.length} regular articles (neighborhood/guide excluded)`)
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString)
-      const now = new Date()
-      const diffTime = Math.abs(now.getTime() - date.getTime())
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-      if (diffDays === 1) return '1 day ago'
-      if (diffDays < 7) return `${diffDays} days ago`
-      if (diffDays < 14) return '1 week ago'
-      if (diffDays < 21) return '2 weeks ago'
-      return '3 weeks ago'
-    } catch {
-      return 'Recently'
-    }
-  }
 
   return (
     <>
@@ -96,7 +81,7 @@ export default async function CalgaryAllArticlesPage() {
                             <span className="rounded-full bg-red-100 text-red-800 px-2.5 py-0.5 text-xs font-semibold">
                               {article.category}
                             </span>
-                            <span>{formatDate(article.date || '')}</span>
+                            <span>{formatArticleDate(article.date || '')}</span>
                           </div>
                           <h3 className="font-bold text-lg group-hover:text-red-600 transition-colors duration-300 line-clamp-2 leading-tight mb-2">
                             {article.title}

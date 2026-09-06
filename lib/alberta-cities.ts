@@ -1,5 +1,5 @@
 import { Article } from './types/article'
-import { getAllArticles } from './articles'
+import { getAllArticles, getAllPublishedArticles } from './articles'
 import { loadOptimizedFallback } from './optimized-fallback'
 
 /**
@@ -94,7 +94,7 @@ function excludeCalgaryEdmonton(articles: Article[]): Article[] {
  * PERFORMANCE: Fetch Alberta page data with a SINGLE Supabase request.
  * Use this for the Alberta page instead of 7 separate fetches.
  */
-export async function getAlbertaPageData(): Promise<{
+export async function getAlbertaPageData(opts: { complete?: boolean } = {}): Promise<{
     allArticles: Article[]
     albertaProvinceWideArticles: Article[]
     redDeerArticles: Article[]
@@ -105,7 +105,7 @@ export async function getAlbertaPageData(): Promise<{
 }> {
     try {
         console.log('🔄 [FAST] Loading Alberta page data (single fetch)...')
-        const albertaArticles = await getAllAlbertaArticles()
+        const albertaArticles = await getAllAlbertaArticles(opts)
 
         const majorCities = ['red deer', 'lethbridge', 'medicine hat', 'grande prairie']
 
@@ -168,12 +168,19 @@ export async function getAlbertaPageData(): Promise<{
 /**
  * Get all articles from Alberta cities (excluding Calgary and Edmonton)
  */
-export async function getAllAlbertaArticles(): Promise<Article[]> {
+// `complete` fetches every published article instead of the 500 newest.
+//
+// The default stays capped because the homepage and the section pages call
+// this to render a couple of dozen cards and have no use for the rest. Only the
+// "all articles" indexes pass it: filtering 500 rows down to one small city
+// turns the cap into a date cutoff, which is how /edmonton/all-articles ended
+// up silently dropping everything published before 2026-05-12.
+export async function getAllAlbertaArticles(opts: { complete?: boolean } = {}): Promise<Article[]> {
     try {
         console.log('🔄 Loading all Alberta articles (excluding Calgary/Edmonton)...')
 
         // Try Supabase first
-        const allArticles = await getAllArticles()
+        const allArticles = opts.complete ? await getAllPublishedArticles() : await getAllArticles()
         if (!allArticles || allArticles.length === 0) {
             console.warn('⚠️ No Alberta source articles returned, switching to optimized fallback')
             const fallbackArticles = await loadOptimizedFallback()
@@ -228,9 +235,9 @@ export async function getAlbertaProvinceWideArticles(): Promise<Article[]> {
  * matching as the Alberta page sections — works live from Supabase (with the
  * fallback baked into getAllAlbertaArticles). Used by the shared city hub pages.
  */
-export async function getAlbertaCityArticles(cityName: string): Promise<Article[]> {
+export async function getAlbertaCityArticles(cityName: string, opts: { complete?: boolean } = {}): Promise<Article[]> {
     try {
-        const albertaArticles = await getAllAlbertaArticles()
+        const albertaArticles = await getAllAlbertaArticles(opts)
         return filterByLocation(albertaArticles, cityName)
     } catch (error) {
         console.error(`❌ Failed to load ${cityName} articles:`, error)

@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Suspense } from 'react'
 import { AlbertaLocationFilter } from '@/components/alberta-location-filter'
 import { getArticleUrl } from '@/lib/utils/article-url'
+import { formatArticleDate } from '@/lib/utils/article-date'
 import { getAlbertaPageData } from '@/lib/alberta-cities'
 import { Article } from '@/lib/types/article'
 import { Metadata } from 'next'
@@ -40,7 +41,7 @@ export default async function AlbertaAllArticlesPage({
     redirect('/alberta/all-articles?filter=other')
   }
 
-  const pageData = await getAlbertaPageData()
+  const pageData = await getAlbertaPageData({ complete: true })
   const { allArticles, albertaProvinceWideArticles, otherArticles } = pageData
 
   const excludeEvents = (arr: Article[]) =>
@@ -61,21 +62,6 @@ export default async function AlbertaAllArticlesPage({
     return dateB - dateA
   })
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString)
-      const now = new Date()
-      const diffTime = Math.abs(now.getTime() - date.getTime())
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      if (diffDays === 1) return '1 day ago'
-      if (diffDays < 7) return `${diffDays} days ago`
-      if (diffDays < 14) return '1 week ago'
-      if (diffDays < 21) return '2 weeks ago'
-      return '3 weeks ago'
-    } catch {
-      return 'Recently'
-    }
-  }
 
   const pageTitle = filter === 'alberta' ? 'Alberta' : filter === 'other' ? 'Other Communities' : 'All Alberta Articles'
 
@@ -132,7 +118,7 @@ export default async function AlbertaAllArticlesPage({
                           <span className="rounded-full bg-amber-100 text-amber-800 px-2.5 py-0.5 text-xs font-semibold">
                             {article.category}
                           </span>
-                          <span>{formatDate(article.date || '')}</span>
+                          <span>{formatArticleDate(article.date || '')}</span>
                         </div>
                         <h3 className="font-bold text-lg group-hover:text-amber-700 transition-colors duration-300 line-clamp-2 leading-tight mb-2">
                           {article.title}
