@@ -23,6 +23,8 @@ import { isCronAuthorized } from '@/lib/cron-auth'
 import { getServiceClient } from '@/lib/supabase-admin'
 import { buildDigest, generateDueDrafts, recordReply } from '@/lib/crm/pipeline'
 import { recentInbox, zohoConfigured, zohoMissingVars } from '@/lib/crm/zoho'
+import { importRows } from '@/lib/crm/import'
+import { readLeadSheet } from '@/lib/crm/sheets'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -136,6 +138,35 @@ export async function GET(request: NextRequest) {
         // overnight must be off the schedule before drafts are generated.
         const replies = dryRun ? ({ status: 'skipped', reason: 'dry run' } as ReplyScan) : await scanForReplies(supabase)
 
+        // Pull anything new off the leads sheet before working out who is due,
+        // so a row added yesterday gets its first email this morning rather
+        // than tomorrow's. A sheet that is not connected is not an error: most
+        // of the time there simply isn't one.
+        let sheet: Record<string, unknown> = { status: 'skipped' }
+        try {
+            const read = await readLeadSheet()
+            if (!read.ok) {
+                sheet = { status: read.reason === 'not_configured' ? 'skipped' : 'error', detail: read }
+            } else {
+                const imported = await importRows(supabase, read.parsed.rows, {
+                    source: 'sheet',
+                    actor: 'daily sync',
+                    dryRun,
+                })
+                sheet = {
+                    status: 'ok',
+                    tab: read.tab,
+                    rowsInSheet: read.rowCount,
+                    imported: imported.inserted,
+                    duplicates: imported.summary.duplicates,
+                    needConsent: imported.summary.needConsent,
+                }
+            }
+        } catch (error) {
+            // A broken sheet must not stop the follow-ups. The digest reports it.
+            sheet = { status: 'error', error: error instanceof Error ? error.message : String(error) }
+        }
+
         const generated = await generateDueDrafts(supabase, { dryRun })
         const digest = await buildDigest(supabase)
 
@@ -165,6 +196,7 @@ export async function GET(request: NextRequest) {
             ok: true,
             dryRun,
             replies,
+            sheet,
             queued: generated.queued,
             skipped: generated.skipped,
             digest: { due: digest.due.length, replied: digest.replied.length, quiet: digest.awaiting.length },

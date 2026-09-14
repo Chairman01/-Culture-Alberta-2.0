@@ -70,6 +70,14 @@ function daysSince(date: string): number {
   return Math.floor((Date.now() - new Date(date).getTime()) / 864e5)
 }
 
+interface SheetInfo {
+  configured: boolean
+  serviceAccountEmail: string | null
+  sheetId: string | null
+  tab: string | null
+  missing: string[]
+}
+
 interface ImportSummary {
   parsed: number
   willImport: number
@@ -111,6 +119,8 @@ export default function LeadsPage() {
   const [importing, setImporting] = useState(false)
   const [csv, setCsv] = useState("")
   const [preview, setPreview] = useState<ImportSummary | null>(null)
+  const [previewKind, setPreviewKind] = useState<"csv" | "sheet">("csv")
+  const [sheet, setSheet] = useState<SheetInfo | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -119,6 +129,13 @@ export default function LeadsPage() {
       const data = await response.json()
       setLeads(data.leads || [])
       setSetup(data.setup || null)
+      // Sheet connection state drives the instructions in the import panel.
+      // A failure here must not blank the board, so it is deliberately not awaited
+      // into the same try as the leads themselves.
+      fetch("/api/admin/leads/sync-sheet", { cache: "no-store" })
+        .then(res => (res.ok ? res.json() : null))
+        .then(info => info && setSheet(info))
+        .catch(() => {})
     } catch {
       toast({ title: "Could not load the pipeline", variant: "destructive" })
     } finally {
@@ -264,6 +281,7 @@ export default function LeadsPage() {
       if (!response.ok) throw new Error(result.error)
 
       if (dryRun) {
+        setPreviewKind("csv")
         setPreview(result.summary)
       } else {
         toast({ title: `Imported ${result.inserted} leads` })
@@ -275,6 +293,40 @@ export default function LeadsPage() {
     } catch (error) {
       toast({
         title: "Import failed",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /** Same two-step as the CSV path: preview, then commit. */
+  async function runSheetSync(dryRun: boolean) {
+    setBusy("import")
+    try {
+      const response = await fetch("/api/admin/leads/sync-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dryRun }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error)
+
+      if (dryRun) {
+        setPreviewKind("sheet")
+        setPreview(result.summary)
+        setImporting(true)
+        toast({ title: `Read the "${result.tab}" tab` })
+      } else {
+        toast({ title: `Imported ${result.inserted} leads from the sheet` })
+        setPreview(null)
+        setImporting(false)
+        await load()
+      }
+    } catch (error) {
+      toast({
+        title: "Sheet sync failed",
         description: error instanceof Error ? error.message : undefined,
         variant: "destructive",
       })
@@ -344,8 +396,18 @@ export default function LeadsPage() {
           <Button variant="outline" size="sm" onClick={load}>
             <RefreshCw className="mr-1.5 h-4 w-4" /> Refresh
           </Button>
+          {sheet?.configured && (
+            <Button variant="outline" size="sm" disabled={busy === "import"} onClick={() => runSheetSync(true)}>
+              {busy === "import" ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-1.5 h-4 w-4" />
+              )}
+              Sync sheet
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => setImporting(value => !value)}>
-            <Upload className="mr-1.5 h-4 w-4" /> Import CSV
+            <Upload className="mr-1.5 h-4 w-4" /> Import
           </Button>
           <Button size="sm" onClick={() => setAdding(value => !value)}>
             <Plus className="mr-1.5 h-4 w-4" /> Add lead
@@ -403,6 +465,46 @@ export default function LeadsPage() {
 
       {importing && (
         <div className="mb-6 rounded-lg border bg-white p-4">
+          {/* Google Sheet connection. The service account address is the whole
+              setup — there is no key to generate, you share the sheet with it
+              exactly as you would with a colleague. */}
+          <div className="mb-4 rounded-md border bg-gray-50 p-3 text-sm">
+            <div className="mb-1 font-semibold">Google Sheet</div>
+            {sheet?.configured ? (
+              <>
+                <p className="text-gray-600">
+                  Connected{sheet.tab ? ` to tab ${sheet.tab}` : ""}. It syncs automatically every morning before the
+                  follow-ups are drafted, or press <span className="font-medium">Sync sheet</span> above to pull now.
+                </p>
+                <p className="mt-1.5 text-xs text-gray-500">
+                  New rows are added; rows already in the pipeline are skipped. Deleting a row from the sheet does
+                  not delete the lead.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mb-2 text-gray-600">
+                  Not connected.{" "}
+                  {sheet?.serviceAccountEmail
+                    ? "Share your sheet with this address (Viewer is enough), then set CRM_SHEET_ID in Vercel:"
+                    : "Missing:"}
+                </p>
+                {sheet?.serviceAccountEmail ? (
+                  <code className="block break-all rounded bg-white px-2 py-1.5 font-mono text-xs">
+                    {sheet.serviceAccountEmail}
+                  </code>
+                ) : (
+                  <code className="block rounded bg-white px-2 py-1.5 font-mono text-xs">
+                    {(sheet?.missing ?? ["GOOGLE_ANALYTICS_CREDENTIALS", "CRM_SHEET_ID"]).join(", ")}
+                  </code>
+                )}
+                <p className="mt-2 text-xs text-gray-500">
+                  Until then, paste or upload a CSV below — it does the same thing, just by hand.
+                </p>
+              </>
+            )}
+          </div>
+
           <h3 className="mb-1 font-semibold">Import from a spreadsheet</h3>
           <p className="mb-3 text-sm text-gray-500">
             Export your sheet as CSV and drop it here, or paste the rows. The first line must be a header — we match{" "}
@@ -465,8 +567,12 @@ export default function LeadsPage() {
             <Button variant="outline" disabled={busy === "import" || !csv.trim()} onClick={() => runImport(true)}>
               {busy === "import" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Preview
             </Button>
-            <Button disabled={busy === "import" || !preview || preview.willImport + preview.needConsent === 0} onClick={() => runImport(false)}>
+            <Button
+              disabled={busy === "import" || !preview || preview.willImport + preview.needConsent === 0}
+              onClick={() => (previewKind === "sheet" ? runSheetSync(false) : runImport(false))}
+            >
               Import {preview ? preview.willImport + preview.needConsent : 0} leads
+              {previewKind === "sheet" ? " from the sheet" : ""}
             </Button>
             <Button variant="ghost" onClick={() => { setImporting(false); setPreview(null) }}>
               Cancel

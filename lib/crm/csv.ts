@@ -177,7 +177,17 @@ export type ParsedImport = {
 }
 
 export function parseLeadCsv(input: string): ParsedImport {
-  const table = parseCsv(input)
+  return mapTable(parseCsv(input))
+}
+
+/**
+ * Turns a header row plus data rows into leads.
+ *
+ * Split out from parseLeadCsv so the Google Sheets sync shares exactly this
+ * column matching. A sheet and its CSV export must not disagree about which
+ * column is the email address.
+ */
+export function mapTable(table: string[][]): ParsedImport {
   if (table.length === 0) return { rows: [], unmappedHeaders: [], rejected: [] }
 
   const header = table[0]
