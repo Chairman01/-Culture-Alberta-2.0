@@ -39,3 +39,8 @@ lib/data/articles.json
 public/robots.txt
 public/sitemap.xml
 public/sitemap-*.xml
+
+# Claude session worktrees — never part of the project tree.
+# Committed as gitlinks by accident in f16c6e0; they break every checkout
+# once their directories move.
+.claude/worktrees/
