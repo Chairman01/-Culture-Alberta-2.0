@@ -16,6 +16,7 @@ import { requireAdmin } from '@/lib/admin-auth'
 import { getServiceClient } from '@/lib/supabase-admin'
 import { advanceSequence, recordSent } from '@/lib/crm/pipeline'
 import { sendMail } from '@/lib/crm/zoho'
+import { mailingAddressMissing } from '@/lib/crm/sequences'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,6 +44,24 @@ export async function POST(request: NextRequest) {
         }
 
         const lead = (draft as any).leads as { company: string; email: string | null; zoho_thread_id: string | null }
+
+        // CASL s.6(2) requires a physical mailing address in every commercial
+        // electronic message. Without one configured the footer renders a
+        // literal placeholder, so anything that puts a message in front of a
+        // lead -- our own send, or handing you the text to send yourself --
+        // is refused here rather than warned about. skip and snooze stay
+        // available so the queue can still be cleared.
+        if ((action === 'approve' || action === 'mark_sent') && mailingAddressMissing()) {
+            return NextResponse.json(
+                {
+                    error:
+                        'No mailing address configured, so this would send a footer reading ' +
+                        '"[SET CRM_MAILING_ADDRESS IN VERCEL]" and would not meet CASL. ' +
+                        'Set CRM_MAILING_ADDRESS in Vercel and redeploy.',
+                },
+                { status: 409 },
+            )
+        }
 
         if (action === 'skip') {
             await supabase

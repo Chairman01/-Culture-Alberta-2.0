@@ -392,8 +392,11 @@ export default function LeadsPage() {
         <div className="mb-4 flex gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            <strong>No mailing address set.</strong> CASL requires one in every commercial email. Set{" "}
-            <code className="font-mono text-xs">CRM_MAILING_ADDRESS</code> in Vercel before sending.
+            <strong>Sending is blocked — no mailing address set.</strong> Canadian anti-spam law requires a postal
+            address in every commercial email, so approving and marking-as-sent are both refused until there is one.
+            Everything else works: importing leads, drafting, skipping and snoozing. A PO box is fine and is what most
+            people use rather than a home address. Set{" "}
+            <code className="font-mono text-xs">CRM_MAILING_ADDRESS</code> in Vercel, then redeploy.
           </div>
         </div>
       )}
