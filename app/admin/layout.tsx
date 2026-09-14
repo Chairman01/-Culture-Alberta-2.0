@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { BarChart2, FileText, Calendar, Award, Mail, MessageSquare, RefreshCw, LogOut, Menu, X, Zap, Pin, Building2, Wrench, Users, UserCog, ShieldCheck, Briefcase, Inbox } from "lucide-react"
+import { BarChart2, FileText, Calendar, Award, Mail, MessageSquare, RefreshCw, LogOut, Menu, X, Zap, Pin, Building2, Wrench, Users, UserCog, ShieldCheck, Briefcase, Inbox, Handshake } from "lucide-react"
 import { Toaster } from "@/components/ui/toaster"
 
 export default function AdminLayout({
@@ -19,6 +19,7 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [adminRole, setAdminRole] = useState<'admin' | 'contributor'>('admin')
   const [pendingCount, setPendingCount] = useState(0)
+  const [leadCount, setLeadCount] = useState(0)
 
   useEffect(() => {
     setIsClient(true)
@@ -82,6 +83,13 @@ export default function AdminLayout({
       .then(res => (res.ok ? res.json() : null))
       .then(data => { if (!cancelled && data) setPendingCount(data.count || 0) })
       .catch(() => {})
+    // Follow-ups waiting for approval, badged the same way. A drafted email
+    // nobody looks at is the one failure mode this whole system exists to
+    // prevent, so the count follows you around the admin.
+    fetch('/api/admin/leads?count=1')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => { if (!cancelled && data) setLeadCount(data.count || 0) })
+      .catch(() => {})
     return () => { cancelled = true }
   }, [isAuthenticated, adminRole, pathname])
 
@@ -112,6 +120,7 @@ export default function AdminLayout({
     { name: 'Best of Alberta', href: '/admin/best-of', icon: Award },
     { name: 'Comments', href: '/admin/comments', icon: MessageSquare },
     { name: 'Daily Poll', href: '/admin/polls', icon: BarChart2 },
+    { name: 'Partnerships', href: '/admin/leads', icon: Handshake },
     { name: 'Members', href: '/admin/users', icon: Users },
     { name: 'Team', href: '/admin/team', icon: UserCog },
     { name: 'Security', href: '/admin/security', icon: ShieldCheck },
@@ -190,6 +199,12 @@ export default function AdminLayout({
                   <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${isActive ? 'bg-white text-black' : 'bg-amber-500 text-white'
                     }`}>
                     {pendingCount}
+                  </span>
+                )}
+                {item.href === '/admin/leads' && leadCount > 0 && (
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${isActive ? 'bg-white text-black' : 'bg-amber-500 text-white'
+                    }`}>
+                    {leadCount}
                   </span>
                 )}
               </Link>

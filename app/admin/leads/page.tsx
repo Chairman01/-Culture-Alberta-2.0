@@ -52,9 +52,22 @@ interface Lead {
   next_action_on: string | null
   last_reply_at: string | null
   deal_value: number | null
+  term_months: number | null
+  renewal_on: string | null
+  won_at: string | null
+  updated_at: string
   consent_basis: string | null
   notes: string | null
   draft: Draft | null
+}
+
+/** Whole days from today until `date`. Negative once it has passed. */
+function daysUntil(date: string): number {
+  return Math.ceil((new Date(date).getTime() - Date.now()) / 864e5)
+}
+
+function daysSince(date: string): number {
+  return Math.floor((Date.now() - new Date(date).getTime()) / 864e5)
 }
 
 interface ImportSummary {
@@ -121,7 +134,36 @@ export default function LeadsPage() {
   const queue = leads.filter(lead => lead.draft && lead.draft.status === "pending")
   const replied = leads.filter(lead => lead.last_reply_at && !["won", "lost", "declined"].includes(lead.stage))
   const won = leads.filter(lead => lead.stage === "won")
-  const pipelineValue = won.reduce((total, lead) => total + Number(lead.deal_value || 0), 0)
+  const bookedValue = won.reduce((total, lead) => total + Number(lead.deal_value || 0), 0)
+
+  // In play, on nobody's schedule, untouched for a fortnight. These are the
+  // deals that die without anyone deciding to kill them, so they get counted.
+  const quiet = leads.filter(
+    lead =>
+      ["contacted", "engaged", "proposal"].includes(lead.stage) &&
+      !lead.next_action_on &&
+      daysSince(lead.updated_at) >= 14,
+  )
+  // Open opportunities — what is still winnable, as distinct from booked.
+  const openValue = leads
+    .filter(lead => ["engaged", "proposal"].includes(lead.stage))
+    .reduce((total, lead) => total + Number(lead.deal_value || 0), 0)
+
+  const clients = [...won].sort((a, b) => {
+    // Soonest renewal first; clients with no term sink to the bottom.
+    if (!a.renewal_on) return 1
+    if (!b.renewal_on) return -1
+    return a.renewal_on.localeCompare(b.renewal_on)
+  })
+
+  const tiles = [
+    { label: "Reach out today", value: queue.length, tone: queue.length > 0 ? "action" : "calm" },
+    { label: "Replied", value: replied.length, tone: replied.length > 0 ? "action" : "calm" },
+    { label: "Clients", value: won.length, tone: "calm" },
+    { label: "Booked", value: `$${bookedValue.toLocaleString()}`, tone: "good" },
+    { label: "In play", value: `$${openValue.toLocaleString()}`, tone: "calm" },
+    { label: "Gone quiet", value: quiet.length, tone: quiet.length > 0 ? "warn" : "calm" },
+  ]
 
   async function actionDraft(lead: Lead, action: "approve" | "skip" | "snooze" | "mark_sent") {
     if (!lead.draft) return
@@ -293,10 +335,9 @@ export default function LeadsPage() {
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pipeline</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Partnerships</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {queue.length} waiting for you · {replied.length} replied · {won.length} won
-            {pipelineValue > 0 && ` · $${pipelineValue.toLocaleString()} booked`}
+            Who to reach out to, who replied, and who is already paying you.
           </p>
         </div>
         <div className="flex gap-2">
@@ -310,6 +351,28 @@ export default function LeadsPage() {
             <Plus className="mr-1.5 h-4 w-4" /> Add lead
           </Button>
         </div>
+      </div>
+
+      {/* Pipeline at a glance. Semantic tone, not decoration: amber means
+          something is rotting, green means money is booked. */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {tiles.map(tile => (
+          <div
+            key={tile.label}
+            className={`rounded-lg border p-3 ${
+              tile.tone === "action"
+                ? "border-blue-200 bg-blue-50"
+                : tile.tone === "warn"
+                  ? "border-amber-200 bg-amber-50"
+                  : tile.tone === "good"
+                    ? "border-green-200 bg-green-50"
+                    : "border-gray-200 bg-white"
+            }`}
+          >
+            <div className="text-2xl font-bold tabular-nums tracking-tight">{tile.value}</div>
+            <div className="mt-0.5 text-xs text-gray-600">{tile.label}</div>
+          </div>
+        ))}
       </div>
 
       {/* Setup warnings. A half-connected system that fails silently is worse
@@ -450,7 +513,7 @@ export default function LeadsPage() {
       {/* ---- The approval queue ---- */}
       <section className="mb-10">
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          Waiting for approval
+          Reach out today
         </h2>
 
         {queue.length === 0 ? (
@@ -564,6 +627,105 @@ export default function LeadsPage() {
           </div>
         </section>
       )}
+
+      {/* ---- Gone quiet ---- */}
+      {quiet.length > 0 && (
+        <section className="mb-10">
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">Gone quiet</h2>
+          <p className="mb-3 text-sm text-gray-500">
+            In play, nothing scheduled, untouched for a fortnight. Nudge them or close them out.
+          </p>
+          <div className="space-y-2">
+            {quiet.map(lead => (
+              <div key={lead.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                <div>
+                  <span className="font-medium">{lead.company}</span>
+                  <span className="ml-2 text-sm text-gray-500">
+                    {lead.stage} · {daysSince(lead.updated_at)} days
+                  </span>
+                </div>
+                <div className="flex gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => patchLead(lead.id, { next_action_on: new Date().toISOString().slice(0, 10) })}
+                  >
+                    Follow up today
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => patchLead(lead.id, { stage: "lost" })}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ---- Clients ---- */}
+      <section className="mb-10">
+        <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          Clients ({clients.length})
+        </h2>
+        <p className="mb-3 text-sm text-gray-500">
+          Won deals. A renewal conversation is drafted automatically 45 days before a term ends — that is the step
+          that turns a one-off buyer into a retainer.
+        </p>
+
+        {clients.length === 0 ? (
+          <div className="rounded-lg border border-dashed bg-gray-50 py-8 text-center text-sm text-gray-500">
+            No clients yet. Set a lead&rsquo;s stage to <span className="font-medium">won</span> with a deal value and
+            term, and it appears here with its renewal booked.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border bg-white">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-2.5 font-semibold">Client</th>
+                  <th className="px-4 py-2.5 font-semibold">Term</th>
+                  <th className="px-4 py-2.5 font-semibold">Renewal</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clients.map(lead => {
+                  const days = lead.renewal_on ? daysUntil(lead.renewal_on) : null
+                  const urgent = days !== null && days <= 14
+                  return (
+                    <tr key={lead.id} className="border-b last:border-0">
+                      <td className="px-4 py-3">
+                        <div className="font-medium">{lead.company}</div>
+                        <div className="text-xs text-gray-500">{lead.email || "no email"}</div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-600">
+                        {lead.term_months ? `${lead.term_months} months` : <span className="text-gray-400">one-off</span>}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {lead.renewal_on ? (
+                          <span className={urgent ? "font-semibold text-amber-700" : "text-gray-600"}>
+                            {new Date(lead.renewal_on).toLocaleDateString("en-CA")}
+                            {days !== null && (
+                              <span className="ml-1.5">
+                                {days < 0 ? `(${Math.abs(days)}d overdue)` : `(in ${days}d)`}
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">— set a term to book one</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                        {lead.deal_value ? `$${Number(lead.deal_value).toLocaleString()}` : "—"}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {/* ---- Everything ---- */}
       <section>

@@ -46,6 +46,17 @@ export async function GET(request: NextRequest) {
 
     try {
         const supabase = getServiceClient()
+
+        // ?count=1 backs the sidebar badge, which renders on every admin page.
+        // It must not drag the whole board over the wire to show one number.
+        if (request.nextUrl.searchParams.get('count') === '1') {
+            const { count } = await supabase
+                .from('lead_drafts')
+                .select('id', { count: 'exact', head: true })
+                .eq('status', 'pending')
+            return NextResponse.json({ count: count ?? 0 })
+        }
+
         const [{ data: leads, error: leadsError }, { data: drafts }] = await Promise.all([
             supabase
                 .from('leads')

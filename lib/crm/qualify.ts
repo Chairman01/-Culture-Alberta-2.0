@@ -31,7 +31,25 @@ const LINK_SELLER_DOMAINS = [
   'rankz.io',
   'outreachmama.com',
   'fatjoe.com',
+  'theserpwire.com',
 ]
+
+/**
+ * Tokens that give a link vendor away in its own domain name. Checked against
+ * the email domain only.
+ *
+ * The two asymmetric costs decide what belongs here. A missed spammer costs
+ * one wasted email and one click to decline. A wrongly declined business is
+ * never contacted at all and nobody notices -- so this list only takes tokens
+ * that cannot occur in a real company's domain.
+ *
+ * Deliberately NOT here:
+ *   seo   -- matches "seoul", and Korean restaurants are real customers
+ *   serp  -- matches "serpentine"
+ *   outreach -- community and church outreach organisations use it honestly
+ * Vendors using those live in LINK_SELLER_DOMAINS by name instead.
+ */
+const LINK_SELLER_DOMAIN_TOKENS = ['linkbuild', 'backlink', 'guestpost', 'linkexchange']
 
 /** Phrases that only appear in link-buying and guest-post solicitations. */
 const LINK_SELLER_PHRASES = [
@@ -128,6 +146,17 @@ export function qualifyLead(input: {
   const sellerDomain = LINK_SELLER_DOMAINS.find(d => domain === d || domain.endsWith(`.${d}`))
   if (sellerDomain) {
     return { tier: 'decline', reason: `Known link-seller domain (${sellerDomain})`, sequenceKey: null }
+  }
+
+  // Domain-only check — see LINK_SELLER_DOMAIN_TOKENS on why this never looks
+  // at the company name. Free mailboxes are excluded so "seo" inside a
+  // personal gmail handle cannot decline a real business.
+  const isFreeMailbox = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'icloud.com'].includes(domain)
+  if (!isFreeMailbox) {
+    const domainToken = LINK_SELLER_DOMAIN_TOKENS.find(token => domain.includes(token))
+    if (domainToken) {
+      return { tier: 'decline', reason: `SEO vendor domain ("${domainToken}" in ${domain})`, sequenceKey: null }
+    }
   }
 
   const sellerPhrase = LINK_SELLER_PHRASES.find(p => text.includes(p))
