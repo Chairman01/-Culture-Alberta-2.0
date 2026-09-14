@@ -12,13 +12,16 @@ import { useState, useEffect, useCallback } from "react"
 import {
   AlertTriangle,
   Check,
+  Clipboard,
   Clock,
+  ExternalLink,
   Loader2,
   Mail,
   Plus,
   RefreshCw,
   Reply,
   SkipForward,
+  Upload,
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -54,6 +57,16 @@ interface Lead {
   draft: Draft | null
 }
 
+interface ImportSummary {
+  parsed: number
+  willImport: number
+  needConsent: number
+  declined: number
+  duplicates: number
+  unmappedHeaders: string[]
+  rejectedRows: Array<{ line: number; reason: string }>
+}
+
 const STAGES = ["new", "contacted", "engaged", "proposal", "won", "lost", "declined"] as const
 
 const STAGE_STYLE: Record<string, string> = {
@@ -82,6 +95,9 @@ export default function LeadsPage() {
   const [edits, setEdits] = useState<Record<string, { subject: string; body: string }>>({})
   const [adding, setAdding] = useState(false)
   const [draftLead, setDraftLead] = useState({ company: "", contact_name: "", email: "", website: "", city: "" })
+  const [importing, setImporting] = useState(false)
+  const [csv, setCsv] = useState("")
+  const [preview, setPreview] = useState<ImportSummary | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -101,23 +117,25 @@ export default function LeadsPage() {
     load()
   }, [load])
 
+  const zohoReady = !setup?.zoho
   const queue = leads.filter(lead => lead.draft && lead.draft.status === "pending")
   const replied = leads.filter(lead => lead.last_reply_at && !["won", "lost", "declined"].includes(lead.stage))
   const won = leads.filter(lead => lead.stage === "won")
   const pipelineValue = won.reduce((total, lead) => total + Number(lead.deal_value || 0), 0)
 
-  async function actionDraft(lead: Lead, action: "approve" | "skip" | "snooze") {
+  async function actionDraft(lead: Lead, action: "approve" | "skip" | "snooze" | "mark_sent") {
     if (!lead.draft) return
     setBusy(lead.draft.id)
     try {
       const edited = edits[lead.draft.id]
+      const sends = action === "approve" || action === "mark_sent"
       const response = await fetch("/api/admin/leads/drafts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           draftId: lead.draft.id,
           action,
-          ...(action === "approve" && edited ? { subject: edited.subject, body: edited.body } : {}),
+          ...(sends && edited ? { subject: edited.subject, body: edited.body } : {}),
           ...(action === "snooze" ? { days: 3 } : {}),
         }),
       })
@@ -128,7 +146,12 @@ export default function LeadsPage() {
       } else if (!response.ok || result.ok === false) {
         toast({ title: "That did not go through", description: result.error, variant: "destructive" })
       } else {
-        const verb = action === "approve" ? "Sent to" : action === "skip" ? "Skipped" : "Snoozed"
+        const verb =
+          action === "approve" || action === "mark_sent"
+            ? "Sent to"
+            : action === "skip"
+              ? "Skipped"
+              : "Snoozed"
         toast({ title: `${verb} ${lead.company}` })
       }
       await load()
@@ -185,6 +208,79 @@ export default function LeadsPage() {
     }
   }
 
+  /** dryRun first, always: the user sees the summary before anything is written. */
+  async function runImport(dryRun: boolean) {
+    if (!csv.trim()) return
+    setBusy("import")
+    try {
+      const response = await fetch("/api/admin/leads/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ csv, dryRun }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error)
+
+      if (dryRun) {
+        setPreview(result.summary)
+      } else {
+        toast({ title: `Imported ${result.inserted} leads` })
+        setCsv("")
+        setPreview(null)
+        setImporting(false)
+        await load()
+      }
+    } catch (error) {
+      toast({
+        title: "Import failed",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function readFile(file: File) {
+    const text = await file.text()
+    setCsv(text)
+    setPreview(null)
+  }
+
+  async function copyDraft(lead: Lead) {
+    const draft = lead.draft
+    if (!draft) return
+    const edited = edits[draft.id] ?? { subject: draft.subject, body: draft.body }
+    try {
+      await navigator.clipboard.writeText(`Subject: ${edited.subject}\n\n${edited.body}`)
+      toast({ title: "Copied", description: "Paste it into Zoho and send." })
+    } catch {
+      toast({ title: "Could not copy", description: "Select the text and copy it manually.", variant: "destructive" })
+    }
+  }
+
+  /**
+   * Opens the message in whatever handles mail on this machine. mailto: has a
+   * practical URL ceiling around 2000 characters in most browsers, and these
+   * bodies plus the CASL footer can approach it — so fall back to the
+   * clipboard rather than silently opening a truncated email.
+   */
+  function openInMailClient(lead: Lead) {
+    const draft = lead.draft
+    if (!draft || !lead.email) return
+    const edited = edits[draft.id] ?? { subject: draft.subject, body: draft.body }
+    const url = `mailto:${encodeURIComponent(lead.email)}?subject=${encodeURIComponent(
+      edited.subject,
+    )}&body=${encodeURIComponent(edited.body)}`
+
+    if (url.length > 1900) {
+      copyDraft(lead)
+      toast({ title: "Too long for a mail link", description: "Copied to your clipboard instead." })
+      return
+    }
+    window.location.href = url
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24 text-gray-500">
@@ -207,6 +303,9 @@ export default function LeadsPage() {
           <Button variant="outline" size="sm" onClick={load}>
             <RefreshCw className="mr-1.5 h-4 w-4" /> Refresh
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setImporting(value => !value)}>
+            <Upload className="mr-1.5 h-4 w-4" /> Import CSV
+          </Button>
           <Button size="sm" onClick={() => setAdding(value => !value)}>
             <Plus className="mr-1.5 h-4 w-4" /> Add lead
           </Button>
@@ -219,8 +318,10 @@ export default function LeadsPage() {
         <div className="mb-4 flex gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            <strong>Zoho is not connected.</strong> Drafts will queue up but nothing can send, and replies will not be
-            detected. Missing: <code className="font-mono text-xs">{setup.zoho.join(", ")}</code>
+            <strong>Zoho is not connected</strong> — you are on the manual path. Drafts still generate; send them with
+            Open in mail app or Copy, then press Mark as sent. The one thing you lose is automatic reply detection, so
+            a lead who answers will keep getting follow-ups until you move them on yourself. Missing:{" "}
+            <code className="font-mono text-xs">{setup.zoho.join(", ")}</code>
           </div>
         </div>
       )}
@@ -230,6 +331,80 @@ export default function LeadsPage() {
           <div>
             <strong>No mailing address set.</strong> CASL requires one in every commercial email. Set{" "}
             <code className="font-mono text-xs">CRM_MAILING_ADDRESS</code> in Vercel before sending.
+          </div>
+        </div>
+      )}
+
+      {importing && (
+        <div className="mb-6 rounded-lg border bg-white p-4">
+          <h3 className="mb-1 font-semibold">Import from a spreadsheet</h3>
+          <p className="mb-3 text-sm text-gray-500">
+            Export your sheet as CSV and drop it here, or paste the rows. The first line must be a header — we match{" "}
+            <span className="font-medium">company</span>, <span className="font-medium">contact</span>,{" "}
+            <span className="font-medium">email</span>, <span className="font-medium">phone</span>,{" "}
+            <span className="font-medium">website</span>, <span className="font-medium">city</span>,{" "}
+            <span className="font-medium">category</span> and <span className="font-medium">notes</span> loosely, so
+            your existing column names will probably just work.
+          </p>
+
+          <input
+            type="file"
+            accept=".csv,text/csv,text/plain"
+            className="mb-3 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-gray-200"
+            onChange={event => {
+              const file = event.target.files?.[0]
+              if (file) readFile(file)
+            }}
+          />
+          <Textarea
+            className="mb-3 min-h-[130px] font-mono text-xs"
+            placeholder="company,contact,email,city&#10;Pho City,Minh,hello@phocity.ca,Calgary"
+            value={csv}
+            onChange={event => {
+              setCsv(event.target.value)
+              setPreview(null)
+            }}
+          />
+
+          {preview && (
+            <div className="mb-3 rounded-md border bg-gray-50 p-3 text-sm">
+              <div className="mb-1.5 font-medium">
+                {preview.parsed} rows read — {preview.willImport} ready to import
+              </div>
+              <ul className="space-y-0.5 text-gray-600">
+                {preview.needConsent > 0 && (
+                  <li>
+                    {preview.needConsent} imported but <strong>not scheduled</strong> — no CASL consent basis could be
+                    established. Set it per lead and they start moving.
+                  </li>
+                )}
+                {preview.declined > 0 && <li>{preview.declined} routed to the decline lane (link sellers)</li>}
+                {preview.duplicates > 0 && <li>{preview.duplicates} skipped — already in the pipeline</li>}
+                {preview.rejectedRows.length > 0 && (
+                  <li>
+                    {preview.rejectedRows.length} row(s) with no company name (line{" "}
+                    {preview.rejectedRows.map(row => row.line).join(", ")})
+                  </li>
+                )}
+                {preview.unmappedHeaders.length > 0 && (
+                  <li className="text-amber-700">
+                    Columns we ignored: {preview.unmappedHeaders.join(", ")}
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" disabled={busy === "import" || !csv.trim()} onClick={() => runImport(true)}>
+              {busy === "import" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Preview
+            </Button>
+            <Button disabled={busy === "import" || !preview || preview.willImport + preview.needConsent === 0} onClick={() => runImport(false)}>
+              Import {preview ? preview.willImport + preview.needConsent : 0} leads
+            </Button>
+            <Button variant="ghost" onClick={() => { setImporting(false); setPreview(null) }}>
+              Cancel
+            </Button>
           </div>
         </div>
       )}
@@ -310,20 +485,47 @@ export default function LeadsPage() {
                     onChange={event => setEdits({ ...edits, [draft.id]: { ...edited, body: event.target.value } })}
                   />
 
+                  {/* With Zoho connected, one button does the whole job. Without
+                      it, sending happens in the user's own mail client and
+                      "Mark as sent" is what advances the cadence. */}
                   <div className="flex flex-wrap gap-2">
-                    <Button size="sm" disabled={busy === draft.id} onClick={() => actionDraft(lead, "approve")}>
-                      {busy === draft.id ? (
-                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Check className="mr-1.5 h-4 w-4" />
-                      )}
-                      Approve &amp; send
-                    </Button>
-                    <Button size="sm" variant="outline" disabled={busy === draft.id} onClick={() => actionDraft(lead, "snooze")}>
+                    {zohoReady ? (
+                      <Button size="sm" disabled={busy === draft.id} onClick={() => actionDraft(lead, "approve")}>
+                        {busy === draft.id ? (
+                          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="mr-1.5 h-4 w-4" />
+                        )}
+                        Approve &amp; send
+                      </Button>
+                    ) : (
+                      <>
+                        <Button size="sm" disabled={busy === draft.id} onClick={() => openInMailClient(lead)}>
+                          <ExternalLink className="mr-1.5 h-4 w-4" /> Open in mail app
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={busy === draft.id} onClick={() => copyDraft(lead)}>
+                          <Clipboard className="mr-1.5 h-4 w-4" /> Copy
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy === draft.id}
+                          onClick={() => actionDraft(lead, "mark_sent")}
+                        >
+                          {busy === draft.id ? (
+                            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="mr-1.5 h-4 w-4" />
+                          )}
+                          Mark as sent
+                        </Button>
+                      </>
+                    )}
+                    <Button size="sm" variant="ghost" disabled={busy === draft.id} onClick={() => actionDraft(lead, "snooze")}>
                       <Clock className="mr-1.5 h-4 w-4" /> Snooze 3 days
                     </Button>
                     <Button size="sm" variant="ghost" disabled={busy === draft.id} onClick={() => actionDraft(lead, "skip")}>
-                      <SkipForward className="mr-1.5 h-4 w-4" /> Skip this step
+                      <SkipForward className="mr-1.5 h-4 w-4" /> Skip
                     </Button>
                   </div>
                 </div>

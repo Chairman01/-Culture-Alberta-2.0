@@ -77,6 +77,30 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ ok: true, status: 'snoozed', until: when.toISOString().slice(0, 10) })
         }
 
+        // Sent by hand — copied out of here, or opened in a mail client via the
+        // mailto button. The message left from the real mailbox, so the cadence
+        // has to advance exactly as if we had sent it; without this the same
+        // step is redrafted tomorrow.
+        if (action === 'mark_sent') {
+            await supabase
+                .from('lead_drafts')
+                .update({
+                    subject: subject ?? draft.subject,
+                    body: body ?? draft.body,
+                    approved_by: auth.name,
+                    approved_at: new Date().toISOString(),
+                })
+                .eq('id', draftId)
+
+            await recordSent(supabase, draftId)
+            await supabase.from('lead_events').insert({
+                lead_id: draft.lead_id,
+                type: 'note',
+                body: `Step ${draft.step + 1} sent manually by ${auth.name} (outside the app).`,
+            })
+            return NextResponse.json({ ok: true, status: 'sent', company: lead?.company })
+        }
+
         if (action !== 'approve') {
             return NextResponse.json({ error: `Unknown action "${action}"` }, { status: 400 })
         }
