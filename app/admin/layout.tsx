@@ -111,16 +111,18 @@ export default function AdminLayout({
 
   const adminNavigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart2 },
+    { name: 'Partnerships', href: '/admin/leads', icon: Handshake },
     { name: 'Articles', href: '/admin/articles', icon: FileText },
     { name: 'Review Queue', href: '/admin/review', icon: Inbox },
     { name: 'Auto Articles', href: '/admin/automation', icon: Zap },
     { name: 'Events', href: '/admin/events', icon: Calendar },
     { name: 'Jobs', href: '/admin/jobs', icon: Briefcase },
     { name: 'Major Projects', href: '/admin/major-projects', icon: Building2 },
-    { name: 'Best of Alberta', href: '/admin/best-of', icon: Award },
+    // Best of Alberta is hidden from the sidebar for now. The page still
+    // exists at /admin/best-of -- restore it by uncommenting the line below.
+    // { name: 'Best of Alberta', href: '/admin/best-of', icon: Award },
     { name: 'Comments', href: '/admin/comments', icon: MessageSquare },
     { name: 'Daily Poll', href: '/admin/polls', icon: BarChart2 },
-    { name: 'Partnerships', href: '/admin/leads', icon: Handshake },
     { name: 'Members', href: '/admin/users', icon: Users },
     { name: 'Team', href: '/admin/team', icon: UserCog },
     { name: 'Security', href: '/admin/security', icon: ShieldCheck },
