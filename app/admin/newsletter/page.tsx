@@ -32,10 +32,11 @@ import {
   Send, CheckCircle, AlertCircle, Loader2, Eye, X, FlaskConical,
   ChevronDown, ChevronUp, Settings, Star, ArrowUp, ArrowDown, Leaf,
   BarChart2, MousePointerClick, Copy, Check, Filter, AlertTriangle, TrendingUp, HelpCircle,
-  ExternalLink, Pencil,
+  ExternalLink, Pencil, Clock,
 } from "lucide-react"
 import Link from "next/link"
 import type { SendResult } from "@/lib/newsletter/send-newsletter"
+import { formatMountain, mountainWallToUtcIso, nextMountainSlot } from "@/lib/utils/mountain-time"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,16 @@ const ALL_EDITIONS: CityKey[] = [...CITY_KEYS, 'alberta']
  */
 function byEdition<T>(make: (city: CityKey) => T): Record<CityKey, T> {
   return Object.fromEntries(ALL_EDITIONS.map(c => [c, make(c)])) as Record<CityKey, T>
+}
+
+/** One queued send, as /api/admin/newsletter/schedule returns it. */
+interface QueuedSend {
+  id: string
+  city: CityKey
+  sendAt: string
+  customNote: string | null
+  status: 'pending' | 'claimed'
+  createdBy: string | null
 }
 
 interface SendState {
@@ -220,6 +231,20 @@ export default function NewsletterAdmin() {
     byEdition<string | null>(() => null)
   )
 
+  // ── Scheduled sends ─────────────────────────────────────────────────────────
+  // A queued send is a row in newsletter_schedules, not a timer in this page,
+  // so it survives a reload and can be cancelled from anywhere.
+  const [schedules, setSchedules] = useState<QueuedSend[]>([])
+  // Whether the cron is actually allowed to mail people yet
+  // (NEWSLETTER_SCHEDULED_SENDS in Vercel). The panel must never imply a timer
+  // will fire when it cannot.
+  const [scheduleArmed, setScheduleArmed] = useState<boolean | null>(null)
+  const [scheduleOpen, setScheduleOpen] = useState<Record<CityKey, boolean>>(byEdition(() => false))
+  // Mountain wall-clock strings for the datetime-local inputs.
+  const [scheduleDrafts, setScheduleDrafts] = useState<Record<CityKey, string>>(byEdition(() => ''))
+  const [scheduleErrors, setScheduleErrors] = useState<Record<string, string | null>>({})
+  const [scheduleBusy, setScheduleBusy] = useState<string | null>(null)
+
   // ── Load on mount ───────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -316,7 +341,89 @@ export default function NewsletterAdmin() {
       }
     }
     loadData()
+    loadSchedules()
   }, [router])
+
+  // ── Scheduled-send handlers ─────────────────────────────────────────────────
+
+  /** The queued send for one edition, if it has one. */
+  const scheduleFor = (city: CityKey): QueuedSend | null =>
+    schedules.find(s => s.city === city) ?? null
+
+  async function loadSchedules() {
+    try {
+      const res = await fetch('/api/admin/newsletter/schedule')
+      if (!res.ok) return
+      const data = await res.json()
+      setSchedules(data.pending || [])
+      setScheduleArmed(!!data.armed)
+    } catch {
+      // Non-fatal: the rest of the panel, including Send, works without it.
+    }
+  }
+
+  /**
+   * Queue a send. This writes a row and mails nobody — the cron does that at
+   * the appointed time — which is what keeps it cancellable until then.
+   */
+  async function handleSchedule(city: CityKey) {
+    const wall = scheduleDrafts[city]
+    const sendAt = wall ? mountainWallToUtcIso(wall) : null
+    if (!sendAt) {
+      setScheduleErrors(prev => ({ ...prev, [city]: 'Pick a date and time first' }))
+      return
+    }
+
+    setScheduleBusy(city)
+    setScheduleErrors(prev => ({ ...prev, [city]: null }))
+    try {
+      const res = await fetch('/api/admin/newsletter/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          city,
+          sendAt,
+          // The note typed on the card travels with the schedule, so the email
+          // that goes out at 7am is the one the editor composed.
+          customNote: customNotes[city].trim() || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not queue that send')
+
+      setScheduleOpen(prev => ({ ...prev, [city]: false }))
+      await loadSchedules()
+    } catch (err) {
+      setScheduleErrors(prev => ({
+        ...prev,
+        [city]: err instanceof Error ? err.message : 'Could not queue that send',
+      }))
+    } finally {
+      setScheduleBusy(null)
+    }
+  }
+
+  async function handleCancelSchedule(id: string, city: CityKey) {
+    setScheduleBusy(id)
+    setScheduleErrors(prev => ({ ...prev, [city]: null }))
+    try {
+      const res = await fetch('/api/admin/newsletter/schedule', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not cancel that send')
+      await loadSchedules()
+    } catch (err) {
+      setScheduleErrors(prev => ({
+        ...prev,
+        [city]: err instanceof Error ? err.message : 'Could not cancel that send',
+      }))
+    } finally {
+      setScheduleBusy(null)
+    }
+  }
 
   // ── Send handlers ───────────────────────────────────────────────────────────
 
@@ -940,13 +1047,26 @@ export default function NewsletterAdmin() {
               Send Newsletter Now
             </CardTitle>
             <CardDescription>
-              Manually trigger a newsletter send for any city. Auto-sends daily at 7 AM Mountain Time.
+              Send an edition now, or schedule it for a time of day. Nothing goes out on its own —
+              only what you send or queue here. All times are Mountain.
               {Object.keys(lastSentAt).every(c => !lastSentAt[c as CityKey]) && (
                 <span className="block mt-1 text-xs text-amber-600">
                   ⓘ "Sent today" badges will appear on these cards the first time you click Send below.
                 </span>
               )}
             </CardDescription>
+            {/* Scheduling ships inert. Saying so here is the difference between a
+                feature that is off and a timer an editor wrongly trusts. */}
+            {scheduleArmed === false && (
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Scheduled sending is not armed.</strong> You can queue sends and they will be
+                  saved, but nothing will go out until <code className="font-mono">NEWSLETTER_SCHEDULED_SENDS=true</code>{' '}
+                  is set in Vercel. Sending by hand with the Send button works normally.
+                </div>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
@@ -1017,6 +1137,114 @@ export default function NewsletterAdmin() {
                         </div>
                       )}
                     </div>
+
+                    {/* ── Schedule send ──────────────────────────────────────────────
+                        A queued send is a database row, not a timer in this tab, so it
+                        survives a reload and stays cancellable until the cron claims it. */}
+                    {(() => {
+                      const queued = scheduleFor(city)
+                      const draft = scheduleDrafts[city]
+                      const draftIso = draft ? mountainWallToUtcIso(draft) : null
+                      const err = scheduleErrors[city]
+
+                      if (queued) {
+                        return (
+                          <div className="space-y-1">
+                            <div className="flex items-start gap-2 text-xs rounded-lg px-3 py-2 bg-blue-50 border border-blue-200 text-blue-900">
+                              <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                              <div className="min-w-0 flex-1">
+                                <div className="font-semibold">Queued for {formatMountain(queued.sendAt)}</div>
+                                {queued.customNote && (
+                                  <div className="text-blue-700 truncate">note: "{queued.customNote}"</div>
+                                )}
+                                {queued.status === 'claimed' ? (
+                                  <div className="text-blue-700 mt-0.5">Sending now — too late to cancel.</div>
+                                ) : scheduleArmed === false ? (
+                                  <div className="text-amber-700 mt-0.5">
+                                    Scheduled sending is not armed, so this will not go out. See the note above.
+                                  </div>
+                                ) : null}
+                              </div>
+                              {queued.status === 'pending' && (
+                                <button
+                                  className="shrink-0 underline underline-offset-2 hover:text-blue-700 disabled:opacity-50"
+                                  onClick={() => handleCancelSchedule(queued.id, city)}
+                                  disabled={scheduleBusy === queued.id}
+                                >
+                                  {scheduleBusy === queued.id ? 'Cancelling…' : 'Cancel'}
+                                </button>
+                              )}
+                            </div>
+                            {err && <p className="text-xs text-red-600">{err}</p>}
+                          </div>
+                        )
+                      }
+
+                      if (!scheduleOpen[city]) {
+                        return (
+                          <div className="space-y-1">
+                            <button
+                              className="text-xs text-muted-foreground hover:text-gray-700 flex items-center gap-1 underline underline-offset-2"
+                              onClick={() => {
+                                setScheduleDrafts(prev => ({
+                                  ...prev,
+                                  // Default an hour out, rounded to the next five minutes —
+                                  // never "now", which is what Send is for.
+                                  [city]: prev[city] || nextMountainSlot(60),
+                                }))
+                                setScheduleOpen(prev => ({ ...prev, [city]: true }))
+                              }}
+                            >
+                              <Clock className="h-3 w-3" /> Schedule send
+                            </button>
+                            {err && <p className="text-xs text-red-600">{err}</p>}
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <div className="space-y-2 rounded-lg border border-gray-200 px-3 py-2">
+                          <label className="text-xs font-medium text-gray-500">
+                            Send at <span className="font-normal text-gray-400">(Mountain Time)</span>
+                          </label>
+                          <input
+                            type="datetime-local"
+                            step={300}
+                            value={draft}
+                            onChange={e => {
+                              setScheduleDrafts(prev => ({ ...prev, [city]: e.target.value }))
+                              setScheduleErrors(prev => ({ ...prev, [city]: null }))
+                            }}
+                            className="w-full text-xs rounded-md border border-gray-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-gray-300"
+                          />
+                          {draftIso && (
+                            <p className="text-xs text-gray-500">
+                              Goes out <strong>{formatMountain(draftIso)}</strong> to {audienceFor(city)} subscribers.
+                              The queue is checked every 5 minutes, so it can be up to 5 minutes late.
+                            </p>
+                          )}
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="flex-1 text-xs"
+                              onClick={() => handleSchedule(city)}
+                              disabled={scheduleBusy === city || !draft}
+                            >
+                              {scheduleBusy === city
+                                ? <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Queuing…</>
+                                : <><Clock className="mr-1 h-3 w-3" /> Queue send</>}
+                            </Button>
+                            <Button
+                              size="sm" variant="outline" className="shrink-0 text-xs"
+                              onClick={() => setScheduleOpen(prev => ({ ...prev, [city]: false }))}
+                            >
+                              Close
+                            </Button>
+                          </div>
+                          {err && <p className="text-xs text-red-600">{err}</p>}
+                        </div>
+                      )
+                    })()}
 
                     {/* Custom opening note — optional, replaces the default tagline */}
                     <div className="space-y-1">
