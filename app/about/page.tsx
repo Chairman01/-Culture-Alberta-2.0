@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import Link from "next/link"
-import { MapPin, Mail, Phone, Heart, Users, Calendar, Sparkles, PenLine } from "lucide-react"
+import { MapPin, Mail, Phone, Heart, Users, Calendar, Sparkles } from "lucide-react"
 
 export const metadata: Metadata = {
   title: 'About Culture Alberta | Alberta\'s Local Culture Guide',
@@ -44,13 +44,17 @@ const organizationSchema = {
   "employee": [
     {
       "@type": "Person",
+      // @id stays as-is: it is an opaque identifier that ties this Person to
+      // itself across the graph, and is not required to resolve. `url` below
+      // is the one a crawler follows, so that drops the #adam-harrison
+      // fragment — the visible bio it addressed no longer exists.
       "@id": "https://www.culturealberta.com/about#adam-harrison",
       "name": "Adam Harrison",
       "jobTitle": "Founder & Editor",
       "worksFor": {
         "@id": "https://www.culturealberta.com/#organization",
       },
-      "url": "https://www.culturealberta.com/about#adam-harrison",
+      "url": "https://www.culturealberta.com/about",
       "description": "Alberta-based writer and founder of Culture Alberta, covering local events, food, culture, and community stories across Calgary, Edmonton, and Alberta.",
       "knowsAbout": [
         "Alberta culture",
@@ -269,36 +273,6 @@ export default function AboutPage() {
                     </svg>
                     Instagram
                   </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Team Section — anchored for author E-A-T */}
-        <section id="adam-harrison" className="w-full py-16 md:py-24 bg-white border-t border-gray-100">
-          <div className="container mx-auto px-4 md:px-6">
-            <div className="max-w-3xl mx-auto">
-              <div className="text-center mb-10">
-                <div className="inline-flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-semibold mb-4">
-                  <PenLine className="w-4 h-4" />
-                  Meet the Team
-                </div>
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-900">The People Behind Culture Alberta</h2>
-              </div>
-              <div className="flex flex-col sm:flex-row items-start gap-6 p-6 bg-gray-50 rounded-2xl border border-gray-200">
-                <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                  AH
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">Adam Harrison</h3>
-                  <p className="text-sm font-semibold text-blue-600 mb-3">Founder &amp; Editor</p>
-                  <p className="text-gray-600 leading-relaxed">
-                    Adam Harrison is an Alberta-based writer and the founder of Culture Alberta. He covers local
-                    events, food, arts, and community stories across Calgary, Edmonton, and communities throughout
-                    Alberta. Adam launched Culture Alberta to give Albertans a single trusted source for everything
-                    happening in the province — from weekend events to practical guides on Alberta programs and resources.
-                  </p>
                 </div>
               </div>
             </div>

@@ -64,9 +64,11 @@ function getArticleSchemaType(category?: string, tags?: string[]): 'NewsArticle'
   return 'Article'
 }
 
-// Known author profiles — maps display name → about URL for Bing E-A-T
+// Known author profiles — maps display name → about URL for Bing E-A-T.
+// /about rather than the old #adam-harrison anchor: the visible bio it pointed
+// at was removed, so the fragment no longer resolves to anything on the page.
 const AUTHOR_URLS: Record<string, string> = {
-  'Adam Harrison': 'https://www.culturealberta.com/about#adam-harrison',
+  'Adam Harrison': 'https://www.culturealberta.com/about',
 }
 
 function estimateWordCount(content?: string | null): number {
