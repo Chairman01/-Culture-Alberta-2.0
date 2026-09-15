@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Loader2, MessageSquare } from 'lucide-react'
+import { Bell, Loader2, MessageSquare, Heart } from 'lucide-react'
 import { useAuth } from '@/components/auth-provider'
 import { supabaseBrowser } from '@/lib/supabase-browser'
 
@@ -147,9 +147,20 @@ export function NotificationsBell() {
                                             onClick={() => openNotification(n)}
                                             className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${n.read ? '' : 'bg-blue-50/50'}`}
                                         >
-                                            <p className="text-sm text-gray-800">
-                                                <span className="font-semibold">{n.actor_name || 'Someone'}</span> replied to your comment
+                                            <p className="text-sm text-gray-800 flex items-start gap-1.5">
+                                                {n.type === 'like' && (
+                                                    <Heart className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-red-500 fill-current" />
+                                                )}
+                                                <span>
+                                                    {/* A like carries no identity — comment_likes knows the
+                                                        browser that liked, not the person — so it stays
+                                                        "Someone" rather than inventing a name. */}
+                                                    <span className="font-semibold">{n.actor_name || 'Someone'}</span>
+                                                    {n.type === 'like' ? ' liked your comment' : ' replied to your comment'}
+                                                </span>
                                             </p>
+                                            {/* On a reply this quotes the reply; on a like, the comment that
+                                                was liked — either way, the thing worth reading. */}
                                             {n.excerpt && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">“{n.excerpt}”</p>}
                                             <p className="text-[11px] text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
                                         </button>

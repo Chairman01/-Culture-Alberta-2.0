@@ -23,6 +23,17 @@ export async function POST(
             return NextResponse.json({ error: 'clientId is required' }, { status: 400 })
         }
 
+        // Signing in is not required to like, so the token is optional and a
+        // bad one is ignored rather than rejected. It is recorded only so the
+        // notification trigger can tell a self-like from someone else's and
+        // stay quiet about the former.
+        let likerUserId: string | null = null
+        const authHeader = request.headers.get('authorization') || ''
+        if (authHeader.toLowerCase().startsWith('bearer ')) {
+            const { data: userData } = await supabase.auth.getUser(authHeader.slice(7).trim())
+            likerUserId = userData?.user?.id ?? null
+        }
+
         // Is it already liked?
         const { data: existing } = await supabase
             .from('comment_likes')
@@ -46,7 +57,7 @@ export async function POST(
         } else {
             const { error } = await supabase
                 .from('comment_likes')
-                .insert([{ comment_id: commentId, client_id: clientId }])
+                .insert([{ comment_id: commentId, client_id: clientId, user_id: likerUserId }])
             if (error) {
                 console.error('[comment like] insert error:', error)
                 return NextResponse.json({ error: 'Failed to update like' }, { status: 500 })
