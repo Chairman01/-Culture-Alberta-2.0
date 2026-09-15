@@ -1,14 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
     Loader2, MapPin, Mail, CalendarDays, Pencil, Check, X,
-    MessageSquare, Bookmark, Trash2, Briefcase,
+    MessageSquare, Bookmark, Trash2, Briefcase, Camera,
 } from 'lucide-react'
 import { useAuth } from '@/components/auth-provider'
 import { supabaseBrowser } from '@/lib/supabase-browser'
+import { uploadAvatar, removeAvatarFile, AVATAR_ACCEPT } from '@/lib/avatar-upload'
 import { CitySelect } from '@/components/city-select'
 import { isValidCity } from '@/lib/alberta-municipalities'
 import { listSavedArticles, unsaveArticle, type SavedArticleCard } from '@/lib/saved-articles'
@@ -56,8 +57,12 @@ export default function AccountPage() {
 
     const meta = (user?.user_metadata ?? {}) as {
         full_name?: string; city?: string; avatar_url?: string; picture?: string
+        avatar_path?: string
     }
     const displayName = meta.full_name || user?.email || 'You'
+    // A picture the reader uploaded wins over the one their OAuth provider
+    // supplied, so clearing avatar_url falls back to the Google photo rather
+    // than straight to initials.
     const avatar = meta.avatar_url || meta.picture || ''
     const city = meta.city || ''
 
@@ -96,6 +101,56 @@ export default function AccountPage() {
         }
     }
 
+    // --- profile picture ---
+    // Uploading applies immediately rather than waiting on the Edit form's
+    // Save: the picker already is the confirmation step, and a photo sitting
+    // unsaved behind a button is the state people lose.
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const [busyAvatar, setBusyAvatar] = useState(false)
+
+    const pickAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        // Clear the input so re-picking the same file after an error still fires.
+        e.target.value = ''
+        if (!file || !user) return
+
+        setBusyAvatar(true)
+        setProfileMsg(null)
+        try {
+            const { url, path } = await uploadAvatar(file, user.id, meta.avatar_path)
+            const { error } = await supabaseBrowser.auth.updateUser({
+                data: { avatar_url: url, avatar_path: path },
+            })
+            if (error) throw error
+            setProfileMsg({ type: 'success', text: 'Photo updated.' })
+        } catch (err) {
+            setProfileMsg({ type: 'error', text: err instanceof Error ? err.message : 'Could not upload that photo.' })
+        } finally {
+            setBusyAvatar(false)
+        }
+    }
+
+    const removeAvatar = async () => {
+        if (!user) return
+        setBusyAvatar(true)
+        setProfileMsg(null)
+        try {
+            // Clear the reference before deleting the file. The other order
+            // leaves a user pointed at a URL that 404s if the delete succeeds
+            // and the update then fails.
+            const { error } = await supabaseBrowser.auth.updateUser({
+                data: { avatar_url: null, avatar_path: null },
+            })
+            if (error) throw error
+            await removeAvatarFile(meta.avatar_path)
+            setProfileMsg({ type: 'success', text: 'Photo removed.' })
+        } catch (err) {
+            setProfileMsg({ type: 'error', text: err instanceof Error ? err.message : 'Could not remove that photo.' })
+        } finally {
+            setBusyAvatar(false)
+        }
+    }
+
     // --- notification preference ---
     const emailOn = (user?.user_metadata as { reply_emails?: boolean } | undefined)?.reply_emails !== false
     const [savingPref, setSavingPref] = useState(false)
@@ -125,13 +180,48 @@ export default function AccountPage() {
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                 <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
-                        {avatar ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={avatar} alt="" className="w-16 h-16 rounded-full object-cover border border-gray-200" />
-                        ) : (
-                            <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center text-xl font-bold">
-                                {initialsOf(displayName)}
-                            </div>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept={AVATAR_ACCEPT}
+                            onChange={pickAvatar}
+                            className="sr-only"
+                            tabIndex={-1}
+                            aria-hidden="true"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={busyAvatar}
+                            aria-label="Change profile photo"
+                            title="Change profile photo"
+                            className="relative group rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-60"
+                        >
+                            {avatar ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={avatar} alt="" className="w-16 h-16 rounded-full object-cover border border-gray-200" />
+                            ) : (
+                                <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center text-xl font-bold">
+                                    {initialsOf(displayName)}
+                                </div>
+                            )}
+                            {/* Without the badge the circle reads as decoration, not a control. */}
+                            <span className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 group-hover:text-blue-600">
+                                {busyAvatar
+                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    : <Camera className="w-3.5 h-3.5" />}
+                            </span>
+                        </button>
+
+                        {meta.avatar_url && (
+                            <button
+                                type="button"
+                                onClick={removeAvatar}
+                                disabled={busyAvatar}
+                                className="mt-2 block w-16 text-center text-xs text-gray-500 hover:text-red-600 disabled:opacity-50"
+                            >
+                                Remove
+                            </button>
                         )}
                     </div>
 
