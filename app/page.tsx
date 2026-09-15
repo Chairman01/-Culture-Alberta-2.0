@@ -318,7 +318,10 @@ export default async function HomeStatic() {
   // Fall back to newest article with an image, then newest article overall.
   const pinnedHero = pinnedHeroResult.status === 'fulfilled' ? pinnedHeroResult.value : null
   if (pinnedHeroResult.status === 'rejected') {
-    console.warn('Failed to load pinned homepage hero:', pinnedHeroResult.reason)
+    // The pin is unknown, not absent — this render is about to hand the hero
+    // slot to whatever is newest. Loud on purpose: that swap is invisible on
+    // the page itself and looks like someone moved the pin.
+    console.warn('⚠️ Pinned homepage hero unknown, hero falls back to newest article:', pinnedHeroResult.reason)
   }
 
   // NOTE: do not re-add a `homepageCandidatePosts.find(p => p.featuredHome)` clause

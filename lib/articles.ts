@@ -70,12 +70,10 @@ export async function getFeaturedHomeArticle(): Promise<Article | null> {
     return fallbackArticles.find(item => item.type !== 'event' && item.featuredHome === true) || null
   }
 
-  try {
-    return await getFeaturedHomeArticleFromSupabase()
-  } catch (supabaseError) {
-    console.warn('⚠️ Supabase failed loading pinned hero:', supabaseError)
-    return null
-  }
+  // Deliberately not caught: null here means "nothing is pinned" and sends the
+  // homepage to its newest article, so a failed lookup has to surface as a
+  // rejection rather than quietly unpin the hero.
+  return await getFeaturedHomeArticleFromSupabase()
 }
 
 export async function getCityArticles(city: string): Promise<Article[]> {

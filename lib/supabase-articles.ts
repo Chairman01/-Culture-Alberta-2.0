@@ -413,45 +413,90 @@ export async function getArticlesBySectionCategory(categoryName: string): Promis
   }) as Article[]
 }
 
+// Last pin this process resolved successfully, kept so a slow query cannot cost
+// us the pin. `resolved` stays false until a query actually comes back, so a
+// cold instance never mistakes "never asked" for "nothing is pinned".
+let lastKnownPinnedHero: { resolved: boolean; article: Article | null } = {
+  resolved: false,
+  article: null
+}
+
 // The manually-pinned homepage hero.
+//
 // This MUST be its own query: getHomepageArticles only returns the 500 newest
 // articles, so a pin on an older article would silently never be found.
+//
+// Returning null here means "nothing is pinned" and the homepage promotes its
+// newest article into the hero slot, so null must never stand in for "the
+// lookup failed". It did once: publishing an article at 02:00:14 on 2026-09-15
+// set off a revalidation stampede, this query answered 200 in 5367ms, the 3s
+// race rejected it, and the hero silently switched from the pinned waterfall
+// article to the breaking-news story. Hence the wider budget, the retry, the
+// in-process memo, and the throw on genuine failure.
 export async function getFeaturedHomeArticle(): Promise<Article | null> {
-  try {
-    if (!supabase) return null
+  if (!supabase) return null
 
-    const fields = ensureImageFields('id, title, excerpt, category, categories, created_at, updated_at, featured_home, type, status, author, location, tags')
-    const timeoutDuration = process.env.NODE_ENV === 'development' ? 1200 : 3000
+  const fields = ensureImageFields('id, title, excerpt, category, categories, created_at, updated_at, featured_home, type, status, author, location, tags')
+  const isDev = process.env.NODE_ENV === 'development'
+  // Two attempts: the second gets a wider budget for the stampede that follows
+  // a publish, when the same one-row query has been seen taking over 5s.
+  const attemptTimeouts = isDev ? [1200, 2000] : [6000, 10000]
+  let lastError: unknown = null
 
-    const result = await Promise.race([
-      supabase
-        .from('articles')
-        .select(fields)
-        .eq('status', 'published')
-        .eq('featured_home', true)
-        .order('created_at', { ascending: false })
-        .limit(1),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
-      )
-    ]) as any
+  for (const timeoutDuration of attemptTimeouts) {
+    try {
+      const result = await Promise.race([
+        supabase
+          .from('articles')
+          .select(fields)
+          .eq('status', 'published')
+          .eq('featured_home', true)
+          .order('created_at', { ascending: false })
+          .limit(1),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
+        )
+      ]) as any
 
-    const article = result?.data?.[0]
-    if (result?.error || !article) return null
+      if (result?.error) throw result.error
 
-    let imageUrl = article.image_url
-    if (imageUrl && imageUrl.startsWith('data:')) imageUrl = undefined
+      const article = result?.data?.[0]
+      if (!article) {
+        // A clean answer of "no rows" — nothing is pinned.
+        lastKnownPinnedHero = { resolved: true, article: null }
+        return null
+      }
 
-    return {
-      ...article,
-      imageUrl,
-      date: article.created_at,
-      featuredHome: true
-    } as Article
-  } catch (error) {
-    console.warn('⚠️ Failed to load pinned homepage hero:', error)
-    return null
+      let imageUrl = article.image_url
+      if (imageUrl && imageUrl.startsWith('data:')) imageUrl = undefined
+
+      const pinned = {
+        ...article,
+        imageUrl,
+        date: article.created_at,
+        featuredHome: true
+      } as Article
+
+      lastKnownPinnedHero = { resolved: true, article: pinned }
+      return pinned
+    } catch (error) {
+      lastError = error
+      console.warn(`⚠️ Pinned homepage hero query failed after ${timeoutDuration}ms:`, error)
+    }
   }
+
+  // Every attempt failed. Serve the pin this instance last saw rather than let
+  // the homepage fall through to its newest article.
+  if (lastKnownPinnedHero.resolved) {
+    console.warn('⚠️ Using last known pinned homepage hero:', lastKnownPinnedHero.article?.title ?? 'none')
+    return lastKnownPinnedHero.article
+  }
+
+  // Nothing to fall back on. Throw so the caller knows the pin is unknown
+  // instead of reading a null as "nothing is pinned".
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Failed to load pinned homepage hero')
 }
 
 // Function to invalidate homepage cache when articles are modified
