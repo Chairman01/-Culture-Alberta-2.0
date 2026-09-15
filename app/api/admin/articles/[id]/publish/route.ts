@@ -51,6 +51,10 @@ export async function PATCH(
     .from('articles')
     .update({
       status: 'published',
+      // Publishing by hand cancels any timer on the row. publish_at is only ever
+      // meaningful on a draft, and leaving a stale one on a live article would
+      // have it show up as "scheduled" in the admin list.
+      publish_at: null,
       // Closes the review trail: approving clears any earlier rejection note so
       // the writer is not left looking at a complaint about a piece that went
       // on to be published.

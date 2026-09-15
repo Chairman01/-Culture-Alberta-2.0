@@ -16,6 +16,8 @@ import { RichTextEditor } from "@/app/admin/components/rich-text-editor"
 import { useToast } from "@/hooks/use-toast"
 import { MAIN_CATEGORIES, TIER1_LOCATIONS, OTHER_COMMUNITY_LOCATIONS } from "@/lib/data"
 import { SeoTitleField } from "@/app/admin/components/seo-title-field"
+import { PublishScheduleField } from "@/app/admin/components/publish-schedule-field"
+import { formatMountain } from "@/lib/utils/mountain-time"
 
 export default function NewArticlePage() {
   const router = useRouter()
@@ -95,6 +97,8 @@ export default function NewArticlePage() {
   const [featuredEdmonton, setFeaturedEdmonton] = useState(false)
   const [featuredCalgary, setFeaturedCalgary] = useState(false)
   const [featuredAlberta, setFeaturedAlberta] = useState(false)
+  // null = publish on save, which is how this form has always behaved.
+  const [publishAt, setPublishAt] = useState<string | null>(null)
 
   const handleImageSelect = (url: string) => {
     setImageUrl(url)
@@ -215,6 +219,9 @@ export default function NewArticlePage() {
           tags: tagList,
           type: "article",
           status: "published",
+          // The API stores a scheduled article as a draft and lets the cron flip
+          // it, so the status above applies only when publishAt is null.
+          publishAt,
           // Add trending flags
           trendingHome,
           trendingEdmonton,
@@ -237,10 +244,14 @@ export default function NewArticlePage() {
       const newArticle = await response.json()
 
       toast({
-        title: isContributor ? "Submitted for review" : "Article created",
+        title: isContributor
+          ? "Submitted for review"
+          : publishAt ? "Article scheduled" : "Article created",
         description: isContributor
           ? "An editor will review your draft before it goes live."
-          : "Your article has been created successfully.",
+          : publishAt
+            ? `Saved as a draft. It goes live on its own at ${formatMountain(publishAt)}.`
+            : "Your article has been created successfully.",
       })
 
       // Trigger revalidation for article pages
@@ -523,6 +534,10 @@ export default function NewArticlePage() {
         </div>
 
         <div className="space-y-4">
+          {!isContributor && (
+            <PublishScheduleField value={publishAt} onChange={setPublishAt} />
+          )}
+
           <div>
             <Label htmlFor="excerpt">Excerpt</Label>
             <Textarea

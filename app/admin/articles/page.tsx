@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Plus, Edit, Trash2, Search, RefreshCw, CheckCircle, AlertCircle, Loader2, ChevronUp, ChevronDown, ChevronsUpDown, Pin, PinOff } from "lucide-react"
+import { Plus, Edit, Trash2, Search, RefreshCw, CheckCircle, AlertCircle, Loader2, ChevronUp, ChevronDown, ChevronsUpDown, Pin, PinOff, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -30,6 +30,7 @@ import { validateArticleContent, getContentQualityScore, getContentQualityLabel 
 import { getArticleUrl } from '@/lib/utils/article-url'
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
+import { formatMountain } from "@/lib/utils/mountain-time"
 
 interface ExtendedArticle extends Article {
   type?: string;
@@ -40,6 +41,8 @@ interface ExtendedArticle extends Article {
   updatedAt?: string;
   pinned_link_in_bio?: boolean;
   featuredHome?: boolean;
+  /** Set only on a draft waiting for its publish time. */
+  publishAt?: string | null;
 }
 
 // Define a more complete article type
@@ -148,6 +151,7 @@ export default function AdminArticles() {
         reviewStatus: a.reviewStatus || 'pending',
         reviewNote: a.reviewNote || '',
         reviewedBy: a.reviewedBy || '',
+        publishAt: a.publishAt || null,
       }))
       console.log('Admin: Normalized articles:', normalized)
       setArticles(normalized)
@@ -364,9 +368,18 @@ export default function AdminArticles() {
   // Drafts awaiting approval live in /admin/review, not here — an admin's
   // Articles list is the published site. A contributor still sees their own
   // drafts, since that is the only place their submitted work appears to them.
+  // A scheduled piece is a draft too, but it is not waiting for anyone: an
+  // admin already approved it and gave it a time. Counting it here would send
+  // the editor to a review queue that does not hold it.
+  const scheduledArticles = isContributor
+    ? []
+    : articles
+        .filter(a => a.status === 'draft' && a.publishAt)
+        .sort((a, b) => new Date(a.publishAt!).getTime() - new Date(b.publishAt!).getTime())
+
   const pendingDrafts = isContributor
     ? 0
-    : articles.filter(a => a.status === 'draft').length
+    : articles.filter(a => a.status === 'draft' && !a.publishAt).length
 
   // Work an editor sent back. This is the only place a writer finds out why —
   // so it goes at the top of their list, with the note itself, not a bare flag.
@@ -408,6 +421,44 @@ export default function AdminArticles() {
   const categories = Array.from(new Set(articles.map(a => a.category).filter(cat => cat && cat.trim() !== '')))
   const locations = Array.from(new Set(articles.map(a => a.location).filter(loc => loc && loc.trim() !== '')))
 
+  // "Publish now" and "Cancel" on a waiting article. Both go through
+  // /api/admin/articles/:id/schedule so the side effects — hero swap, fallback
+  // sync, ISR, IndexNow, social — run exactly as they do for the cron.
+  const [schedulingId, setSchedulingId] = useState<string | null>(null)
+
+  const handleScheduleAction = async (article: ExtendedArticle, action: 'publish-now' | 'cancel') => {
+    setSchedulingId(article.id)
+    try {
+      const response = await fetch(`/api/admin/articles/${article.id}/schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'That did not work')
+      }
+
+      toast({
+        title: action === 'publish-now' ? 'Published' : 'Schedule cancelled',
+        description: action === 'publish-now'
+          ? `"${article.title}" is live now.`
+          : `"${article.title}" stays a draft until you publish it.`,
+      })
+
+      await loadAllArticles(true)
+    } catch (error) {
+      toast({
+        title: action === 'publish-now' ? 'Could not publish' : 'Could not cancel',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive',
+      })
+    } finally {
+      setSchedulingId(null)
+    }
+  }
+
   const getArticleKey = (article: ExtendedArticle) => {
     // Create a unique key using article id and type
     const prefix = article.type?.toLowerCase() === 'post' ? 'post' : 'article'
@@ -424,6 +475,57 @@ export default function AdminArticles() {
 
   return (
     <div className="space-y-6">
+      {scheduledArticles.length > 0 && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 space-y-3">
+          <p className="font-medium flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            {scheduledArticles.length === 1
+              ? "One article is waiting to publish."
+              : `${scheduledArticles.length} articles are waiting to publish.`}
+          </p>
+          <p className="text-xs text-blue-800">
+            These are hidden from the site until their time. Search engines and the social
+            accounts are notified when each one goes live, not now.
+          </p>
+          <ul className="space-y-2">
+            {scheduledArticles.map(article => (
+              <li
+                key={article.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <Link
+                    href={`/admin/articles/${article.id}`}
+                    className="font-medium hover:underline"
+                  >
+                    {article.title}
+                  </Link>
+                  <p className="text-xs text-gray-600">{formatMountain(article.publishAt!)}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={schedulingId === article.id}
+                    onClick={() => handleScheduleAction(article, 'publish-now')}
+                  >
+                    {schedulingId === article.id ? "Working…" : "Publish now"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={schedulingId === article.id}
+                    onClick={() => handleScheduleAction(article, 'cancel')}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {pendingDrafts > 0 && (
         <Link
           href="/admin/review"

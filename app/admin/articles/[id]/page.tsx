@@ -18,6 +18,8 @@ import { RichTextEditor } from "@/app/admin/components/rich-text-editor"
 import { useToast } from "@/hooks/use-toast"
 import { MAIN_CATEGORIES, TIER1_LOCATIONS, OTHER_COMMUNITY_LOCATIONS } from "@/lib/data"
 import { SeoTitleField } from "@/app/admin/components/seo-title-field"
+import { PublishScheduleField } from "@/app/admin/components/publish-schedule-field"
+import { formatMountain } from "@/lib/utils/mountain-time"
 
 interface Article {
   id: string
@@ -124,6 +126,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [featuredEdmonton, setFeaturedEdmonton] = useState(false)
   const [featuredCalgary, setFeaturedCalgary] = useState(false)
   const [featuredAlberta, setFeaturedAlberta] = useState(false)
+  // null = publish on save, which is how this form has always behaved.
+  const [publishAt, setPublishAt] = useState<string | null>(null)
 
   useEffect(() => {
     loadArticle()
@@ -179,6 +183,9 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setFeaturedEdmonton(articleData.featuredEdmonton || false)
       setFeaturedCalgary(articleData.featuredCalgary || false)
       setFeaturedAlberta(articleData.featuredAlberta || false)
+      // A schedule already on the row, so reopening the article shows the time it
+      // is waiting for instead of silently resetting it to "publish now".
+      setPublishAt(articleData.publishAt || null)
 
       // Load this article's existing poll so it can be edited in place
       try {
@@ -323,6 +330,9 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         tags: tagList,
         type: "article",
         status: "published",
+        // The API stores a scheduled article as a draft and lets the cron flip
+        // it, so the status above applies only when publishAt is null.
+        publishAt,
         // Add trending flags
         trendingHome,
         trendingEdmonton,
@@ -357,8 +367,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       }
 
       toast({
-        title: "Article updated",
-        description: "Your article has been updated successfully.",
+        title: publishAt ? "Article scheduled" : "Article updated",
+        description: publishAt
+          ? `Saved as a draft. It goes live on its own at ${formatMountain(publishAt)}.`
+          : "Your article has been updated successfully.",
       })
 
       // Trigger revalidation for article pages
@@ -655,6 +667,12 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         </div>
 
         <div className="space-y-4">
+          <PublishScheduleField
+            value={publishAt}
+            onChange={setPublishAt}
+            alreadyPublished={article?.status === "published"}
+          />
+
           <div>
             <Label htmlFor="excerpt">Excerpt</Label>
             <Textarea
