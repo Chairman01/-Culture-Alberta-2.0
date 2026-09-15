@@ -1,16 +1,16 @@
 import { Metadata } from 'next'
 import Link from "next/link"
 import Image from "next/image"
-import { MapPin, Mail, Phone, ArrowRight, Newspaper, CalendarDays, Calculator, Briefcase } from "lucide-react"
+import { MapPin, Mail, Phone, ArrowRight, Sparkles, CalendarDays, Calculator, Briefcase, UtensilsCrossed, Award } from "lucide-react"
 import NewsletterSignup from "@/components/newsletter-signup"
 
 export const metadata: Metadata = {
   title: 'About Culture Alberta | Alberta\'s Local Culture Guide',
-  description: 'Culture Alberta covers events, food, neighbourhoods and practical guides to Alberta programs across Edmonton, Calgary and seven communities province-wide. Published by Culture Media.',
+  description: 'Culture Alberta is Alberta\'s local culture hub — events, food and drink, neighbourhood guides and practical answers for Edmonton, Calgary and communities across the province. Published by Culture Media.',
   alternates: { canonical: 'https://www.culturealberta.com/about' },
   openGraph: {
     title: 'About Culture Alberta',
-    description: 'What\'s on, what\'s worth your money, and how Alberta actually works — for Edmonton, Calgary and communities across the province.',
+    description: 'Stay in the know about what\'s going on across Alberta and Canada — local events, food and drink, city guides and practical answers.',
     url: 'https://www.culturealberta.com/about',
     type: 'website',
   },
@@ -70,7 +70,7 @@ const organizationSchema = {
         "Calgary events",
         "Edmonton events",
         "Alberta food and drink",
-        "Alberta local news",
+        "Alberta local culture",
         "AISH and Alberta social programs",
       ],
     },
@@ -92,14 +92,17 @@ const breadcrumbSchema = {
  * Deliberately concrete and linked: the previous copy described a cultural
  * heritage archive, which is not what anyone arrives here for. Each card points
  * at a real section so the page ends in a click rather than a mission statement.
+ *
+ * Framed as a culture guide throughout, never as a news outlet — that is the
+ * positioning, so the word is kept out of the visible copy.
  */
 const WHAT_WE_DO = [
   {
-    icon: Newspaper,
-    title: "Local news and city guides",
-    body: "What's opening, closing, changing and worth knowing — reported city by city rather than lumped into one provincial feed.",
+    icon: Sparkles,
+    title: "Stay in the know",
+    body: "What's going on across Alberta and Canada — openings, changes and the things people here are actually talking about.",
     href: "/alberta",
-    cta: "Read the latest",
+    cta: "See what's new",
     accent: "text-blue-600",
     ring: "group-hover:border-blue-300",
   },
@@ -113,9 +116,27 @@ const WHAT_WE_DO = [
     ring: "group-hover:border-red-300",
   },
   {
+    icon: UtensilsCrossed,
+    title: "Food and drink",
+    body: "Where to eat, what just opened, and the places worth the drive — across Edmonton, Calgary and the communities in between.",
+    href: "/food-drink",
+    cta: "Find somewhere to eat",
+    accent: "text-amber-600",
+    ring: "group-hover:border-amber-300",
+  },
+  {
+    icon: Award,
+    title: "The best of Alberta",
+    body: "Our picks for the things worth your time, gathered by city so you can find the good stuff without trawling reviews.",
+    href: "/best-of",
+    cta: "Browse the best of",
+    accent: "text-rose-600",
+    ring: "group-hover:border-rose-300",
+  },
+  {
     icon: Calculator,
     title: "Guides to how Alberta works",
-    body: "Plain explanations and free calculators for AISH, ADAP, rebates, property tax and rent increases — the practical stuff that's hard to find straight answers on.",
+    body: "Plain explanations and free calculators for AISH, ADAP, rebates, property tax and rent increases — the practical stuff that's hard to get straight answers on.",
     href: "/tools",
     cta: "Use the tools",
     accent: "text-emerald-700",
@@ -178,19 +199,19 @@ export default function AboutPage() {
                   </span>
 
                   <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] text-gray-900">
-                    Alberta, covered like
-                    <span className="block text-blue-600">somebody lives here.</span>
+                    Alberta's
+                    <span className="block text-blue-600">culture hub.</span>
                   </h1>
 
                   <p className="text-lg md:text-xl text-gray-600 leading-relaxed max-w-xl">
-                    We write about what's on this weekend, where the food is actually good, and how
-                    the programs Albertans rely on really work — for Edmonton, Calgary and communities
-                    across the province.
+                    Stay in the know about what's going on across Alberta and Canada — local events,
+                    food and drink, city guides, and clear answers on the things that make life here
+                    easier.
                   </p>
 
                   <p className="text-base text-gray-500 leading-relaxed max-w-xl">
-                    No press-release rewrites, no listicles about cities we've never driven through.
-                    If it's here, it's because it would be useful to a neighbour.
+                    One place for what's on this weekend, where to eat, what's worth doing in your
+                    city, and how to get things done in Alberta.
                   </p>
 
                   <div className="flex flex-wrap gap-3 pt-2">
@@ -235,11 +256,11 @@ export default function AboutPage() {
                   What you'll find here
                 </h2>
                 <p className="text-lg text-gray-600 leading-relaxed">
-                  Four things, done properly, rather than everything done thinly.
+                  Everything worth knowing about life in Alberta, in one place.
                 </p>
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {WHAT_WE_DO.map(({ icon: Icon, title, body, href, cta, accent, ring }) => (
                   <Link
                     key={title}
@@ -264,11 +285,11 @@ export default function AboutPage() {
             <div className="container mx-auto px-4 md:px-6">
               <div className="max-w-2xl mb-10">
                 <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                  Eight editions, not one feed
+                  Eight editions, one for each community
                 </h2>
                 <p className="text-lg text-gray-600 leading-relaxed">
-                  A street closure in Lethbridge isn't news in Fort McMurray. Every community gets its
-                  own page and its own newsletter, so what reaches you is what's near you.
+                  A festival in Lethbridge isn't much use to someone in Fort McMurray. Every community
+                  gets its own page and its own newsletter, so what reaches you is what's near you.
                 </p>
               </div>
 
@@ -311,8 +332,8 @@ export default function AboutPage() {
                       Culture Media
                     </a>{' '}
                     is an Alberta digital agency — strategy, web and eCommerce, branding, social,
-                    video and photography, SEO and lead generation. Culture Alberta is its own
-                    newsroom, funded by that work rather than by whoever we're writing about.
+                    video and photography, SEO and lead generation. Culture Alberta is editorially
+                    independent, funded by that work rather than by whoever we're writing about.
                   </p>
 
                   <p className="text-base text-gray-500 leading-relaxed">
