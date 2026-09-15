@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import Link from "next/link"
 import Image from "next/image"
-import { MapPin, Mail, Phone, ArrowRight, Sparkles, CalendarDays, Calculator, Briefcase, UtensilsCrossed, Award } from "lucide-react"
+import { MapPin, Mail, Phone, ArrowRight, Sparkles, CalendarDays, Calculator, Briefcase, UtensilsCrossed, Award, MessageCircle, Bell, Bookmark } from "lucide-react"
 import NewsletterSignup from "@/components/newsletter-signup"
 
 export const metadata: Metadata = {
@@ -190,7 +190,10 @@ export default function AboutPage() {
           {/* ── Hero ─────────────────────────────────────────────────────────── */}
           <section className="w-full bg-gradient-to-b from-gray-50 to-white border-b border-gray-200">
             <div className="container mx-auto px-4 md:px-6 py-14 md:py-20">
-              <div className="grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16 items-center">
+              {/* Capped and centred at the large breakpoint: with the image column
+                  sized to its content, a full-width row stretched the text column
+                  and left a slab of empty space between the copy and the collage. */}
+              <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:gap-14 lg:max-w-5xl lg:mx-auto items-center">
 
                 <div className="space-y-6">
                   <span className="inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -231,14 +234,18 @@ export default function AboutPage() {
                   </div>
                 </div>
 
-                {/* The collage is shaped like the province, so it is given room to
-                    breathe rather than cropped into a rectangle. */}
-                <div className="relative mx-auto w-full max-w-sm lg:max-w-none">
+                {/* Capped by WIDTH, not height: the collage is a 2:3 portrait cut to
+                    the shape of the province, so anything that fills a grid column
+                    renders around 850px tall and stretches the whole hero, leaving
+                    the copy stranded in whitespace. ~300px keeps it near the height
+                    of the text beside it, and it is never cropped. */}
+                <div className="relative mx-auto w-full max-w-[220px] sm:max-w-[260px] lg:max-w-[300px]">
                   <Image
                     src="/images/alberta-collage.png"
                     alt="A collage of photographs from across Alberta, arranged in the shape of the province"
                     width={683}
                     height={1024}
+                    sizes="(max-width: 640px) 220px, (max-width: 1024px) 260px, 300px"
                     className="w-full h-auto"
                     priority
                   />
@@ -304,6 +311,84 @@ export default function AboutPage() {
                     <ArrowRight className="mt-1 h-4 w-4 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-gray-500" />
                   </Link>
                 ))}
+              </div>
+            </div>
+          </section>
+
+          {/* ── Join in ──────────────────────────────────────────────────────── */}
+          {/* Dark, because it is the one section asking the reader to do something
+              that isn't reading. Links to the real routes: /auth/signup and
+              /auth/signin, with the account itself at /account (not /profile). */}
+          <section className="w-full bg-gray-900 py-16 md:py-20 text-white">
+            <div className="container mx-auto px-4 md:px-6">
+              <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
+
+                <div className="space-y-5">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/70">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    Join in
+                  </span>
+
+                  <h2 className="font-display text-3xl md:text-4xl font-bold leading-tight">
+                    Meet Albertans from across the province
+                  </h2>
+
+                  <p className="text-lg text-white/70 leading-relaxed">
+                    Make a free account and Culture Alberta stops being something you just read.
+                    Have your say on the stories, hear back when someone replies, and keep the
+                    places and guides you want to come back to.
+                  </p>
+
+                  <div className="flex flex-wrap gap-3 pt-2">
+                    <Link
+                      href="/auth/signup"
+                      className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-200"
+                    >
+                      Create a free account
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link
+                      href="/auth/signin"
+                      className="inline-flex items-center gap-2 rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                    >
+                      Already have one? Sign in
+                    </Link>
+                  </div>
+                </div>
+
+                <ul className="space-y-3">
+                  {[
+                    {
+                      icon: MessageCircle,
+                      title: "Join the conversation",
+                      body: "Comment on any story and reply to other Albertans — from Fort McMurray to Medicine Hat.",
+                    },
+                    {
+                      icon: Bell,
+                      title: "Hear when someone replies",
+                      body: "Reply notifications, so a conversation you started doesn't go quiet without you noticing.",
+                    },
+                    {
+                      icon: Bookmark,
+                      title: "Save it for later",
+                      body: "Keep the restaurants, events and guides you want to come back to, on any device.",
+                    },
+                    {
+                      icon: Briefcase,
+                      title: "Track your job applications",
+                      body: "Apply through the jobs board and follow where each application stands.",
+                    },
+                  ].map(({ icon: Icon, title, body }) => (
+                    <li key={title} className="flex items-start gap-4 rounded-2xl bg-white/5 p-5">
+                      <Icon className="h-5 w-5 shrink-0 text-white/60 mt-0.5" />
+                      <div>
+                        <h3 className="font-display font-bold mb-1">{title}</h3>
+                        <p className="text-sm text-white/60 leading-relaxed">{body}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
               </div>
             </div>
           </section>
