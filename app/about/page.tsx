@@ -6,7 +6,7 @@ import NewsletterSignup from "@/components/newsletter-signup"
 
 export const metadata: Metadata = {
   title: 'About Culture Alberta | Alberta\'s Local Culture Guide',
-  description: 'Culture Alberta is Alberta\'s local culture hub — events, food and drink, neighbourhood guides and practical answers for Edmonton, Calgary and communities across the province. Published by Culture Media.',
+  description: 'Culture Alberta is Alberta\'s local culture hub — events, food and drink, neighbourhood guides and practical answers for Edmonton, Calgary and communities across the province. Part of Culture Media.',
   alternates: { canonical: 'https://www.culturealberta.com/about' },
   openGraph: {
     title: 'About Culture Alberta',
@@ -314,15 +314,19 @@ export default function AboutPage() {
               <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
 
                 <div className="space-y-5">
+                  {/* Plain English on purpose. "A Culture Media title" is
+                      publishing-trade wording for a brand a publisher owns, and
+                      it means nothing to a reader who doesn't work in media. */}
                   <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Published by
+                    Behind Culture Alberta
                   </span>
 
                   <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
-                    Culture Alberta is a Culture Media title
+                    We're part of Culture Media
                   </h2>
 
                   <p className="text-lg text-gray-600 leading-relaxed">
+                    Culture Alberta is built and run by{' '}
                     <a
                       href="https://www.culturemedia.ca"
                       target="_blank"
@@ -330,15 +334,21 @@ export default function AboutPage() {
                       className="font-semibold text-gray-900 underline decoration-gray-300 underline-offset-4 hover:decoration-gray-900"
                     >
                       Culture Media
-                    </a>{' '}
-                    is an Alberta digital agency — strategy, web and eCommerce, branding, social,
-                    video and photography, SEO and lead generation. Culture Alberta is editorially
-                    independent, funded by that work rather than by whoever we're writing about.
+                    </a>
+                    , an Alberta agency that does websites and online stores, branding, social media,
+                    video and photography, SEO and digital marketing for businesses across the
+                    province.
+                  </p>
+
+                  <p className="text-lg text-gray-600 leading-relaxed">
+                    That work is what pays for this site, which means we can write about a place
+                    because it's good — not because someone paid us to.
                   </p>
 
                   <p className="text-base text-gray-500 leading-relaxed">
-                    That's also how local businesses reach Albertans here: through the site, the
-                    newsletters and our social channels, clearly marked as partnerships.
+                    If you run a business here and want to reach Albertans — on the site, in the
+                    newsletters, or across our social channels — that's what Culture Media does.
+                    Anything paid is always labelled.
                   </p>
 
                   <div className="flex flex-wrap gap-3 pt-2">
