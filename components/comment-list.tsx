@@ -92,7 +92,13 @@ export function CommentList({ articleId, refreshTrigger }: CommentListProps) {
         try {
             const res = await fetch(`/api/comments/${commentId}/like`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Optional: anyone can like. It only tells the server whether
+                    // this is the comment author liking their own comment, which
+                    // should not notify them.
+                    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                },
                 body: JSON.stringify({ clientId }),
             })
             const data = await res.json()
@@ -112,7 +118,7 @@ export function CommentList({ articleId, refreshTrigger }: CommentListProps) {
         } catch (err) {
             console.error('Error toggling comment like:', err)
         }
-    }, [])
+    }, [accessToken])
 
     // Post a reply (requires logged-in user)
     const handleReply = useCallback(
