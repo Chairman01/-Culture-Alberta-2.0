@@ -335,14 +335,9 @@ export default function AboutPage() {
                     >
                       Culture Media
                     </a>
-                    , an Alberta agency that does websites and online stores, branding, social media,
-                    video and photography, SEO and digital marketing for businesses across the
-                    province.
-                  </p>
-
-                  <p className="text-lg text-gray-600 leading-relaxed">
-                    That work is what pays for this site, which means we can write about a place
-                    because it's good — not because someone paid us to.
+                    , an Alberta agency running marketing campaigns for businesses across the
+                    province — along with websites and online stores, branding, social media, video
+                    and photography, and SEO.
                   </p>
 
                   <p className="text-base text-gray-500 leading-relaxed">
