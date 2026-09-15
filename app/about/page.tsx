@@ -340,12 +340,6 @@ export default function AboutPage() {
                     and photography, and SEO.
                   </p>
 
-                  <p className="text-base text-gray-500 leading-relaxed">
-                    If you run a business here and want to reach Albertans — on the site, in the
-                    newsletters, or across our social channels — that's what Culture Media does.
-                    Anything paid is always labelled.
-                  </p>
-
                   <div className="flex flex-wrap gap-3 pt-2">
                     <Link
                       href="/partner"
