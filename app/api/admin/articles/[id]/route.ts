@@ -9,6 +9,7 @@ import { warmSocialPreview } from '@/lib/social-image-url'
 import { saveManualPollForArticle, deletePollForArticle } from '@/lib/poll-generator'
 import { requireAdmin, requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
+import { parsePublishAt } from '@/lib/publish-article'
 import { sanitizeAdminHtml } from '@/lib/sanitize-html'
 import { getServiceClient } from '@/lib/supabase-admin'
 
@@ -111,6 +112,8 @@ export async function GET(
       imageUrl: data.image_url || data.image || '',
       imageSource: data.image_source || '',
       date: data.created_at,
+      // Only ever set on a draft — the cron clears it on the way to published.
+      publishAt: data.publish_at || null,
       trendingHome: data.trending_home || false,
       trendingEdmonton: data.trending_edmonton || false,
       trendingCalgary: data.trending_calgary || false,
@@ -160,7 +163,7 @@ export async function PUT(
     // trending/featured flags so a caller that omits them doesn't wipe them.
     const { data: existingArticle } = await supabase
       .from('articles')
-      .select('title, seo_title, slug, author, author_user_id, status, review_status, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
+      .select('title, seo_title, slug, author, author_user_id, status, review_status, publish_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary')
       .eq('id', articleId)
       .single()
 
@@ -176,9 +179,42 @@ export async function PUT(
     // A contributor's save never changes publication state — only an admin
     // approving from /admin/review can do that. Their own drafts stay drafts;
     // an article an admin already approved stays live when they fix a typo.
-    const articleStatus = authCheck.role === 'contributor'
+    const requestedStatus = authCheck.role === 'contributor'
       ? (existingArticle?.status || 'draft')
       : (articleData.status || 'published')
+
+    // Scheduling is publication state, so it is admin-only for the same reason
+    // status is: a writer must not be able to put their own work on the site,
+    // now or at 6am on Saturday.
+    const schedule = authCheck.role === 'contributor'
+      ? ({ kind: 'none' } as const)
+      : parsePublishAt(articleData.publishAt)
+
+    if (schedule.kind === 'invalid') {
+      return NextResponse.json({ success: false, error: schedule.error }, { status: 400 })
+    }
+
+    // A scheduled article is stored as a draft — that is what hides it from the
+    // public site, since the only SELECT policy on articles is
+    // `status = 'published'`. The cron flips it at the appointed time.
+    const isScheduled = schedule.kind === 'at'
+    const articleStatus = isScheduled ? 'draft' : requestedStatus
+
+    // publish_at is only ever meaningful on a draft, so anything that ends up
+    // published clears it. That matters for the older forms that send no
+    // publishAt at all (/admin/edit-post, /admin/new-post): saving a scheduled
+    // article from one of those publishes it, and it must not keep a timer.
+    const scheduleFields =
+      schedule.kind === 'at'
+        ? {
+            publish_at: schedule.at,
+            // An admin setting the time IS the approval, so the piece must not
+            // also sit in /admin/review waiting for one.
+            review_status: 'approved',
+          }
+        : articleStatus === 'published' || schedule.kind === 'clear'
+          ? { publish_at: null }
+          : {}
 
     // Same reasoning as the create route: contributor HTML is scrubbed before
     // it can reach the public renderer, admin HTML is left as authored.
@@ -199,6 +235,7 @@ export async function PUT(
       .from('articles')
       .update({
         ...reviewFields,
+        ...scheduleFields,
         title: articleData.title,
         // Same `??`-style rule as the flags below: a caller that omits seoTitle
         // keeps what is set; an explicit empty string or null clears it.
@@ -242,7 +279,11 @@ export async function PUT(
     // The homepage hero is a single slot: pinning this article unpins every other
     // one, so the checkbox means "this is THE featured article" rather than
     // "add to a pile of pins where the newest silently wins".
-    if (articleData.featuredHome) {
+    //
+    // Not while it is scheduled: unpinning now would leave the homepage with no
+    // hero until the piece goes live. publishScheduledArticle does the swap at
+    // that moment instead.
+    if (articleData.featuredHome && !isScheduled) {
       const { error: unpinError } = await supabase
         .from('articles')
         .update({ featured_home: false })
@@ -272,8 +313,16 @@ export async function PUT(
       }
     }
 
-    // Auto-sync the updated article
-    try {
+    // Auto-sync the updated article.
+    //
+    // Drafts stay out of it, matching ../create: optimized-fallback.json is what
+    // the public site reads when Supabase is slow, so a scheduled piece must not
+    // appear there ahead of its time. quickSyncArticle reads with the anon key
+    // and cannot see a draft anyway — it fails, and the manual fallback below
+    // used to add the row regardless.
+    if (articleStatus !== 'published') {
+      console.log('📝 Draft — skipping public fallback sync')
+    } else try {
       console.log('🔄 Auto-syncing updated article...')
       const syncResult = await quickSyncArticle(articleId)
       if (syncResult.success) {
@@ -326,7 +375,7 @@ export async function PUT(
             author: articleAuthor,
             tags: articleData.tags,
             type: articleData.type || 'article',
-            status: 'published',
+            status: articleStatus,
             imageUrl: articleData.imageUrl,
             trendingHome: articleData.trendingHome || false,
             trendingEdmonton: articleData.trendingEdmonton || false,
@@ -391,7 +440,7 @@ export async function PUT(
             author: articleAuthor,
             tags: articleData.tags,
             type: articleData.type || 'article',
-            status: 'published',
+            status: articleStatus,
             imageUrl: articleData.imageUrl,
             trendingHome: articleData.trendingHome || false,
             trendingEdmonton: articleData.trendingEdmonton || false,

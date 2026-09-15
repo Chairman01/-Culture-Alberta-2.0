@@ -9,6 +9,7 @@ import { warmSocialPreview } from '@/lib/social-image-url'
 import { saveManualPollForArticle } from '@/lib/poll-generator'
 import { requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
+import { parsePublishAt } from '@/lib/publish-article'
 import { sanitizeAdminHtml } from '@/lib/sanitize-html'
 import { getServiceClient } from '@/lib/supabase-admin'
 
@@ -67,9 +68,25 @@ export async function POST(request: NextRequest) {
     // the editor UI hides the option, but the API is what an outside caller
     // hits. A published status is also what fires IndexNow and the social
     // autopost below, so this must be decided server-side from the JWT role.
-    const articleStatus = auth.role === 'contributor'
+    const requestedStatus = auth.role === 'contributor'
       ? 'draft'
       : (articleData.status || 'published')
+
+    // Scheduling is publication state, so it is admin-only for exactly the same
+    // reason status is — decided from the JWT role, never from the body.
+    const schedule = auth.role === 'contributor'
+      ? ({ kind: 'none' } as const)
+      : parsePublishAt(articleData.publishAt)
+
+    if (schedule.kind === 'invalid') {
+      return NextResponse.json({ success: false, error: schedule.error }, { status: 400 })
+    }
+
+    // A scheduled article is stored as a draft: that is what keeps it off the
+    // public site until /api/cron/publish-scheduled flips it, and it also means
+    // the IndexNow + social block below does not fire early.
+    const scheduledFor = schedule.kind === 'at' ? schedule.at : null
+    const articleStatus = scheduledFor ? 'draft' : requestedStatus
 
     // Article bodies are rendered with dangerouslySetInnerHTML on the public
     // article page and processArticleContent does not sanitize, so a stored
@@ -121,6 +138,7 @@ export async function POST(request: NextRequest) {
         tags: articleData.tags,
         type: articleData.type || 'article',
         status: articleStatus,
+        publish_at: scheduledFor,
         // Where it sits in the review queue. An admin's own work is approved by
         // definition; a writer's starts out waiting.
         review_status: auth.role === 'contributor' ? 'pending' : 'approved',
@@ -152,7 +170,11 @@ export async function POST(request: NextRequest) {
 
     // The homepage hero is a single slot — see the same block in the [id] update
     // route. Pinning this article unpins whatever was pinned before.
-    if (articleData.featuredHome) {
+    //
+    // Not for a scheduled piece: unpinning now would leave the homepage with no
+    // hero for however long the draft waits. publishScheduledArticle does the
+    // swap at the moment it goes live instead.
+    if (articleData.featuredHome && articleStatus === 'published') {
       const { error: unpinError } = await supabase
         .from('articles')
         .update({ featured_home: false })

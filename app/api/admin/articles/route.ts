@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       // Fetch all articles with essential fields only (EXCLUDE image data for performance)
       let query = supabase
         .from('articles')
-        .select('id,title,excerpt,content,category,categories,location,author,author_user_id,tags,type,status,review_status,review_note,reviewed_at,reviewed_by,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary')
+        .select('id,title,excerpt,content,category,categories,location,author,author_user_id,tags,type,status,publish_at,review_status,review_note,reviewed_at,reviewed_by,created_at,updated_at,trending_home,trending_edmonton,trending_calgary,featured_home,featured_edmonton,featured_calgary')
         .order('created_at', { ascending: false })
 
       if (contributorUserId) {
@@ -67,6 +67,9 @@ export async function GET(request: NextRequest) {
           reviewNote: article.review_note || '',
           reviewedAt: article.reviewed_at || null,
           reviewedBy: article.reviewed_by || '',
+          // Set only on a draft the cron has not reached yet, so the list can
+          // say "Scheduled for …" rather than just "Draft".
+          publishAt: article.publish_at || null,
           createdAt: article.created_at,
           updatedAt: article.updated_at || article.created_at,
         }))
