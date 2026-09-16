@@ -51,8 +51,10 @@ export default function ArticleNewsletterSignup({
       return
     }
 
-    // Fixed popup: show on every article visit at 50% scroll
-    // (dismiss only hides for this page — never persisted to localStorage)
+    // Fixed popup: show once per session at 25% of the article body
+    // (dismiss only hides for this page — never persisted to localStorage).
+    // Was 50%, which landed right about where the average reader stops (31% of the
+    // page, per Clarity), so most readers never saw it.
     const handleScroll = () => {
       const article = document.querySelector('.article-content') as HTMLElement | null
       if (!article) return
@@ -60,7 +62,7 @@ export default function ArticleNewsletterSignup({
       const articleHeight = article.offsetHeight
       const scrolled = window.scrollY + window.innerHeight
       const progress = (scrolled - articleTop) / articleHeight
-      if (progress >= 0.5) {
+      if (progress >= 0.25) {
         window.removeEventListener('scroll', handleScroll)
         if (sessionStorage.getItem('newsletter_shown')) return
         sessionStorage.setItem('newsletter_shown', 'true')
@@ -87,7 +89,15 @@ export default function ArticleNewsletterSignup({
       const response = await fetch('/api/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, city, optIn: true, source: 'article' })
+        body: JSON.stringify({
+          email,
+          city,
+          optIn: true,
+          source: 'article',
+          // Popup vs inline form, so the earlier popup's effect on signups is measurable.
+          signupSource: variant === 'fixed' ? 'article-popup' : 'article-inline',
+          signupPath: window.location.pathname,
+        })
       })
       const result = await response.json()
 
