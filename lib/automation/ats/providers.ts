@@ -33,6 +33,13 @@ export interface RawPosting {
    * body instead. Oracle Recruiting Cloud is the exception.
    */
   validThrough?: string | null
+  /**
+   * A specialty from lib/job-categories, set only where the employer states the
+   * department outright and it beats guessing from the title. A law firm's
+   * "Associate, Labour & Employment" is a lawyer, and nothing in those words
+   * says so. Unset, the sync infers from the title as for every other board.
+   */
+  category?: string | null
 }
 
 async function getJson(url: string, init?: RequestInit): Promise<unknown> {
@@ -1112,6 +1119,121 @@ async function fetchMedicineHatCollege(board: AtsBoard): Promise<RawPosting[]> {
   })
 }
 
+// ── Bennett Jones ────────────────────────────────────────────────────────────
+
+/** Posting-page fetches per run, for dates only. Logged when hit. */
+const BENNETT_JONES_MAX_DETAILS = 40
+
+interface BennettJonesItem {
+  id?: string
+  url?: string
+  title?: string
+  description?: string
+  /** The office, or several: "Calgary", "Calgary, Toronto". */
+  categories?: string
+  /**
+   * The firm's own department: "Legal Professionals", "Legal Assistants",
+   * "Paralegals and Law Clerks", "Business Services".
+   */
+  type?: string
+}
+
+/**
+ * Bennett Jones, the Calgary-founded business law firm, runs no applicant
+ * tracking system: each opening is a page on its own Sitecore site, and
+ * candidates apply by email. Like `mhc`, the provider is named after the
+ * employer because it reads that one site's own page component — there is no
+ * product here a second employer could be using.
+ *
+ * It is the only law firm on the board, and it is here for the Legal specialty,
+ * which had four postings across the province before it.
+ *
+ * The careers index is a Next.js page whose __NEXT_DATA__ already carries every
+ * posting in full — title, path, office and the complete description HTML — so
+ * the list costs one request. The list is found by its shape, not by the
+ * component's key: that key is a CMS GUID that changes whenever an editor
+ * rebuilds the page.
+ *
+ * The one thing the list lacks is a date, and an undated row sorts after every
+ * dated one, below the cut-off of the jobs the board loads. Each posting page
+ * states it in JobPosting JSON-LD, so those are fetched — for the Alberta
+ * postings only, which is about half the firm.
+ *
+ * A redesign that drops the embedded list makes this return zero rather than
+ * throw, as with `mhc`; the sync report shows it as an empty board.
+ */
+async function fetchBennettJones(
+  board: AtsBoard,
+  isAlberta: (location: string) => boolean
+): Promise<RawPosting[]> {
+  const origin = `https://${board.domain}`
+  const res = await fetch(`${origin}/Careers`, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: { 'user-agent': UA, accept: 'text/html' },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const html = await res.text()
+
+  const script = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)?.[1]
+  if (!script) return []
+  const data = JSON.parse(script) as {
+    props?: { pageProps?: { componentProps?: Record<string, unknown> } }
+  }
+
+  const isPostingList = (value: unknown): value is BennettJonesItem[] =>
+    Array.isArray(value) &&
+    value.some(entry => {
+      const item = entry as BennettJonesItem | null
+      return typeof item?.url === 'string' && item.url.startsWith('/Careers/') &&
+        typeof item.description === 'string'
+    })
+  const list = Object.values(data.props?.pageProps?.componentProps ?? {}).find(isPostingList) ?? []
+
+  const postings: RawPosting[] = []
+  for (const item of list) {
+    const title = decodeEntities(item.title ?? '').replace(/\s+/g, ' ').trim()
+    if (!item.url || !title || !item.description?.trim()) continue
+    postings.push({
+      id: item.id || item.url,
+      title,
+      // One segment per office, in the separator the sync's location splitter
+      // reads — so the Calgary row of a Calgary-and-Toronto role says Calgary.
+      location: (item.categories ?? '').split(',').map(s => s.trim()).filter(Boolean).join('; '),
+      descriptionHtml: item.description,
+      // No application form: the posting page names the address to email.
+      applyUrl: `${origin}${item.url}`,
+      postedAt: null,
+      employmentType: null,
+      // The legal departments are Legal whatever the title says — an
+      // associate's title names a practice area, never the word "lawyer".
+      // Business Services roles fall through to the usual title inference.
+      category: /^(legal|paralegal)/i.test(item.type?.trim() ?? '') ? 'Legal' : null,
+    })
+  }
+
+  const alberta = postings.filter(p => isAlberta(p.location))
+  if (alberta.length > BENNETT_JONES_MAX_DETAILS) {
+    console.warn(
+      `[ats:${board.token}] ${alberta.length} Alberta postings but only ${BENNETT_JONES_MAX_DETAILS} dated this run`
+    )
+  }
+
+  // A failed date lookup keeps the posting undated rather than dropping it.
+  await mapDetails(alberta.slice(0, BENNETT_JONES_MAX_DETAILS), async posting => {
+    const page = await fetch(posting.applyUrl, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { 'user-agent': UA, accept: 'text/html' },
+    })
+    if (!page.ok) return null
+    const posted = jobPostingSchema(await page.text())?.datePosted
+    const time = posted ? new Date(posted).getTime() : NaN
+    if (Number.isFinite(time)) posting.postedAt = new Date(time).toISOString()
+    return null
+  })
+
+  return postings
+}
+
 // ── Avanti Career Connector (Keyano College) ─────────────────────────────────
 
 /** Detail fetches per run. Logged when hit, never silently truncated. */
@@ -1901,6 +2023,7 @@ export async function fetchBoard(
     case 'avanti': return fetchAvanti(board, isAlberta)
     case 'rss': return fetchRssFeed(board)
     case 'mhc': return fetchMedicineHatCollege(board)
+    case 'bennettjones': return fetchBennettJones(board, isAlberta)
     case 'talentbrew': return fetchTalentBrew(board)
     case 'peoplesoft': return fetchPeopleSoft(board)
     default: return []
