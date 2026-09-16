@@ -154,6 +154,13 @@ export const ATS_BOARDS: AtsBoard[] = [
   // because it is a different employer and not a stand-in.
   { provider: 'workday', token: 'bowvalleycollege', company: 'Bow Valley College', domain: 'bowvalleycollege.ca', datacenter: 'wd10', site: 'BowValleyCollege' },
 
+  // Calgary non-profit seniors' care, fifth on Forbes' 2026 Canadian ranking for
+  // company culture. Verified 2026-09-16 with the dry-run script: 38 of its 54
+  // postings land in cities we cover (24 Calgary, 14 Red Deer, Sylvan Lake
+  // folding into Red Deer) — health care aides, LPNs and occupational therapy
+  // assistants, which the Health & Medicine specialty had almost nothing of.
+  { provider: 'workday', token: 'bethany', company: 'Bethany Care Society', domain: 'bethanyseniors.com', datacenter: 'wd10', site: 'bethanycareers' },
+
   // Calgary-weighted additions, confirmed live 2026-08-11. The board skewed
   // heavily to Edmonton (391 active postings against Calgary's 122), and the
   // gap was supply, not demand — these are all Calgary head offices.
@@ -451,6 +458,19 @@ export const ATS_BOARDS: AtsBoard[] = [
     domain: 'www.mhc.ab.ca',
     logoDomain: 'mhc.ab.ca',
     locationAliases: [{ pattern: /^/, city: 'medicine-hat' }],
+  },
+
+  // ── Bennett Jones (own website) ────────────────────────────────────────────
+  // No ATS; see the provider note. The board's only law firm, Calgary-founded,
+  // 92nd on Forbes' 2026 culture ranking. Verified 2026-09-16 with the dry-run
+  // script: 14 postings, 7 of them Calgary — three associate lawyers among
+  // them. Postings for the other offices are read and dropped by the matcher.
+  {
+    provider: 'bennettjones',
+    token: 'bennett-jones',
+    company: 'Bennett Jones',
+    domain: 'www.bennettjones.com',
+    logoDomain: 'bennettjones.com',
   },
 
   // ── Plain RSS careers feed ─────────────────────────────────────────────────

@@ -96,10 +96,11 @@ function toRows(posting: RawPosting, board: AtsBoard, city: JobCity): JobUpsertR
     company: board.company,
     city,
     location_raw: locationForCity(posting.location, city) || null,
-    // No provider supplies a category, and storing null left the board's
-    // specialty filter empty. Derived from the title — the same function the
-    // read path falls back to, so a stored value and a derived one always agree.
-    category: inferCategory(posting.title),
+    // Storing null left the board's specialty filter empty, so every row gets
+    // one. A department the employer states wins; otherwise it is derived from
+    // the title — the same function the read path falls back to, so a stored
+    // value and a derived one agree.
+    category: posting.category ?? inferCategory(posting.title),
     description_snippet: toSnippet(posting.descriptionHtml),
     description_html: posting.descriptionHtml || null,
     salary_min: null,
