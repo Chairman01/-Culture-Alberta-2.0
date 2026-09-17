@@ -75,6 +75,17 @@ export interface AtsBoard {
    */
   locationAliases?: Array<{ pattern: RegExp; city: JobCity }>
   /**
+   * Workday only: hiring companies on this board to show under their own name,
+   * keyed by the exact `hiringOrganization` the posting states.
+   *
+   * Canadian Tire Corporation hires for Mark's, Sport Chek and others through
+   * one tenant, so every Mark's posting used to read "Canadian Tire" and Mark's
+   * had no company page to link to. Only names listed here are relabelled; any
+   * other hiring company keeps the board's `company`, so a brand the tenant
+   * adds later can't quietly create a new employer on the board.
+   */
+  companyNames?: Record<string, string>
+  /**
    * PeopleSoft only: a machine-readable list of the employer's open postings,
    * because PeopleSoft itself publishes none. The City of Calgary puts one on
    * its own open data portal, which is a better source than its careers page —
@@ -146,7 +157,38 @@ export const ATS_BOARDS: AtsBoard[] = [
   // Corporate and distribution roles only — Canadian Tire's store jobs are
   // posted by the individual dealers, who are not on this board. Four Calgary
   // openings today, for six list requests a sync.
-  { provider: 'workday', token: 'canadiantirecorporation', company: 'Canadian Tire', domain: 'canadiantire.ca', datacenter: 'wd3', site: 'Enterprise_External_Careers_Site' },
+  //
+  // Mark's hires through this tenant too, and is named for itself — see
+  // `companyNames`. On 2026-09-17 six of its 20 postings were in Alberta: four
+  // already on the board as "Canadian Tire", and two fit-model roles at Quarry
+  // Park, the Calgary office campus that is Mark's head office, which named no
+  // city and were dropped until the alias below.
+  {
+    provider: 'workday',
+    token: 'canadiantirecorporation',
+    company: 'Canadian Tire',
+    domain: 'canadiantire.ca',
+    datacenter: 'wd3',
+    site: 'Enterprise_External_Careers_Site',
+    companyNames: { "Mark's Work Wearhouse Ltd.": "Mark's" },
+    locationAliases: [{ pattern: /\bquarry\s*park\b/i, city: 'calgary' }],
+  },
+
+  // Shell's Workday tenant is global — 133 postings on 2026-09-17, nearly all
+  // overseas — but its Canadian roles sit at the Scotford refinery and upgrader
+  // outside Fort Saskatchewan, which the matcher already counts as Edmonton.
+  // "Scotford - Refinery" names no town, hence the alias: five postings. The
+  // Canadian graduate and internship programmes list "2 Locations" rather than
+  // a place, so they don't reach the detail fetch and are not carried.
+  {
+    provider: 'workday',
+    token: 'shell',
+    company: 'Shell Canada',
+    domain: 'shell.ca',
+    datacenter: 'wd3',
+    site: 'ShellCareers',
+    locationAliases: [{ pattern: /\bscotford\b/i, city: 'edmonton' }],
+  },
 
   // Added while the University of Calgary was still unreadable — a downtown
   // Calgary post-secondary with ~15,000 students, 18 of its 20 postings in

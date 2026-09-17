@@ -40,6 +40,11 @@ export interface RawPosting {
    * says so. Unset, the sync infers from the title as for every other board.
    */
   category?: string | null
+  /**
+   * The employer to show, where one board posts for several. Unset, the row
+   * takes the board's `company`, as nearly every board should.
+   */
+  company?: string | null
 }
 
 async function getJson(url: string, init?: RequestInit): Promise<unknown> {
@@ -336,9 +341,12 @@ async function fetchWorkday(
         timeType?: string
         jobPostingId?: string
       }
+      /** The legal entity hiring — differs from the tenant on multi-brand boards. */
+      hiringOrganization?: { name?: string }
     }
     const info = detail.jobPostingInfo
     if (!info?.externalUrl) return null
+    const hiringOrg = detail.hiringOrganization?.name?.trim()
     return {
       id: info.jobPostingId || item.bulletFields?.[0] || item.externalPath,
       title: (item.title ?? '').trim(),
@@ -348,6 +356,7 @@ async function fetchWorkday(
       // `postedOn` is relative prose ("Posted 2 Days Ago"); startDate is real.
       postedAt: info.startDate ? new Date(info.startDate).toISOString() : null,
       employmentType: normaliseEmployment(info.timeType),
+      company: hiringOrg ? board.companyNames?.[hiringOrg] ?? null : null,
     }
   })
 }

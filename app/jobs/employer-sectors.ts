@@ -77,6 +77,7 @@ const SECTOR_BY_COMPANY: Record<string, EmployerSector> = {
   'Save-On-Foods': 'Retail & Grocery',
   'The Home Depot Canada': 'Retail & Grocery',
   'Canadian Tire': 'Retail & Grocery',
+  "Mark's": 'Retail & Grocery',
 
   // Government — the name heuristic catches "City of …" and "… County", but not
   // these three.
@@ -91,6 +92,7 @@ const SECTOR_BY_COMPANY: Record<string, EmployerSector> = {
 
   // Energy & utilities
   Suncor: 'Energy & Utilities',
+  'Shell Canada': 'Energy & Utilities',
   'Cenovus Energy': 'Energy & Utilities',
   'TC Energy': 'Energy & Utilities',
   Enbridge: 'Energy & Utilities',

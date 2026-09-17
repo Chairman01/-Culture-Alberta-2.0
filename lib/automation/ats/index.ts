@@ -93,7 +93,7 @@ function toRows(posting: RawPosting, board: AtsBoard, city: JobCity): JobUpsertR
     // becomes one row per city, which would otherwise collide on (source, source_id).
     source_id: `${board.provider}:${board.token}:${posting.id}:${city}`,
     title: posting.title,
-    company: board.company,
+    company: posting.company ?? board.company,
     city,
     location_raw: locationForCity(posting.location, city) || null,
     // Storing null left the board's specialty filter empty, so every row gets
