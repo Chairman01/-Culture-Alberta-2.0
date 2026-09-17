@@ -212,7 +212,7 @@ export default function SignUpPage() {
           <span className="text-sm text-gray-700">
             <span className="font-semibold text-gray-900">Email me the free Culture Alberta newsletter</span>
             <span className="mt-0.5 block text-gray-600">
-              Local news and things to do{city ? ` in ${city}` : ' in your city'}, a few times a week.
+              Local stories and things to do{city ? ` in ${city}` : ' in your city'}, a few times a week.
               Unsubscribe any time.
             </span>
           </span>

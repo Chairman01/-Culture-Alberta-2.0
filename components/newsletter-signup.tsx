@@ -17,7 +17,7 @@ interface NewsletterSignupProps {
 export default function NewsletterSignup({
   defaultCity = "",
   title = "Newsletter",
-  description = "Stay updated with the latest cultural news and events from across Alberta.",
+  description = "Stay updated with the latest stories and events from across Alberta.",
   className = "",
   compact = false,
   accentColor = "blue"

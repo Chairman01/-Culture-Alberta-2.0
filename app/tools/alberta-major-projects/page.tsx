@@ -10,7 +10,7 @@ import { ToolFaq } from "@/components/tool-faq"
 export const metadata: Metadata = {
   title: "Alberta Tourism & Recreation Projects 2026 | Major Projects Tracker | Culture Alberta",
   description:
-    "Track every major hotel, arena, recreation centre, and tourism development underway in Alberta. Stage-by-stage updates with related news. Data from the Government of Alberta's Major Projects Inventory.",
+    "Track every major hotel, arena, recreation centre, and tourism development underway in Alberta. Stage-by-stage updates with related articles. Data from the Government of Alberta's Major Projects Inventory.",
   keywords: [
     "Alberta major projects 2026",
     "Alberta construction projects",
@@ -195,7 +195,7 @@ const faqSchema = {
       name: "How do I track a specific Alberta construction project?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Use the search bar to find a project by name or city, or use the stage filters (Building, Proposed, Completed) to narrow results. Click any project card to see full details including cost, timeline, developer, and related news articles.",
+        text: "Use the search bar to find a project by name or city, or use the stage filters (Building, Proposed, Completed) to narrow results. Click any project card to see full details including cost, timeline, developer, and related articles.",
       },
     },
   ],

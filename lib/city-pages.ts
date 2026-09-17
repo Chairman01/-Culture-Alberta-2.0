@@ -23,60 +23,60 @@ export const CITY_PAGES: Record<string, CityPageConfig> = {
         name: 'Red Deer',
         eventLocation: 'Red Deer',
         region: 'Central Alberta',
-        blurb: 'Discover the latest news, events, and stories from Central Alberta.',
-        metaTitle: 'Red Deer News, Events & Culture | Culture Alberta',
+        blurb: 'Discover the latest events and stories from Central Alberta.',
+        metaTitle: 'Red Deer Events, Food & Culture | Culture Alberta',
         metaDescription:
-            'Your local guide to Red Deer, Alberta. The latest news, events, restaurants, neighbourhoods, and culture from the heart of Central Alberta.',
+            'Your local guide to Red Deer, Alberta. The latest events, restaurants, neighbourhoods, and culture from the heart of Central Alberta.',
         keywords:
-            'Red Deer events, Red Deer news, Red Deer culture, things to do in Red Deer, Red Deer restaurants, Red Deer neighbourhoods, Red Deer Alberta, Central Alberta news',
+            'Red Deer events, Red Deer culture, things to do in Red Deer, Red Deer restaurants, Red Deer neighbourhoods, Red Deer Alberta',
     },
     lethbridge: {
         slug: 'lethbridge',
         name: 'Lethbridge',
         eventLocation: 'Lethbridge',
         region: 'Southern Alberta',
-        blurb: 'Discover the latest news, events, and stories from Southern Alberta.',
-        metaTitle: 'Lethbridge News, Events & Culture | Culture Alberta',
+        blurb: 'Discover the latest events and stories from Southern Alberta.',
+        metaTitle: 'Lethbridge Events, Food & Culture | Culture Alberta',
         metaDescription:
-            'Your local guide to Lethbridge, Alberta. The latest news, events, restaurants, neighbourhoods, and culture from Southern Alberta.',
+            'Your local guide to Lethbridge, Alberta. The latest events, restaurants, neighbourhoods, and culture from Southern Alberta.',
         keywords:
-            'Lethbridge events, Lethbridge news, Lethbridge culture, things to do in Lethbridge, Lethbridge restaurants, Lethbridge neighbourhoods, Lethbridge Alberta, Southern Alberta news',
+            'Lethbridge events, Lethbridge culture, things to do in Lethbridge, Lethbridge restaurants, Lethbridge neighbourhoods, Lethbridge Alberta',
     },
     'medicine-hat': {
         slug: 'medicine-hat',
         name: 'Medicine Hat',
         eventLocation: 'Medicine Hat',
         region: 'Southeast Alberta',
-        blurb: 'Discover the latest news, events, and stories from Southeast Alberta.',
-        metaTitle: 'Medicine Hat News, Events & Culture | Culture Alberta',
+        blurb: 'Discover the latest events and stories from Southeast Alberta.',
+        metaTitle: 'Medicine Hat Events, Food & Culture | Culture Alberta',
         metaDescription:
-            'Your local guide to Medicine Hat, Alberta. The latest news, events, restaurants, neighbourhoods, and culture from Southeast Alberta.',
+            'Your local guide to Medicine Hat, Alberta. The latest events, restaurants, neighbourhoods, and culture from Southeast Alberta.',
         keywords:
-            'Medicine Hat events, Medicine Hat news, Medicine Hat culture, things to do in Medicine Hat, Medicine Hat restaurants, Medicine Hat Alberta, Southeast Alberta news',
+            'Medicine Hat events, Medicine Hat culture, things to do in Medicine Hat, Medicine Hat restaurants, Medicine Hat Alberta',
     },
     'grande-prairie': {
         slug: 'grande-prairie',
         name: 'Grande Prairie',
         eventLocation: 'Grande Prairie',
         region: 'the Peace Country',
-        blurb: 'Discover the latest news, events, and stories from the Peace Country.',
-        metaTitle: 'Grande Prairie News, Events & Culture | Culture Alberta',
+        blurb: 'Discover the latest events and stories from the Peace Country.',
+        metaTitle: 'Grande Prairie Events, Food & Culture | Culture Alberta',
         metaDescription:
-            'Your local guide to Grande Prairie, Alberta. The latest news, events, restaurants, neighbourhoods, and culture from the Peace Country in Northwest Alberta.',
+            'Your local guide to Grande Prairie, Alberta. The latest events, restaurants, neighbourhoods, and culture from the Peace Country in Northwest Alberta.',
         keywords:
-            'Grande Prairie events, Grande Prairie news, Grande Prairie culture, things to do in Grande Prairie, Grande Prairie restaurants, Grande Prairie Alberta, Peace Country news',
+            'Grande Prairie events, Grande Prairie culture, things to do in Grande Prairie, Grande Prairie restaurants, Grande Prairie Alberta',
     },
     'fort-mcmurray': {
         slug: 'fort-mcmurray',
         name: 'Fort McMurray',
         eventLocation: 'Fort McMurray',
         region: 'the Wood Buffalo region',
-        blurb: 'Discover the latest news, events, and stories from the Wood Buffalo region.',
-        metaTitle: 'Fort McMurray News, Events & Culture | Culture Alberta',
+        blurb: 'Discover the latest events and stories from the Wood Buffalo region.',
+        metaTitle: 'Fort McMurray Events, Food & Culture | Culture Alberta',
         metaDescription:
-            'Your local guide to Fort McMurray, Alberta. The latest news, events, restaurants, neighbourhoods, and culture from the Wood Buffalo region in Northern Alberta.',
+            'Your local guide to Fort McMurray, Alberta. The latest events, restaurants, neighbourhoods, and culture from the Wood Buffalo region in Northern Alberta.',
         keywords:
-            'Fort McMurray events, Fort McMurray news, Fort McMurray culture, things to do in Fort McMurray, Fort McMurray restaurants, Fort McMurray Alberta, Wood Buffalo news',
+            'Fort McMurray events, Fort McMurray culture, things to do in Fort McMurray, Fort McMurray restaurants, Fort McMurray Alberta',
     },
 }
 
@@ -120,7 +120,7 @@ export function buildCityAllArticlesMetadata(slug: string): Metadata {
     if (!c) return {}
     return {
         title: `All ${c.name} Articles | Culture Alberta`,
-        description: `Browse every article about ${c.name}, Alberta — news, events, food, and culture from ${c.region}.`,
+        description: `Browse every article about ${c.name}, Alberta — events, food, and culture from ${c.region}.`,
         alternates: { canonical: `https://www.culturealberta.com/${c.slug}/all-articles` },
     }
 }

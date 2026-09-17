@@ -11,7 +11,7 @@ import { Metadata } from 'next'
 // Proper App Router metadata export
 export const metadata: Metadata = {
   title: 'All Edmonton Articles - Culture Alberta',
-  description: "Browse all articles about Edmonton, Alberta. Discover the latest news, events, and stories from Alberta's capital city.",
+  description: "Browse all articles about Edmonton, Alberta. Discover the latest events and stories from Alberta's capital city.",
 }
 
 export const revalidate = 900

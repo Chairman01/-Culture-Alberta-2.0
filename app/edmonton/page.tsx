@@ -16,15 +16,15 @@ import { Metadata } from 'next'
 
 // Proper App Router metadata export (replaces broken PageSEO component)
 export const metadata: Metadata = {
-  title: 'Edmonton News, Events & Culture | Culture Alberta',
-  description: "Your local guide to Edmonton, Alberta. Discover the latest news, events, restaurants, neighborhoods, and cultural stories from Alberta's capital city.",
-  keywords: 'Edmonton events, Edmonton news, Edmonton culture, things to do in Edmonton, Edmonton restaurants, Edmonton neighborhoods, Edmonton Alberta, Edmonton arts, Edmonton entertainment',
+  title: 'Edmonton Events, Food & Culture | Culture Alberta',
+  description: "Your local guide to Edmonton, Alberta. Discover the latest events, restaurants, neighborhoods, and local stories from Alberta's capital city.",
+  keywords: 'Edmonton events, Edmonton culture, things to do in Edmonton, Edmonton restaurants, Edmonton neighborhoods, Edmonton Alberta, Edmonton arts, Edmonton entertainment',
   alternates: {
     canonical: 'https://www.culturealberta.com/edmonton',
   },
   openGraph: {
-    title: 'Edmonton News, Events & Culture | Culture Alberta',
-    description: "Your local guide to Edmonton, Alberta. Discover news, events, restaurants, and culture from Alberta's capital city.",
+    title: 'Edmonton Events, Food & Culture | Culture Alberta',
+    description: "Your local guide to Edmonton, Alberta. Discover events, restaurants, and culture from Alberta's capital city.",
     url: 'https://www.culturealberta.com/edmonton',
     siteName: 'Culture Alberta',
     locale: 'en_CA',
@@ -33,8 +33,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Edmonton News, Events & Culture | Culture Alberta',
-    description: "Your local guide to Edmonton, Alberta — news, events, restaurants, and culture.",
+    title: 'Edmonton Events, Food & Culture | Culture Alberta',
+    description: "Your local guide to Edmonton, Alberta — events, restaurants, and culture.",
     site: '@culturealberta',
     images: ['https://www.culturealberta.com/images/culture-alberta-og.jpg'],
   },
@@ -184,8 +184,8 @@ export default async function EdmontonPage() {
   const edmontonSchema = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    "name": "Edmonton News, Events & Culture",
-    "description": "Your local guide to Edmonton, Alberta — news, events, restaurants, neighborhoods, and culture.",
+    "name": "Edmonton Events, Food & Culture",
+    "description": "Your local guide to Edmonton, Alberta — events, restaurants, neighborhoods, and culture.",
     "url": "https://www.culturealberta.com/edmonton",
     "isPartOf": { "@type": "WebSite", "name": "Culture Alberta", "url": "https://www.culturealberta.com" },
     "about": {
@@ -219,7 +219,7 @@ export default async function EdmontonPage() {
                 <div className="space-y-1">
                   <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl">Edmonton</h1>
                   <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                    Discover the latest news, events, and stories from Alberta's capital city.
+                    Discover the latest events and stories from Alberta's capital city.
                   </p>
                 </div>
               </div>
@@ -371,7 +371,7 @@ export default async function EdmontonPage() {
                       </div>
                       <div>
                         <h2 className="font-display text-base font-bold text-gray-900 leading-tight">Newsletter</h2>
-                        <p className="font-body text-xs text-gray-500 leading-snug">Stay updated with the latest cultural news and events from Edmonton and across Alberta.</p>
+                        <p className="font-body text-xs text-gray-500 leading-snug">Stay updated with the latest stories and events from Edmonton and across Alberta.</p>
                       </div>
                     </div>
                     <NewsletterSignup

@@ -6,12 +6,12 @@ import { getArticleUrl } from "@/lib/utils/article-url"
 
 export const metadata: Metadata = {
   title: 'Retail in Alberta | Store Openings, Costco, Malls & Shopping | Culture Alberta',
-  description: 'New store openings and shopping news across Alberta — Costco, Walmart, malls, big-box and retail chains. What is opening, where, and when.',
+  description: 'New store openings and shopping updates across Alberta — Costco, Walmart, malls, big-box and retail chains. What is opening, where, and when.',
   keywords: 'Alberta store openings, new Costco Alberta, Alberta Walmart, West Edmonton Mall, Alberta shopping, retail Alberta, new stores Calgary Edmonton',
   alternates: { canonical: 'https://www.culturealberta.com/retail' },
   openGraph: {
     title: 'Retail in Alberta | Store Openings, Costco, Malls & Shopping',
-    description: 'New store openings and shopping news across Alberta — what is opening, where, and when.',
+    description: 'New store openings and shopping updates across Alberta — what is opening, where, and when.',
     url: 'https://www.culturealberta.com/retail',
     type: 'website',
   },
@@ -47,18 +47,18 @@ export default async function RetailPage() {
     <>
     <SectionStructuredData
       name="Retail"
-      description="Store openings and shopping news across Alberta — new Costcos, big-box arrivals, malls and the chains coming to your city."
+      description="Store openings and shopping updates across Alberta — new Costcos, big-box arrivals, malls and the chains coming to your city."
       path="/retail"
       articles={all.map(a => ({ title: a.title, url: getArticleUrl(a) }))}
     />
     <SectionHub
       title="Retail"
-      description="Store openings and shopping news across Alberta — new Costcos, big-box arrivals, malls and the chains coming to your city."
+      description="Store openings and shopping updates across Alberta — new Costcos, big-box arrivals, malls and the chains coming to your city."
       accent="purple"
       featuredArticle={featuredArticle}
       articles={articles}
       newsletterTitle="Never miss an opening"
-      newsletterDescription="New stores, Costcos and shopping news across Alberta — straight to your inbox."
+      newsletterDescription="New stores, Costcos and shopping updates across Alberta — straight to your inbox."
     />
     </>
   )

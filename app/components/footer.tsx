@@ -155,7 +155,7 @@ export function Footer() {
           <div>
             <h3 className="text-lg font-bold mb-4">Newsletter</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Subscribe to our newsletter for the latest cultural news and events.
+              Subscribe to our newsletter for the latest stories and events.
             </p>
             <form className="space-y-2">
               <Input placeholder="Enter your email" type="email" />

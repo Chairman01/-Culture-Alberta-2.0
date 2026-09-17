@@ -28,7 +28,7 @@ export const MAIN_CATEGORIES = [
   "Grande Prairie",
   "Other communities",
   "Neighborhood",
-  "News",
+  "Local",
   "Guide",
   "Food & Drink",
   "Money",

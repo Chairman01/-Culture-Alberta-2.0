@@ -15,15 +15,15 @@ import { Metadata } from 'next'
 
 // Proper App Router metadata export (replaces broken PageSEO component)
 export const metadata: Metadata = {
-  title: 'Calgary News, Events & Culture | Culture Alberta',
-  description: "Your local guide to Calgary, Alberta. Discover the latest news, events, restaurants, neighborhoods, and cultural stories from Alberta's largest city.",
-  keywords: 'Calgary events, Calgary news, Calgary culture, things to do in Calgary, Calgary restaurants, Calgary neighborhoods, Calgary Alberta, Calgary arts, Calgary entertainment',
+  title: 'Calgary Events, Food & Culture | Culture Alberta',
+  description: "Your local guide to Calgary, Alberta. Discover the latest events, restaurants, neighborhoods, and local stories from Alberta's largest city.",
+  keywords: 'Calgary events, Calgary culture, things to do in Calgary, Calgary restaurants, Calgary neighborhoods, Calgary Alberta, Calgary arts, Calgary entertainment',
   alternates: {
     canonical: 'https://www.culturealberta.com/calgary',
   },
   openGraph: {
-    title: 'Calgary News, Events & Culture | Culture Alberta',
-    description: "Your local guide to Calgary, Alberta. Discover news, events, restaurants, and culture from Alberta's largest city.",
+    title: 'Calgary Events, Food & Culture | Culture Alberta',
+    description: "Your local guide to Calgary, Alberta. Discover events, restaurants, and culture from Alberta's largest city.",
     url: 'https://www.culturealberta.com/calgary',
     siteName: 'Culture Alberta',
     locale: 'en_CA',
@@ -32,8 +32,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Calgary News, Events & Culture | Culture Alberta',
-    description: "Your local guide to Calgary, Alberta — news, events, restaurants, and culture.",
+    title: 'Calgary Events, Food & Culture | Culture Alberta',
+    description: "Your local guide to Calgary, Alberta — events, restaurants, and culture.",
     site: '@culturealberta',
     images: ['https://www.culturealberta.com/images/culture-alberta-og.jpg'],
   },
@@ -181,8 +181,8 @@ export default async function CalgaryPage() {
   const calgarySchema = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    "name": "Calgary News, Events & Culture",
-    "description": "Your local guide to Calgary, Alberta — news, events, restaurants, neighborhoods, and culture.",
+    "name": "Calgary Events, Food & Culture",
+    "description": "Your local guide to Calgary, Alberta — events, restaurants, neighborhoods, and culture.",
     "url": "https://www.culturealberta.com/calgary",
     "isPartOf": { "@type": "WebSite", "name": "Culture Alberta", "url": "https://www.culturealberta.com" },
     "about": {
@@ -216,7 +216,7 @@ export default async function CalgaryPage() {
                 <div className="space-y-1">
                   <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl">Calgary</h1>
                   <p className="max-w-[900px] text-muted-foreground md:text-xl mx-auto">
-                    Discover the latest news, events, and stories from Alberta's largest city.
+                    Discover the latest events and stories from Alberta's largest city.
                   </p>
                 </div>
               </div>
@@ -367,7 +367,7 @@ export default async function CalgaryPage() {
                       </div>
                       <div>
                         <h2 className="font-display text-base font-bold text-gray-900 leading-tight">Newsletter</h2>
-                        <p className="font-body text-xs text-gray-500 leading-snug">Stay updated with the latest cultural news and events from Calgary and across Alberta.</p>
+                        <p className="font-body text-xs text-gray-500 leading-snug">Stay updated with the latest stories and events from Calgary and across Alberta.</p>
                       </div>
                     </div>
                     <NewsletterSignup

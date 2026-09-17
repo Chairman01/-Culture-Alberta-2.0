@@ -29,7 +29,7 @@ export const viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.culturealberta.com'),
-  title: 'Culture Alberta | Alberta Events, Food & Local News',
+  title: 'Culture Alberta | Alberta Events, Food & Things to Do',
   description: 'Your guide to Alberta\'s culture: events, restaurants, festivals & local experiences in Calgary, Edmonton & beyond.',
   keywords: 'Alberta culture, Calgary events, Edmonton culture, Alberta tourism, local events, cultural activities, Alberta restaurants, Alberta attractions',
   authors: [{ name: 'Culture Alberta' }],
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     url: 'https://www.culturealberta.com',
     siteName: 'Culture Alberta',
     locale: 'en_CA',
-    title: 'Culture Alberta | Alberta Events, Food & Local News',
+    title: 'Culture Alberta | Alberta Events, Food & Things to Do',
     description: 'Your guide to Alberta\'s culture: events, restaurants, festivals & local experiences in Calgary, Edmonton & beyond.',
     images: [
       {
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Culture Alberta | Alberta Events, Food & Local News',
+    title: 'Culture Alberta | Alberta Events, Food & Things to Do',
     description: 'Your guide to Alberta\'s culture: events, restaurants, festivals & local experiences in Calgary, Edmonton & beyond.',
     images: [
       {

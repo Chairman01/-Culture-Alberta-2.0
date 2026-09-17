@@ -100,7 +100,7 @@ export async function suggestPollForArticle(article: Omit<ArticleForPoll, 'id'>)
         .trim()
         .slice(0, 2500)
 
-    const prompt = `You write one-tap reader polls for Culture Alberta, a local Alberta news and culture site. Read this article and decide whether a poll is appropriate, and if so, write one.
+    const prompt = `You write one-tap reader polls for Culture Alberta, a local Alberta culture and city guide site. Read this article and decide whether a poll is appropriate, and if so, write one.
 
 Title: ${article.title}
 Category: ${article.category || ''}

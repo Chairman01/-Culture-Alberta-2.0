@@ -8,7 +8,7 @@ export async function GET() {
   return buildRssFeed({
     title: "Culture Alberta",
     description:
-      "Alberta events, culture, food, and local news covering Calgary, Edmonton, and communities across Alberta.",
+      "Alberta events, culture, food, and local stories covering Calgary, Edmonton, and communities across Alberta.",
     selfUrl: "https://www.culturealberta.com/feed.xml",
   })
 }

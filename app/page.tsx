@@ -666,7 +666,7 @@ export default async function HomeStatic() {
                   {/* Newsletter */}
                   <NewsletterSignup
                     title="Newsletter"
-                    description="Stay updated with the latest cultural news and events from across Alberta."
+                    description="Stay updated with the latest stories and events from across Alberta."
                   />
                 </div>
               </div>

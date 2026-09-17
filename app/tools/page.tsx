@@ -512,7 +512,7 @@ export default function ToolsPage() {
               <div className="p-6 flex flex-col flex-1">
                 <h2 className="text-xl font-bold text-gray-900 group-hover:text-teal-700 transition-colors mb-2">Alberta Tourism & Recreation Projects</h2>
                 <p className="text-sm text-gray-500 leading-relaxed flex-1 mb-5">
-                  Hotels, arenas, recreation centres, and event venues being built across Alberta right now. Stage-by-stage updates with linked news articles.
+                  Hotels, arenas, recreation centres, and event venues being built across Alberta right now. Stage-by-stage updates with linked articles.
                 </p>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 flex items-center justify-center gap-2 bg-teal-600 group-hover:bg-teal-700 text-white rounded-xl py-3 font-semibold text-sm transition-colors">

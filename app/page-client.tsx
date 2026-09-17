@@ -339,7 +339,7 @@ export default function Home() {
     <>
       <PageSEO
         title="Culture Alberta - Home"
-        description="Discover the best of Alberta's culture, events, and local businesses. Stay informed with the latest news and updates."
+        description="Discover the best of Alberta's culture, events, and local businesses. Stay in the loop with the latest stories and updates."
       />
       <Suspense fallback={<HomePageSkeleton />}>
         <div className="flex min-h-screen flex-col">
@@ -427,7 +427,7 @@ export default function Home() {
                   {/* Newsletter */}
                   <NewsletterSignup 
                     title="Newsletter"
-                    description="Stay updated with the latest cultural news and events from across Alberta."
+                    description="Stay updated with the latest stories and events from across Alberta."
                   />
                 </div>
               </div>

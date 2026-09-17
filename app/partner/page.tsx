@@ -382,7 +382,7 @@ export default function PartnerPage() {
                 { name: "Sports", emoji: "⚡" },
                 { name: "Arts & Culture", emoji: "🎨" },
                 { name: "Real Estate", emoji: "🏠" },
-                { name: "Local News", emoji: "📰" },
+                { name: "Local Stories", emoji: "📍" },
                 { name: "Things To Do", emoji: "🗺️" },
               ].map((area) => (
                 <div
