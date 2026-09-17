@@ -6,11 +6,14 @@ import { resolveCategory } from '@/lib/job-categories'
 import type { BrowserJob } from './jobs-browser'
 
 /**
- * Employers we post manually, which have no ATS board to resolve a domain from.
- * Keyed by the exact company name stored on the job.
+ * Logo domains keyed by the exact company name stored on the job: employers we
+ * post manually, which have no ATS board to resolve a domain from, and brands
+ * that share another company's board and would otherwise wear its logo.
  */
 const MANUAL_COMPANY_DOMAINS: Record<string, string> = {
   'Elections Alberta': 'elections.ab.ca',
+  // Hires through Canadian Tire's Workday tenant; see companyNames in boards.ts.
+  "Mark's": 'marks.com',
   // Deliberately no entry for Hell's Kitchen: hellskitchenrestaurant.com only
   // publishes a 32px white-on-black favicon, which scales up to an indistinct
   // dark square. The lettered tile reads better until the real asset is hosted.
@@ -39,12 +42,14 @@ export function logoSrcFor(job: Pick<Job, 'company'>): string | undefined {
 /**
  * Company website for the logo lookup. Resolved from the board registry rather
  * than stored per row, so correcting one employer's domain fixes every one of
- * their postings without a re-sync. Manual postings fall back to the map above —
- * without it they showed a lettered tile while every ATS job had a real logo.
+ * their postings without a re-sync. The company map is checked first: a brand
+ * on a shared board has to beat that board's domain, and a manual posting has
+ * no board domain at all.
  */
 export function logoDomainFor(job: Pick<Job, 'ats_board' | 'company'>): string | undefined {
+  if (MANUAL_COMPANY_DOMAINS[job.company]) return MANUAL_COMPANY_DOMAINS[job.company]
   if (job.ats_board && BOARD_DOMAINS[job.ats_board]) return BOARD_DOMAINS[job.ats_board]
-  return MANUAL_COMPANY_DOMAINS[job.company]
+  return undefined
 }
 
 const EMPLOYMENT_LABELS: Record<string, string> = {
