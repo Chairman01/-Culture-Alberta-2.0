@@ -12,9 +12,14 @@ import { getServiceClient } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
+// 'other-alberta' is a real destination, not a holding pen: the Alberta edition
+// is sent to every active subscriber who is not on one of the seven city lists
+// (see getActiveSubscribers in lib/newsletter/send-newsletter.ts). Leaving it
+// out meant an admin could move somebody off that edition but never onto it.
 const VALID_CITIES = [
   'edmonton', 'calgary', 'lethbridge', 'red-deer',
   'grande-prairie', 'fort-mcmurray', 'medicine-hat',
+  'other-alberta',
 ]
 
 export async function POST(req: NextRequest) {

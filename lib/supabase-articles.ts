@@ -374,6 +374,87 @@ export async function getHomepageArticles(): Promise<Article[]> {
   }
 }
 
+// Every published article, for the index pages that promise "all" of something.
+//
+// getHomepageArticles and getAllArticles both stop at the 500 newest rows. That
+// is the right trade for a homepage — it renders a couple of dozen cards — but
+// the /<city>/all-articles pages filter those 500 down to one city, so the cap
+// lands on them as a date cutoff rather than a count. At 772 published articles
+// /edmonton/all-articles was showing 150 of Edmonton's 238, and everything
+// published before 2026-05-12 had quietly fallen off the end of the grid. The
+// articles were still live and still in the sitemap; there was simply no longer
+// a link to them from the page whose whole job is to link to them.
+//
+// Paged in blocks of 1,000 because PostgREST caps a response at 1,000 rows
+// whatever .limit() asks for — the same reason app/sitemap.ts pages.
+//
+// Cached separately from articlesCache: that cache is shared with the homepage,
+// and seeding it with the full table would hand every homepage render a much
+// larger array than it has any use for.
+let allPublishedCache: Article[] | null = null
+let allPublishedCacheTimestamp = 0
+
+export function invalidateAllPublishedCache(): void {
+  allPublishedCache = null
+  allPublishedCacheTimestamp = 0
+}
+
+export async function getAllPublishedArticles(): Promise<Article[]> {
+  const now = Date.now()
+  if (allPublishedCache && (now - allPublishedCacheTimestamp) < getCacheDuration()) {
+    console.log('⚡ Using cached full published set:', allPublishedCache.length, 'articles')
+    return allPublishedCache
+  }
+
+  if (!supabase) {
+    console.warn('⚠️ Supabase not initialized, falling back to the capped article list')
+    return getAllArticles()
+  }
+
+  // No content column — these pages render titles, excerpts and images only.
+  const fields = ensureImageFields(
+    'id, title, excerpt, category, categories, location, author, tags, type, status, created_at, updated_at, ' +
+    'trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary'
+  )
+  const timeoutDuration = process.env.NODE_ENV === 'development' ? 2000 : 8000
+
+  try {
+    const rows: any[] = []
+    const PAGE = 1000
+    for (let page = 0; ; page++) {
+      const result = await Promise.race([
+        supabase
+          .from('articles')
+          .select(fields)
+          // Public read: drafts must never reach the live site.
+          .eq('status', 'published')
+          .order('created_at', { ascending: false })
+          .range(page * PAGE, (page + 1) * PAGE - 1),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Supabase timeout')), timeoutDuration)
+        ),
+      ]) as any
+
+      if (result?.error) throw result.error
+      const data = result?.data || []
+      rows.push(...data)
+      if (data.length < PAGE) break
+    }
+
+    const mapped = rows.map(mapArticleRow)
+    allPublishedCache = mapped
+    allPublishedCacheTimestamp = now
+    console.log(`✅ Fetched the full published set: ${mapped.length} articles`)
+    return mapped
+  } catch (error) {
+    // Degrade to the capped list rather than to nothing: a page missing its
+    // oldest entries beats a page with an empty grid.
+    console.warn('⚠️ Full published fetch failed, falling back to the capped list:', error)
+    if (allPublishedCache) return allPublishedCache
+    return getAllArticles()
+  }
+}
+
 // Articles an editor filed under a section category (Money, Retail).
 //
 // Like getFeaturedHomeArticle, this MUST be its own query rather than filtering
@@ -504,6 +585,7 @@ export function invalidateHomepageCache(): void {
   console.log('🗑️ CACHE: Invalidating homepage cache due to article changes')
   articlesCache = null
   cacheTimestamp = 0
+  invalidateAllPublishedCache()
 }
 
 // Optimized function for admin list that only fetches essential fields
@@ -1072,6 +1154,7 @@ export async function getAllArticles(): Promise<Article[]> {
 export function clearArticlesCache() {
   articlesCache = null
   cacheTimestamp = 0
+  invalidateAllPublishedCache()
   cityArticlesCache.clear()
   cityCacheTimestamp.clear()
 

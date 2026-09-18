@@ -24,16 +24,28 @@ interface AdminUser {
     saved: number
 }
 
-/** Slug → label, for the newsletter column. */
+/** Slug → label, for the newsletter column. Every edition an admin can move
+ *  somebody to, including the Alberta one. */
 const LIST_LABELS: Record<string, string> = {
     edmonton: 'Edmonton', calgary: 'Calgary', lethbridge: 'Lethbridge',
     'red-deer': 'Red Deer', 'grande-prairie': 'Grande Prairie',
     'fort-mcmurray': 'Fort McMurray', 'medicine-hat': 'Medicine Hat',
+    'other-alberta': 'Other Alberta',
 }
 
-/** Buckets the send route never delivers to — subscribers here receive nothing. */
-function isDeadList(city: string | null): boolean {
-    return !!city && !(city in LIST_LABELS)
+/**
+ * The edition a stored city value actually receives.
+ *
+ * There is no dead list any more. getActiveSubscribers() in
+ * lib/newsletter/send-newsletter.ts defines the Alberta edition by exclusion —
+ * every active subscriber who is not on one of the seven city lists — so
+ * 'other-alberta', 'other', 'outside-alberta' and anything misspelled all get
+ * mailed. This column used to flag those as "never sends", which stopped being
+ * true once the Alberta edition started going out.
+ */
+function listSlug(city: string | null): string {
+    if (!city) return 'other-alberta'
+    return city in LIST_LABELS ? city : 'other-alberta'
 }
 
 /** Profile city label → list slug, e.g. "Red Deer" → "red-deer". */
@@ -261,21 +273,20 @@ export default function AdminUsersByCity() {
     const newsletterBreakdown = useMemo(() => {
         const counts = new Map<string, number>()
         let notSubscribed = 0
-        let deadListMembers = 0
         const mismatched: FlatUser[] = []
 
         for (const u of allUsers) {
             if (u.newsletter !== 'active') { notSubscribed++; continue }
-            const list = u.newsletterCity ?? 'unknown'
+            // Counted by the edition they actually receive, so the legacy
+            // buckets fold into Other Alberta rather than sitting on their own.
+            const list = listSlug(u.newsletterCity)
             counts.set(list, (counts.get(list) ?? 0) + 1)
-            if (isDeadList(u.newsletterCity)) deadListMembers++
             if (u.newsletterMismatch) mismatched.push(u)
         }
 
         return {
             lists: [...counts.entries()].sort((a, b) => b[1] - a[1]),
             notSubscribed,
-            deadListMembers,
             mismatched,
         }
     }, [allUsers])
@@ -330,24 +341,16 @@ export default function AdminUsersByCity() {
                     <span className="inline-flex items-center gap-1.5">
                         {/* Editable in place — pick a city to move them. */}
                         <select
-                            value={u.newsletterCity ?? ''}
+                            value={listSlug(u.newsletterCity)}
                             disabled={savingEmail === u.email}
                             onChange={e => changeNewsletter(u, e.target.value)}
                             aria-label={`Newsletter for ${u.email}`}
                             className={`rounded-md border-0 px-2 py-1 text-xs font-medium disabled:opacity-50 ${
                                 u.newsletterMismatch
                                     ? 'bg-amber-100 text-amber-900'
-                                    : isDeadList(u.newsletterCity)
-                                        ? 'bg-red-50 text-red-700'
-                                        : 'bg-emerald-50 text-emerald-800'
+                                    : 'bg-emerald-50 text-emerald-800'
                             }`}
                         >
-                            {/* Present but unselectable: these buckets never send. */}
-                            {isDeadList(u.newsletterCity) && (
-                                <option value={u.newsletterCity ?? ''} disabled>
-                                    {u.newsletterCity} (never sends)
-                                </option>
-                            )}
                             {Object.entries(LIST_LABELS).map(([slug, label]) => (
                                 <option key={slug} value={slug}>{label}</option>
                             ))}
@@ -454,15 +457,10 @@ export default function AdminUsersByCity() {
                             {newsletterBreakdown.lists.map(([list, n]) => (
                                 <span
                                     key={list}
-                                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm ${
-                                        isDeadList(list)
-                                            ? 'bg-red-50 text-red-800 border border-red-200'
-                                            : 'bg-gray-100 text-gray-800'
-                                    }`}
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-800"
                                 >
                                     <span className="font-semibold">{LIST_LABELS[list] ?? list}</span>
                                     <span className="tabular-nums">{n}</span>
-                                    {isDeadList(list) && <span className="text-xs">· never sends</span>}
                                 </span>
                             ))}
                             {newsletterBreakdown.notSubscribed > 0 && (
@@ -491,14 +489,6 @@ export default function AdminUsersByCity() {
                             </div>
                         )}
 
-                        {newsletterBreakdown.deadListMembers > 0 && (
-                            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-                                <strong>{newsletterBreakdown.deadListMembers} member
-                                {newsletterBreakdown.deadListMembers === 1 ? ' is' : 's are'} on a list that never
-                                sends.</strong> They opted in and receive nothing. They need moving to a real
-                                edition, or asking which city they want.
-                            </div>
-                        )}
                     </div>
 
                     {/* ── Controls ─────────────────────────────────────────── */}

@@ -1,5 +1,5 @@
 import { Article } from './types/article'
-import { getAllArticles as getSupabaseArticles, getHomepageArticles, getArticlesBySectionCategory } from './supabase-articles'
+import { getAllArticles as getSupabaseArticles, getHomepageArticles, getAllPublishedArticles, getArticlesBySectionCategory } from './supabase-articles'
 import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fallback'
 import fs from 'fs'
 import path from 'path'
@@ -429,9 +429,18 @@ export async function getAllCityArticlesWithFallback(city: string): Promise<Arti
     )
   }
 
-  // Primary: fetch all articles (no city filter in DB) and filter client-side
+  // Primary: fetch every published article (no city filter in DB — membership
+  // can come from location, category, categories, tags or the title, and the
+  // array columns don't filter cleanly in PostgREST) and narrow it here.
+  //
+  // This deliberately does NOT use getHomepageArticles: that query stops at the
+  // 500 newest rows, and once those 500 are filtered down to one city the cap
+  // stops being a count and becomes a date cutoff. On 2026-09-05 this page was
+  // showing 150 of Edmonton's 238 published articles, with everything before
+  // 2026-05-12 missing — still live, still in the sitemap, just no longer
+  // linked from the page whose entire purpose is to link to them.
   try {
-    const allArticles = await getHomepageArticles()
+    const allArticles = await getAllPublishedArticles()
     if (allArticles.length > 0) {
       const cityArticles = allArticles.filter(matchesCity)
       const result = excludeOtherCityArticles(cityArticles, cityLower)

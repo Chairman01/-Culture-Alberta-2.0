@@ -2,6 +2,7 @@ import { Article, CreateArticleInput, UpdateArticleInput } from './types/article
 import {
   getAllArticles as getAllArticlesFromSupabase,
   getHomepageArticles as getHomepageArticlesFromSupabase,
+  getAllPublishedArticles as getAllPublishedArticlesFromSupabase,
   getAdminArticles as getAdminArticlesFromSupabase,
   getCityArticles as getCityArticlesFromSupabase,
   getEventsArticles as getEventsArticlesFromSupabase,
@@ -50,6 +51,30 @@ export async function getHomepageArticles(): Promise<Article[]> {
 
   try {
     const supabaseArticles = await getHomepageArticlesFromSupabase()
+    if (supabaseArticles && supabaseArticles.length > 0) {
+      return supabaseArticles.filter(item => item.type !== 'event')
+    }
+    throw new Error('No articles from Supabase')
+  } catch (supabaseError) {
+    console.warn('⚠️ Supabase failed, using optimized fallback:', supabaseError)
+    const fallbackArticles = await loadOptimizedFallback()
+    return fallbackArticles.filter(item => item.type !== 'event')
+  }
+}
+
+// Every published article, uncapped — for the pages that promise "all" of
+// something. getAllArticles above stops at the 500 newest rows, which reads as
+// a silent date cutoff once a page filters those 500 down to a single city.
+// Only the index pages should call this; anything rendering a fixed number of
+// cards wants getAllArticles or getHomepageArticles instead.
+export async function getAllPublishedArticles(): Promise<Article[]> {
+  if (useFastDevFallback) {
+    const fallbackArticles = await loadOptimizedFallback()
+    return fallbackArticles.filter(item => item.type !== 'event')
+  }
+
+  try {
+    const supabaseArticles = await getAllPublishedArticlesFromSupabase()
     if (supabaseArticles && supabaseArticles.length > 0) {
       return supabaseArticles.filter(item => item.type !== 'event')
     }
