@@ -397,11 +397,27 @@ const getArticleFromDB = unstable_cache(
         }
       }
     } catch {}
+    const exactSlugMatch = !!article
     if (!article) {
       try { article = await getArticleBySlug(slug) } catch {}
     }
     if (!article) {
       try { article = await getArticleById(slug) } catch {}
+    }
+
+    // The loose lookups above match on the TITLE-derived slug and can return a
+    // row from the bundled fallback, whose slug is missing or stale. The stored
+    // slug can differ (e.g. a "-1" collision suffix), and everything keyed on it
+    // — the canonical redirect, the view counter — silently targets nothing.
+    // Resolve the real slug by id so the page redirects to the one true URL.
+    if (article?.id && !exactSlugMatch) {
+      try {
+        const { data: row } = await Promise.race([
+          supabase.from('articles').select('slug').eq('id', article.id).eq('status', 'published').maybeSingle(),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Supabase slug-by-id timeout')), 3000))
+        ]) as any
+        if (row?.slug) article = { ...article, slug: row.slug }
+      } catch {}
     }
     return article
   },
@@ -1186,7 +1202,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                         {loadedArticle.author && (
                           <span className="font-medium">By {loadedArticle.author}</span>
                         )}
-                        <ArticleViewCount slug={slug} articleTitle={loadedArticle.title} />
+                        <ArticleViewCount slug={loadedArticle.slug || slug} articleTitle={loadedArticle.title} />
                       </div>
 
                       <h1 className="text-4xl lg:text-5xl font-bold leading-tight text-gray-900">
@@ -1283,7 +1299,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                           <span>Published {formatDate(loadedArticle.date)}</span>
                         </div>
                       )}
-                      <ArticleViewCount slug={slug} articleTitle={loadedArticle.title} />
+                      <ArticleViewCount slug={loadedArticle.slug || slug} articleTitle={loadedArticle.title} />
                     </div>
 
                     {/* Reader poll — this article's own question only; tragedy stories
