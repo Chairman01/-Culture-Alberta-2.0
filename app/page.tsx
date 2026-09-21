@@ -346,6 +346,11 @@ export default async function HomeStatic() {
     const combined = [loc, ...cats, ...tags].join(' ')
     // Location "Alberta" = province-wide, not city-specific
     if (loc === 'alberta') return false
+    // Location wins, same as excludeCalgaryEdmonton in lib/alberta-cities. An editor who
+    // files an Airdrie story under Calgary still tags it "airdrie"; that tag used to drop
+    // it from Calgary Spotlight while the Calgary location dropped it from More From
+    // Alberta, so the article appeared nowhere on the homepage.
+    if (loc.includes('calgary') || loc.includes('edmonton')) return false
     return OTHER_ALBERTA_CITIES.some(city => combined.includes(city))
   }
 
