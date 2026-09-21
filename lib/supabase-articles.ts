@@ -272,16 +272,19 @@ export async function getHomepageArticles(): Promise<Article[]> {
     }
 
     // SPEED: Fail faster in development so fallback renders quickly
-    const timeoutDuration = process.env.NODE_ENV === 'development' ? 1200 : 3000
+    const timeoutDuration = process.env.NODE_ENV === 'development' ? 1200 : 5000
 
     // SPEED OPTIMIZATION: Only fetch essential fields for homepage (NOT full content!)
     // Full content will be loaded on-demand when user clicks an article
     const fields = ensureImageFields('id, title, excerpt, category, categories, created_at, updated_at, trending_home, trending_edmonton, trending_calgary, featured_home, featured_edmonton, featured_calgary, type, status, author, location, tags')
 
-    // RETRY LOGIC: Single attempt with shorter timeout for speed
+    // RETRY LOGIC: one retry in production. This only runs during an ISR render, never
+    // in front of a visitor, and a failure here is expensive: the page falls back to
+    // the deploy-time snapshot and is then cached for 30 minutes, hiding every article
+    // published since the last deploy. A slow cold start used to be enough to do that.
     let data, error
     let attempts = 0
-    const maxAttempts = 1 // Only 1 attempt for speed
+    const maxAttempts = process.env.NODE_ENV === 'development' ? 1 : 2
 
     while (attempts < maxAttempts) {
       attempts++
