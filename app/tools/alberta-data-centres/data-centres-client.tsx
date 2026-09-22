@@ -1,10 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import {
-  ArrowRight, ExternalLink, Search, Zap, MapPin, Factory, Droplets, Users, Building2, X,
+  ArrowRight, ExternalLink, Search, Zap, MapPin, Factory, Droplets, Users, Building2, X, ChevronDown,
 } from "lucide-react"
 import {
   ALBERTA_REFERENCE, HOMES_PER_MW, STATUS_LABEL, POWER_LABEL, WORKLOAD_LABEL,
@@ -37,6 +37,44 @@ const fmtCost = (m: number | null) =>
   m == null ? null : m >= 1000 ? `$${(m / 1000).toLocaleString("en-CA", { maximumFractionDigits: 0 })}B` : `$${m.toLocaleString("en-CA")}M`
 
 const fmtInt = (n: number) => n.toLocaleString("en-CA")
+
+// Real photographs (Pexels, free licence). No renders: a glossy AI-generated
+// server hall is the quickest way to make a page look machine-made.
+const PHOTO = {
+  hall: "https://images.pexels.com/photos/4508751/pexels-photo-4508751.jpeg?auto=compress&cs=tinysrgb&w=1920",
+  racks: "https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  substation: "https://images.pexels.com/photos/236089/pexels-photo-236089.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  solar: "https://images.pexels.com/photos/2800832/pexels-photo-2800832.jpeg?auto=compress&cs=tinysrgb&w=1200",
+}
+
+// Counts a number up from zero the first time it scrolls into view.
+function useCountUp(target: number, ms = 1100) {
+  const [value, setValue] = useState(0)
+  const ref = useRef<HTMLElement | null>(null)
+  const started = useRef(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    const run = () => {
+      if (started.current) return
+      started.current = true
+      if (reduce) { setValue(target); return }
+      const t0 = performance.now()
+      const tick = (t: number) => {
+        const k = Math.min(1, (t - t0) / ms)
+        const eased = 1 - Math.pow(1 - k, 3)
+        setValue(target * eased)
+        if (k < 1) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    }
+    const io = new IntersectionObserver(entries => { if (entries.some(e => e.isIntersecting)) { run(); io.disconnect() } }, { threshold: 0.3 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [target, ms])
+  return { value, ref }
+}
 
 const STATUS_CHIP: Record<DcStatus, string> = {
   proposed: "bg-amber-100 text-amber-800",
@@ -77,6 +115,15 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
   const [workload, setWorkload] = useState<DcWorkload | "all">("all")
   const [sort, setSort] = useState<SortKey>("mw-desc")
   const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  // Hero stat tiles
+  const [openStat, setOpenStat] = useState<"tracked" | "demand" | "grid" | "operating" | null>(null)
+  const toggleStat = (k: typeof openStat) => setOpenStat(prev => (prev === k ? null : k))
+  const jumpToList = (f: { status?: DcStatus | "active" | "all" }) => {
+    if (f.status) setStatus(f.status)
+    setOpenStat(null)
+    setTimeout(() => document.getElementById("projects-heading")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50)
+  }
 
   // Bill widget state
   const [monthlyBill, setMonthlyBill] = useState(180)
@@ -126,31 +173,91 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
       {/* ------------------------------------------------------------------ */}
       {/* Hero                                                                */}
       {/* ------------------------------------------------------------------ */}
-      <header className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 text-white">
-        <div className="container mx-auto px-4 max-w-6xl py-12 md:py-16">
-          <nav className="text-xs text-slate-300 mb-4 flex items-center gap-1.5" aria-label="Breadcrumb">
+      <header className="relative text-white overflow-hidden bg-slate-950">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={PHOTO.hall} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover object-center opacity-40" fetchPriority="high" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-900/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+        <div className="relative container mx-auto px-4 max-w-6xl pt-10 pb-8 md:pt-16 md:pb-12">
+          <nav className="text-xs text-slate-300 mb-6 flex items-center gap-1.5" aria-label="Breadcrumb">
             <Link href="/" className="hover:text-white">Home</Link><span>/</span>
             <Link href="/tools" className="hover:text-white">Alberta Tools</Link><span>/</span>
             <span className="text-white">Data Centres</span>
           </nav>
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight leading-tight">
-            Alberta Data Centre Tracker
-          </h1>
-          <p className="mt-4 text-lg text-slate-200 max-w-3xl">
-            Every proposed, approved, under-construction and operating data centre in Alberta, on one map: who is
-            building it, how much power it needs, where that power comes from, and what it could mean for your
-            electricity bill.
-          </p>
-          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Stat label="Projects tracked" value={fmtInt(all.total)} sub={`${all.active} proposed or building`} />
-            <Stat label="Proposed new demand" value={fmtMW(all.proposedMW)} sub={`vs ${fmtMW(ALBERTA_REFERENCE.recordPeakMW)} Alberta record peak`} />
-            <Stat label="Allowed on the grid so far" value={fmtMW(ALBERTA_REFERENCE.aesoPhase1MW)} sub={`of ${fmtMW(ALBERTA_REFERENCE.aesoRequestedMW)} requested`} />
-            <Stat label="Operating today" value={fmtMW(all.operatingMW)} sub={`across ${all.operating} sites`} />
+          <div className="max-w-3xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-300">Tracker · Updated {fmtDay(lastReviewed)}</p>
+            <h1 className="mt-3 text-4xl md:text-6xl font-bold tracking-tight leading-[1.05]">
+              Alberta Data Centre Tracker
+            </h1>
+            <p className="mt-5 text-lg md:text-xl text-slate-200 leading-relaxed">
+              Meta is digging in Sturgeon County. Kevin O&apos;Leary wants 7.5 gigawatts near Grande Cache. Thirty-odd
+              other companies have asked the province for power. This is where every one of them stands, what it
+              would draw from the grid, and who ends up paying.
+            </p>
           </div>
-          <p className="mt-4 text-xs text-slate-400">
-            Reported and maintained by the Culture Alberta newsroom · List reviewed {fmtDay(lastReviewed)}
-            {inventoryFetchedAt ? ` · Provincial inventory checked ${fmtDay(inventoryFetchedAt.slice(0, 10))}` : ""}.
-            Demand totals only count projects with a published megawatt figure; Wonder Valley&apos;s 7.5 GW alone is a third of it.
+
+          <div className="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatTile
+              label="Projects tracked" value={all.total} format={n => fmtInt(Math.round(n))}
+              sub={`${all.active} proposed or building`} open={openStat === "tracked"} onToggle={() => toggleStat("tracked")}
+            />
+            <StatTile
+              label="Proposed new demand" value={all.proposedMW / 1000} format={n => `${n.toFixed(1)} GW`}
+              sub={`vs ${fmtMW(ALBERTA_REFERENCE.recordPeakMW)} record peak`} open={openStat === "demand"} onToggle={() => toggleStat("demand")}
+            />
+            <StatTile
+              label="Allowed on the grid so far" value={ALBERTA_REFERENCE.aesoPhase1MW / 1000} format={n => `${n.toFixed(1)} GW`}
+              sub={`of ${fmtMW(ALBERTA_REFERENCE.aesoRequestedMW)} requested`} open={openStat === "grid"} onToggle={() => toggleStat("grid")}
+            />
+            <StatTile
+              label="Operating today" value={all.operatingMW} format={n => `${Math.round(n)} MW`}
+              sub={`across ${all.operating} sites`} open={openStat === "operating"} onToggle={() => toggleStat("operating")}
+            />
+          </div>
+
+          {openStat && (
+            <div className="mt-3 bg-white text-gray-900 rounded-2xl p-5 md:p-6 shadow-xl">
+              {openStat === "tracked" && (
+                <Breakdown title="Where the 45 projects stand" hint="Click a status to filter the list below.">
+                  {STATUS_ORDER.map(st => {
+                    const n = DATA_CENTRES.filter(d => d.status === st).length
+                    return <BarRow key={st} label={STATUS_LABEL[st]} value={n} max={all.total} display={String(n)} chip={STATUS_CHIP[st]} onClick={() => jumpToList({ status: st })} />
+                  })}
+                </Breakdown>
+              )}
+              {openStat === "demand" && (
+                <Breakdown title="Who is asking for the most power" hint="Full-build demand as published by each proponent. Click a project to open its profile.">
+                  {[...DATA_CENTRES].filter(isActive).filter(d => d.demandMW).sort((a, b) => (b.demandMW ?? 0) - (a.demandMW ?? 0)).slice(0, 7).map(d => (
+                    <BarRow key={d.id} label={d.name} value={d.demandMW ?? 0} max={all.proposedMW} display={fmtMW(d.demandMW)} href={`${TRACKER_PATH}/${d.id}`} sub={`${pct(d.demandMW ?? 0, all.proposedMW)} of the total · ${d.municipality}`} />
+                  ))}
+                  <p className="text-xs text-gray-500 mt-3">Alberta&apos;s all-time peak demand is {fmtMW(ALBERTA_REFERENCE.recordPeakMW)}. The proposals with a published figure add up to {fmtMW(all.proposedMW)}; most will never be built at that size.</p>
+                </Breakdown>
+              )}
+              {openStat === "grid" && (
+                <Breakdown title="The only two projects AESO has let onto the grid" hint="Phase 1 capped interim connections at 1,200 MW. Both contracts target 2027–28.">
+                  {DATA_CENTRES.filter(d => d.id === "meta-sturgeon" || d.id === "keephills").map(d => (
+                    <BarRow key={d.id} label={d.name} value={d.demandMW ?? 0} max={ALBERTA_REFERENCE.aesoPhase1MW} display={fmtMW(d.demandMW)} href={`${TRACKER_PATH}/${d.id}`} sub={d.municipality} />
+                  ))}
+                  <BarRow label="Everything else that has asked" value={ALBERTA_REFERENCE.aesoRequestedMW - ALBERTA_REFERENCE.aesoPhase1MW} max={ALBERTA_REFERENCE.aesoRequestedMW} display={fmtMW(ALBERTA_REFERENCE.aesoRequestedMW - ALBERTA_REFERENCE.aesoPhase1MW)} muted sub="Waiting on AESO's Phase 2 rules" />
+                  <p className="text-xs text-gray-500 mt-3">Source: <a className="underline" href="https://www.aeso.ca/grid/connecting-to-the-grid/large-load-projects/" target="_blank" rel="noopener noreferrer">AESO large load projects</a>.</p>
+                </Breakdown>
+              )}
+              {openStat === "operating" && (
+                <Breakdown title="What is actually running today" hint="Mostly colocation and bitcoin sites. Alberta has no operating hyperscale AI facility yet.">
+                  {DATA_CENTRES.filter(d => d.status === "operating").sort((a, b) => (b.demandMW ?? 0) - (a.demandMW ?? 0)).map(d => (
+                    <BarRow key={d.id} label={d.name} value={d.demandMW ?? 0} max={all.operatingMW} display={fmtMW(d.demandMW)} href={`${TRACKER_PATH}/${d.id}`} sub={`${d.municipality} · ${WORKLOAD_LABEL[d.workload]}`} />
+                  ))}
+                  <button onClick={() => jumpToList({ status: "operating" })} className="mt-3 text-sm font-semibold text-blue-700 hover:underline">Show operating sites on the map →</button>
+                </Breakdown>
+              )}
+            </div>
+          )}
+
+          <p className="mt-5 text-xs text-slate-400 max-w-4xl">
+            Reported and maintained by the Culture Alberta newsroom. List reviewed {fmtDay(lastReviewed)}
+            {inventoryFetchedAt ? `; provincial inventory checked ${fmtDay(inventoryFetchedAt.slice(0, 10))}` : ""}.
+            Demand totals only count projects with a published megawatt figure, and Wonder Valley&apos;s 7.5 GW alone is a third of it.
+            Photo: Pexels.
           </p>
         </div>
       </header>
@@ -258,10 +365,16 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
         {/* ---------------------------------------------------------------- */}
         {/* Bill impact                                                       */}
         {/* ---------------------------------------------------------------- */}
-        <section aria-labelledby="bill-heading" className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
-          <h2 id="bill-heading" className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Zap className="w-6 h-6 text-amber-500" /> Will data centres raise my power bill?
-          </h2>
+        <section aria-labelledby="bill-heading" className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="relative h-40 md:h-52">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={PHOTO.substation} alt="High-voltage substation equipment against a blue sky" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/10" />
+            <h2 id="bill-heading" className="absolute bottom-4 left-6 right-6 text-2xl md:text-3xl font-bold text-white flex items-center gap-2 drop-shadow">
+              <Zap className="w-6 h-6 text-amber-300" /> Will data centres raise my power bill?
+            </h2>
+          </div>
+          <div className="p-6 md:p-8 pt-5">
           <p className="text-gray-600 mt-2 max-w-3xl">
             Under Alberta&apos;s rules, a data centre must bring its own power plant, but it is allowed to draw from the
             shared grid while that plant is being built. The Pembina Institute modelled what the Meta project alone
@@ -304,18 +417,25 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
             <p><strong>What this is:</strong> the Pembina Institute&apos;s published range for one project (Meta, 970 MW) drawing grid power before its own plant is running. It is a modelled risk, not a rate change on your bill.</p>
             <p><strong>What it is not:</strong> a forecast for every project on this page. If more data centres connect the same way before their generation is built, the effect would be larger; if they bring power first, it would be smaller. Fixed-rate contracts shield you from wholesale swings until they renew.</p>
             <p className="text-xs text-gray-400">
-              Source: Pembina Institute, <a className="underline" href="https://www.pembina.org/pub/footing-bill" target="_blank" rel="noopener noreferrer">Footing the Bill</a> (2026); Government of Alberta, <a className="underline" href="https://www.alberta.ca/datacentres/index.html" target="_blank" rel="noopener noreferrer">AI Data Centres in Alberta</a>.
+              Source: Pembina Institute, <a className="underline" href="https://www.pembina.org/pub/footing-bill" target="_blank" rel="noopener noreferrer">Footing the Bill</a> (2026); Government of Alberta, <a className="underline" href="https://www.alberta.ca/datacentres/index.html" target="_blank" rel="noopener noreferrer">AI Data Centres in Alberta</a>. Photo: Pexels.
             </p>
+          </div>
           </div>
         </section>
 
         {/* ---------------------------------------------------------------- */}
         {/* Scale                                                             */}
         {/* ---------------------------------------------------------------- */}
-        <section aria-labelledby="scale-heading" className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
-          <h2 id="scale-heading" className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Factory className="w-6 h-6 text-blue-600" /> How big is a gigawatt, really?
-          </h2>
+        <section aria-labelledby="scale-heading" className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="relative h-40 md:h-52">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={PHOTO.racks} alt="Rows of server racks in a data hall" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/10" />
+            <h2 id="scale-heading" className="absolute bottom-4 left-6 right-6 text-2xl md:text-3xl font-bold text-white flex items-center gap-2 drop-shadow">
+              <Factory className="w-6 h-6 text-blue-300" /> How big is a gigawatt, really?
+            </h2>
+          </div>
+          <div className="p-6 md:p-8 pt-5">
           <p className="text-gray-600 mt-2 max-w-3xl">
             Pick a project to see its full-build power demand next to things you already know.
           </p>
@@ -346,8 +466,9 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
           />
           <p className="text-xs text-gray-400 mt-3">
             Homes figure assumes the site runs flat out, which AI data centres largely do. Household use from typical
-            Alberta consumption of about 600 kWh per month.
+            Alberta consumption of about 600 kWh per month. Photo: Pexels.
           </p>
+          </div>
         </section>
 
         {/* ---------------------------------------------------------------- */}
@@ -355,6 +476,16 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
         {/* ---------------------------------------------------------------- */}
         <section aria-labelledby="rules-heading" className="grid md:grid-cols-2 gap-4">
           <h2 id="rules-heading" className="text-2xl font-bold text-gray-900 md:col-span-2">The rules in plain language</h2>
+          <div className="relative rounded-2xl overflow-hidden min-h-[220px] md:row-span-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={PHOTO.solar} alt="Rows of solar panels seen from above" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+            <p className="absolute bottom-4 left-5 right-5 text-white text-sm leading-relaxed drop-shadow">
+              Since 2023, renewable development in Alberta has fallen about 93 percent, by the Pembina Institute&apos;s count.
+              Whether data centres can be powered by wind, solar and batteries, or must run on gas, is the live fight.
+              <span className="block text-[11px] text-white/60 mt-1">Photo: Pexels</span>
+            </p>
+          </div>
           <Rule icon={<Zap className="w-5 h-5" />} title="Bring your own power">
             Large data centres must supply their own generation instead of competing for grid capacity. Alberta&apos;s
             Data Centre Regulation (in force June 2026) puts projects that pair demand with new generation or storage
@@ -470,14 +601,57 @@ function pct(part: number, whole: number): string {
   return `${v.toLocaleString("en-CA", { maximumFractionDigits: v < 10 ? 1 : 0 })}%`
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
+function StatTile({ label, value, format, sub, open, onToggle }: {
+  label: string; value: number; format: (n: number) => string; sub: string; open: boolean; onToggle: () => void
+}) {
+  const { value: shown, ref } = useCountUp(value)
   return (
-    <div className="bg-white/10 backdrop-blur rounded-xl p-4 border border-white/10">
-      <p className="text-[11px] uppercase tracking-wide text-slate-300 font-semibold">{label}</p>
-      <p className="text-2xl md:text-3xl font-bold mt-1">{value}</p>
-      <p className="text-xs text-slate-300 mt-1">{sub}</p>
+    <button
+      ref={ref as React.RefObject<HTMLButtonElement>}
+      onClick={onToggle}
+      aria-expanded={open}
+      className={`group text-left rounded-xl p-4 border transition-all duration-200 backdrop-blur ${open ? "bg-white text-gray-900 border-white shadow-xl -translate-y-0.5" : "bg-white/10 border-white/10 hover:bg-white/15 hover:border-white/30 hover:-translate-y-0.5"}`}
+    >
+      <p className={`text-[11px] uppercase tracking-wide font-semibold ${open ? "text-gray-500" : "text-slate-300"}`}>{label}</p>
+      <p className="text-2xl md:text-3xl font-bold mt-1 tabular-nums">{format(shown)}</p>
+      <p className={`text-xs mt-1 flex items-center justify-between gap-2 ${open ? "text-gray-500" : "text-slate-300"}`}>
+        <span>{sub}</span>
+        <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${open ? "rotate-180" : "opacity-50 group-hover:opacity-100"}`} />
+      </p>
+    </button>
+  )
+}
+
+function Breakdown({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="font-bold text-gray-900">{title}</h3>
+      <p className="text-xs text-gray-500 mt-0.5 mb-3">{hint}</p>
+      <div className="space-y-2">{children}</div>
     </div>
   )
+}
+
+function BarRow({ label, value, max, display, sub, chip, href, onClick, muted }: {
+  label: string; value: number; max: number; display: string; sub?: string; chip?: string; href?: string; onClick?: () => void; muted?: boolean
+}) {
+  const w = max > 0 ? Math.max(1.5, (value / max) * 100) : 0
+  const inner = (
+    <>
+      <div className="flex items-baseline justify-between gap-3 text-sm">
+        <span className="font-medium text-gray-900 truncate">{chip ? <span className={`inline-block px-2 py-0.5 rounded-full text-xs mr-1 ${chip}`}>{label}</span> : label}</span>
+        <span className="tabular-nums font-semibold text-gray-700 shrink-0">{display}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-gray-100 mt-1 overflow-hidden">
+        <div className={`h-full rounded-full ${muted ? "bg-gray-300" : "bg-blue-600"} transition-all duration-700`} style={{ width: `${w}%` }} />
+      </div>
+      {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
+    </>
+  )
+  const cls = "block w-full text-left rounded-lg px-2 py-1.5 -mx-2 hover:bg-gray-50 transition-colors"
+  if (href) return <Link href={href} className={cls}>{inner}</Link>
+  if (onClick) return <button onClick={onClick} className={cls}>{inner}</button>
+  return <div className="px-2 py-1.5 -mx-2">{inner}</div>
 }
 
 const TONES = {

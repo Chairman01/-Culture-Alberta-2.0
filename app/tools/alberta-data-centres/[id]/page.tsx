@@ -14,6 +14,15 @@ export const dynamicParams = false
 
 const SITE = "https://www.culturealberta.com"
 
+// Real photographs by workload (Pexels, free licence) for the page header.
+const HEADER_PHOTO: Record<string, string> = {
+  ai: "https://images.pexels.com/photos/4508751/pexels-photo-4508751.jpeg?auto=compress&cs=tinysrgb&w=1920",
+  colocation: "https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg?auto=compress&cs=tinysrgb&w=1920",
+  crypto: "https://images.pexels.com/photos/1148820/pexels-photo-1148820.jpeg?auto=compress&cs=tinysrgb&w=1920",
+  mixed: "https://images.pexels.com/photos/1148820/pexels-photo-1148820.jpeg?auto=compress&cs=tinysrgb&w=1920",
+  undisclosed: "https://images.pexels.com/photos/236089/pexels-photo-236089.jpeg?auto=compress&cs=tinysrgb&w=1920",
+}
+
 export function generateStaticParams() {
   return DATA_CENTRES.map(dc => ({ id: dc.id }))
 }
@@ -137,8 +146,12 @@ export default async function DataCentreProjectPage({ params }: { params: Promis
         <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />
       ))}
       <div className="min-h-screen bg-gray-50">
-        <header className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 text-white">
-          <div className="container mx-auto px-4 max-w-5xl py-10 md:py-14">
+        <header className="relative bg-slate-950 text-white overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={HEADER_PHOTO[dc.workload] ?? HEADER_PHOTO.undisclosed} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover opacity-35" fetchPriority="high" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-900/40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+          <div className="relative container mx-auto px-4 max-w-5xl py-10 md:py-14">
             <Link href={TRACKER_PATH} className="text-xs text-slate-300 hover:text-white inline-flex items-center gap-1 mb-4">
               <ArrowLeft className="w-3.5 h-3.5" /> All Alberta data centres
             </Link>
@@ -254,7 +267,7 @@ export default async function DataCentreProjectPage({ params }: { params: Promis
                 {dc.tier === "primary"
                   ? "A government, regulator or municipal record backs this entry."
                   : "This entry rests on the proponent's own material or press coverage; we have not yet found a regulatory filing."}
-                {" "}Map location is municipality-level, not the parcel.
+                {" "}Map location is municipality-level, not the parcel. Header photo is a stock image (Pexels), not this site.
               </p>
             </section>
 
