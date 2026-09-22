@@ -52,6 +52,17 @@ export interface DataCentre {
   water?: string
   summary: string
   sources: DcSource[]
+  /** ID in the Government of Alberta Major Projects Inventory, when listed there. */
+  majorProjectId?: number
+}
+
+// Primary = a regulator, government or municipal record backs the entry.
+// Reported = the best we have is the proponent's own material or press coverage.
+const PRIMARY_HOSTS = ['aeso.ca', 'alberta.ca', 'auc.ab.ca', 'canada.ca', 'county', 'sturgeoncounty', 'wheatlandcounty', 'rockyview', 'rdcounty', 'stettler', 'lacombecounty', 'yhcounty', 'northernsunrise', 'vulcancounty', 'newell', 'olds.ca', 'strathmore.ca']
+export type DcSourceTier = 'primary' | 'reported'
+export function sourceTier(dc: DataCentre): DcSourceTier {
+  if (dc.majorProjectId) return 'primary'
+  return dc.sources.some(s => PRIMARY_HOSTS.some(h => s.url.includes(h))) ? 'primary' : 'reported'
 }
 
 export const STATUS_LABEL: Record<DcStatus, string> = {
@@ -107,6 +118,7 @@ export const DATA_CENTRES: DataCentre[] = [
   // ----- Hyperscale / flagship ------------------------------------------------
   {
     id: 'meta-sturgeon',
+    majorProjectId: 12183,
     name: 'Meta Sturgeon County Data Centre',
     operator: 'Meta',
     municipality: 'Sturgeon County',
@@ -123,7 +135,7 @@ export const DATA_CENTRES: DataCentre[] = [
     costM: 13_000,
     jobsConstruction: 3_000,
     jobsPermanent: 300,
-    timeline: 'Final investment decision July 8, 2026. Data centre targeted for 2028; the Greenlight plant follows roughly two years later.',
+    timeline: 'Final investment decision July 8, 2026. Provincial inventory lists 2026–2029; the Greenlight plant follows roughly two years after the data centre opens.',
     water: 'Closed-loop liquid cooling with dry coolers; Meta says no operational water use for cooling and less annual water than a typical Alberta golf course.',
     summary:
       "Canada's largest AI data centre and Meta's first in the country. It is the project behind the Pembina Institute's estimate that Alberta households could pay $267–$462 more per year while it draws grid power before its own plant is finished.",
@@ -136,6 +148,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'wonder-valley',
+    majorProjectId: 11477,
     name: 'Wonder Valley AI Data Centre Park',
     operator: "O'Leary Ventures / Wonder Valley",
     municipality: 'MD of Greenview',
@@ -144,11 +157,11 @@ export const DATA_CENTRES: DataCentre[] = [
     lng: -118.9,
     status: 'proposed',
     demandMW: 7_500,
-    demandNote: '7.5 GW at full build, phased from an initial ~1 GW',
+    demandNote: 'Phase 1 valued at $12B in the provincial inventory; 7.5 GW at full build, phased from an initial ~1 GW',
     power: 'onsite-gas',
     powerNote: 'Off-grid campus powered by its own natural gas generation, built in phases.',
     workload: 'ai',
-    costM: 70_000,
+    costM: 12_000,
     jobsConstruction: null,
     jobsPermanent: null,
     timeline: 'Announced December 2024. Phase 1 listed in the Alberta Major Projects Inventory; no tenant or binding build agreement announced as of September 2026.',
@@ -210,6 +223,7 @@ export const DATA_CENTRES: DataCentre[] = [
   // ----- Beacon AI Centers (Calgary-based developer, six Alberta sites) -----
   {
     id: 'beacon-harry-smith',
+    majorProjectId: 11491,
     name: 'Beacon Harry Smith AI Hub',
     operator: 'Beacon AI Centers',
     municipality: 'Parkland County',
@@ -233,6 +247,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'beacon-saunders-lake',
+    majorProjectId: 11494,
     name: 'Beacon Saunders Lake AI Hub',
     operator: 'Beacon AI Centers',
     municipality: 'Leduc County',
@@ -255,6 +270,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'beacon-heartland',
+    majorProjectId: 11493,
     name: 'Beacon Heartland AI Hub',
     operator: 'Beacon AI Centers',
     municipality: 'Sturgeon County',
@@ -277,6 +293,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'beacon-indus',
+    majorProjectId: 11492,
     name: 'Beacon Indus AI Hub',
     operator: 'Beacon AI Centers',
     municipality: 'Rocky View County',
@@ -299,6 +316,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'beacon-chestermere',
+    majorProjectId: 12113,
     name: 'Beacon Chestermere AI Hub',
     operator: 'Beacon AI Centers',
     municipality: 'Chestermere',
@@ -321,6 +339,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'beacon-foothills',
+    majorProjectId: 11490,
     name: 'Beacon Foothills AI Hub',
     operator: 'Beacon AI Centers',
     municipality: 'Foothills County',
@@ -332,7 +351,7 @@ export const DATA_CENTRES: DataCentre[] = [
     power: 'onsite-gas',
     powerNote: '400 MW of on-site generation proposed.',
     workload: 'ai',
-    costM: null,
+    costM: 4_000,
     jobsConstruction: null,
     jobsPermanent: null,
     timeline: 'Proposed.',
@@ -434,8 +453,9 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'hubone',
+    majorProjectId: 11638,
     name: 'HubOne AI and Bitcoin Compute Park',
-    operator: 'HubOne',
+    operator: 'Elemental Developments & Hub1 JV',
     municipality: 'Wheatland County',
     region: 'Calgary Region',
     lat: 51.0,
@@ -457,8 +477,9 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'malachite',
+    majorProjectId: 12192,
     name: 'Malachite One Data Centre',
-    operator: 'Undisclosed',
+    operator: 'Emerald Energy Technologies',
     municipality: 'Yellowhead County',
     region: 'Central Alberta',
     lat: 53.55,
@@ -469,10 +490,10 @@ export const DATA_CENTRES: DataCentre[] = [
     power: 'grid+onsite',
     powerNote: '930 MW of natural gas generation with a small grid connection.',
     workload: 'ai',
-    costM: null,
+    costM: 20_000,
     jobsConstruction: null,
     jobsPermanent: null,
-    timeline: 'Proposed.',
+    timeline: 'Proposed; provincial inventory lists a 2030 completion.',
     summary: 'A gigawatt-class gas-powered campus near Edson.',
     sources: [
       { label: 'Yellowhead County', url: 'https://www.yhcounty.ca/' },
@@ -480,6 +501,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'mihta-askiy',
+    majorProjectId: 12097,
     name: 'Mihta Askiy Data Centre',
     operator: 'Undisclosed',
     municipality: 'Northern Sunrise County',
@@ -494,7 +516,7 @@ export const DATA_CENTRES: DataCentre[] = [
     costM: null,
     jobsConstruction: null,
     jobsPermanent: null,
-    timeline: 'Proposed.',
+    timeline: 'Proposed; provincial inventory lists a 2027 target.',
     summary: 'A Peace Country proposal in the Peace River area.',
     sources: [
       { label: 'Northern Sunrise County', url: 'https://www.northernsunrise.net/' },
@@ -568,6 +590,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'crusoe-alsike',
+    majorProjectId: 11556,
     name: 'Crusoe Alsike Energy Park',
     operator: 'Crusoe',
     municipality: 'Brazeau County',
@@ -576,11 +599,11 @@ export const DATA_CENTRES: DataCentre[] = [
     lng: -114.6,
     status: 'proposed',
     demandMW: 170,
-    demandNote: '170 MW plant under a power purchase agreement',
+    demandNote: '$3B covers all Crusoe Alberta sites in the provincial inventory',
     power: 'onsite-gas',
     powerNote: '170 MW natural gas plant.',
     workload: 'ai',
-    costM: null,
+    costM: 3_000,
     jobsConstruction: null,
     jobsPermanent: null,
     timeline: 'Proposed.',
@@ -591,6 +614,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'crusoe-myers',
+    majorProjectId: 11556,
     name: 'Crusoe Myers Energy Park',
     operator: 'Crusoe',
     municipality: 'Red Deer County',
@@ -613,18 +637,20 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'data-district-olds',
+    majorProjectId: 11969,
     name: 'Data District Olds',
-    operator: 'Data District',
+    operator: 'Technologies New Energy & Data District',
     municipality: 'Olds',
     region: 'Central Alberta',
     lat: 51.79,
     lng: -114.1,
     status: 'proposed',
     demandMW: 55,
+    demandNote: '$1.26B Phase 1 across Olds, Calgary, Edmonton and Bonnyville in the provincial inventory',
     power: 'grid',
     powerNote: 'FortisAlberta distribution grid.',
     workload: 'ai',
-    costM: null,
+    costM: 1_260,
     jobsConstruction: null,
     jobsPermanent: null,
     timeline: 'Proposed.',
@@ -635,6 +661,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'prairie-sky-strathmore',
+    majorProjectId: 11820,
     name: 'Prairie Sky Strathmore Campus',
     operator: 'Prairie Sky',
     municipality: 'Strathmore',
@@ -682,6 +709,7 @@ export const DATA_CENTRES: DataCentre[] = [
   // ----- Smaller approved / under-construction sites ----------------------
   {
     id: 'bitdeer-fox-creek',
+    majorProjectId: 11568,
     name: 'Bitdeer Fox Creek',
     operator: 'Bitdeer',
     municipality: 'MD of Greenview',
@@ -693,10 +721,10 @@ export const DATA_CENTRES: DataCentre[] = [
     power: 'grid+onsite',
     powerNote: '101 MW on-site plant plus a 99 MW grid interconnection.',
     workload: 'crypto',
-    costM: null,
+    costM: 214,
     jobsConstruction: null,
     jobsPermanent: null,
-    timeline: 'Under construction.',
+    timeline: 'Under construction; provincial inventory lists 2026–2027.',
     summary: 'Bitcoin mining site that can be repurposed for high-performance computing.',
     sources: [
       { label: 'Bitdeer', url: 'https://www.bitdeer.com/' },
@@ -704,6 +732,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'estruxture-cal3',
+    majorProjectId: 11416,
     name: 'eStruxture CAL-3',
     operator: 'eStruxture',
     municipality: 'Rocky View County',
@@ -715,10 +744,10 @@ export const DATA_CENTRES: DataCentre[] = [
     power: 'grid',
     powerNote: 'FortisAlberta grid.',
     workload: 'colocation',
-    costM: null,
+    costM: 750,
     jobsConstruction: null,
     jobsPermanent: null,
-    timeline: 'Under construction beside CAL-2 in Balzac.',
+    timeline: 'Under construction beside CAL-2 in Balzac; provincial inventory lists 2024–2026.',
     summary: 'Alberta’s largest commercial colocation build, aimed at AI-ready tenants.',
     sources: [
       { label: 'eStruxture', url: 'https://www.estruxture.com/' },
@@ -726,8 +755,9 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'ahi-red-deer',
+    majorProjectId: 11890,
     name: 'AHI Blindman Industrial Park',
-    operator: 'AHI',
+    operator: 'Havenz Smart Communities (AHI)',
     municipality: 'Red Deer County',
     region: 'Central Alberta',
     lat: 52.35,
@@ -860,8 +890,9 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'clive',
+    majorProjectId: 12068,
     name: 'Data Centre West of Clive',
-    operator: 'Undisclosed',
+    operator: 'VL Energy & Amada Nowlitt Energy',
     municipality: 'Lacombe County',
     region: 'Central Alberta',
     lat: 52.47,
@@ -904,6 +935,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'ktech-aurora',
+    majorProjectId: 12173,
     name: 'K-Tech / Aurora Wellhead Compute Facility',
     operator: 'K-Tech & Aurora AZ Energy',
     municipality: 'Calgary',
@@ -949,6 +981,7 @@ export const DATA_CENTRES: DataCentre[] = [
   },
   {
     id: 'estruxture-cal1',
+    majorProjectId: 11866,
     name: 'eStruxture CAL-1',
     operator: 'eStruxture',
     municipality: 'Calgary',

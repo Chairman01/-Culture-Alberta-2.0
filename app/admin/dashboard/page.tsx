@@ -19,6 +19,7 @@ import {
   Building2,
   Pin,
   Users,
+  Server,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -333,6 +334,22 @@ export default function AdminDashboard() {
                 <Link href="/admin/major-projects">
                   {projectsPending > 0 ? 'Review New Projects' : 'View Projects'}
                 </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Data Centres</CardTitle>
+              <Server className="h-4 w-4 text-slate-700" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Tracker</div>
+              <p className="text-xs text-muted-foreground">
+                Correct records, log changes, link coverage
+              </p>
+              <Button asChild className="mt-4" size="sm" variant="outline">
+                <Link href="/admin/data-centres">Open tracker</Link>
               </Button>
             </CardContent>
           </Card>

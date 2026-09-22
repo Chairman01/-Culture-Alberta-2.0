@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase"
 import { ToolEngagement } from "@/components/tool-engagement"
 import { ToolFaq } from "@/components/tool-faq"
 import { DATA_CENTRES, ALBERTA_REFERENCE, LAST_REVIEWED, totals } from "@/lib/data/alberta-data-centres"
+import { getTrackerData } from "@/lib/data-centres"
 import DataCentresClient, { type RelatedArticle } from "./data-centres-client"
 
 export const revalidate = 3600
@@ -145,8 +146,11 @@ const placesSchema = {
   itemListElement: DATA_CENTRES.map((dc, i) => ({
     "@type": "ListItem",
     position: i + 1,
+    url: `${URL}/${dc.id}`,
     item: {
       "@type": "Place",
+      "@id": `${URL}/${dc.id}#place`,
+      url: `${URL}/${dc.id}`,
       name: dc.name,
       description: dc.summary,
       geo: { "@type": "GeoCoordinates", latitude: dc.lat, longitude: dc.lng },
@@ -159,6 +163,7 @@ const placesSchema = {
 // Page
 // ---------------------------------------------------------------------------
 export default async function AlbertaDataCentresPage() {
+  const tracker = await getTrackerData()
   let articles: RelatedArticle[] = []
   try {
     const { data } = await supabase
@@ -181,7 +186,13 @@ export default async function AlbertaDataCentresPage() {
         <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />
       ))}
       <div data-tool-root>
-        <DataCentresClient articles={articles} />
+        <DataCentresClient
+          items={tracker.items}
+          recentUpdates={tracker.recentUpdates}
+          lastReviewed={tracker.lastReviewed}
+          inventoryFetchedAt={tracker.inventoryFetchedAt}
+          articles={articles}
+        />
         <div className="max-w-6xl mx-auto px-4 pb-12">
           <ToolFaq title="Alberta data centres — frequently asked questions" items={faq} />
           <ToolEngagement toolSlug="alberta-data-centres" />

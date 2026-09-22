@@ -7,10 +7,11 @@ import {
   ArrowRight, ExternalLink, Search, Zap, MapPin, Factory, Droplets, Users, Building2, X,
 } from "lucide-react"
 import {
-  DATA_CENTRES, ALBERTA_REFERENCE, HOMES_PER_MW, STATUS_LABEL, POWER_LABEL, WORKLOAD_LABEL,
+  ALBERTA_REFERENCE, HOMES_PER_MW, STATUS_LABEL, POWER_LABEL, WORKLOAD_LABEL,
   totals, isActive,
-  type DataCentre, type DcStatus, type DcPower, type DcRegion, type DcWorkload,
+  type DcStatus, type DcPower, type DcRegion, type DcWorkload,
 } from "@/lib/data/alberta-data-centres"
+import { TRACKER_PATH, type TrackedDataCentre, type DcUpdate } from "@/lib/data-centres"
 
 const MapView = dynamic(() => import("./map-view"), {
   ssr: false,
@@ -57,7 +58,18 @@ type SortKey = "mw-desc" | "mw-asc" | "name" | "status"
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export default function DataCentresClient({ articles }: { articles: RelatedArticle[] }) {
+interface Props {
+  items: TrackedDataCentre[]
+  recentUpdates: DcUpdate[]
+  lastReviewed: string
+  inventoryFetchedAt: string | null
+  articles: RelatedArticle[]
+}
+
+const fmtDay = (d: string) => new Date(d + (d.length === 10 ? "T12:00:00" : "")).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })
+
+export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, lastReviewed, inventoryFetchedAt, articles }: Props) {
+  const nameOf = (id: string) => DATA_CENTRES.find(d => d.id === id)?.name ?? id.replace("inventory:", "Inventory #")
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState<DcStatus | "active" | "all">("active")
   const [region, setRegion] = useState<DcRegion | "all">("all")
@@ -93,9 +105,9 @@ export default function DataCentresClient({ articles }: { articles: RelatedArtic
       const am = a.demandMW ?? -1, bm = b.demandMW ?? -1
       return sort === "mw-asc" ? am - bm : bm - am
     })
-  }, [query, status, region, power, workload, sort])
+  }, [DATA_CENTRES, query, status, region, power, workload, sort])
 
-  const all = totals()
+  const all = totals(DATA_CENTRES)
   const shown = totals(filtered)
   const selected = selectedId ? DATA_CENTRES.find(dc => dc.id === selectedId) ?? null : null
   const scaleDc = DATA_CENTRES.find(dc => dc.id === scaleId) ?? DATA_CENTRES[0]
@@ -136,13 +148,44 @@ export default function DataCentresClient({ articles }: { articles: RelatedArtic
             <Stat label="Operating today" value={fmtMW(all.operatingMW)} sub={`across ${all.operating} sites`} />
           </div>
           <p className="mt-4 text-xs text-slate-400">
-            Compiled from AESO, Government of Alberta, AUC filings, municipal records and company announcements.
-            Demand totals only count projects with a published megawatt figure.
+            Reported and maintained by the Culture Alberta newsroom · List reviewed {fmtDay(lastReviewed)}
+            {inventoryFetchedAt ? ` · Provincial inventory checked ${fmtDay(inventoryFetchedAt.slice(0, 10))}` : ""}.
+            Demand totals only count projects with a published megawatt figure; Wonder Valley&apos;s 7.5 GW alone is a third of it.
           </p>
         </div>
       </header>
 
       <main className="container mx-auto px-4 max-w-6xl py-10 space-y-12">
+        {/* ---------------------------------------------------------------- */}
+        {/* Change log                                                        */}
+        {/* ---------------------------------------------------------------- */}
+        {recentUpdates.length > 0 && (
+          <section aria-labelledby="changes-heading" className="bg-white rounded-2xl border border-gray-200 p-6">
+            <div className="flex items-baseline justify-between flex-wrap gap-2">
+              <h2 id="changes-heading" className="text-2xl font-bold text-gray-900">What changed recently</h2>
+              <p className="text-xs text-gray-400">Green entries come straight from the province&apos;s daily inventory feed; blue ones are ours.</p>
+            </div>
+            <ol className="mt-4 grid md:grid-cols-2 gap-x-8 gap-y-3">
+              {recentUpdates.map(u => (
+                <li key={u.id} className="flex gap-3 text-sm">
+                  <span className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${u.kind === "inventory" ? "bg-emerald-500" : "bg-blue-600"}`} />
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-400">{fmtDay(u.happenedOn)}</p>
+                    <p className="text-gray-900">
+                      {u.dcId.startsWith("inventory:")
+                        ? <span className="font-semibold">{nameOf(u.dcId)}</span>
+                        : <Link href={`${TRACKER_PATH}/${u.dcId}`} className="font-semibold hover:text-blue-700">{nameOf(u.dcId)}</Link>}
+                      {" — "}{u.headline}
+                    </p>
+                    {u.detail && <p className="text-xs text-gray-500 mt-0.5">{u.detail}</p>}
+                    {u.articleSlug && <Link href={`/articles/${u.articleSlug}`} className="text-xs text-blue-700 hover:underline">Read our story</Link>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
         {/* ---------------------------------------------------------------- */}
         {/* Filters + map + list                                              */}
         {/* ---------------------------------------------------------------- */}
@@ -362,6 +405,30 @@ export default function DataCentresClient({ articles }: { articles: RelatedArtic
         )}
 
         {/* ---------------------------------------------------------------- */}
+        {/* Method                                                            */}
+        {/* ---------------------------------------------------------------- */}
+        <section aria-labelledby="method-heading" className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 text-sm text-gray-700 leading-relaxed">
+          <h2 id="method-heading" className="text-2xl font-bold text-gray-900 mb-3">How we build this list</h2>
+          <p>
+            We start from filings, not press releases: AESO&apos;s large-load connection list, the Government of Alberta&apos;s
+            Major Projects Inventory, Alberta Utilities Commission power-plant applications, and county development
+            permits. Where a project exists only in a company announcement or a news report, we say so with a
+            &ldquo;Reported&rdquo; label rather than dress it up. Every record links the documents it rests on.
+          </p>
+          <p className="mt-3">
+            The province&apos;s inventory is re-checked every morning. When it moves a project to a new stage, changes a
+            cost, or lists a new data centre we do not have, that lands in the change log above automatically with the
+            date. Editors re-verify each record by hand, and the &ldquo;last verified&rdquo; date on every project page is
+            the honest answer to how fresh it is.
+          </p>
+          <p className="mt-3">
+            Megawatt figures are the proponent&apos;s or the regulator&apos;s, at full build unless noted. Map pins sit on the
+            municipality, not the parcel, because most sites have not published a legal land description. If you know
+            of a project we are missing or a status that has moved, write to us and we will check the filing.
+          </p>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
         {/* Sources                                                           */}
         {/* ---------------------------------------------------------------- */}
         <section aria-labelledby="sources-heading" className="text-sm text-gray-600">
@@ -464,8 +531,9 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   )
 }
 
-function DetailCard({ dc, expanded, onOpen, onClose }: { dc: DataCentre; expanded: boolean; onOpen?: () => void; onClose?: () => void }) {
+function DetailCard({ dc, expanded, onOpen, onClose }: { dc: TrackedDataCentre; expanded: boolean; onOpen?: () => void; onClose?: () => void }) {
   const cost = fmtCost(dc.costM)
+  const href = `${TRACKER_PATH}/${dc.id}`
   return (
     <article className={`bg-white rounded-2xl border ${expanded ? "border-gray-900 shadow-lg" : "border-gray-200"} p-5 flex flex-col`}>
       <div className="flex items-start justify-between gap-3">
@@ -473,8 +541,11 @@ function DetailCard({ dc, expanded, onOpen, onClose }: { dc: DataCentre; expande
           <div className="flex items-center gap-2 flex-wrap text-xs">
             <span className={`px-2.5 py-1 rounded-full font-medium ${STATUS_CHIP[dc.status]}`}>{STATUS_LABEL[dc.status]}</span>
             <span className="text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3" />{dc.municipality}</span>
+            <span className={`px-2 py-0.5 rounded-full border ${dc.tier === "primary" ? "border-emerald-200 text-emerald-700" : "border-gray-200 text-gray-500"}`} title={dc.tier === "primary" ? "Backed by a government, regulator or municipal record" : "Company material or press coverage only"}>
+              {dc.tier === "primary" ? "Filed" : "Reported"}
+            </span>
           </div>
-          <h3 className="text-lg font-bold text-gray-900 mt-2 leading-snug">{dc.name}</h3>
+          <h3 className="text-lg font-bold text-gray-900 mt-2 leading-snug"><Link href={href} className="hover:text-blue-700">{dc.name}</Link></h3>
           <p className="text-sm text-gray-500">{dc.operator}</p>
         </div>
         <div className="text-right shrink-0">
@@ -484,6 +555,13 @@ function DetailCard({ dc, expanded, onOpen, onClose }: { dc: DataCentre; expande
       </div>
 
       <p className="text-sm text-gray-600 mt-3 leading-relaxed">{dc.summary}</p>
+      {dc.inventory && (
+        <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5 mt-3">
+          Province lists it as <strong>{dc.inventory.stage.toLowerCase()}</strong>
+          {dc.inventory.costM ? ` at ${fmtCost(dc.inventory.costM)}` : ""}
+          {dc.inventory.schedule || dc.inventory.scheduleEnd ? `, ${[dc.inventory.schedule, dc.inventory.scheduleEnd].filter(Boolean).join("–")}` : ""}.
+        </p>
+      )}
 
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
         <Row k="Power" v={POWER_LABEL[dc.power]} />
@@ -497,6 +575,7 @@ function DetailCard({ dc, expanded, onOpen, onClose }: { dc: DataCentre; expande
             {(dc.jobsConstruction || dc.jobsPermanent) && (
               <Row k="Jobs" v={[dc.jobsConstruction && `${fmtInt(dc.jobsConstruction)} construction`, dc.jobsPermanent && `${fmtInt(dc.jobsPermanent)} permanent`].filter(Boolean).join(" · ")} wide />
             )}
+            <Row k="Last verified" v={fmtDay(dc.verifiedOn)} />
             {dc.demandMW ? <Row k="Equivalent" v={`${fmtInt(Math.round(dc.demandMW * HOMES_PER_MW))} homes · ${pct(dc.demandMW, ALBERTA_REFERENCE.recordPeakMW)} of Alberta's record peak`} wide /> : null}
           </>
         )}
@@ -510,10 +589,21 @@ function DetailCard({ dc, expanded, onOpen, onClose }: { dc: DataCentre; expande
             </a>
           ))}
         </div>
-        {expanded
-          ? <button onClick={onClose} className="text-xs text-gray-500 hover:text-gray-900">Close</button>
-          : <button onClick={onOpen} className="text-xs font-semibold text-blue-700 hover:underline">Details & map</button>}
+        <div className="flex items-center gap-3 text-xs">
+          {dc.articles.length > 0 && <span className="text-gray-500">{dc.articles.length} {dc.articles.length === 1 ? "story" : "stories"}</span>}
+          {expanded
+            ? <button onClick={onClose} className="text-gray-500 hover:text-gray-900">Close</button>
+            : <button onClick={onOpen} className="font-semibold text-blue-700 hover:underline">Show on map</button>}
+          <Link href={href} className="font-semibold text-blue-700 hover:underline">Full profile →</Link>
+        </div>
       </div>
+      {expanded && dc.articles.length > 0 && (
+        <ul className="mt-3 pt-3 border-t border-gray-100 space-y-1.5 text-sm">
+          {dc.articles.slice(0, 4).map(a => (
+            <li key={a.slug}><Link href={`/articles/${a.slug}`} className="text-gray-800 hover:text-blue-700">{a.title}</Link></li>
+          ))}
+        </ul>
+      )}
     </article>
   )
 }

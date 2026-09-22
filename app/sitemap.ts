@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { getAllEvents } from '@/lib/events'
 import { getActiveJobSlugs, getJobCountsByCity, getCompaniesWithJobs, JOB_CITIES, CITY_PAGE_MIN_INDEXABLE_JOBS } from '@/lib/jobs'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
+import { DATA_CENTRES } from '@/lib/data/alberta-data-centres'
 
 /**
  * Fifteen minutes, not an hour.
@@ -295,9 +296,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     {
       url: baseUrl + '/tools/alberta-data-centres',
       lastModified: new Date(),
-      changeFrequency: 'weekly',
+      changeFrequency: 'daily',
       priority: 0.9,
     },
+    // One page per tracked data centre project
+    ...DATA_CENTRES.map(dc => ({
+      url: `${baseUrl}/tools/alberta-data-centres/${dc.id}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: dc.demandMW && dc.demandMW >= 400 ? 0.8 : 0.6,
+    })),
     {
       url: baseUrl + '/tools/alberta-property-tax-calculator',
       lastModified: new Date(),

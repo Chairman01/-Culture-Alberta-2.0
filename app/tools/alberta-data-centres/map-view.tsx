@@ -29,9 +29,11 @@ interface MapViewProps {
   items: DataCentre[]
   selectedId: string | null
   onSelect: (dc: DataCentre) => void
+  center?: [number, number]
+  zoom?: number
 }
 
-export default function MapView({ items, selectedId, onSelect }: MapViewProps) {
+export default function MapView({ items, selectedId, onSelect, center = [53.2, -114.5], zoom = 5 }: MapViewProps) {
   return (
     <div className="w-full rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
       <div className="flex items-center gap-4 px-4 py-2 bg-white border-b border-gray-100 text-xs text-gray-500 flex-wrap">
@@ -45,8 +47,8 @@ export default function MapView({ items, selectedId, onSelect }: MapViewProps) {
         <span className="ml-auto text-gray-400">Marker size = megawatts · locations approximate</span>
       </div>
       <MapContainer
-        center={[53.2, -114.5]}
-        zoom={5}
+        center={center}
+        zoom={zoom}
         style={{ height: "520px", width: "100%" }}
         scrollWheelZoom={false}
       >
