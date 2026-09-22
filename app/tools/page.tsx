@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
-import { Calculator, DollarSign, Calendar, ArrowRight, Wrench, Scale, Clock, Tent, Home, Zap } from "lucide-react"
+import { Calculator, DollarSign, Calendar, ArrowRight, Wrench, Scale, Clock, Tent, Home, Zap, Server } from "lucide-react"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -100,6 +100,7 @@ const toolsPageSchema = {
     { "@type": "WebApplication", "name": "Calgary vs Edmonton Cost of Living 2025", "url": "https://www.culturealberta.com/tools/calgary-vs-edmonton-cost-of-living" },
     { "@type": "WebApplication", "name": "Alberta Rental Increase Calculator 2025", "url": "https://www.culturealberta.com/tools/alberta-rental-increase-calculator" },
     { "@type": "Dataset", "name": "Alberta Tourism & Recreation Major Projects Tracker", "url": "https://www.culturealberta.com/tools/alberta-major-projects" },
+    { "@type": "Dataset", "name": "Alberta Data Centre Tracker 2026", "url": "https://www.culturealberta.com/tools/alberta-data-centres" },
     { "@type": "WebApplication", "name": "Alberta Property Tax Calculator 2024", "url": "https://www.culturealberta.com/tools/alberta-property-tax-calculator" }
   ]
 }
@@ -410,6 +411,59 @@ export default function ToolsPage() {
                     Calculate my stat pay
                   </div>
                   <div className="w-11 h-11 flex items-center justify-center border border-orange-200 rounded-xl text-orange-600 group-hover:bg-orange-50 transition-colors">
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Alberta Data Centre Tracker */}
+          <Link href="/tools/alberta-data-centres" className="group block h-full">
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col h-full hover:shadow-xl hover:border-slate-300 transition-all duration-300 cursor-pointer">
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 bg-gradient-to-r from-slate-100 to-white border-b border-slate-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center">
+                    <Server className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Alberta Tracker</p>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">Data Centres</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full">New</span>
+                  <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">Free</span>
+                </div>
+              </div>
+              <div className="mx-6 mt-4 grid grid-cols-3 gap-0 bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Projects</p>
+                  <p className="text-sm font-bold text-gray-900">40+</p>
+                  <p className="text-[10px] text-gray-400">on the map</p>
+                </div>
+                <div className="text-center py-3 px-2 border-x border-gray-100">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Proposed</p>
+                  <p className="text-sm font-bold text-gray-900">20+ GW</p>
+                  <p className="text-[10px] text-gray-400">of new demand</p>
+                </div>
+                <div className="text-center py-3 px-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Your bill</p>
+                  <p className="text-sm font-bold text-slate-800">Estimate</p>
+                  <p className="text-[10px] text-gray-400">impact calculator</p>
+                </div>
+              </div>
+              <div className="p-6 flex flex-col flex-1">
+                <h2 className="text-xl font-bold text-gray-900 group-hover:text-slate-700 transition-colors mb-2">Alberta Data Centre Tracker</h2>
+                <p className="text-gray-600 text-sm leading-relaxed mb-5 flex-1">
+                  Meta, Wonder Valley, Beacon AI, Keephills and every other data centre proposed or built in Alberta. Map, power source, megawatts, water, jobs, and what it could mean for your electricity bill.
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center justify-center gap-2 bg-slate-800 group-hover:bg-slate-900 text-white rounded-xl py-3 font-semibold text-sm transition-colors">
+                    <Server className="w-4 h-4" />
+                    Explore the map
+                  </div>
+                  <div className="w-11 h-11 flex items-center justify-center border border-slate-300 rounded-xl text-slate-700 group-hover:bg-slate-50 transition-colors">
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>

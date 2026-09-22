@@ -58,6 +58,10 @@
             "schedule": "30 13 * * *"
         },
         {
+            "path": "/api/cron/data-centres-sync",
+            "schedule": "45 13 * * *"
+        },
+        {
             "path": "/api/cron/sync-jobs?city=all",
             "schedule": "0 13 * * *"
         },
