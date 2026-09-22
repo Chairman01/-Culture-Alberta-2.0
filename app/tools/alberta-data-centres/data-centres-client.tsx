@@ -12,6 +12,13 @@ import {
   type DcStatus, type DcPower, type DcRegion, type DcWorkload,
 } from "@/lib/data/alberta-data-centres"
 import { TRACKER_PATH, type TrackedDataCentre, type DcUpdate } from "@/lib/data-centres"
+import { GLOSSARY } from "@/lib/data/alberta-data-centres"
+import { InfoTip } from "@/components/info-tip"
+
+const G = Object.fromEntries(GLOSSARY.map(g => [g.id, g])) as Record<string, (typeof GLOSSARY)[number]>
+const Tip = ({ id, dark, align }: { id: string; dark?: boolean; align?: "left" | "right" }) => (
+  <InfoTip title={G[id].term} glossaryId={id} dark={dark} align={align}>{G[id].short}</InfoTip>
+)
 
 const MapView = dynamic(() => import("./map-view"), {
   ssr: false,
@@ -198,22 +205,29 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
 
           <div className="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatTile
-              label="Projects tracked" value={all.total} format={n => fmtInt(Math.round(n))}
+              label="Projects tracked" value={all.total} format={n => fmtInt(Math.round(n))} info="g-status"
               sub={`${all.active} proposed or building`} open={openStat === "tracked"} onToggle={() => toggleStat("tracked")}
             />
             <StatTile
-              label="Proposed new demand" value={all.proposedMW / 1000} format={n => `${n.toFixed(1)} GW`}
+              label="Proposed new demand" value={all.proposedMW / 1000} format={n => `${n.toFixed(1)} GW`} info="g-proposed-demand"
               sub={`vs ${fmtMW(ALBERTA_REFERENCE.recordPeakMW)} record peak`} open={openStat === "demand"} onToggle={() => toggleStat("demand")}
             />
             <StatTile
-              label="Allowed on the grid so far" value={ALBERTA_REFERENCE.aesoPhase1MW / 1000} format={n => `${n.toFixed(1)} GW`}
+              label="Allowed on the grid so far" value={ALBERTA_REFERENCE.aesoPhase1MW / 1000} format={n => `${n.toFixed(1)} GW`} info="g-allowed"
               sub={`of ${fmtMW(ALBERTA_REFERENCE.aesoRequestedMW)} requested`} open={openStat === "grid"} onToggle={() => toggleStat("grid")}
             />
             <StatTile
-              label="Operating today" value={all.operatingMW} format={n => `${Math.round(n)} MW`}
+              label="Operating today" value={all.operatingMW} format={n => `${Math.round(n)} MW`} info="g-operating"
               sub={`across ${all.operating} sites`} open={openStat === "operating"} onToggle={() => toggleStat("operating")}
             />
           </div>
+
+          <p className="mt-3 text-xs text-slate-300 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="inline-flex items-center gap-1">What is a megawatt? <Tip id="g-mw" dark align="left" /></span>
+            <span className="inline-flex items-center gap-1">What is a gigawatt? <Tip id="g-gw" dark align="left" /></span>
+            <span className="inline-flex items-center gap-1">What counts as a data centre? <Tip id="g-data-centre" dark align="left" /></span>
+            <a href="#glossary" className="underline underline-offset-2 hover:text-white">Full glossary</a>
+          </p>
 
           {openStat && (
             <div className="mt-3 bg-white text-gray-900 rounded-2xl p-5 md:p-6 shadow-xl">
@@ -311,6 +325,12 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
             )}
           </div>
 
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mb-2">
+            <span className="inline-flex items-center gap-1">Status <Tip id="g-status" align="left" /></span>
+            <span className="inline-flex items-center gap-1">Power source <Tip id="g-onsite" align="left" /></span>
+            <span className="inline-flex items-center gap-1">Workload <Tip id="g-workload" align="left" /></span>
+            <span className="inline-flex items-center gap-1">Reading the map <Tip id="g-map" align="left" /></span>
+          </div>
           <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4 grid gap-3 md:grid-cols-[1fr_auto_auto_auto_auto_auto]">
             <label className="relative">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -372,6 +392,7 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/10" />
             <h2 id="bill-heading" className="absolute bottom-4 left-6 right-6 text-2xl md:text-3xl font-bold text-white flex items-center gap-2 drop-shadow">
               <Zap className="w-6 h-6 text-amber-300" /> Will data centres raise my power bill?
+              <span className="ml-1 inline-flex items-center gap-1 text-xs font-normal text-white/80">wholesale vs retail <Tip id="g-wholesale" dark align="left" /></span>
             </h2>
           </div>
           <div className="p-6 md:p-8 pt-5">
@@ -433,6 +454,7 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/10" />
             <h2 id="scale-heading" className="absolute bottom-4 left-6 right-6 text-2xl md:text-3xl font-bold text-white flex items-center gap-2 drop-shadow">
               <Factory className="w-6 h-6 text-blue-300" /> How big is a gigawatt, really?
+              <span className="ml-1 inline-flex items-center gap-1 text-xs font-normal text-white/80">define GW <Tip id="g-gw" dark align="left" /></span>
             </h2>
           </div>
           <div className="p-6 md:p-8 pt-5">
@@ -486,12 +508,12 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
               <span className="block text-[11px] text-white/60 mt-1">Photo: Pexels</span>
             </p>
           </div>
-          <Rule icon={<Zap className="w-5 h-5" />} title="Bring your own power">
+          <Rule icon={<Zap className="w-5 h-5" />} title="Bring your own power" tip="g-byop">
             Large data centres must supply their own generation instead of competing for grid capacity. Alberta&apos;s
             Data Centre Regulation (in force June 2026) puts projects that pair demand with new generation or storage
             at the front of the connection queue. In practice, the province has steered that generation to natural gas.
           </Rule>
-          <Rule icon={<Building2 className="w-5 h-5" />} title="Connect now, build later">
+          <Rule icon={<Building2 className="w-5 h-5" />} title="Connect now, build later" tip="g-grid">
             The catch: a project can draw grid power before its plant is finished. AESO let 1,200 MW on under an
             interim cap, all of it taken by Meta (970 MW) and TransAlta&apos;s Keephills (230 MW), against roughly
             19,565 MW of requests. This gap is where the bill-impact debate lives.
@@ -534,6 +556,22 @@ export default function DataCentresClient({ items: DATA_CENTRES, recentUpdates, 
             </div>
           </section>
         )}
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Glossary                                                          */}
+        {/* ---------------------------------------------------------------- */}
+        <section id="glossary" aria-labelledby="glossary-heading" className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 scroll-mt-20">
+          <h2 id="glossary-heading" className="text-2xl font-bold text-gray-900">The terms, explained</h2>
+          <p className="text-sm text-gray-500 mt-1 mb-5">Every figure on this page in plain language, with the assumptions behind it.</p>
+          <dl className="grid md:grid-cols-2 gap-x-8 gap-y-5">
+            {GLOSSARY.map(g => (
+              <div key={g.id} id={g.id} className="scroll-mt-24">
+                <dt className="font-bold text-gray-900">{g.term}</dt>
+                <dd className="text-sm text-gray-600 mt-1 leading-relaxed">{g.long}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
 
         {/* ---------------------------------------------------------------- */}
         {/* Method                                                            */}
@@ -601,16 +639,18 @@ function pct(part: number, whole: number): string {
   return `${v.toLocaleString("en-CA", { maximumFractionDigits: v < 10 ? 1 : 0 })}%`
 }
 
-function StatTile({ label, value, format, sub, open, onToggle }: {
-  label: string; value: number; format: (n: number) => string; sub: string; open: boolean; onToggle: () => void
+function StatTile({ label, value, format, sub, open, onToggle, info }: {
+  label: string; value: number; format: (n: number) => string; sub: string; open: boolean; onToggle: () => void; info: string
 }) {
   const { value: shown, ref } = useCountUp(value)
   return (
+    <div className="relative">
+    <span className="absolute top-3 right-3 z-10"><Tip id={info} dark={!open} /></span>
     <button
       ref={ref as React.RefObject<HTMLButtonElement>}
       onClick={onToggle}
       aria-expanded={open}
-      className={`group text-left rounded-xl p-4 border transition-all duration-200 backdrop-blur ${open ? "bg-white text-gray-900 border-white shadow-xl -translate-y-0.5" : "bg-white/10 border-white/10 hover:bg-white/15 hover:border-white/30 hover:-translate-y-0.5"}`}
+      className={`w-full group text-left rounded-xl p-4 pr-9 border transition-all duration-200 backdrop-blur ${open ? "bg-white text-gray-900 border-white shadow-xl -translate-y-0.5" : "bg-white/10 border-white/10 hover:bg-white/15 hover:border-white/30 hover:-translate-y-0.5"}`}
     >
       <p className={`text-[11px] uppercase tracking-wide font-semibold ${open ? "text-gray-500" : "text-slate-300"}`}>{label}</p>
       <p className="text-2xl md:text-3xl font-bold mt-1 tabular-nums">{format(shown)}</p>
@@ -619,6 +659,7 @@ function StatTile({ label, value, format, sub, open, onToggle }: {
         <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${open ? "rotate-180" : "opacity-50 group-hover:opacity-100"}`} />
       </p>
     </button>
+    </div>
   )
 }
 
@@ -683,10 +724,10 @@ function Bar({ label, value, max, valueLabel, maxLabel }: { label: string; value
   )
 }
 
-function Rule({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+function Rule({ icon, title, children, tip }: { icon: React.ReactNode; title: string; children: React.ReactNode; tip?: string }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-5">
-      <div className="flex items-center gap-2 text-gray-900 font-bold"><span className="text-blue-600">{icon}</span>{title}</div>
+      <div className="flex items-center gap-2 text-gray-900 font-bold"><span className="text-blue-600">{icon}</span>{title}{tip && <Tip id={tip} align="left" />}</div>
       <p className="text-sm text-gray-600 mt-2 leading-relaxed">{children}</p>
     </div>
   )

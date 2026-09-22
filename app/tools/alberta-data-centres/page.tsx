@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { supabase } from "@/lib/supabase"
 import { ToolEngagement } from "@/components/tool-engagement"
 import { ToolFaq } from "@/components/tool-faq"
-import { DATA_CENTRES, ALBERTA_REFERENCE, LAST_REVIEWED, totals } from "@/lib/data/alberta-data-centres"
+import { DATA_CENTRES, ALBERTA_REFERENCE, LAST_REVIEWED, GLOSSARY, totals } from "@/lib/data/alberta-data-centres"
 import { getTrackerData } from "@/lib/data-centres"
 import DataCentresClient, { type RelatedArticle } from "./data-centres-client"
 
@@ -126,6 +126,20 @@ const datasetSchema = {
   ],
 }
 
+const glossarySchema = {
+  "@context": "https://schema.org",
+  "@type": "DefinedTermSet",
+  "@id": `${URL}#glossary`,
+  name: "Alberta data centre glossary",
+  hasDefinedTerm: GLOSSARY.map(g => ({
+    "@type": "DefinedTerm",
+    "@id": `${URL}#${g.id}`,
+    name: g.term,
+    description: g.long,
+    inDefinedTermSet: `${URL}#glossary`,
+  })),
+}
+
 const breadcrumbSchema = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
@@ -182,7 +196,7 @@ export default async function AlbertaDataCentresPage() {
 
   return (
     <>
-      {[datasetSchema, breadcrumbSchema, faqSchema, placesSchema].map((s, i) => (
+      {[datasetSchema, breadcrumbSchema, faqSchema, placesSchema, glossarySchema].map((s, i) => (
         <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />
       ))}
       <div data-tool-root>
