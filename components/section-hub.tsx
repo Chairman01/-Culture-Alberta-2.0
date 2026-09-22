@@ -12,7 +12,7 @@ export interface SectionHubArticle extends Article {
   description?: string
 }
 
-type Accent = 'green' | 'purple' | 'orange' | 'blue'
+type Accent = 'green' | 'purple' | 'orange' | 'blue' | 'red'
 
 // Static class strings so Tailwind keeps them (no dynamic class construction).
 const ACCENTS: Record<Accent, {
@@ -54,6 +54,14 @@ const ACCENTS: Record<Accent, {
     link: 'text-blue-600',
     linkHover: 'hover:text-blue-700',
     filterActive: 'bg-blue-600 text-white border-blue-600',
+  },
+  red: {
+    heroFrom: 'from-red-50 to-rose-50',
+    chip: 'bg-red-100 text-red-800',
+    hover: 'group-hover:text-red-700',
+    link: 'text-red-700',
+    linkHover: 'hover:text-red-800',
+    filterActive: 'bg-red-700 text-white border-red-700',
   },
 }
 

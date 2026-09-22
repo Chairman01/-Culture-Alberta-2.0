@@ -478,6 +478,7 @@ export async function PUT(
       revalidatePath('/')
       revalidatePath('/articles')
       revalidatePath('/alberta')
+      revalidatePath('/national')
       revalidatePath('/red-deer')
       revalidatePath('/lethbridge')
       revalidatePath('/edmonton')

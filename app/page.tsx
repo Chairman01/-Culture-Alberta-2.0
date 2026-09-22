@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { getHomepageArticles, getFeaturedHomeArticle } from '@/lib/articles'
 import { getAllAlbertaArticles } from '@/lib/alberta-cities'
+import { getNationalArticlesWithFallback } from '@/lib/fallback-articles'
 import { getAllEvents } from '@/lib/events'
 import { ArrowRight, Calculator, Scale, Calendar } from 'lucide-react'
 import NewsletterSignup from '@/components/newsletter-signup'
@@ -26,15 +27,24 @@ async function getHomePageData() {
     // Start parallel fetches early so homepage does not block on sequential waits
     const eventsPromise = getAllEvents()
     const albertaArticlesPromise = getAllAlbertaArticles()
+    // National is an editorial section (tick "National" in admin), fetched by
+    // category like /money so it is never confused with the city spotlights.
+    const nationalArticlesPromise = getNationalArticlesWithFallback()
 
     // Use the sustainable homepage articles function with optimized fallback
     const apiArticles = await getHomepageArticles()
 
     // Resolve in-flight parallel fetches
-    const [eventsResult, albertaArticlesResult] = await Promise.allSettled([
+    const [eventsResult, albertaArticlesResult, nationalArticlesResult] = await Promise.allSettled([
       eventsPromise,
-      albertaArticlesPromise
+      albertaArticlesPromise,
+      nationalArticlesPromise
     ])
+
+    const nationalArticles: Article[] = nationalArticlesResult.status === 'fulfilled' ? nationalArticlesResult.value : []
+    if (nationalArticlesResult.status === 'rejected') {
+      console.warn('⚠️ Failed to load National articles for homepage:', nationalArticlesResult.reason)
+    }
 
     let events: any[] = eventsResult.status === 'fulfilled' ? eventsResult.value : []
     if (eventsResult.status === 'rejected') {
@@ -116,7 +126,7 @@ async function getHomePageData() {
         status: 'published',
         tags: ['Alberta', 'Culture', 'Welcome']
       }]
-      return { posts: fallbackPosts, events: [], albertaArticles: [] }
+      return { posts: fallbackPosts, events: [], albertaArticles: [], nationalArticles: [] }
     }
 
     // Debug: Check what status values we have
@@ -132,6 +142,7 @@ async function getHomePageData() {
       posts: publishedPosts,
       events,
       albertaArticles,
+      nationalArticles,
     }
   } catch (error) {
     console.error("Error loading posts:", error)
@@ -158,7 +169,7 @@ async function getHomePageData() {
       status: 'published',
       tags: ['Alberta', 'Culture', 'Welcome']
     }]
-    return { posts: fallbackPosts, events: [], albertaArticles: [] }
+    return { posts: fallbackPosts, events: [], albertaArticles: [], nationalArticles: [] }
   }
 }
 
@@ -170,9 +181,9 @@ export default async function HomeStatic() {
     getFeaturedHomeArticle(),
   ])
 
-  const { posts, events, albertaArticles } = homeData.status === 'fulfilled'
+  const { posts, events, albertaArticles, nationalArticles } = homeData.status === 'fulfilled'
     ? homeData.value
-    : { posts: [], events: [], albertaArticles: [] }
+    : { posts: [], events: [], albertaArticles: [], nationalArticles: [] }
 
   const formatDate = (dateString: string) => {
     try {
@@ -410,6 +421,14 @@ export default async function HomeStatic() {
       new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
     )
   const moreFromAlbertaPosts = albertaSorted.slice(0, 6)
+
+  // National Spotlight: the three newest articles filed under "National".
+  const nationalPosts = nationalArticles
+    .filter(post => post.type !== 'event')
+    .sort((a, b) =>
+      new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
+    )
+    .slice(0, 3)
   // SIMPLE CATEGORY-BASED FILTERING for Food & Drink
   const foodDrinkPosts = sortedPosts.filter(post => {
     // First filter out events - events should not appear in Food & Drink section
@@ -772,6 +791,47 @@ export default async function HomeStatic() {
                       </Link>
                     )
                   })}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* National Spotlight */}
+          {nationalPosts.length > 0 && (
+            <section className="w-full py-8 bg-gray-50">
+              <div className="container mx-auto px-4 md:px-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-red-700">National Spotlight</h2>
+                  <Link href="/national" className="text-red-700 hover:text-red-800 flex items-center gap-2 font-body font-medium">
+                    View All <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {nationalPosts.map((post) => (
+                    <Link key={post.id} href={getArticleUrl(post)} className="group block">
+                      <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                        <div className="aspect-[16/9] w-full bg-gray-200 relative">
+                          <Image
+                            src={getPostImage(post)}
+                            alt={getPostTitle(post)}
+                            width={400}
+                            height={225}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                          />
+                        </div>
+                        <div className="p-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                            <span className="rounded-full bg-red-100 text-red-800 px-3 py-1.5 font-medium">National</span>
+                            <span className="font-medium">{formatDate(getPostDate(post))}</span>
+                          </div>
+                          <h3 className="font-display font-bold text-xl group-hover:text-red-700 transition-colors duration-300 line-clamp-2 leading-tight">{getPostTitle(post)}</h3>
+                          {getPostExcerpt(post) && <p className="font-body text-sm text-gray-500 mt-1 line-clamp-2">{getPostExcerpt(post)}</p>}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </div>
             </section>

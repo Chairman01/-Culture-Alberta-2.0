@@ -251,6 +251,7 @@ export async function POST(request: NextRequest) {
       revalidatePath('/edmonton')
       revalidatePath('/calgary')
       revalidatePath('/alberta')
+      revalidatePath('/national')
       revalidatePath(`/articles/${data.slug || articleSlug}`)
       revalidatePath('/sitemap.xml')
       console.log('✅ Pages revalidated')
