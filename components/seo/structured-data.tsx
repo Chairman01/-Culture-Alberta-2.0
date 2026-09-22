@@ -230,7 +230,8 @@ export function HomepageStructuredData({ baseUrl = 'https://www.culturealberta.c
           { "@type": "SiteNavigationElement", "position": 5, "name": "Food & Drink", "url": `${baseUrl}/food-drink` },
           { "@type": "SiteNavigationElement", "position": 6, "name": "Money", "url": `${baseUrl}/money` },
           { "@type": "SiteNavigationElement", "position": 7, "name": "Retail", "url": `${baseUrl}/retail` },
-          { "@type": "SiteNavigationElement", "position": 8, "name": "Tools", "url": `${baseUrl}/tools` }
+          { "@type": "SiteNavigationElement", "position": 8, "name": "National", "url": `${baseUrl}/national` },
+          { "@type": "SiteNavigationElement", "position": 9, "name": "Tools", "url": `${baseUrl}/tools` }
         ]
       }
     },

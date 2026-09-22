@@ -533,13 +533,14 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                 <SelectItem value="Edmonton">Edmonton</SelectItem>
                 <SelectItem value="Calgary">Calgary</SelectItem>
                 <SelectItem value="Alberta">Alberta</SelectItem>
+                <SelectItem value="Canada">Canada</SelectItem>
                 {TIER1_LOCATIONS.map((loc) => (
                   <SelectItem key={loc} value={loc}>{loc}</SelectItem>
                 ))}
                 {OTHER_COMMUNITY_LOCATIONS.map((loc) => (
                   <SelectItem key={loc} value={loc}>{loc}</SelectItem>
                 ))}
-                {location && ![...TIER1_LOCATIONS, ...OTHER_COMMUNITY_LOCATIONS, 'Edmonton', 'Calgary', 'Alberta'].includes(location) && (
+                {location && ![...TIER1_LOCATIONS, ...OTHER_COMMUNITY_LOCATIONS, 'Edmonton', 'Calgary', 'Alberta', 'Canada'].includes(location) && (
                   <SelectItem value={location}>{location}</SelectItem>
                 )}
               </SelectContent>

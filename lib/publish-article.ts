@@ -176,6 +176,7 @@ export async function publishScheduledArticle(
     revalidatePath('/')
     revalidatePath('/articles')
     revalidatePath('/alberta')
+    revalidatePath('/national')
     revalidatePath('/edmonton')
     revalidatePath('/calgary')
     revalidatePath('/red-deer')

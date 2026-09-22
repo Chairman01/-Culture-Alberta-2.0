@@ -404,6 +404,7 @@ export default function NewArticlePage() {
                 <SelectItem value="Edmonton">Edmonton</SelectItem>
                 <SelectItem value="Calgary">Calgary</SelectItem>
                 <SelectItem value="Alberta">Alberta</SelectItem>
+                <SelectItem value="Canada">Canada</SelectItem>
                 {TIER1_LOCATIONS.map((loc) => (
                   <SelectItem key={loc} value={loc}>{loc}</SelectItem>
                 ))}
@@ -412,7 +413,7 @@ export default function NewArticlePage() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-sm text-gray-500 mt-1">For Alberta communities outside Edmonton/Calgary</p>
+            <p className="text-sm text-gray-500 mt-1">For Alberta communities outside Edmonton/Calgary. Pick Canada for a National story.</p>
           </div>
 
           <div>

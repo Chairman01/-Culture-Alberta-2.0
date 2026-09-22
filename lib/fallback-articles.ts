@@ -550,3 +550,10 @@ export async function getMoneyArticlesWithFallback(): Promise<Article[]> {
 export async function getRetailArticlesWithFallback(): Promise<Article[]> {
   return getSectionArticlesWithFallback('retail')
 }
+
+// Canada-wide stories: federal politics, national economy, anything that is not
+// Alberta-specific. Same opt-in rule — tick "National" in admin and it appears
+// on /national and in the homepage National Spotlight.
+export async function getNationalArticlesWithFallback(): Promise<Article[]> {
+  return getSectionArticlesWithFallback('national')
+}

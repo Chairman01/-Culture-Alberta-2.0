@@ -66,6 +66,11 @@ function excludeCalgaryEdmonton(articles: Article[]): Article[] {
             return true
         }
 
+        // A National story (category "National" / location "Canada") has its own
+        // section and spotlight; it only belongs here if Alberta was ticked too,
+        // which the check above already handled.
+        if (category === 'national' || categories.includes('national') || location === 'canada') return false
+
         // SECOND: Location wins for city-level. If location is an Alberta community, INCLUDE
         const hasAlbertaCommunityLocation = ALBERTA_COMMUNITIES.some(loc => location.includes(loc))
         if (hasAlbertaCommunityLocation) return true

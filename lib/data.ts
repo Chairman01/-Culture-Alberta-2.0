@@ -22,6 +22,7 @@ export const MAIN_CATEGORIES = [
   "Edmonton",
   "Calgary",
   "Alberta",
+  "National",
   "Red Deer",
   "Lethbridge",
   "Grande Prairie",

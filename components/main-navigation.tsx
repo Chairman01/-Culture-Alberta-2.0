@@ -18,6 +18,7 @@ export function MainNavigation() {
   const isEdmonton = pathname?.includes("/edmonton")
   const isCalgary = pathname?.includes("/calgary")
   const isAlberta = pathname?.includes("/alberta")
+  const isNational = pathname?.startsWith("/national")
   const isAdmin = pathname?.startsWith("/admin")
 
   // Don't show navigation on admin pages
@@ -90,6 +91,15 @@ export function MainNavigation() {
               </div>
             </div>
           </div>
+          <Link
+            href="/national"
+            className={`text-sm font-medium transition-colors ${isNational
+              ? "text-red-700 hover:text-red-800"
+              : "text-gray-600 hover:text-gray-900"
+              }`}
+          >
+            National
+          </Link>
           <Link href="/food-drink" className="text-sm font-medium text-gray-600 hover:text-gray-900">
             Food & Drink
           </Link>
@@ -225,6 +235,16 @@ export function MainNavigation() {
                 </Link>
               ))}
             </div>
+            <Link
+              href="/national"
+              onClick={closeMobileMenu}
+              className={`text-base font-medium transition-colors py-3.5 min-h-[44px] flex items-center touch-manipulation ${isNational
+                ? "text-red-700"
+                : "text-gray-600"
+                }`}
+            >
+              National
+            </Link>
             <Link
               href="/food-drink"
               onClick={closeMobileMenu}

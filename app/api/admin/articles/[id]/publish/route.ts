@@ -77,6 +77,7 @@ export async function PATCH(
     revalidatePath('/calgary')
     revalidatePath('/edmonton')
     revalidatePath('/alberta')
+    revalidatePath('/national')
     revalidatePath('/sitemap.xml')
   } catch { /* non-fatal */ }
 
