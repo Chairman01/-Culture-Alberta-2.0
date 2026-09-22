@@ -4,6 +4,11 @@ import { MapContainer, TileLayer, CircleMarker, Tooltip } from "react-leaflet"
 import type { DataCentre, DcStatus } from "@/lib/data/alberta-data-centres"
 import { STATUS_LABEL } from "@/lib/data/alberta-data-centres"
 import "leaflet/dist/leaflet.css"
+import { InfoTip } from "@/components/info-tip"
+import { GLOSSARY } from "@/lib/data/alberta-data-centres"
+
+const MAP_HELP = GLOSSARY.find(g => g.id === "g-map")!
+const STATUS_HELP = GLOSSARY.find(g => g.id === "g-status")!
 
 export const STATUS_COLOR: Record<DcStatus, string> = {
   proposed: "#f59e0b",            // amber-500
@@ -37,14 +42,14 @@ export default function MapView({ items, selectedId, onSelect, center = [53.2, -
   return (
     <div className="w-full rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
       <div className="flex items-center gap-4 px-4 py-2 bg-white border-b border-gray-100 text-xs text-gray-500 flex-wrap">
-        <span className="font-semibold text-gray-700">Legend</span>
+        <span className="font-semibold text-gray-700 inline-flex items-center gap-1">Legend <InfoTip title={STATUS_HELP.term} glossaryId={STATUS_HELP.id} align="left">{STATUS_HELP.short}</InfoTip></span>
         {(Object.keys(STATUS_COLOR) as DcStatus[]).map(s => (
           <span key={s} className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-full" style={{ background: STATUS_COLOR[s] }} />
             {STATUS_LABEL[s]}
           </span>
         ))}
-        <span className="ml-auto text-gray-400">Marker size = megawatts · locations approximate</span>
+        <span className="ml-auto text-gray-400 inline-flex items-center gap-1">Marker size = megawatts · locations approximate <InfoTip title={MAP_HELP.term} glossaryId={MAP_HELP.id}>{MAP_HELP.short}</InfoTip></span>
       </div>
       <MapContainer
         center={center}

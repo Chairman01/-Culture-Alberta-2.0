@@ -112,6 +112,99 @@ export const ALBERTA_REFERENCE = {
 export const HOMES_PER_MW = Math.round((8_760 * 1_000) / ALBERTA_REFERENCE.householdKwhPerYear)
 
 // ---------------------------------------------------------------------------
+// Glossary. `short` is what the ⓘ buttons show; `long` is the glossary entry.
+// Keep every sentence checkable against the sources cited on the page.
+// ---------------------------------------------------------------------------
+export interface GlossaryEntry { id: string; term: string; short: string; long: string }
+
+export const GLOSSARY: GlossaryEntry[] = [
+  {
+    id: 'g-data-centre',
+    term: 'Data centre',
+    short: 'A building packed with computers (servers) that run websites, cloud storage and, increasingly, AI. It needs constant electricity and cooling.',
+    long: 'A data centre is a secure building full of racks of computers, called servers, plus the power and cooling equipment to keep them running around the clock. Until recently most were modest, under 100 MW and often under 10 MW, serving cloud storage and company IT. AI training and AI services need far more computing per building, so the new generation of "hyperscale" AI data centres is measured in hundreds of megawatts or gigawatts, which is why they now show up in electricity planning.',
+  },
+  {
+    id: 'g-mw',
+    term: 'Megawatt (MW)',
+    short: `A unit of power, the rate electricity is used. One megawatt running non-stop covers about ${HOMES_PER_MW.toLocaleString('en-CA')} Alberta homes' average use.`,
+    long: `A megawatt is a unit of power, meaning how fast electricity is being used at a given moment, not a total amount. A typical Alberta household averages about ${ALBERTA_REFERENCE.householdKwhPerYear.toLocaleString('en-CA')} kilowatt-hours a year, which works out to roughly 0.8 kW of continuous draw, so one megawatt sustained around the clock equals the average use of about ${HOMES_PER_MW.toLocaleString('en-CA')} homes. Data centre figures on this page are the electrical demand a site is designed for at full build, as published by the proponent or the regulator.`,
+  },
+  {
+    id: 'g-gw',
+    term: 'Gigawatt (GW)',
+    short: `1,000 megawatts. Alberta's entire grid has never drawn more than ${(ALBERTA_REFERENCE.recordPeakMW / 1000).toFixed(1)} GW at once.`,
+    long: `A gigawatt is 1,000 megawatts. For scale, the most electricity Alberta has ever drawn at one moment was ${ALBERTA_REFERENCE.recordPeakMW.toLocaleString('en-CA')} MW, about 12.4 GW, in January 2024. The City of Calgary averages roughly ${(ALBERTA_REFERENCE.calgaryAverageMW / 1000).toFixed(1)} GW. A single 1 GW data centre is therefore comparable to a large city, and the 7.5 GW Wonder Valley proposal is larger than any single city in Canada.`,
+  },
+  {
+    id: 'g-status',
+    term: 'Project status',
+    short: 'Proposed = announced or filed, nothing binding. Approved = a key permit or AESO contract in hand. Under construction = ground broken. Operating = energized. Inactive = withdrawn, denied or dormant.',
+    long: 'Proposed means a project has been announced, filed with a municipality, or placed in a queue, but has no binding approval and may never be built. Approved means it holds a decisive permit, such as an Alberta Utilities Commission power-plant approval or an executed AESO load contract. Under construction means work has physically started. Operating means the site is energized and serving customers. Inactive covers proposals that were withdrawn, refused by a regulator, or have gone quiet. Our status is an editorial judgement from the record; where the province lists a different stage, the card shows that too.',
+  },
+  {
+    id: 'g-proposed-demand',
+    term: 'Proposed new demand',
+    short: 'The sum of published full-build megawatts for every project that is proposed, approved or under construction. Projects without a number are left out. It is what has been asked for, not what will be built.',
+    long: 'This total adds up the full-build electrical demand each proposed, approved or under-construction project has published. It excludes operating and inactive sites, and it excludes any project that has not disclosed a figure, so it is a floor in one sense and an overstatement in another: many proposals will be built smaller or not at all. Wonder Valley alone accounts for about a third of the total.',
+  },
+  {
+    id: 'g-aeso',
+    term: 'AESO',
+    short: 'The Alberta Electric System Operator, the not-for-profit body that runs the provincial grid and decides who gets to connect.',
+    long: 'The Alberta Electric System Operator is the independent, not-for-profit organisation that plans and operates Alberta\'s transmission grid and runs the wholesale electricity market. Any large new load, including a data centre, must go through AESO\'s connection process. AESO set an interim limit of 1,200 MW for large-load connections, called Phase 1, and is now designing the longer-term rules, Phase 2.',
+  },
+  {
+    id: 'g-allowed',
+    term: 'Allowed on the grid so far',
+    short: 'AESO\'s Phase 1 cap of 1,200 MW, fully taken by two projects: Meta (970 MW) and TransAlta\'s Keephills (230 MW). About 19,565 MW in total had been requested.',
+    long: 'AESO capped interim data centre connections at 1,200 MW under its Phase 1 approach, and all of it was allocated to two projects with executed load contracts: Meta\'s Sturgeon County campus at 970 MW and TransAlta\'s Keephills Data Centre Phase I at 230 MW, both targeting 2027–28. Companies had asked to connect roughly 19,565 MW, so more than 18 GW of requests are waiting on the Phase 2 rules. Projects that bring their own generation and stay off the grid are not counted here.',
+  },
+  {
+    id: 'g-operating',
+    term: 'Operating today',
+    short: 'Published capacity of sites already running, mostly colocation and bitcoin facilities. Several operating sites do not disclose a figure, so the real total is somewhat higher.',
+    long: 'Alberta\'s operating data centres are small by the standards of what is proposed: the largest is Hut 8\'s 67 MW bitcoin site in Medicine Hat, and the largest commercial colocation facility is eStruxture\'s 26 MW CAL-2 near Calgary. Several colocation operators, including Equinix, do not publish capacity, so the total on this page is a floor. No hyperscale AI facility is operating in Alberta yet.',
+  },
+  {
+    id: 'g-grid',
+    term: 'Grid connection',
+    short: 'The site draws power from the shared provincial grid through AESO, like a factory or a city does.',
+    long: 'A grid-connected data centre takes its electricity from the same transmission system that serves homes and businesses, through a connection approved by AESO. That is the arrangement that can affect everyone else\'s bills if demand rises faster than supply.',
+  },
+  {
+    id: 'g-onsite',
+    term: 'On-site natural gas',
+    short: 'The data centre builds its own gas-fired power plant next door, "behind the fence", and may not connect to the grid at all.',
+    long: 'Behind-the-fence or behind-the-meter generation means the operator builds and runs its own power plant, in Alberta almost always natural gas, on or beside the data centre site. Alberta\'s policy requires large data centres to bring their own generation. Some of these plants also tie into the grid for backup or to sell surplus, shown here as "grid + on-site". Small sites are often sized just under 10 MW because plants below that threshold face a lighter regulatory process at the Alberta Utilities Commission.',
+  },
+  {
+    id: 'g-byop',
+    term: 'Bring your own power',
+    short: 'Alberta\'s rule that a large data centre must supply its own generation rather than compete for grid capacity. The catch: it may draw from the grid while its plant is being built.',
+    long: 'Under Alberta\'s Data Centre Regulation, in force since June 2026, projects that pair new demand with new generation or storage go to the front of AESO\'s connection queue, and large data centres are expected to supply their own power. The controversy is the transition: a project can connect and start drawing grid electricity before its own plant is finished, which is the "connect now, build later" gap the Pembina Institute\'s bill estimate is built on.',
+  },
+  {
+    id: 'g-wholesale',
+    term: 'Wholesale vs retail price',
+    short: 'Wholesale is what power plants sell electricity for on AESO\'s market. Retail is what you pay your provider. They are linked, but not the same number.',
+    long: 'Alberta has a competitive electricity market. Generators sell power into AESO\'s wholesale pool at prices that change every hour; retailers buy it and sell it to households at retail rates set by contract or the regulated default rate. Higher wholesale prices reach retail customers over time, quickly for those on variable rates and only at renewal for those on fixed contracts. Both the Pembina Institute\'s estimate and the province\'s response to it turn on this distinction.',
+  },
+  {
+    id: 'g-workload',
+    term: 'AI, colocation and crypto',
+    short: 'AI/HPC sites train and run AI models. Colocation sites rent space and power to many customers. Crypto sites mine bitcoin and can switch off when power is expensive.',
+    long: 'Workload describes what the computers do. AI or high-performance-computing sites run dense racks of graphics processors for training and serving AI models and run flat out. Colocation sites rent racks to many businesses and typically run at moderate, steady loads. Cryptocurrency sites run specialised bitcoin-mining hardware and can pause within seconds when electricity prices spike, which is why several Alberta gas fields host them. Hyperscale means a campus owned and used by a single very large operator such as Meta.',
+  },
+  {
+    id: 'g-map',
+    term: 'Reading the map',
+    short: 'Colour is status, marker size grows with megawatts, and each pin sits on the municipality, not the exact parcel.',
+    long: 'Each marker\'s colour follows the status legend and its area scales with the published megawatts, so a gigawatt campus reads as much larger than a 10 MW site. Most proponents have not published a legal land description, so markers are placed on the municipality or nearest community rather than the actual parcel. Click a marker or a card to see the project\'s details and open its full profile.',
+  },
+]
+
+// ---------------------------------------------------------------------------
 // The list
 // ---------------------------------------------------------------------------
 export const DATA_CENTRES: DataCentre[] = [
