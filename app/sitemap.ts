@@ -293,6 +293,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: baseUrl + '/tools/alberta-data-centres',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
       url: baseUrl + '/tools/alberta-property-tax-calculator',
       lastModified: new Date(),
       changeFrequency: 'monthly',
