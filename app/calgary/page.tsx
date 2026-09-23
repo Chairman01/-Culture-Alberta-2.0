@@ -12,6 +12,7 @@ import { CityEventsCalendar } from '@/components/city-events-calendar'
 import { Article } from "@/lib/types/article"
 import { isNeighborhoodArticle, isGuideArticle, isRegularArticle } from '@/lib/utils/article-filters'
 import { Metadata } from 'next'
+import { WEEKEND_CITIES } from '@/lib/weekend-guides'
 
 // Proper App Router metadata export (replaces broken PageSEO component)
 export const metadata: Metadata = {
@@ -297,6 +298,18 @@ export default async function CalgaryPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Permanent weekend page, see lib/weekend-guides.ts */}
+                  <Link
+                    href={WEEKEND_CITIES.calgary.path}
+                    className="group flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 shadow-sm hover:bg-blue-100 transition-colors"
+                  >
+                    <div>
+                      <h2 className="font-display text-lg font-bold text-gray-900">Things to Do in Calgary This Weekend</h2>
+                      <p className="text-sm text-gray-600">Our weekend picks, updated every Thursday</p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 flex-shrink-0 text-blue-700 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
 
                   {/* Calgary Events */}
                   <div className="bg-white rounded-xl shadow-sm p-4">

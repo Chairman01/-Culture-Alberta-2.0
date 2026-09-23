@@ -1,7 +1,9 @@
+import Link from 'next/link'
 import { Metadata } from "next"
 import { fetchUpcomingOpenDataEvents } from '@/lib/automation/open-data'
 import { EventsStructuredData, type StructuredEvent } from '@/components/seo/structured-data'
 import EventsBrowser, { type BrowserEvent } from "./events-browser"
+import { WEEKEND_CITIES } from '@/lib/weekend-guides'
 
 export const metadata: Metadata = {
   title: 'Alberta Events Calendar | Things to Do in Calgary & Edmonton',
@@ -142,6 +144,12 @@ export default async function EventsPage() {
               <p className="max-w-[800px] text-sm text-muted-foreground">
                 Dates and locations may be changed by the organizer without notice. Please check the
                 event&apos;s website for details and more information.
+              </p>
+              <p className="max-w-[800px] text-sm md:text-base">
+                Our weekend picks, updated every Thursday:{' '}
+                <Link href={WEEKEND_CITIES.edmonton.path} className="font-medium text-blue-700 hover:underline">Things to do in Edmonton this weekend</Link>
+                {' · '}
+                <Link href={WEEKEND_CITIES.calgary.path} className="font-medium text-blue-700 hover:underline">Things to do in Calgary this weekend</Link>
               </p>
             </div>
           </div>

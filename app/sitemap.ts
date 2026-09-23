@@ -4,6 +4,7 @@ import { getAllEvents } from '@/lib/events'
 import { getActiveJobSlugs, getJobCountsByCity, getCompaniesWithJobs, JOB_CITIES, CITY_PAGE_MIN_INDEXABLE_JOBS } from '@/lib/jobs'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { DATA_CENTRES } from '@/lib/data/alberta-data-centres'
+import { weekendGuideCity, WEEKEND_CITIES, type WeekendCity } from '@/lib/weekend-guides'
 
 /**
  * Fifteen minutes, not an hour.
@@ -107,6 +108,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }))
 
+  // The permanent weekend pages change whenever a new guide is published, so
+  // their lastModified is the newest guide's (lib/weekend-guides.ts). Articles
+  // arrive newest first, so the first guide seen for a city is its current one.
+  const weekendUpdated: Partial<Record<WeekendCity, Date>> = {}
+  for (const article of articles) {
+    const city = weekendGuideCity(article.slug)
+    if (!city || weekendUpdated[city]) continue
+    weekendUpdated[city] = new Date(article.updated_at || article.created_at)
+  }
+  const weekendEntries: MetadataRoute.Sitemap = (Object.keys(WEEKEND_CITIES) as WeekendCity[]).map((city) => ({
+    url: baseUrl + WEEKEND_CITIES[city].path,
+    lastModified: weekendUpdated[city] || new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.9,
+  }))
+
   // Static routes
   const staticRoutes: MetadataRoute.Sitemap = [
     {
@@ -164,6 +181,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.9,
     },
+    ...weekendEntries,
     // Secondary Alberta city hubs (+ their all-articles pages)
     ...['red-deer', 'lethbridge', 'medicine-hat', 'grande-prairie', 'fort-mcmurray'].flatMap((slug) => [
       {

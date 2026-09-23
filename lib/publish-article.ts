@@ -14,6 +14,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
+import { revalidateWeekendHub, weekendHubPath } from '@/lib/weekend-guides'
 import { getServiceClient } from '@/lib/supabase-admin'
 import { quickSyncArticle } from '@/lib/auto-sync'
 import { notifySearchEngines } from '@/lib/indexing'
@@ -187,6 +188,7 @@ export async function publishScheduledArticle(
     revalidatePath('/sitemap.xml')
     revalidatePath('/news-sitemap.xml')
     if (published.slug) revalidatePath(`/articles/${published.slug}`)
+    revalidateWeekendHub(published.slug)
   } catch (err) {
     console.warn('[publish-scheduled] revalidation failed (non-fatal):', err)
   }
@@ -214,6 +216,8 @@ export async function announcePublishedArticle(articleId: string): Promise<void>
 
   try {
     await notifySearchEngines(`/articles/${article.slug}`)
+    const hubPath = weekendHubPath(article.slug)
+    if (hubPath) await notifySearchEngines(hubPath)
   } catch (err) {
     console.warn('[publish-scheduled] search engine notification failed (non-fatal):', err)
   }
