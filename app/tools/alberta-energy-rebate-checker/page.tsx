@@ -2,8 +2,32 @@ import type { Metadata } from "next"
 import EnergyRebateCheckerClient from "./energy-rebate-checker-client"
 import { ToolEngagement } from "@/components/tool-engagement"
 
-export const metadata: Metadata = {
-  title: "Alberta Energy Rebate Eligibility Checker | Do You Qualify + How to Apply",
+// Applications close at the end of September 30, 2026, Mountain time.
+const DEADLINE = new Date("2026-10-01T06:00:00Z")
+
+// Hourly, so the title and description switch to the closed wording on Oct 1
+// without a deploy.
+export const revalidate = 3600
+
+// Titles stay under 60 characters (Google cuts the rest). The old one was 74
+// and never showed the deadline, the thing searchers most need this week.
+export async function generateMetadata(): Promise<Metadata> {
+  const open = Date.now() < DEADLINE.getTime()
+  return {
+    ...metadata,
+    title: open
+      ? "Alberta Energy Rebate 2026 Checker: Apply by Sept 30"
+      : "Alberta Energy Rebate 2026: Eligibility and Payments",
+    ...(open
+      ? {}
+      : {
+          description:
+            "Applications for the $100 Alberta Energy Rebate closed September 30, 2026. Check whether you qualified, how the payment is sent, and what to do if yours has not arrived.",
+        }),
+  }
+}
+
+const metadata: Metadata = {
   description:
     "Check if you qualify for the $100 Alberta Energy Rebate in 30 seconds — the same six questions the official application asks. Applications close September 30, 2026. Includes the full step-by-step walkthrough: Alberta.ca Account setup, supported banks, documents you need, and when you get paid.",
   keywords: [
