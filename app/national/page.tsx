@@ -5,12 +5,12 @@ import { SectionStructuredData } from "@/components/seo/structured-data"
 import { getArticleUrl } from "@/lib/utils/article-url"
 
 export const metadata: Metadata = {
-  title: 'National News for Albertans | Canada Stories | Culture Alberta',
-  description: 'Canada-wide stories that matter to Albertans: federal politics, the national economy, and news from across the country, explained from an Alberta point of view.',
-  keywords: 'Canada news, national news Alberta, federal government Alberta, Canadian politics, Canada economy',
+  title: 'Canada Stories for Albertans | National | Culture Alberta',
+  description: 'Canada-wide stories that matter to Albertans: federal politics, the national economy, and stories from across the country, explained from an Alberta point of view.',
+  keywords: 'Canada stories Alberta, federal government Alberta, Canadian politics, Canada economy',
   alternates: { canonical: 'https://www.culturealberta.com/national' },
   openGraph: {
-    title: 'National News for Albertans | Culture Alberta',
+    title: 'Canada Stories for Albertans | Culture Alberta',
     description: 'Canada-wide stories that matter to Albertans, explained from an Alberta point of view.',
     url: 'https://www.culturealberta.com/national',
     type: 'website',
@@ -47,13 +47,13 @@ export default async function NationalPage() {
     <>
     <SectionStructuredData
       name="National"
-      description="Canada-wide stories that matter to Albertans: federal politics, the national economy, and news from across the country."
+      description="Canada-wide stories that matter to Albertans: federal politics, the national economy, and stories from across the country."
       path="/national"
       articles={all.map(a => ({ title: a.title, url: getArticleUrl(a) }))}
     />
     <SectionHub
       title="National"
-      description="Canada-wide stories that matter to Albertans — federal politics, the national economy, and news from across the country."
+      description="Canada-wide stories that matter to Albertans — federal politics, the national economy, and stories from across the country."
       accent="red"
       featuredArticle={featuredArticle}
       articles={articles}
