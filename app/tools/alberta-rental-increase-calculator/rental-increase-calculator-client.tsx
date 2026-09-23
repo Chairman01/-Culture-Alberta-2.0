@@ -559,7 +559,7 @@ export default function RentalIncreaseCalculatorClient({ relatedArticles = [], y
         {/* Newsletter CTA */}
         <div className="rounded-xl border border-gray-900 bg-white p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Know your rights</p>
-          <h2 className="mt-2 text-xl font-bold text-gray-900">Alberta housing news, in plain language</h2>
+          <h2 className="mt-2 text-xl font-bold text-gray-900">Alberta housing updates, in plain language</h2>
           <p className="mt-2 text-sm leading-relaxed text-gray-600">
             Rent rules, tenant rights and Alberta housing costs — explained without the legal jargon, free in
             your inbox.

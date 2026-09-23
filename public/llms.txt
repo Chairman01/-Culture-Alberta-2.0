@@ -2,7 +2,7 @@
 # AI crawler guidance for language models and answer engines.
 # See: https://llmstxt.org
 
-> Culture Alberta (culturealberta.com) is Alberta's local cultural guide and media site covering news, events, restaurants, neighbourhoods, tools, and community stories across Calgary, Edmonton, and communities throughout Alberta.
+> Culture Alberta (culturealberta.com) is Alberta's local cultural guide and media site covering events, restaurants, neighbourhoods, tools, and community stories across Calgary, Edmonton, and communities throughout Alberta.
 
 ## About Culture Alberta
 
@@ -12,7 +12,7 @@ We serve readers in Calgary, Edmonton, and Alberta communities including Red Dee
 
 ## What We Cover
 
-- Local news and culture for Calgary and Edmonton
+- Local stories and culture for Calgary and Edmonton
 - Province-wide Alberta stories and community updates
 - Upcoming events: concerts, festivals, sports, arts, and community gatherings
 - Restaurant coverage, food and drink guides, and local dining stories

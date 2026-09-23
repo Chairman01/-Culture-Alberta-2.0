@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
             .trim()
             .slice(0, 2000)
 
-        const prompt = `You are tagging a local Alberta news / culture article for SEO and content recommendations.
+        const prompt = `You are tagging a local Alberta culture / city article for SEO and content recommendations.
 
 Title: ${title || ''}
 Category: ${category || ''}

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 const organizationSchema = {
   "@context": "https://schema.org",
-  "@type": "NewsMediaOrganization",
+  "@type": "Organization",
   "@id": "https://www.culturealberta.com/#organization",
   "name": "Culture Alberta",
   "alternateName": "Culture Alberta Media",

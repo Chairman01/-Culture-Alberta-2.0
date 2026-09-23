@@ -20,32 +20,32 @@ export const FEED_CATEGORIES: Record<string, { category: string; title: string; 
   calgary: {
     category: "Calgary",
     title: "Culture Alberta — Calgary",
-    description: "Calgary events, food, culture and local news from Culture Alberta.",
+    description: "Calgary events, food, culture and local stories from Culture Alberta.",
   },
   edmonton: {
     category: "Edmonton",
     title: "Culture Alberta — Edmonton",
-    description: "Edmonton events, food, culture and local news from Culture Alberta.",
+    description: "Edmonton events, food, culture and local stories from Culture Alberta.",
   },
   lethbridge: {
     category: "Lethbridge",
     title: "Culture Alberta — Lethbridge",
-    description: "Lethbridge events, food, culture and local news from Culture Alberta.",
+    description: "Lethbridge events, food, culture and local stories from Culture Alberta.",
   },
   "grande-prairie": {
     category: "Grande Prairie",
     title: "Culture Alberta — Grande Prairie",
-    description: "Grande Prairie events, food, culture and local news from Culture Alberta.",
+    description: "Grande Prairie events, food, culture and local stories from Culture Alberta.",
   },
   "red-deer": {
     category: "Red Deer",
     title: "Culture Alberta — Red Deer",
-    description: "Red Deer events, food, culture and local news from Culture Alberta.",
+    description: "Red Deer events, food, culture and local stories from Culture Alberta.",
   },
   alberta: {
     category: "Alberta",
     title: "Culture Alberta — Alberta",
-    description: "Province-wide Alberta events, food, culture and local news from Culture Alberta.",
+    description: "Province-wide Alberta events, food, culture and local stories from Culture Alberta.",
   },
 }
 

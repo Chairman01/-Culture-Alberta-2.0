@@ -31,9 +31,9 @@ export default function NewArticlePage() {
   const handleArticleTypeChange = (type: 'story' | 'news') => {
     setArticleType(type)
     if (type === 'news') {
-      setCategories(prev => prev.includes('News') ? prev : [...prev, 'News'])
+      setCategories(prev => prev.includes('Local') ? prev : [...prev, 'Local'])
     } else {
-      setCategories(prev => prev.filter(c => c !== 'News'))
+      setCategories(prev => prev.filter(c => c !== 'Local' && c !== 'News'))
     }
   }
   const [location, setLocation] = useState("")
@@ -362,7 +362,7 @@ export default function NewArticlePage() {
               >
                 <Newspaper className="w-5 h-5 flex-shrink-0" />
                 <div>
-                  <div className="font-semibold text-sm">News Story</div>
+                  <div className="font-semibold text-sm">Timely Story</div>
                   <div className={`text-xs mt-0.5 ${articleType === 'news' ? 'text-blue-200' : 'text-gray-500'}`}>
                     Timely — goes to Google News
                   </div>

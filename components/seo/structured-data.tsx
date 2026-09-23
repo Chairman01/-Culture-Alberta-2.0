@@ -53,17 +53,6 @@ function getArticleImageUrl(imageUrl: string | undefined, baseUrl: string): stri
   return `${baseUrl}/${imageUrl}`
 }
 
-// Categories that qualify as news journalism
-const NEWS_CATEGORIES = ['news', 'breaking', 'local news', 'city news', 'current events', 'politics', 'business news', 'crime', 'weather', 'sports']
-
-function getArticleSchemaType(category?: string, tags?: string[]): 'NewsArticle' | 'Article' {
-  const cat = (category || '').toLowerCase()
-  if (NEWS_CATEGORIES.some(n => cat.includes(n))) return 'NewsArticle'
-  const tagStr = (tags || []).join(' ').toLowerCase()
-  if (NEWS_CATEGORIES.some(n => tagStr.includes(n))) return 'NewsArticle'
-  return 'Article'
-}
-
 // Known author profiles — maps display name → about URL for Bing E-A-T
 const AUTHOR_URLS: Record<string, string> = {
   'Adam Harrison': 'https://www.culturealberta.com/about#adam-harrison',
@@ -79,7 +68,9 @@ function estimateWordCount(content?: string | null): number {
 export function ArticleStructuredData({ article, baseUrl = 'https://www.culturealberta.com' }: StructuredDataProps) {
   // Generate slug from title for consistent URLs
   const articleSlug = article.slug || createSlug(article.title)
-  const schemaType = getArticleSchemaType(article.category, article.tags)
+  // Plain Article for every story: Google treats it the same as NewsArticle for
+  // search and Google News, and it keeps the markup from calling the site a news outlet.
+  const schemaType = 'Article'
   const wordCount = estimateWordCount(article.content)
 
   const authorName = article.author && article.author !== 'Culture Alberta'
@@ -196,7 +187,7 @@ export function HomepageStructuredData({ baseUrl = 'https://www.culturealberta.c
       "@id": `${baseUrl}/#webpage`,
       "url": baseUrl,
       "name": "Culture Alberta",
-      "description": "Culture Alberta is a local guide to Alberta events, food, culture, neighbourhood stories, practical tools, and local news across Edmonton, Calgary, and communities throughout Alberta.",
+      "description": "Culture Alberta is a local guide to Alberta events, food, culture, neighbourhood stories, practical tools, and city guides across Edmonton, Calgary, and communities throughout Alberta.",
       "inLanguage": "en-CA",
       "isPartOf": {
         "@id": `${baseUrl}/#website`
@@ -208,7 +199,7 @@ export function HomepageStructuredData({ baseUrl = 'https://www.culturealberta.c
         { "@type": "Thing", "name": "Alberta culture" },
         { "@type": "Thing", "name": "Alberta events" },
         { "@type": "Thing", "name": "Calgary restaurants" },
-        { "@type": "Thing", "name": "Edmonton local news" },
+        { "@type": "Thing", "name": "Edmonton local stories" },
         { "@type": "Thing", "name": "Things to do in Alberta" }
       ],
       "spatialCoverage": {
@@ -261,7 +252,7 @@ export function HomepageStructuredData({ baseUrl = 'https://www.culturealberta.c
           "name": "What can readers find on Culture Alberta?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Readers can find local news, city spotlights, event listings, restaurant and food coverage, arts and culture stories, guides, and Alberta-focused tools."
+            "text": "Readers can find local stories, city spotlights, event listings, restaurant and food coverage, arts and culture stories, guides, and Alberta-focused tools."
           }
         }
       ]
@@ -363,9 +354,9 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
       "Travel and Tourism",
       "Red Deer Events",
       "Lethbridge Culture",
-      "Medicine Hat News",
+      "Medicine Hat Culture",
       "Grande Prairie Events",
-      "Fort McMurray News",
+      "Fort McMurray Community",
       "Lloydminster Culture",
       "Airdrie Events",
       "Spruce Grove Community",

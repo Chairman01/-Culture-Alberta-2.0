@@ -14,7 +14,7 @@ import { Suspense } from 'react'
 
 export const metadata: Metadata = {
   title: 'Around Alberta - Culture Alberta',
-  description: "Stories from Lethbridge, Red Deer, Edson, and beyond. Discover news, culture, and events from communities across Alberta.",
+  description: "Stories from Lethbridge, Red Deer, Edson, and beyond. Discover culture, events, and stories from communities across Alberta.",
   openGraph: {
     title: 'Around Alberta - Culture Alberta',
     description: "Stories from Lethbridge, Red Deer, Edson, and beyond.",
@@ -321,7 +321,7 @@ export default async function AlbertaPage() {
               <CitySection
                 title="Alberta"
                 slug="alberta/all-articles?filter=alberta"
-                desc="Province-wide news, culture, and stories from across Alberta."
+                desc="Province-wide culture, events, and stories from across Alberta."
                 articles={
                   albertaProvinceWideArticles.length > 0
                     ? albertaProvinceWideArticles

@@ -89,7 +89,7 @@ function InlineNewsletter() {
           <Mail className="w-4 h-4 text-white" />
         </div>
         <div>
-          <p className="text-sm font-bold leading-tight">Get Alberta news in your inbox</p>
+          <p className="text-sm font-bold leading-tight">Get Alberta stories in your inbox</p>
           <p className="text-xs text-gray-400 mt-0.5">Daily stories from your city, free.</p>
         </div>
       </div>

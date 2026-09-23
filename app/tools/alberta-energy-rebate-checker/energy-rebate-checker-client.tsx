@@ -570,7 +570,7 @@ export default function EnergyRebateCheckerClient() {
               </div>
               <div className="p-4 flex items-start justify-between gap-3 flex-1">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-sky-600 uppercase tracking-widest mb-0.5">News</p>
+                  <p className="text-[10px] font-bold text-sky-600 uppercase tracking-widest mb-0.5">Update</p>
                   <p className="font-semibold text-gray-900 group-hover:text-sky-700 transition-colors leading-snug text-sm mb-1.5">
                     Albertans Can Apply for the $100 Energy Rebate Starting This Week — Everything That Has Changed
                   </p>

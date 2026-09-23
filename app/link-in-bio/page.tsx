@@ -7,13 +7,13 @@ import ArticleFeed from './ArticleFeed'
 export const revalidate = 120
 
 export const metadata: Metadata = {
-  title: 'Culture Alberta — Latest Alberta News & Stories',
+  title: 'Culture Alberta — Latest Alberta Stories',
   description:
-    'The latest news and stories from across Alberta. Breaking stories from Calgary, Edmonton, Lethbridge, Red Deer, Grande Prairie, Fort McMurray, Medicine Hat, and everywhere in between.',
+    'The latest stories from across Alberta. Breaking stories from Calgary, Edmonton, Lethbridge, Red Deer, Grande Prairie, Fort McMurray, Medicine Hat, and everywhere in between.',
   openGraph: {
-    title: 'Culture Alberta — Latest Alberta News & Stories',
+    title: 'Culture Alberta — Latest Alberta Stories',
     description:
-      'The latest news and stories from across Alberta — Calgary, Edmonton, Lethbridge, Red Deer, Grande Prairie, Fort McMurray, and Medicine Hat.',
+      'The latest stories from across Alberta — Calgary, Edmonton, Lethbridge, Red Deer, Grande Prairie, Fort McMurray, and Medicine Hat.',
     url: 'https://www.culturealberta.com/link-in-bio',
     siteName: 'Culture Alberta',
     type: 'website',
@@ -21,27 +21,21 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Culture Alberta — Latest Alberta News & Stories',
-    description: 'The latest news and stories from across Alberta.',
+    title: 'Culture Alberta — Latest Alberta Stories',
+    description: 'The latest stories from across Alberta.',
   },
   alternates: {
     canonical: 'https://www.culturealberta.com/link-in-bio',
   },
   keywords: [
-    'Alberta news',
-    'Calgary news',
-    'Edmonton news',
     'Alberta stories',
     'Culture Alberta',
-    'Lethbridge news',
-    'Grande Prairie news',
-    'Fort McMurray news',
   ],
 }
 
 const jsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'NewsMediaOrganization',
+  '@type': 'Organization',
   name: 'Culture Alberta',
   url: 'https://www.culturealberta.com',
   sameAs: [

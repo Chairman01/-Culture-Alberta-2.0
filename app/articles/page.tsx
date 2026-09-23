@@ -27,7 +27,7 @@ import ArticlesClient from './articles-client'
 export const metadata: Metadata = {
   title: 'All Articles | Culture Alberta',
   description:
-    'Every Culture Alberta article — Edmonton and Calgary news, guides, benefits explainers, food and drink, events, and more. Search the full archive.',
+    'Every Culture Alberta article — Edmonton and Calgary stories, guides, benefits explainers, food and drink, events, and more. Search the full archive.',
   alternates: { canonical: 'https://www.culturealberta.com/articles' },
 }
 
@@ -85,8 +85,8 @@ export default async function ArticlesPage() {
       <div className="sr-only">
         <h2>All Culture Alberta articles</h2>
         <p>
-          {recent.length} articles covering Edmonton, Calgary and the rest of Alberta — news,
-          guides, benefits explainers, food and drink, and events.
+          {recent.length} articles covering Edmonton, Calgary and the rest of Alberta — local
+          stories, guides, benefits explainers, food and drink, and events.
         </p>
         <ul>
           {recent.slice(0, SERVER_LIST_SIZE).map(a => (

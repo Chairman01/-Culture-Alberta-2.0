@@ -134,7 +134,7 @@ const SEQUENCES: Record<SequenceKey, Sequence> = {
         subject: lead => `Sponsorship of our Alberta jobs and benefits coverage`,
         body: lead =>
           `Hi ${firstName(lead)},\n\n` +
-          `I publish Culture Alberta — an independent Alberta newsroom, roughly 175,000 sessions a month and over nine in ten of those readers in Canada.\n\n` +
+          `I publish Culture Alberta — an independent Alberta city guide, roughly 175,000 sessions a month and over nine in ten of those readers in Canada.\n\n` +
           `Two of our sections would sit naturally with ${lead.company}: our jobs board, which carries several thousand live Alberta listings, and our benefits and money tools, which is where readers arrive with the most intent.\n\n` +
           `Each section carries a single named sponsor, with presented-by billing across the section, the newsletter and social. It is a term commitment rather than a one-off placement.\n\n` +
           `Is this something worth a short call? I can send the numbers first if that is more useful.\n\n` +

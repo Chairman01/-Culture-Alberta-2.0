@@ -110,7 +110,7 @@ function buildPrompt(
   const count = targetEventCount(city, events.length)
   const eventList = buildEventList(events.slice(0, count + 4)) // Feed a few extra, Claude picks the best
 
-  return `You are writing a weekend events guide for culturealberta.com, a local Alberta news and culture site.
+  return `You are writing a weekend events guide for culturealberta.com, a local Alberta culture and city guide site.
 
 TASK: Write a weekend events guide for ${cityLabel} for the weekend of ${weekendLabel}.
 
@@ -266,7 +266,7 @@ function buildForecastList(forecasts: CityWeekendForecast[]): string {
 }
 
 function buildWeatherPrompt(weekendLabel: string, forecasts: CityWeekendForecast[]): string {
-  return `You are writing a weekend weather outlook for culturealberta.com, a local Alberta news and culture site.
+  return `You are writing a weekend weather outlook for culturealberta.com, a local Alberta culture and city guide site.
 
 TASK: Write an Alberta weekend weather forecast article for the weekend of ${weekendLabel}, covering these ${forecasts.length} cities in this order: ${forecasts.map(f => f.cityLabel).join(', ')}.
 
@@ -384,7 +384,7 @@ function buildJobsList(jobs: JobsArticleJob[]): string {
 }
 
 function buildJobsPrompt(cityLabel: string, weekLabel: string, jobs: JobsArticleJob[], citySlug: string): string {
-  return `You are writing a weekly hiring roundup for culturealberta.com, a local Alberta news and culture site.
+  return `You are writing a weekly hiring roundup for culturealberta.com, a local Alberta culture and city guide site.
 
 TASK: Write a "Who's Hiring in ${cityLabel} This Week" jobs roundup for the week of ${weekLabel}.
 

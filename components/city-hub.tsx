@@ -138,7 +138,7 @@ export async function CityHub({ config }: { config: CityPageConfig }) {
     const collectionSchema = {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',
-        name: `${config.name} News, Events & Culture`,
+        name: `${config.name} Events, Food & Culture`,
         description: config.metaDescription,
         url: `https://www.culturealberta.com/${config.slug}`,
         isPartOf: { '@type': 'WebSite', name: 'Culture Alberta', url: 'https://www.culturealberta.com' },
@@ -267,7 +267,7 @@ export async function CityHub({ config }: { config: CityPageConfig }) {
                                             </div>
                                             <div>
                                                 <h2 className="font-display text-base font-bold text-gray-900 leading-tight">Newsletter</h2>
-                                                <p className="font-body text-xs text-gray-500 leading-snug">Stay updated with the latest cultural news and events from {config.name} and across Alberta.</p>
+                                                <p className="font-body text-xs text-gray-500 leading-snug">Stay updated with the latest stories and events from {config.name} and across Alberta.</p>
                                             </div>
                                         </div>
                                         <NewsletterSignup defaultCity={config.slug} compact={true} />
@@ -296,7 +296,7 @@ export async function CityHub({ config }: { config: CityPageConfig }) {
                                 <TabsContent value="all" className="mt-4">
                                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                         {articles.slice(0, 6).map((article) => (
-                                            <ArticleCard key={article.id} article={article} badge={article.category || 'News'} badgeClass="bg-muted" />
+                                            <ArticleCard key={article.id} article={article} badge={article.category || 'Alberta'} badgeClass="bg-muted" />
                                         ))}
                                     </div>
                                     {articles.length === 0 && <p className="text-center text-muted-foreground py-12">No articles yet — check back soon.</p>}
