@@ -27,6 +27,7 @@ import { generateWeekendEventsArticle } from './article-generator'
 import { createSlug } from '@/lib/utils/slug'
 import { notifySearchEngines } from '@/lib/indexing'
 import { revalidatePath } from 'next/cache'
+import { revalidateWeekendHub } from '@/lib/weekend-guides'
 
 // City → CMS location/category mapping
 const CITY_TO_CMS: Record<string, {
@@ -254,6 +255,7 @@ export async function generateWeekendArticleForCity(
     revalidatePath('/', 'layout')
     revalidatePath('/articles')
     revalidatePath(`/articles/${slug}`)
+    revalidateWeekendHub(slug)
     if (city === 'calgary') revalidatePath('/calgary')
     if (city === 'edmonton') revalidatePath('/edmonton')
     revalidatePath('/alberta')

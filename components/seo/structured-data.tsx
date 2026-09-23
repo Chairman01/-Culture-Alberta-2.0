@@ -29,6 +29,8 @@ function jsonLd(data: unknown): string {
 interface StructuredDataProps {
   article: Article
   baseUrl?: string
+  /** Absolute URL of the page carrying the markup, when it is not the article URL (e.g. a weekend hub). */
+  pageUrl?: string
 }
 
 // Helper to get proper image URL
@@ -65,9 +67,10 @@ function estimateWordCount(content?: string | null): number {
   return text ? text.split(/\s+/).length : 0
 }
 
-export function ArticleStructuredData({ article, baseUrl = 'https://www.culturealberta.com' }: StructuredDataProps) {
+export function ArticleStructuredData({ article, baseUrl = 'https://www.culturealberta.com', pageUrl }: StructuredDataProps) {
   // Generate slug from title for consistent URLs
   const articleSlug = article.slug || createSlug(article.title)
+  const url = pageUrl || `${baseUrl}/articles/${articleSlug}`
   // Plain Article for every story: Google treats it the same as NewsArticle for
   // search and Google News, and it keeps the markup from calling the site a news outlet.
   const schemaType = 'Article'
@@ -115,9 +118,9 @@ export function ArticleStructuredData({ article, baseUrl = 'https://www.culturea
     "dateModified": article.updatedAt || article.date,
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `${baseUrl}/articles/${articleSlug}`
+      "@id": url
     },
-    "url": `${baseUrl}/articles/${articleSlug}`,
+    "url": url,
     "inLanguage": "en-CA",
     "articleSection": article.category || "Culture",
     "keywords": article.tags?.join(', ') || `${article.category}, Alberta, Culture`,
@@ -393,7 +396,7 @@ const LISTICLE_TITLE_RE = /^\d+\s+.*\bthings to do\b/i
 const LIST_ITEM_RE = /<h3[^>]*>(?:\s*<a[^>]*href="([^"]+)"[^>]*>)?([^<]+)(?:<\/a>\s*)?<\/h3>/gi
 const NON_ITEM_HEADINGS = new Set(["editor's pick", 'editors pick', 'faq', 'related reading'])
 
-export function ListicleStructuredData({ article, baseUrl = 'https://www.culturealberta.com' }: StructuredDataProps) {
+export function ListicleStructuredData({ article, baseUrl = 'https://www.culturealberta.com', pageUrl }: StructuredDataProps) {
   if (!article.title || !LISTICLE_TITLE_RE.test(article.title) || !article.content) return null
 
   const items: Array<{ name: string; url?: string }> = []
@@ -413,7 +416,7 @@ export function ListicleStructuredData({ article, baseUrl = 'https://www.culture
     "@type": "ItemList",
     "name": article.title,
     "description": article.excerpt || undefined,
-    "url": `${baseUrl}/articles/${articleSlug}`,
+    "url": pageUrl || `${baseUrl}/articles/${articleSlug}`,
     "numberOfItems": items.length,
     "itemListOrder": "https://schema.org/ItemListUnordered",
     "itemListElement": items.map((item, i) => ({

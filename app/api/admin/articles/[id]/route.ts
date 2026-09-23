@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { quickSyncArticle } from '@/lib/auto-sync'
 import { revalidatePath } from 'next/cache'
+import { revalidateWeekendHub } from '@/lib/weekend-guides'
 import { notifySearchEngines } from '@/lib/indexing'
 import { postArticleToSocial } from '@/lib/social'
 import { warmSocialPreview } from '@/lib/social-image-url'
@@ -484,6 +485,7 @@ export async function PUT(
       revalidatePath('/edmonton')
       revalidatePath('/calgary')
       revalidatePath(`/articles/${data.slug || nextSlug}`)
+      revalidateWeekendHub(data.slug || nextSlug)
       if (existingArticle?.slug && existingArticle.slug !== nextSlug) {
         revalidatePath(`/articles/${existingArticle.slug}`)
       }

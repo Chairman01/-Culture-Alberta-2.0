@@ -11,6 +11,7 @@ import { requireAdmin } from '@/lib/admin-auth'
 import { notifySearchEngines } from '@/lib/indexing'
 import { postArticleToSocial } from '@/lib/social'
 import { warmSocialPreview } from '@/lib/social-image-url'
+import { revalidateWeekendHub, weekendHubPath } from '@/lib/weekend-guides'
 
 // The social posting in after() polls Threads until its container is ready,
 // so this needs materially more than the default budget.
@@ -74,6 +75,7 @@ export async function PATCH(
     revalidatePath('/') // page-scoped, not site-wide ('/', 'layout') — avoids ISR write floods
     revalidatePath('/articles')
     if (article.slug) revalidatePath(`/articles/${article.slug}`)
+    revalidateWeekendHub(article.slug)
     revalidatePath('/calgary')
     revalidatePath('/edmonton')
     revalidatePath('/alberta')
@@ -93,6 +95,9 @@ export async function PATCH(
     after(async () => {
       try {
         await notifySearchEngines(`/articles/${article.slug}`)
+        // A new weekend guide also changes its city's permanent weekend page.
+        const hubPath = weekendHubPath(article.slug)
+        if (hubPath) await notifySearchEngines(hubPath)
       } catch {
         /* non-fatal */
       }

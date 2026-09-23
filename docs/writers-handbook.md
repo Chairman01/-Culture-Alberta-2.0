@@ -191,6 +191,17 @@ note twice means something in the process needs changing.
 
 Over time, as things settle, more will publish directly without review.
 
+### Weekend guides
+
+Every Thursday's Edmonton and Calgary guides also appear on two permanent pages,
+culturealberta.com/edmonton/things-to-do-this-weekend and /calgary/things-to-do-this-weekend.
+They always show the newest published guide, so they build up search ranking week after week
+instead of every guide starting from zero.
+
+They find the guide by its title, so keep the usual form: **"Things to Do in Edmonton This
+Weekend: …"** (or "This Long Weekend", with a number in front if you like). A guide titled any other
+way won't show up there. No concerts or music festivals, as with everything else.
+
 ## 7. Getting stories out
 
 ### Who posts where

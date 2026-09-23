@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { quickSyncArticle } from '@/lib/auto-sync'
 import { loadOptimizedFallback, updateOptimizedFallback } from '@/lib/optimized-fallback'
 import { revalidatePath } from 'next/cache'
+import { revalidateWeekendHub } from '@/lib/weekend-guides'
 import { notifySearchEngines } from '@/lib/indexing'
 import { postArticleToSocial } from '@/lib/social'
 import { warmSocialPreview } from '@/lib/social-image-url'
@@ -253,6 +254,7 @@ export async function POST(request: NextRequest) {
       revalidatePath('/alberta')
       revalidatePath('/national')
       revalidatePath(`/articles/${data.slug || articleSlug}`)
+      revalidateWeekendHub(data.slug || articleSlug)
       revalidatePath('/sitemap.xml')
       console.log('✅ Pages revalidated')
     } catch (revalidateError) {

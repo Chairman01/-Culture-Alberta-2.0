@@ -33,6 +33,7 @@ import { CommentsSection } from '@/components/comments-section'
 import { PollCard } from '@/components/poll-card'
 import { ArticleViewCount } from '@/components/article-view-count'
 import { getSocialImageUrl } from '@/lib/social-image-url'
+import { getLatestWeekendGuideSlug, weekendGuideCity, WEEKEND_CITIES } from '@/lib/weekend-guides'
 
 // import NewsletterSignup from '@/components/newsletter-signup' // Removed - using ArticleNewsletterSignup instead
 // Removed ArticleContent import to fix hydration issues
@@ -607,6 +608,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const canonicalSlug = loadedArticle.slug || createSlug(loadedArticle.title)
     const fullUrl = `https://www.culturealberta.com/articles/${canonicalSlug}`
 
+    // The newest weekend guide is shown in full on its city's permanent page
+    // (/edmonton/things-to-do-this-weekend), so while it is current it hands that
+    // page the canonical; older guides keep their own. See lib/weekend-guides.ts.
+    const weekendCity = weekendGuideCity(canonicalSlug)
+    const canonicalUrl =
+      weekendCity && (await getLatestWeekendGuideSlug(weekendCity)) === canonicalSlug
+        ? `https://www.culturealberta.com${WEEKEND_CITIES[weekendCity].path}`
+        : fullUrl
+
     // Social crawlers need a public, non-base64 image URL. Supabase Storage images
     // are served through our proxy so Reddit can validate them without restrictive headers.
     const absoluteImageUrl = getSocialImageUrl(loadedArticle.imageUrl)
@@ -669,7 +679,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         creator: '@culturealberta',
       },
       alternates: {
-        canonical: fullUrl,
+        canonical: canonicalUrl,
       },
       // Additional meta tags for article info
       other: {
@@ -1052,6 +1062,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     }
 
     const cityHub = getCityHub(loadedArticle.location, loadedArticle.categories, loadedArticle.category)
+    const weekendCity = weekendGuideCity(loadedArticle.slug || slug)
+    const weekendIsCurrent = weekendCity
+      ? (await getLatestWeekendGuideSlug(weekendCity)) === (loadedArticle.slug || slug)
+      : false
 
     return (
       <>
@@ -1217,6 +1231,20 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                       )}
 
                     </div>
+
+                    {/* Weekend guides point at the permanent weekend page for their city */}
+                    {weekendCity && (
+                      <p className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                        {weekendIsCurrent ? (
+                          <>This guide also lives at{' '}
+                            <Link href={WEEKEND_CITIES[weekendCity].path} className="font-semibold underline">Things to Do in {WEEKEND_CITIES[weekendCity].label} This Weekend</Link>,
+                            the page we update every Thursday.</>
+                        ) : (
+                          <>This guide covered an earlier weekend. For this weekend, see{' '}
+                            <Link href={WEEKEND_CITIES[weekendCity].path} className="font-semibold underline">Things to Do in {WEEKEND_CITIES[weekendCity].label} This Weekend</Link>.</>
+                        )}
+                      </p>
+                    )}
 
                     {/* Featured Image */}
                     {loadedArticle.imageUrl && !loadedArticle.imageUrl.startsWith('data:image') && (
