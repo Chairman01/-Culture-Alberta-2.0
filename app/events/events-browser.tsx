@@ -1,262 +1,208 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { EVENT_CATEGORIES, overlaps, todayInAlberta, type DirectoryEvent, type EventCategory, type WeekendWindow } from '@/lib/events-directory/types'
+import { EventCard } from '@/components/events/event-card'
 
 /**
- * Events browser styled after the City of Edmonton's public events listing:
- * keyword search + event type + from/to date filters, a results count, and
- * a paginated card grid where each card links out to the event's own website.
+ * The /events browser: photo cards with quick filters (city, when, category,
+ * free) plus a keyword box, and a "show more" instead of page numbers so the
+ * list grows in place.
  *
- * Data arrives as props from the server page, already values-filtered.
+ * Data arrives from the server page, already merged, sorted and
+ * values-filtered; this only narrows and renders it. It is a client component
+ * so the chips respond instantly, but the first page of cards is still in the
+ * server HTML for crawlers.
  */
 
-export interface BrowserEvent {
-  id: string
-  name: string
-  start: string           // YYYY-MM-DD
-  end?: string            // YYYY-MM-DD
-  dateRangeLabel: string  // "July 10, 2026 - July 12, 2026"
-  venue?: string
-  city: 'Edmonton' | 'Calgary'
-  category: string
-  url?: string
-  manual?: boolean        // created in our admin — always pinned first
-  // Schema.org Event fields (not rendered in the browser UI)
-  description?: string
-  image?: string
-  price?: number
-  currency?: string
-  organizerName?: string
-  organizerUrl?: string
-}
+type When = 'weekend' | 'week' | 'month' | 'all'
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 16
 
-const BADGE_COLORS: Array<{ match: RegExp; classes: string }> = [
-  { match: /festival/i, classes: 'bg-red-700 text-white' },
-  { match: /sport/i, classes: 'bg-orange-600 text-white' },
-  { match: /outdoor/i, classes: 'bg-amber-700 text-white' },
-  { match: /art/i, classes: 'bg-blue-700 text-white' },
-  { match: /communit|programming/i, classes: 'bg-purple-700 text-white' },
-  { match: /recreation|leisure/i, classes: 'bg-teal-700 text-white' },
+const WHEN_OPTIONS: Array<{ value: When; label: string }> = [
+  { value: 'weekend', label: 'This weekend' },
+  { value: 'week', label: 'Next 7 days' },
+  { value: 'month', label: 'Next 30 days' },
+  { value: 'all', label: 'All upcoming' },
 ]
 
-function badgeClass(category: string): string {
-  return BADGE_COLORS.find(b => b.match.test(category))?.classes || 'bg-gray-600 text-white'
+function addDays(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
 }
 
-function mapsUrl(venue: string, city: string): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${venue}, ${city}, Alberta`)}`
-}
-
-function todayStr(): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-}
-
-export default function EventsBrowser({ events }: { events: BrowserEvent[] }) {
-  const [keyword, setKeyword] = useState('')
-  const [city, setCity] = useState('all')
-  const [eventType, setEventType] = useState('all')
-  const [fromDate, setFromDate] = useState(todayStr())
-  const [toDate, setToDate] = useState('')
-  const [page, setPage] = useState(1)
-
-  const eventTypes = useMemo(
-    () => [...new Set(events.map(e => e.category).filter(Boolean))].sort(),
-    [events]
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+        active
+          ? 'border-gray-900 bg-gray-900 text-white'
+          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-500'
+      }`}
+    >
+      {children}
+    </button>
   )
+}
+
+export default function EventsBrowser({
+  events,
+  weekend,
+  initialWhen = 'all',
+}: {
+  events: DirectoryEvent[]
+  weekend: WeekendWindow
+  initialWhen?: When
+}) {
+  const [city, setCity] = useState<'all' | 'Edmonton' | 'Calgary'>('all')
+  const [when, setWhen] = useState<When>(initialWhen)
+  const [category, setCategory] = useState<'all' | EventCategory>('all')
+  const [freeOnly, setFreeOnly] = useState(false)
+  const [keyword, setKeyword] = useState('')
+  const [visible, setVisible] = useState(PAGE_SIZE)
+
+  // Only offer categories that actually have events, so no chip is a dead end.
+  const categories = useMemo(() => {
+    const present = new Set(events.map(e => e.category))
+    return EVENT_CATEGORIES.filter(c => present.has(c))
+  }, [events])
 
   const filtered = useMemo(() => {
+    const today = todayInAlberta()
     const kw = keyword.trim().toLowerCase()
-    const today = todayStr()
-    const matches = events.filter(e => {
+    const range: { from: string; to: string } | null =
+      when === 'weekend' ? { from: weekend.start, to: weekend.end }
+      : when === 'week' ? { from: today, to: addDays(today, 7) }
+      : when === 'month' ? { from: today, to: addDays(today, 30) }
+      : null
+
+    return events.filter(e => {
       if (city !== 'all' && e.city !== city) return false
-      if (eventType !== 'all' && e.category !== eventType) return false
-      // Date-range overlap: event [start, end] intersects filter [from, to].
-      // Our own (manual) events are exempt so they stay visible even after
-      // they've happened — they're the priority content on this page.
-      if (!e.manual) {
-        const end = e.end || e.start
-        if (fromDate && end < fromDate) return false
-        if (toDate && e.start > toDate) return false
+      if (category !== 'all' && e.category !== category) return false
+      if (freeOnly && !e.isFree) return false
+      // Our own past events stay visible on the unfiltered list only.
+      if (range) {
+        if (!overlaps(e, range.from, range.to)) return false
+      } else if (!e.manual && e.end < today) {
+        return false
       }
       if (kw) {
-        const haystack = `${e.name} ${e.venue || ''} ${e.category} ${e.city}`.toLowerCase()
+        const haystack = `${e.name} ${e.venue || ''} ${e.category} ${e.city} ${e.description || ''}`.toLowerCase()
         if (!haystack.includes(kw)) return false
       }
       return true
     })
+  }, [events, city, when, category, freeOnly, keyword, weekend])
 
-    // Manual events pinned first: upcoming soonest-first, then recent past;
-    // automated events follow in date order.
-    const rank = (e: BrowserEvent) => (e.manual ? ((e.end || e.start) >= today ? 0 : 1) : 2)
-    return matches.sort((a, b) => {
-      const r = rank(a) - rank(b)
-      if (r !== 0) return r
-      // Past manual events: most recent first; everything else: soonest first
-      return rank(a) === 1 ? b.start.localeCompare(a.start) : a.start.localeCompare(b.start)
-    })
-  }, [events, keyword, city, eventType, fromDate, toDate])
+  const shown = filtered.slice(0, visible)
+  const today = todayInAlberta()
+  const hasFilters = city !== 'all' || when !== 'all' || category !== 'all' || freeOnly || keyword.trim() !== ''
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const pageEvents = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
-  const showingFrom = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
-  const showingTo = Math.min(safePage * PAGE_SIZE, filtered.length)
-
-  const resetPage = () => setPage(1)
+  const update = <T,>(setter: (v: T) => void) => (v: T) => {
+    setter(v)
+    setVisible(PAGE_SIZE)
+  }
 
   return (
     <div>
-      {/* Filter bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-        <div>
-          <label htmlFor="ev-keyword" className="block text-sm font-semibold text-gray-800 mb-1">Search By Keyword</label>
-          <div className="relative">
-            <input
-              id="ev-keyword"
-              type="text"
-              value={keyword}
-              onChange={e => { setKeyword(e.target.value); resetPage() }}
-              placeholder="Type Keyword..."
-              className="w-full rounded-md border border-gray-300 px-3 py-2 pr-9 text-sm focus:border-blue-500 focus:outline-none"
-            />
-            <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
+      {/* Filters */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="City">
+              <Chip active={city === 'all'} onClick={() => update(setCity)('all')}>Both cities</Chip>
+              <Chip active={city === 'Edmonton'} onClick={() => update(setCity)('Edmonton')}>Edmonton</Chip>
+              <Chip active={city === 'Calgary'} onClick={() => update(setCity)('Calgary')}>Calgary</Chip>
+            </div>
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="When">
+              {WHEN_OPTIONS.map(opt => (
+                <Chip key={opt.value} active={when === opt.value} onClick={() => update(setWhen)(opt.value)}>
+                  {opt.label}
+                </Chip>
+              ))}
+              <Chip active={freeOnly} onClick={() => update(setFreeOnly)(!freeOnly)}>Free</Chip>
+            </div>
           </div>
+
+          <label className="relative block w-full lg:max-w-xs">
+            <span className="sr-only">Search events</span>
+            <input
+              type="search"
+              value={keyword}
+              onChange={e => update(setKeyword)(e.target.value)}
+              placeholder="Search by name, venue or neighbourhood"
+              className="w-full rounded-full border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-gray-900 focus:outline-none"
+            />
+            <Search className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-gray-400" aria-hidden="true" />
+          </label>
         </div>
-        <div>
-          <label htmlFor="ev-city" className="block text-sm font-semibold text-gray-800 mb-1">City</label>
-          <select
-            id="ev-city"
-            value={city}
-            onChange={e => { setCity(e.target.value); resetPage() }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white focus:border-blue-500 focus:outline-none"
-          >
-            <option value="all">Edmonton &amp; Calgary</option>
-            <option value="Edmonton">Edmonton</option>
-            <option value="Calgary">Calgary</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="ev-type" className="block text-sm font-semibold text-gray-800 mb-1">Event Type</label>
-          <select
-            id="ev-type"
-            value={eventType}
-            onChange={e => { setEventType(e.target.value); resetPage() }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white focus:border-blue-500 focus:outline-none"
-          >
-            <option value="all">All Types</option>
-            {eventTypes.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="ev-from" className="block text-sm font-semibold text-gray-800 mb-1">From Date</label>
-          <input
-            id="ev-from"
-            type="date"
-            value={fromDate}
-            onChange={e => { setFromDate(e.target.value); resetPage() }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label htmlFor="ev-to" className="block text-sm font-semibold text-gray-800 mb-1">To Date</label>
-          <input
-            id="ev-to"
-            type="date"
-            value={toDate}
-            onChange={e => { setToDate(e.target.value); resetPage() }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          />
+
+        <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Category">
+          <SlidersHorizontal className="h-4 w-4 text-gray-400" aria-hidden="true" />
+          <Chip active={category === 'all'} onClick={() => update(setCategory)('all')}>All types</Chip>
+          {categories.map(c => (
+            <Chip key={c} active={category === c} onClick={() => update(setCategory)(c)}>{c}</Chip>
+          ))}
         </div>
       </div>
 
-      {/* Result count */}
-      <p className="text-sm text-gray-600 mb-4">
-        Showing {showingFrom}-{showingTo} Events out of {filtered.length} Events
-      </p>
+      {/* Result line */}
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-gray-600" aria-live="polite">
+          {filtered.length === 0
+            ? 'No events match'
+            : `Showing ${shown.length} of ${filtered.length} event${filtered.length === 1 ? '' : 's'}`}
+          {when === 'weekend' && <span className="text-gray-400"> · {weekend.label}</span>}
+        </p>
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              setCity('all'); setWhen('all'); setCategory('all'); setFreeOnly(false); setKeyword(''); setVisible(PAGE_SIZE)
+            }}
+            className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden="true" /> Clear filters
+          </button>
+        )}
+      </div>
 
-      {/* Card grid */}
-      {pageEvents.length === 0 ? (
+      {/* Cards */}
+      {shown.length === 0 ? (
         <p className="py-16 text-center text-gray-500">
-          No events match your filters. Try widening the dates or clearing the keyword.
+          Nothing matches those filters yet. Try &ldquo;All upcoming&rdquo; or clear the search.
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {pageEvents.map(event => (
-            <div key={event.id} className="flex flex-col rounded-md border bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-bold leading-snug mb-2 border-b border-blue-400 pb-3">
-                {event.url ? (
-                  <a
-                    href={event.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-700 hover:text-blue-900 hover:underline"
-                  >
-                    {event.name}
-                  </a>
-                ) : (
-                  <span className="text-gray-900">{event.name}</span>
-                )}
-              </h3>
-              <p className="text-sm text-gray-800 mb-1">
-                <strong>Date:</strong> {event.dateRangeLabel}
-              </p>
-              <p className="text-sm text-gray-800 mb-3">
-                <strong>Location:</strong>{' '}
-                {event.venue ? (
-                  <a
-                    href={mapsUrl(event.venue, event.city)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-700 hover:underline"
-                  >
-                    {event.venue}
-                  </a>
-                ) : (
-                  event.city
-                )}
-              </p>
-              <div className="mt-auto flex flex-wrap items-center gap-2">
-                {event.manual && (
-                  <span className="rounded bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
-                    Culture Alberta
-                  </span>
-                )}
-                <span className={`rounded px-2.5 py-1 text-xs font-semibold ${badgeClass(event.category)}`}>
-                  {event.category}
-                </span>
-                <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">{event.city}</span>
-                {event.manual && (event.end || event.start) < todayStr() && (
-                  <span className="rounded bg-gray-200 px-2 py-1 text-xs text-gray-600">Recently held</span>
-                )}
-              </div>
-            </div>
+        <ul className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {shown.map((event, i) => (
+            <li key={event.id}>
+              <EventCard event={event} past={event.manual && event.end < today} eager={i < 4} />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-8 flex items-center justify-center gap-4">
+      {filtered.length > shown.length && (
+        <div className="mt-8 text-center">
           <button
             type="button"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={safePage <= 1}
-            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-40"
+            onClick={() => setVisible(v => v + PAGE_SIZE)}
+            className="rounded-full border border-gray-900 px-6 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-gray-900 hover:text-white"
           >
-            ← Previous
-          </button>
-          <span className="text-sm text-gray-600">Page {safePage} of {totalPages}</span>
-          <button
-            type="button"
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={safePage >= totalPages}
-            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-40"
-          >
-            Next →
+            Show more events ({filtered.length - shown.length} left)
           </button>
         </div>
       )}
