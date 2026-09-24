@@ -375,7 +375,7 @@ async function fetchWorkday(
   // no Alberta postings — not a reason to fall back to reading the whole board.
   if (facetFiltered && albertaSites.length === 0) return []
 
-  const appliedFacets = facetFiltered ? { locations: albertaSites } : {}
+  const appliedFacets: Record<string, string[]> = facetFiltered ? { locations: albertaSites } : {}
   const albertaItems: WorkdayListItem[] = []
   const seen = new Set<string>()
   let total: number | null = null
