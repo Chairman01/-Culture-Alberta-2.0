@@ -202,6 +202,10 @@ export const ATS_BOARDS: AtsBoard[] = [
   // folding into Red Deer) — health care aides, LPNs and occupational therapy
   // assistants, which the Health & Medicine specialty had almost nothing of.
   { provider: 'workday', token: 'bethany', company: 'Bethany Care Society', domain: 'bethanyseniors.com', datacenter: 'wd10', site: 'bethanycareers' },
+  // Edmonton. 33rd on Forbes' January 2026 Canada's Best Employers. A small
+  // board (7 postings on 2026-09-24), all Edmonton or Calgary — claims
+  // adjudicators, psychologists, IT — but none of it is on any other board here.
+  { provider: 'workday', token: 'wcbalberta', company: 'WCB Alberta', domain: 'wcb.ab.ca', datacenter: 'wd10', site: 'wcbalbertacareers' },
 
   // Calgary-weighted additions, confirmed live 2026-08-11. The board skewed
   // heavily to Edmonton (391 active postings against Calgary's 122), and the
@@ -551,6 +555,45 @@ export const ATS_BOARDS: AtsBoard[] = [
     logoDomain: 'mtroyal.ca',
     locationAliases: [{ pattern: /^/, city: 'calgary' }],
   },
+
+  // ── Forbes 2026 company-culture list: Edmonton-area employers ─────────────
+  // Added 2026-09-24. Each needed a provider of its own; see providers.ts.
+  //
+  // Stantec: 7th in Canada on the culture list, Edmonton-founded engineering
+  // firm. ~300 Alberta postings (131 Edmonton, 135 Calgary, plus Red Deer,
+  // Lethbridge, Medicine Hat, Fort McMurray). `domain` is the .jobs microsite
+  // the search API is keyed on.
+  {
+    provider: 'jobsyn',
+    token: 'stantec',
+    company: 'Stantec',
+    domain: 'stantec.jobs',
+    logoDomain: 'stantec.com',
+  },
+  // ATB Financial: 56th. Branch client-service roles across the province plus
+  // Edmonton/Calgary head-office work. `site` is the Eightfold tenant domain.
+  {
+    provider: 'eightfold',
+    token: 'atb-financial',
+    company: 'ATB Financial',
+    domain: 'careers.atb.com',
+    logoDomain: 'atb.com',
+    site: 'atb.com',
+  },
+  // EPCOR: on Forbes' January Best Employers list. Its Jobvite board also
+  // carries Texas and Arizona utility roles, which the Alberta filter drops.
+  {
+    provider: 'jobvite',
+    token: 'epcor',
+    company: 'EPCOR',
+    domain: 'epcor.com',
+  },
+  // NOT ADDED — Freson Bros. (95th): Dayforce job board. The search API is
+  // /api/geo/fresonbros/jobposting/search (POST), found in the page bundle,
+  // but Cloudflare 403s it for a non-browser client even with the page's own
+  // cookies. Same policy as AHS: no workaround. The same wall likely covers
+  // WestJet and AUArts. Alberta Blue Cross and AutoCanada 403 their careers
+  // pages outright.
 
   // ── Cadient Talent ─────────────────────────────────────────────────────────
   // Costco Wholesale Canada. `token` is Cadient's applicationName and `domain`
