@@ -280,10 +280,68 @@ const WORKDAY_PAGE = 20
 const WORKDAY_MAX_PAGES = 25
 
 /**
+ * A posting listed at several sites says so literally — "2 Locations" — in
+ * place of naming any of them, so it can't be judged from the list at all.
+ */
+const WORKDAY_MULTI_SITE = /^\d+\s+Locations$/i
+
+/**
+ * Detail fetches allowed per board for "N Locations" postings that could not be
+ * pre-filtered (see below). Finning had 24 in September 2026; the cap only
+ * stops a tenant that later lists hundreds from eating the sync budget, and is
+ * logged when hit.
+ */
+const WORKDAY_MAX_UNFILTERED_MULTI = 40
+
+interface WorkdayFacetValue {
+  id?: string
+  descriptor?: string
+  facetParameter?: string
+  values?: WorkdayFacetValue[]
+}
+
+interface WorkdayListPage {
+  jobPostings?: WorkdayListItem[]
+  total?: number
+  facets?: WorkdayFacetValue[]
+}
+
+/**
+ * The tenant's `locations` facet values. Most tenants nest it inside a
+ * `locationMainGroup` facet, a few put it at the top level, and some (ENMAX,
+ * NAIT, Finning) don't expose one at all — Finning only has `primaryLocation`,
+ * which is no use here because it ignores the additional sites.
+ */
+function workdayLocationFacet(facets: WorkdayFacetValue[] = []): WorkdayFacetValue[] {
+  for (const f of facets) {
+    if (f.facetParameter === 'locations') return f.values ?? []
+    for (const v of f.values ?? []) {
+      if (v.facetParameter === 'locations') return v.values ?? []
+    }
+  }
+  return []
+}
+
+/**
  * Workday is the only two-call provider: the list endpoint carries titles and
  * locations but no descriptions, so each Alberta match needs a detail fetch.
  * The list is filtered to Alberta FIRST so a national employer costs a handful
  * of detail calls rather than one per posting company-wide.
+ *
+ * Where the tenant has a `locations` facet, that filtering happens at Workday:
+ * the Alberta sites are picked out of the facet by name and the list is asked
+ * for only those. That matters for multi-site postings. Their list row reads
+ * "2 Locations", which names no city, so a text filter on the row had to drop
+ * them — WCB Alberta lost four of its seven postings that way, every one an
+ * Edmonton + Calgary role. The facet counts additional sites as well as the
+ * primary one, so those rows come back and their real locations are read off
+ * the detail. It is also far cheaper for national boards: Home Depot's list is
+ * two pages of Alberta stores instead of twenty-four of the whole country.
+ * Checked 2026-09-24 against every Workday board: the facet-filtered list held
+ * every posting the text filter kept, plus only "N Locations" rows.
+ *
+ * Tenants without the facet are read in full as before, and their multi-site
+ * rows go to the detail phase unconfirmed, capped per board.
  *
  * Paging has to be defensive, because some tenants never signal the end. Ask
  * Cenovus for offset 480 of a 40-posting board and it answers with a full page
@@ -301,16 +359,30 @@ async function fetchWorkday(
 ): Promise<RawPosting[]> {
   const base = `https://${board.token}.${board.datacenter}.myworkdayjobs.com/wday/cxs/${board.token}/${board.site}`
 
+  const listPage = (appliedFacets: Record<string, string[]>, offset: number) =>
+    getJson(`${base}/jobs`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ appliedFacets, limit: WORKDAY_PAGE, offset, searchText: '' }),
+    }) as Promise<WorkdayListPage>
+
+  const first = await listPage({}, 0)
+  const sites = workdayLocationFacet(first.facets)
+  const facetFiltered = sites.length > 0
+  const albertaSites = sites.filter(v => v.id && isAlberta(v.descriptor ?? '')).map(v => v.id!)
+
+  // The facet lists every site with a live posting, so no Alberta site means
+  // no Alberta postings — not a reason to fall back to reading the whole board.
+  if (facetFiltered && albertaSites.length === 0) return []
+
+  const appliedFacets = facetFiltered ? { locations: albertaSites } : {}
   const albertaItems: WorkdayListItem[] = []
   const seen = new Set<string>()
   let total: number | null = null
+  let unfilteredMulti = 0
 
   for (let page = 0; page < WORKDAY_MAX_PAGES; page++) {
-    const data = (await getJson(`${base}/jobs`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ appliedFacets: {}, limit: WORKDAY_PAGE, offset: page * WORKDAY_PAGE, searchText: '' }),
-    })) as { jobPostings?: WorkdayListItem[]; total?: number }
+    const data = page === 0 && !facetFiltered ? first : await listPage(appliedFacets, page * WORKDAY_PAGE)
 
     if (total === null && typeof data.total === 'number') total = data.total
 
@@ -323,12 +395,25 @@ async function fetchWorkday(
       if (seen.has(key)) continue
       seen.add(key)
       fresh++
-      if (isAlberta(item.locationsText ?? '')) albertaItems.push(item)
+      const text = item.locationsText ?? ''
+      if (isAlberta(text)) {
+        albertaItems.push(item)
+      } else if (WORKDAY_MULTI_SITE.test(text)) {
+        // Facet-filtered rows are known to include an Alberta site; the rest
+        // are a guess the detail phase settles, so they're rationed.
+        if (facetFiltered || unfilteredMulti++ < WORKDAY_MAX_UNFILTERED_MULTI) albertaItems.push(item)
+      }
     }
 
     if (fresh === 0) break
     if (total !== null && seen.size >= total) break
     if (items.length < WORKDAY_PAGE) break
+  }
+
+  if (unfilteredMulti > WORKDAY_MAX_UNFILTERED_MULTI) {
+    console.warn(
+      `[ats] workday/${board.token}: ${unfilteredMulti} multi-site postings, read the first ${WORKDAY_MAX_UNFILTERED_MULTI}`
+    )
   }
 
   return mapDetails(albertaItems, async item => {
@@ -340,6 +425,8 @@ async function fetchWorkday(
         startDate?: string
         timeType?: string
         jobPostingId?: string
+        location?: string
+        additionalLocations?: string[]
       }
       /** The legal entity hiring — differs from the tenant on multi-brand boards. */
       hiringOrganization?: { name?: string }
@@ -347,10 +434,20 @@ async function fetchWorkday(
     const info = detail.jobPostingInfo
     if (!info?.externalUrl) return null
     const hiringOrg = detail.hiringOrganization?.name?.trim()
+
+    // "2 Locations" is useless as a location; the detail names every site.
+    // Joined with "; " so each city's row shows only its own site downstream,
+    // and de-duplicated because Finning names one yard three times over.
+    let location = item.locationsText ?? ''
+    if (WORKDAY_MULTI_SITE.test(location)) {
+      location = [...new Set([info.location, ...(info.additionalLocations ?? [])].filter(Boolean))].join('; ')
+      if (!isAlberta(location)) return null
+    }
+
     return {
       id: info.jobPostingId || item.bulletFields?.[0] || item.externalPath,
       title: (item.title ?? '').trim(),
-      location: item.locationsText ?? '',
+      location,
       descriptionHtml: info.jobDescription ?? '',
       applyUrl: info.externalUrl,
       // `postedOn` is relative prose ("Posted 2 Days Ago"); startDate is real.
