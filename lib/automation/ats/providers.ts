@@ -2011,6 +2011,239 @@ async function fetchPeopleSoft(board: AtsBoard): Promise<RawPosting[]> {
   return postings
 }
 
+// ── DirectEmployers .jobs microsites (Stantec) ──────────────────────────────
+
+/** The search API caps a page at 50 whatever is asked for. */
+const JOBSYN_PAGE_SIZE = 50
+/** Stantec's Alberta board is ~7 pages. Logged when hit, never silently cut. */
+const JOBSYN_MAX_PAGES = 20
+
+interface JobsynJob {
+  guid?: string
+  title_exact?: string
+  title_slug?: string
+  description?: string
+  location_exact?: string
+  city_slab_exact?: string
+  state_short?: string
+  date_new?: string
+  date_added?: string
+}
+
+/**
+ * Stantec's careers site, stantec.jobs, is a DirectEmployers ".jobs" microsite
+ * whose pages are an empty Nuxt shell, and its robots.txt disallows the /feed/
+ * routes, so neither the markup nor the feed is the way in. The page reads
+ * from prod-search-api.jobsyn.org, keyed by an X-Origin header naming the
+ * microsite, and that search returns full descriptions. `location=Alberta` is
+ * applied server-side: ~300 postings instead of Stantec's ~6,000 worldwide,
+ * in seven requests and no detail fetches.
+ *
+ * Descriptions arrive as plain text (blank-line paragraphs, "- " bullets), so
+ * they're rebuilt as HTML here.
+ */
+async function fetchJobsyn(board: AtsBoard): Promise<RawPosting[]> {
+  const origin = board.domain!
+  const out: RawPosting[] = []
+
+  for (let page = 1; page <= JOBSYN_MAX_PAGES; page++) {
+    const data = (await getJson(
+      `https://prod-search-api.jobsyn.org/api/v1/solr/search?location=Alberta&num_items=${JOBSYN_PAGE_SIZE}&page=${page}`,
+      { headers: { 'x-origin': origin } }
+    )) as { jobs?: JobsynJob[]; pagination?: { has_more_pages?: boolean } }
+
+    for (const j of data.jobs ?? []) {
+      const title = (j.title_exact ?? '').trim()
+      // "edmonton/alberta/can/jobs::Edmonton, AB" → the "edmonton-ab" path segment.
+      const citySlug = j.city_slab_exact?.split('/')[0]
+      if (!j.guid || !title || !j.title_slug || !citySlug || !j.description?.trim()) continue
+      out.push({
+        id: j.guid,
+        title,
+        location: j.location_exact ?? '',
+        descriptionHtml: plainTextToHtml(j.description),
+        applyUrl: `https://${origin}/${citySlug}-${(j.state_short ?? 'ab').toLowerCase()}/${j.title_slug}/${j.guid}/job/`,
+        postedAt: j.date_new ?? j.date_added ?? null,
+        employmentType: null,
+      })
+    }
+
+    if (!data.pagination?.has_more_pages) break
+    if (page === JOBSYN_MAX_PAGES) {
+      console.warn(`[ats:${board.token}] stopped at ${JOBSYN_MAX_PAGES} pages; the board has more`)
+    }
+  }
+  return out
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/** Plain-text paragraphs and "- " bullet runs, rebuilt as HTML. */
+function plainTextToHtml(text: string): string {
+  const html: string[] = []
+  let list: string[] = []
+  const flush = () => {
+    if (list.length) html.push(`<ul>${list.map(li => `<li>${li}</li>`).join('')}</ul>`)
+    list = []
+  }
+  for (const line of text.split('\n').map(l => l.trim()).filter(Boolean)) {
+    const bullet = line.match(/^[-•*]\s+(.*)$/)
+    if (bullet) {
+      list.push(escapeHtml(bullet[1]))
+    } else {
+      flush()
+      html.push(`<p>${escapeHtml(line)}</p>`)
+    }
+  }
+  flush()
+  return html.join('')
+}
+
+// ── Eightfold PCSX (ATB Financial) ───────────────────────────────────────────
+
+/** PCSX returns ten positions a page and ignores any size parameter. */
+const EIGHTFOLD_PAGE_SIZE = 10
+const EIGHTFOLD_MAX_PAGES = 30
+
+interface EightfoldPosition {
+  id?: number
+  name?: string
+  locations?: string[]
+  standardizedLocations?: string[]
+  postedTs?: number
+  jobDescription?: string
+  publicUrl?: string
+  efcustomTextApplyByDate?: string[]
+}
+
+/**
+ * Eightfold's career hub. The older /api/apply/v2 route answers "Not
+ * authorized for PCSX" on tenants moved to the new product; /api/pcsx/search
+ * and /api/pcsx/position_details are what the career site itself calls, and
+ * both answer on the employer's own careers host with no session. `site` is
+ * the tenant domain Eightfold keys on.
+ *
+ * Search carries no description, so each Alberta posting costs one details
+ * request. Some postings state no location and put the town in the title
+ * ("Client Service Representative - Bonnyville"), so the title rides along in
+ * the location text for the city matcher.
+ */
+async function fetchEightfold(
+  board: AtsBoard,
+  isAlberta: (location: string) => boolean
+): Promise<RawPosting[]> {
+  const origin = `https://${board.domain}`
+  const tenant = board.site!
+  const listed: EightfoldPosition[] = []
+
+  for (let page = 0; page < EIGHTFOLD_MAX_PAGES; page++) {
+    const data = (await getJson(
+      `${origin}/api/pcsx/search?domain=${tenant}&query=&location=&start=${page * EIGHTFOLD_PAGE_SIZE}&sort_by=timestamp`
+    )) as { data?: { positions?: EightfoldPosition[]; count?: number } }
+    const positions = data.data?.positions ?? []
+    listed.push(...positions)
+    if (positions.length < EIGHTFOLD_PAGE_SIZE || listed.length >= (data.data?.count ?? 0)) break
+  }
+
+  const locationOf = (p: EightfoldPosition) =>
+    [...(p.standardizedLocations ?? []), ...(p.locations ?? [])].join('; ')
+
+  // Unlocated postings go through too — the title may name the town.
+  const wanted = listed.filter(p => {
+    const loc = locationOf(p)
+    return p.id && p.name && (!loc || isAlberta(loc) || isAlberta(p.name))
+  })
+
+  return mapDetails(wanted, async p => {
+    const res = (await getJson(
+      `${origin}/api/pcsx/position_details?position_id=${p.id}&domain=${tenant}&hl=en`
+    )) as { data?: EightfoldPosition }
+    const d = res.data
+    if (!d?.jobDescription) return null
+    const applyBy = d.efcustomTextApplyByDate?.[0]
+    const closes = applyBy ? new Date(applyBy).getTime() : NaN
+    return {
+      id: String(p.id),
+      title: p.name!.trim(),
+      location: [locationOf(d) || locationOf(p), p.name].filter(Boolean).join('; '),
+      descriptionHtml: d.jobDescription,
+      applyUrl: d.publicUrl ?? `${origin}/careers/job/${p.id}`,
+      postedAt: p.postedTs ? new Date(p.postedTs * 1000).toISOString() : null,
+      employmentType: null,
+      validThrough: Number.isFinite(closes) ? new Date(closes).toISOString() : null,
+    }
+  })
+}
+
+// ── Jobvite (EPCOR) ──────────────────────────────────────────────────────────
+
+/**
+ * Jobvite's hosted board renders the whole list server-side as tables of
+ * name + location, grouped by department. Each posting page carries JobPosting
+ * JSON-LD for the date and a `.jv-job-detail-description` block for the body.
+ */
+async function fetchJobvite(
+  board: AtsBoard,
+  isAlberta: (location: string) => boolean
+): Promise<RawPosting[]> {
+  const origin = 'https://jobs.jobvite.com'
+  const getHtml = async (path: string) => {
+    const res = await fetch(`${origin}${path}`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { 'user-agent': UA, accept: 'text/html' },
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.text()
+  }
+  const text = (html: string) =>
+    decodeEntities(html.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
+
+  const list = await getHtml(`/${board.token}/jobs`)
+  const rows: Array<{ path: string; title: string; location: string }> = []
+  for (const m of list.matchAll(/<tr[\s\S]*?<\/tr>/g)) {
+    const link = m[0].match(/<a href="(\/[^"]+\/job\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/)
+    if (!link) continue
+    rows.push({
+      path: link[1],
+      title: text(link[2]),
+      location: text(m[0].match(/jv-job-list-location">([\s\S]*?)<\/td>/)?.[1] ?? ''),
+    })
+  }
+
+  const wanted = rows.filter(r => r.title && isAlberta(r.location))
+  const postings = await mapDetails(wanted, async r => {
+    const html = await getHtml(r.path)
+    const schema = jobPostingSchema(html)
+    const body = html.match(
+      /<div class="jv-job-detail-description">([\s\S]*?)<\/div>\s*<div class="jv-job-detail-bottom-actions"/
+    )?.[1]
+    const descriptionHtml = body?.trim() || schema?.description || ''
+    if (!descriptionHtml) return null
+    const employment = Array.isArray(schema?.employmentType)
+      ? schema?.employmentType[0]
+      : schema?.employmentType
+    return {
+      id: r.path.split('/').pop()!,
+      title: r.title,
+      location: r.location,
+      descriptionHtml,
+      applyUrl: `${origin}${r.path}`,
+      postedAt: schema?.datePosted ?? null,
+      employmentType: normaliseEmployment(employment),
+      validThrough: schema?.validThrough ?? undefined,
+    }
+  })
+
+  // An Alberta list with nothing readable means the detail markup moved —
+  // returning zero would tell sync the employer closed every job.
+  if (wanted.length > 0 && postings.length === 0) {
+    throw new Error(`list showed ${wanted.length} Alberta roles but no posting page could be read`)
+  }
+  return postings
+}
+
 
 // ── Dispatch ─────────────────────────────────────────────────────────────────
 export async function fetchBoard(
@@ -2035,6 +2268,9 @@ export async function fetchBoard(
     case 'bennettjones': return fetchBennettJones(board, isAlberta)
     case 'talentbrew': return fetchTalentBrew(board)
     case 'peoplesoft': return fetchPeopleSoft(board)
+    case 'jobsyn': return fetchJobsyn(board)
+    case 'eightfold': return fetchEightfold(board, isAlberta)
+    case 'jobvite': return fetchJobvite(board, isAlberta)
     default: return []
   }
 }
