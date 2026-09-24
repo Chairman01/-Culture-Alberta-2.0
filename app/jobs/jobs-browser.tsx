@@ -24,8 +24,8 @@ import {
  * Client-side jobs browser — Indeed-style list + detail.
  *
  * Left column is a compact scannable list; selecting a row shows the full
- * posting in a sticky panel on the right. Below the lg breakpoint the panel is
- * dropped and each row simply navigates to its posting page.
+ * posting in a sticky panel on the right. Below the lg breakpoint the same
+ * panel opens as a sheet over the list, with Apply pinned to its bottom edge.
  *
  * Every row stays a real <a href="/jobs/posting/…"> so crawlers still reach each
  * posting; on desktop the click is intercepted to fill the panel instead.
@@ -647,6 +647,47 @@ export default function JobsBrowser({
   const isNew = (j: BrowserJob) =>
     j.postedAt && Date.now() - new Date(j.postedAt).getTime() < NEW_WITHIN_MS
 
+  /**
+   * Below lg the panel opens as a sheet over the list instead.
+   *
+   * It used to sit under all twenty rows, so a tap scrolled the reader down
+   * the page to it and getting back to the list meant scrolling all the way up
+   * again. As a sheet the list never moves: close it and you're on the row you
+   * tapped.
+   *
+   * Opening pushes a same-URL history entry so the phone's Back button — what
+   * people reach for first — closes the sheet rather than leaving the board.
+   * Next's patched pushState copies its own router state onto the entry, so
+   * popping it is a no-op traverse to the same page, not a reload.
+   */
+  const [sheetOpen, setSheetOpen] = useState(false)
+
+  const closeSheet = useCallback(() => {
+    if (window.history.state?.jobSheet) window.history.back() // popstate closes it
+    else setSheetOpen(false)
+  }, [])
+
+  useEffect(() => {
+    if (!sheetOpen) return
+    const onPop = () => setSheetOpen(false)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeSheet() }
+    // Widening past lg turns the sheet back into the side panel.
+    const wide = window.matchMedia('(min-width: 1024px)')
+    const onWide = () => { if (wide.matches) closeSheet() }
+    // The list stays put underneath; scrolling the sheet mustn't drag it along.
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('popstate', onPop)
+    window.addEventListener('keydown', onKey)
+    wide.addEventListener('change', onWide)
+    return () => {
+      document.body.style.overflow = overflow
+      window.removeEventListener('popstate', onPop)
+      window.removeEventListener('keydown', onKey)
+      wide.removeEventListener('change', onWide)
+    }
+  }, [sheetOpen, closeSheet])
+
   // Selecting a row fills the detail panel rather than navigating. Modified
   // clicks (new tab/window) are left alone, and the row stays a real anchor so
   // crawlers still reach every posting page.
@@ -654,11 +695,9 @@ export default function JobsBrowser({
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
     e.preventDefault()
     setSelectedId(id)
-    if (typeof document !== 'undefined') {
-      // On narrow screens the panel sits below the list, so bring it into view.
-      if (window.matchMedia('(max-width: 1023px)').matches) {
-        document.getElementById('job-detail-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      if (!window.history.state?.jobSheet) window.history.pushState({ jobSheet: true }, '')
+      setSheetOpen(true)
     }
   }, [])
 
@@ -1068,10 +1107,34 @@ export default function JobsBrowser({
             })}
           </ul>
 
-          {/* ── Right: detail panel (below the list on mobile) ───── */}
+          {/* ── Right: detail panel (a sheet over the list on mobile) ── */}
           {selected && (
-            <aside id="job-detail-panel" className="mt-6 lg:mt-0 lg:sticky lg:top-24">
-              <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <aside
+              id="job-detail-panel"
+              onClick={e => { if (sheetOpen && e.target === e.currentTarget) closeSheet() }}
+              role={sheetOpen ? 'dialog' : undefined}
+              aria-modal={sheetOpen ? true : undefined}
+              aria-label={sheetOpen ? selected.title : undefined}
+              className={
+                sheetOpen
+                  ? 'fixed inset-0 z-50 flex flex-col justify-end bg-black/40 lg:sticky lg:inset-auto lg:top-24 lg:z-auto lg:block lg:bg-transparent'
+                  : 'hidden lg:sticky lg:top-24 lg:block'
+              }
+            >
+              <div className="max-h-[92dvh] overflow-y-auto overscroll-contain rounded-t-2xl bg-white px-5 shadow-xl lg:max-h-none lg:overflow-visible lg:rounded-xl lg:border lg:border-gray-200 lg:p-6 lg:shadow-sm">
+                {/* Mobile only: the way out stays in reach however far down
+                    the description they've read. */}
+                <div className="sticky top-0 z-10 -mx-5 mb-4 flex items-center justify-between border-b border-gray-100 bg-white px-5 py-3 lg:hidden">
+                  <span className="text-sm font-semibold text-gray-500">Job details</span>
+                  <button
+                    type="button"
+                    onClick={closeSheet}
+                    aria-label="Close job details"
+                    className="-mr-2 rounded-full p-2 text-gray-600 hover:bg-gray-100"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
                 <div className="flex items-start gap-4">
                   <CompanyLogo company={selected.company} domain={selected.logoDomain} src={selected.logoSrc} size={56} />
                   <div className="min-w-0">
@@ -1130,8 +1193,10 @@ export default function JobsBrowser({
                   </p>
                 )}
 
-                {/* The full description, capped so the sticky panel can't run
-                    past the viewport and strand the buttons below the fold. */}
+                {/* The full description, capped on desktop so the sticky panel
+                    can't run past the viewport and strand the buttons below the
+                    fold. On mobile the whole sheet scrolls and the buttons are
+                    pinned to its bottom edge instead. */}
                 <div className="mt-5 border-t border-gray-100 pt-4">
                   {loadingDetail && !detail ? (
                     <div className="flex items-center gap-2 py-6 text-sm text-gray-500">
@@ -1140,7 +1205,7 @@ export default function JobsBrowser({
                   ) : detail?.descriptionHtml ? (
                     <div
                       key={selected.slug}
-                      className="job-description max-h-[46vh] overflow-y-auto pr-2 text-sm"
+                      className="job-description pb-4 text-sm lg:max-h-[46vh] lg:overflow-y-auto lg:pb-0 lg:pr-2"
                       dangerouslySetInnerHTML={{ __html: detail.descriptionHtml }}
                     />
                   ) : (
@@ -1160,24 +1225,26 @@ export default function JobsBrowser({
                   )}
                 </div>
 
-                <JobPanelActions
-                  jobId={selected.id}
-                  applyUrl={detail?.applyUrl ?? null}
-                  company={selected.company}
-                  expired={detail?.expired ?? false}
-                  status={tracked[selected.id] ?? null}
-                  onStatusChange={handleStatusChange}
-                  onApplyClick={id => notePendingApply(id, selected.title)}
-                />
+                <div className="sticky bottom-0 -mx-5 border-t border-gray-100 bg-white px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] [&>div:first-child]:mt-3 lg:static lg:mx-0 lg:border-0 lg:p-0 lg:[&>div:first-child]:mt-6">
+                  <JobPanelActions
+                    jobId={selected.id}
+                    applyUrl={detail?.applyUrl ?? null}
+                    company={selected.company}
+                    expired={detail?.expired ?? false}
+                    status={tracked[selected.id] ?? null}
+                    onStatusChange={handleStatusChange}
+                    onApplyClick={id => notePendingApply(id, selected.title)}
+                  />
 
-                <div className="mt-3 flex items-center justify-between gap-2 text-xs text-gray-500">
-                  <span>You apply on the employer&apos;s own site.</span>
-                  <Link
-                    href={`/jobs/posting/${selected.slug}`}
-                    className="inline-flex items-center gap-1 font-medium text-blue-700 hover:underline"
-                  >
-                    Open posting page <ExternalLink className="h-3 w-3" />
-                  </Link>
+                  <div className="mt-3 flex items-center justify-between gap-2 text-xs text-gray-500">
+                    <span>You apply on the employer&apos;s own site.</span>
+                    <Link
+                      href={`/jobs/posting/${selected.slug}`}
+                      className="inline-flex items-center gap-1 font-medium text-blue-700 hover:underline"
+                    >
+                      Open posting page <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             </aside>
@@ -1212,7 +1279,7 @@ export default function JobsBrowser({
           the bottom rather than a modal: they may have come back to keep
           browsing, and a dialog in the way would punish them for applying. */}
       {applyAsk && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-gray-200 bg-white/95 p-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] backdrop-blur">
           <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
             <p className="min-w-0 flex-1 text-sm text-gray-800">
               Did you finish applying to{' '}
