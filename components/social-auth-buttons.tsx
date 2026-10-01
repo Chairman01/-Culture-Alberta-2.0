@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { supabaseBrowser } from '@/lib/supabase-browser'
+import { rememberNextForOAuth } from '@/lib/auth-next'
 
 type Provider = 'google' | 'facebook'
 
@@ -10,6 +11,7 @@ export function SocialAuthButtons() {
 
   const handleOAuth = async (provider: Provider) => {
     setLoading(provider)
+    rememberNextForOAuth()
     try {
       const { error } = await supabaseBrowser.auth.signInWithOAuth({
         provider,

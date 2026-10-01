@@ -66,6 +66,8 @@ interface JobDetail {
   slug: string
   applyUrl: string
   expired: boolean
+  /** "October 21" when the posting states a deadline that hasn't passed. */
+  closesLabel?: string | null
   descriptionHtml: string
   snippet: string
   locationRaw: string
@@ -1160,6 +1162,9 @@ export default function JobsBrowser({
                       <Clock className="h-4 w-4 text-gray-400" /> Posted {selected.postedLabel}
                     </span>
                   )}
+                  {detail?.closesLabel && !detail.expired && (
+                    <span className="font-medium text-amber-800">Closes {detail.closesLabel}</span>
+                  )}
                 </div>
 
                 {selected.salaryText && (
@@ -1228,6 +1233,7 @@ export default function JobsBrowser({
                 <div className="sticky bottom-0 -mx-5 border-t border-gray-100 bg-white px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] [&>div:first-child]:mt-3 lg:static lg:mx-0 lg:border-0 lg:p-0 lg:[&>div:first-child]:mt-6">
                   <JobPanelActions
                     jobId={selected.id}
+                    slug={selected.slug}
                     applyUrl={detail?.applyUrl ?? null}
                     company={selected.company}
                     expired={detail?.expired ?? false}

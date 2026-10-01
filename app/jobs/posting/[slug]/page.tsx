@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getJobBySlug, isJobExpired, isIndexableJob, formatSalary, getMoreJobsAtCompany, companySlug, JOB_CITY_LABELS } from '@/lib/jobs'
+import { getJobBySlug, isJobExpired, isIndexableJob, formatSalary, formatClosingDate, getMoreJobsAtCompany, companySlug, JOB_CITY_LABELS } from '@/lib/jobs'
 import { JobPostingStructuredData } from '@/components/seo/structured-data'
 import { JobActions } from '@/components/jobs/job-actions'
 import { CompanyLogo } from '@/components/jobs/company-logo'
@@ -50,6 +50,7 @@ export default async function JobPostingPage({ params }: { params: Promise<{ slu
   // description body instead, so fall back to reading it from there.
   const salary = formatSalary(job) || extractPay(job.description_html)
   const posted = formatPostedDate(job.posted_at)
+  const closes = expired ? null : formatClosingDate(job.valid_through)
   const empLabel = employmentLabel(inferEmploymentType(job.employment_type, job.description_html))
   const unionStatus = detectUnionStatus(job.description_html)
   const descriptionHtml = prepareJobDescription(job.description_html)
@@ -134,8 +135,12 @@ export default async function JobPostingPage({ params }: { params: Promise<{ slu
               )}
             </div>
 
-            {posted && (
-              <p className="mt-3 text-sm text-gray-500">Posted {posted}</p>
+            {(posted || closes) && (
+              <p className="mt-3 text-sm text-gray-500">
+                {posted && <>Posted {posted}</>}
+                {posted && closes && ' · '}
+                {closes && <span className="font-medium text-amber-800">Closes {closes}</span>}
+              </p>
             )}
 
             <div className="mt-6">

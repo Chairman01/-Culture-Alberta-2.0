@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase-browser'
+import { nextFromLocation } from '@/lib/auth-next'
 import { AuthLayout } from '@/components/auth-layout'
 import { SocialAuthButtons } from '@/components/social-auth-buttons'
 import { CitySelect } from '@/components/city-select'
@@ -99,13 +100,7 @@ export default function SignUpPage() {
         // Email confirmation is OFF — Supabase signs the user in immediately, so
         // send them straight into the site (the welcome email is handled globally
         // by <WelcomeMailer/> once they're authenticated).
-        let next = '/'
-        try {
-          next = new URLSearchParams(window.location.search).get('next') || '/'
-        } catch {
-          /* window unavailable — fall back to home */
-        }
-        router.push(next)
+        router.push(nextFromLocation())
         router.refresh()
       } else {
         // Email confirmation is ON — a confirmation link was emailed.

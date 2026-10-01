@@ -106,6 +106,8 @@ export interface SavedJobCard {
     trackStatus: SavedJobStatus
     notes: string | null
     jobStatus: string       // 'active' | 'expired' — for the expired badge
+    /** The employer's closing date, when the posting states one. */
+    closesAt: string | null
     savedAt: string
 }
 
@@ -122,7 +124,7 @@ export async function listSavedJobs(): Promise<SavedJobCard[]> {
     const ids = rows.map((r) => r.job_id)
     const { data: jobs } = await supabaseBrowser
         .from('jobs')
-        .select('id, slug, title, company, city, status')
+        .select('id, slug, title, company, city, status, valid_through')
         .in('id', ids)
 
     const byId = new Map((jobs || []).map((j) => [j.id, j]))
@@ -142,6 +144,7 @@ export async function listSavedJobs(): Promise<SavedJobCard[]> {
                 trackStatus: r.status as SavedJobStatus,
                 notes: r.notes ?? null,
                 jobStatus: j.status,
+                closesAt: j.valid_through ?? null,
                 savedAt: r.created_at,
             } as SavedJobCard
         })
