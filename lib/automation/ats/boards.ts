@@ -595,6 +595,32 @@ export const ATS_BOARDS: AtsBoard[] = [
   // WestJet and AUArts. Alberta Blue Cross and AutoCanada 403 their careers
   // pages outright.
 
+  // ── Lethbridge ─────────────────────────────────────────────────────────────
+  // Added 2026-10-01. The city page leaned on the two post-secondaries and the
+  // national retailers; these are the Lethbridge employers we can read.
+  //
+  // The City itself, and Lethbridge Police Service through the same site.
+  // `domain` is the careers site the vendor's API is keyed on.
+  {
+    provider: 'digitalrecruiters',
+    token: 'city-of-lethbridge',
+    company: 'City of Lethbridge',
+    domain: 'careers.lethbridge.ca',
+    logoDomain: 'lethbridge.ca',
+  },
+  // Richardson's canola crush plant in Lethbridge: operators, millwrights, QA.
+  // The rest of the board is Prairie grain elevators and Winnipeg head office.
+  { provider: 'workday', token: 'richardson', company: 'Richardson International', domain: 'richardson.ca', datacenter: 'wd3', site: 'Richardson_Our_Careers' },
+  // NOT ADDED, checked 2026-10-01:
+  //   McCain Foods (Coaldale plant) — Phenom at careers.mccain.com, but /ca/en
+  //     redirects to /us/en and the reader gets no postings from either.
+  //   Servus Credit Union / MNP — UKG (recruiting.ultipro.ca). The search the
+  //     board runs on is under /JobBoardView, which robots.txt disallows.
+  //   Cavendish Farms — J.D. Irving's Oracle board (hcpd.fa.ca2.oraclecloud.com,
+  //     CX_5003) works, but held one Lethbridge posting among thousands.
+  //   Lethbridge School Division (Atrieve), Holy Spirit, Lethbridge County,
+  //     Green Acres, Coaldale — postings are page text or a JS-only app.
+
   // ── Cadient Talent ─────────────────────────────────────────────────────────
   // Costco Wholesale Canada. `token` is Cadient's applicationName and `domain`
   // the shared board origin, the way the SuccessFactors entries work.

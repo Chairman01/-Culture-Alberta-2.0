@@ -15,6 +15,7 @@ export type AtsProvider =
   | 'successfactors' | 'phenom' | 'oracle' | 'otss'
   | 'peopleadmin' | 'cadient' | 'hrsmart' | 'avanti' | 'talentbrew' | 'rss' | 'mhc'
   | 'peoplesoft' | 'bennettjones' | 'jobsyn' | 'eightfold' | 'jobvite'
+  | 'digitalrecruiters'
 
 export type JobStatus = 'active' | 'expired' | 'draft'
 
