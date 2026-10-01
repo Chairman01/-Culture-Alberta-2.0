@@ -24,6 +24,10 @@ export const SECTORS = [
   'Energy & Utilities',
   'Construction & Skilled Trades',
   'Tech & Finance',
+  'Health & Care',
+  'Engineering & Professional Services',
+  'Agriculture, Food & Manufacturing',
+  'Transportation & Logistics',
   'Hospitality & Food Service',
   'Other Employers',
 ] as const
@@ -42,6 +46,10 @@ export const SECTOR_CHIP_LABELS: Record<EmployerSector, string> = {
   'Energy & Utilities': 'Energy',
   'Construction & Skilled Trades': 'Trades',
   'Tech & Finance': 'Tech & Finance',
+  'Health & Care': 'Health',
+  'Engineering & Professional Services': 'Engineering',
+  'Agriculture, Food & Manufacturing': 'Agri-food',
+  'Transportation & Logistics': 'Transport',
   'Hospitality & Food Service': 'Hospitality',
   'Other Employers': 'Other',
 }
@@ -60,6 +68,14 @@ export const SECTOR_BLURBS: Record<EmployerSector, string> = {
     'General contractors and heavy equipment — site, shop and field roles.',
   'Tech & Finance':
     'Software, fintech and adtech, concentrated in Calgary and Edmonton.',
+  'Health & Care':
+    'Hospitals, continuing care, clinics and community health.',
+  'Engineering & Professional Services':
+    'Engineering and design firms, law, accounting and consulting.',
+  'Agriculture, Food & Manufacturing':
+    'Food processing, grain, plants and production lines.',
+  'Transportation & Logistics':
+    'Airlines, rail, trucking, couriers and warehouses.',
   'Hospitality & Food Service':
     'Restaurants, hotels and resorts.',
   'Other Employers':
@@ -102,6 +118,24 @@ const SECTOR_BY_COMPANY: Record<string, EmployerSector> = {
   'Strathcona Resources': 'Energy & Utilities',
   'Capital Power': 'Energy & Utilities',
   ENMAX: 'Energy & Utilities',
+  'Canadian Natural Resources': 'Energy & Utilities',
+  ATCO: 'Energy & Utilities',
+  EPCOR: 'Energy & Utilities',
+  'Alberta Energy Regulator': 'Government & Public Sector',
+  'WCB Alberta': 'Government & Public Sector',
+
+  // Health & care
+  'Bethany Care Society': 'Health & Care',
+
+  // Engineering & professional services
+  Stantec: 'Engineering & Professional Services',
+  'Bennett Jones': 'Engineering & Professional Services',
+
+  // Agriculture, food & manufacturing
+  'Richardson International': 'Agriculture, Food & Manufacturing',
+
+  // Transportation
+  'Air Canada': 'Transportation & Logistics',
 
   // Construction & trades. Finning sits here rather than in retail: it sells
   // and services Caterpillar equipment, and its openings are technicians and
@@ -109,12 +143,15 @@ const SECTOR_BY_COMPANY: Record<string, EmployerSector> = {
   Ledcor: 'Construction & Skilled Trades',
   Bird: 'Construction & Skilled Trades',
   Finning: 'Construction & Skilled Trades',
+  'PCL Construction': 'Construction & Skilled Trades',
 
   // Tech & finance
   Jobber: 'Tech & Finance',
   'Neo Financial': 'Tech & Finance',
   Benevity: 'Tech & Finance',
   StackAdapt: 'Tech & Finance',
+  'ATB Financial': 'Tech & Finance',
+  AIMCo: 'Tech & Finance',
 
   // Hospitality
   "Hell's Kitchen at River Cree Resort": 'Hospitality & Food Service',

@@ -67,6 +67,11 @@ export default async function JobsPage() {
                 </Link>{' '}
                 to apply, save jobs, and track every application in one place.
               </p>
+              <p className="max-w-[800px] text-sm">
+                <Link href="/jobs/top-employers" className="font-semibold text-blue-700 underline hover:text-blue-900">
+                  Top employers in Alberta and Canada, by industry →
+                </Link>
+              </p>
               <p className="max-w-[800px] text-sm text-muted-foreground">
                 Every listing links straight to the employer&apos;s own careers site. Listings come from
                 employer job feeds and our own curation; always confirm details on the employer&apos;s posting.
