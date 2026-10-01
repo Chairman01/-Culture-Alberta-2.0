@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
   // Offered to Google once the page carries at least one full job description —
   // that's original content a crawler can't get elsewhere. A city with nothing
   // but empty state stays reachable for browsing but out of the index.
-  const [jobs, totalActive] = await Promise.all([getActiveJobs({ city }), getActiveJobCount(city)])
+  const jobs = await getActiveJobs({ city })
   const thin = jobs.filter(isIndexableJob).length < CITY_PAGE_MIN_INDEXABLE_JOBS
 
   return {
@@ -45,7 +45,7 @@ export default async function CityJobsPage({ params }: { params: Promise<{ city:
   if (!isJobCity(city)) notFound()
   const label = JOB_CITY_LABELS[city]
   const otherCities = JOB_CITIES.filter(c => c !== city)
-  const jobs = await getActiveJobs({ city })
+  const [jobs, totalActive] = await Promise.all([getActiveJobs({ city }), getActiveJobCount(city)])
   const browserJobs = jobs.map(toBrowserJob)
 
   return (
