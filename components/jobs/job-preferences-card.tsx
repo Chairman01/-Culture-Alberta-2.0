@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Sparkles, X, Loader2, Check } from 'lucide-react'
 import { useAuth } from '@/components/auth-provider'
+import { supabaseBrowser } from '@/lib/supabase-browser'
 import { useToast } from '@/hooks/use-toast'
 import { JOB_CITIES, JOB_CITY_LABELS } from '@/lib/jobs'
 import { toNewsletterCity } from '@/lib/newsletter-cities'
@@ -164,12 +165,27 @@ export function JobPreferencesCard({
               city: newsletterCity,
               optIn: true,
               topics: ['jobs'],
+              jobsFrequency: 'daily',
               signupSource: 'jobs-preferences',
               signupPath: '/jobs',
             }),
           })
         } catch {
           // Preferences saved; the list signup is secondary and retried next save.
+        }
+      }
+
+      // Unticking a box that was ticked is asking for the jobs email to stop,
+      // so it has to reach the list and not just this form.
+      if (!emailMatches && initial?.emailMatches) {
+        try {
+          const { data } = await supabaseBrowser.auth.getSession()
+          const token = data.session?.access_token
+          if (token) {
+            await fetch('/api/jobs-email/me', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+          }
+        } catch {
+          // The footer link in every jobs email still stops it.
         }
       }
 
@@ -292,8 +308,8 @@ export function JobPreferencesCard({
           />
           <span className="text-sm text-gray-700">
             <span className="font-medium text-gray-900">Email me matching jobs.</span>{' '}
-            Only roles that fit these answers, and only to {user!.email}. Unsubscribe any time —
-            this is separate from the culture newsletter.
+            New postings, best matches first, at most one email a day to {user!.email}. Switch to
+            weekly or stop any time — this is separate from the culture newsletter.
           </span>
         </label>
       </div>

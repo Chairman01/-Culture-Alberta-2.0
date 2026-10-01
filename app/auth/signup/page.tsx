@@ -86,6 +86,8 @@ export default function SignUpPage() {
               city: toNewsletterCity(city),
               optIn: true,
               topics,
+              // The jobs box says "at most one email a day"; that is what ticking it asks for.
+              ...(jobsOptIn ? { jobsFrequency: 'daily' } : {}),
               source: 'account-signup',
               signupSource: source,
               signupPath: nextPath,
@@ -190,8 +192,8 @@ export default function SignUpPage() {
             <span className="text-sm text-gray-700">
               <span className="font-semibold text-gray-900">Email me new Alberta jobs</span>
               <span className="mt-0.5 block text-gray-600">
-                New openings{city ? ` in ${city}` : ' in your city'}, once a week. Jobs only —
-                nothing else. Unsubscribe any time.
+                New openings{city ? ` in ${city}` : ' in your city'} as they are posted, at most one
+                email a day. Jobs only. Switch to weekly or stop any time.
               </span>
             </span>
           </label>

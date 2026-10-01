@@ -6,6 +6,7 @@ import { TrackBadge, BOARD_BADGE_STATUSES, TRACK_LABELS } from '@/components/job
 import { JobTrackSummary } from '@/components/jobs/track-summary'
 import { JobPanelActions } from '@/components/jobs/panel-actions'
 import { JobPreferencesCard } from '@/components/jobs/job-preferences-card'
+import { JobsEmailOptIn } from '@/components/jobs/jobs-email-optin'
 import { useAuth } from '@/components/auth-provider'
 import { listJobTrackStatuses, advanceSavedJobStatus } from '@/lib/saved-jobs'
 import {
@@ -744,6 +745,9 @@ export default function JobsBrowser({
           onDismiss={dismissPrefs}
         />
       )}
+
+      {/* Signed-in members not yet on the jobs email. Renders nothing otherwise. */}
+      <JobsEmailOptIn areaLabel={initialCity === 'all' ? 'Alberta' : initialCity} />
 
       {/* Prominent search bar */}
       <div className="relative mb-4">
