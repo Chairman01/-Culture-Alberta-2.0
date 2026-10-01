@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { getActiveJobs, getCompaniesWithJobs, JOB_CITY_LABELS } from '@/lib/jobs'
+import { getActiveJobs, getActiveJobCount, getCompaniesWithJobs, JOB_CITY_LABELS } from '@/lib/jobs'
+import { jobsEmailArmed } from '@/lib/jobs-email/armed'
 import { JobsItemListStructuredData } from '@/components/seo/structured-data'
 import { CompanyLogo } from '@/components/jobs/company-logo'
 import JobsBrowser from './jobs-browser'
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
 export const revalidate = 3600
 
 export default async function JobsPage() {
-  const jobs = await getActiveJobs()
+  const [jobs, totalActive] = await Promise.all([getActiveJobs(), getActiveJobCount()])
   const browserJobs = jobs.map(toBrowserJob)
   const companies = await getCompaniesWithJobs()
 
@@ -109,7 +110,7 @@ export default async function JobsPage() {
               </ul>
             </div>
 
-            <JobsBrowser jobs={browserJobs} />
+            <JobsBrowser jobs={browserJobs} totalActive={totalActive} emailAlerts={jobsEmailArmed().armed} />
 
             {/* Employer directory. Gives readers a way to browse by name, and is
                 the crawl path to every company page — without it those pages

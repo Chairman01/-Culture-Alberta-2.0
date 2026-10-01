@@ -41,3 +41,21 @@ create index if not exists jobs_email_log_recent
 
 -- Service role only, like the subscriber table it hangs off.
 alter table public.jobs_email_log enable row level security;
+
+-- Email-only sign-up for the jobs email (no account). A request sits here until
+-- the address owner confirms from the email we send them; only then does a
+-- subscriber row get the 'jobs' topic. The row is also the proof of consent.
+create table if not exists public.jobs_email_confirmations (
+  token uuid primary key default gen_random_uuid(),
+  email text not null,
+  city text not null,
+  frequency text not null check (frequency in ('daily', 'weekly')),
+  signup_path text,
+  created_at timestamptz not null default now(),
+  confirmed_at timestamptz
+);
+
+create index if not exists jobs_email_confirmations_email
+  on public.jobs_email_confirmations (lower(email), created_at desc);
+
+alter table public.jobs_email_confirmations enable row level security;

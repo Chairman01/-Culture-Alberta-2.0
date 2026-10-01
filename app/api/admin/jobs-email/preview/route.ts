@@ -59,6 +59,10 @@ export async function GET(req: NextRequest) {
         personalised: r.personalised,
         subject: jobsEmailSubject(r),
         moreCount: r.moreCount,
+        tracker: r.tracker && {
+          closingSoon: r.tracker.closingSoon.map(t => `${t.title} at ${t.company} (closes ${t.closesLabel ?? 'soon'})`),
+          unfinished: r.tracker.unfinished.map(t => `${t.title} at ${t.company}`),
+        },
         jobs: r.jobs.map(j => ({
           title: j.title, company: j.company, city: j.city, pay: j.salaryText,
           age: j.ageLabel, closes: j.closesLabel, because: j.reasons,

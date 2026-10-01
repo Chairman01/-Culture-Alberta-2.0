@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import { getServiceClient } from '@/lib/supabase-admin'
 import { makeUnsubscribeToken } from '@/lib/newsletter/send-newsletter'
 import { buildJobsEmails, type JobsEmailRecipient } from './build'
+import { jobsEmailArmed, jobsEmailMailingAddress } from './armed'
 import { generateJobsEmailHtml, jobsEmailSubject, type JobsEmailLinks } from './template'
 
 /**
@@ -34,27 +35,7 @@ function getResend(): Resend {
   return _resend
 }
 
-/**
- * CASL requires a postal address in every commercial email. The same variable
- * the partnerships mailer uses; one address, one place to set it.
- */
-export function jobsEmailMailingAddress(): string | null {
-  return process.env.CRM_MAILING_ADDRESS?.trim() || null
-}
-
-/** Set JOBS_EMAIL_SENDS=true in Vercel to let this mail people. */
-export function jobsEmailArmed(): { armed: boolean; reason?: string } {
-  if (process.env.JOBS_EMAIL_SENDS !== 'true') {
-    return { armed: false, reason: 'JOBS_EMAIL_SENDS is not set to true' }
-  }
-  if (!jobsEmailMailingAddress()) {
-    return { armed: false, reason: 'CRM_MAILING_ADDRESS is not set (required in every email)' }
-  }
-  if (!process.env.RESEND_API_KEY) {
-    return { armed: false, reason: 'RESEND_API_KEY is not set' }
-  }
-  return { armed: true }
-}
+export { jobsEmailArmed, jobsEmailMailingAddress }
 
 export function jobsEmailLinks(recipient: Pick<JobsEmailRecipient, 'subscriptionId' | 'email'>): JobsEmailLinks {
   const token = encodeURIComponent(makeUnsubscribeToken(recipient.subscriptionId, recipient.email))
@@ -111,7 +92,11 @@ export async function runJobsEmail(now: Date = new Date()): Promise<JobsEmailRun
         subscription_id: recipient.subscriptionId,
         send_date: sendDate,
         frequency: recipient.frequency,
-        job_ids: recipient.jobs.map(j => j.id),
+        // New postings and deadline reminders alike: both are "already told".
+        job_ids: [
+          ...recipient.jobs.map(j => j.id),
+          ...(recipient.tracker?.closingSoon.map(t => t.jobId) ?? []),
+        ],
         subject: jobsEmailSubject(recipient),
       })
       if (!error) claimed.push(recipient)

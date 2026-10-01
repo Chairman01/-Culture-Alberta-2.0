@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getJobsByCompanySlug, getCompaniesWithJobs, JOB_CITY_LABELS } from '@/lib/jobs'
+import { jobsEmailArmed } from '@/lib/jobs-email/armed'
 import { JobsItemListStructuredData } from '@/components/seo/structured-data'
 import { CompanyLogo } from '@/components/jobs/company-logo'
 import JobsBrowser from '../../jobs-browser'
@@ -137,7 +138,7 @@ export default async function CompanyJobsPage({ params }: { params: Promise<{ sl
               </ul>
             </div>
 
-            <JobsBrowser jobs={browserJobs} />
+            <JobsBrowser jobs={browserJobs} emailAlerts={jobsEmailArmed().armed} />
           </div>
         </section>
       </main>

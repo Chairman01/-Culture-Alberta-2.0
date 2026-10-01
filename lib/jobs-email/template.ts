@@ -1,4 +1,4 @@
-import type { EmailJob, JobsEmailRecipient } from './build'
+import type { EmailJob, JobsEmailRecipient, TrackerSummary } from './build'
 
 /**
  * The jobs email: a short list of what is new, each row a link to the posting.
@@ -37,6 +37,13 @@ function tracked(path: string, frequency: string): string {
 export function jobsEmailSubject(recipient: JobsEmailRecipient): string {
   const total = recipient.jobs.length + recipient.moreCount
   const first = recipient.jobs[0]
+  // No new postings: this email exists because a job they saved is closing.
+  if (!first) {
+    const closing = recipient.tracker?.closingSoon[0]
+    return closing
+      ? `Closing ${closing.closesLabel ?? 'soon'}: ${closing.title} at ${closing.company}`
+      : 'Your job tracker'
+  }
   const where = recipient.areaLabel === 'Alberta' ? 'Alberta' : recipient.areaLabel
   if (total === 1) return `New ${where} job: ${first.title} at ${first.company}`
   return `${total} new ${where} jobs: ${first.title} at ${first.company} and more`
@@ -54,6 +61,33 @@ function jobRow(job: EmailJob, frequency: string): string {
   </td></tr>`
 }
 
+/**
+ * Their own tracker, above the new postings: the part of the email that is
+ * about them. A deadline or a half-finished application is a reason to come
+ * back that a list of new jobs is not.
+ */
+function trackerSection(tracker: TrackerSummary | null, frequency: string): string {
+  if (!tracker) return ''
+  const item = (t: TrackerSummary['closingSoon'][number], note: string) => `
+    <p style="margin:8px 0 0 0;font-size:14px;line-height:1.5;color:#333;">
+      <a href="${esc(tracked(`/jobs/posting/${t.slug}`, frequency))}" style="color:#0b57d0;font-weight:600;text-decoration:none;">${esc(t.title)}</a>
+      at ${esc(t.company)} &middot; ${esc(note)}
+    </p>`
+  const closing = tracker.closingSoon.map(t => item(t, t.closesLabel ? `closes ${t.closesLabel}` : 'closes soon')).join('')
+  const unfinished = tracker.unfinished.map(t => item(t, 'did you finish applying?')).join('')
+  return `
+        <tr><td style="padding:8px 28px 0 28px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fff8e6;border:1px solid #f1dca0;border-radius:8px;">
+            <tr><td style="padding:14px 16px;">
+              <p style="margin:0;font-size:13px;font-weight:700;color:#7a5600;text-transform:uppercase;letter-spacing:0.4px;">Your tracker</p>
+              ${closing ? `<p style="margin:8px 0 0 0;font-size:14px;font-weight:600;color:#333;">Closing soon, and you haven't applied yet</p>${closing}` : ''}
+              ${unfinished ? `<p style="margin:${closing ? '14' : '8'}px 0 0 0;font-size:14px;font-weight:600;color:#333;">Started but not marked as applied</p>${unfinished}` : ''}
+              <p style="margin:12px 0 0 0;font-size:13px;"><a href="${esc(tracked('/account?tab=jobs', frequency))}" style="color:#0b57d0;font-weight:600;">Update your tracker</a></p>
+            </td></tr>
+          </table>
+        </td></tr>`
+}
+
 export function generateJobsEmailHtml(
   recipient: JobsEmailRecipient,
   links: JobsEmailLinks,
@@ -61,7 +95,9 @@ export function generateJobsEmailHtml(
 ): string {
   const { frequency, areaLabel, jobs, moreCount } = recipient
   const total = jobs.length + moreCount
-  const heading = total === 1 ? `1 new job in ${areaLabel}` : `${total} new jobs in ${areaLabel}`
+  const heading = total === 0
+    ? 'A job you saved closes soon'
+    : total === 1 ? `1 new job in ${areaLabel}` : `${total} new jobs in ${areaLabel}`
   const since = frequency === 'daily' ? 'since your last email' : 'this week'
   const boardUrl = tracked(recipient.boardPath, frequency)
   const cadence = frequency === 'daily'
@@ -83,8 +119,11 @@ export function generateJobsEmailHtml(
         <tr><td style="padding:28px 28px 8px 28px;">
           <a href="${esc(tracked('/jobs', frequency))}" style="text-decoration:none;font-size:14px;font-weight:900;color:#0a0a0a;letter-spacing:-0.2px;">Culture Alberta Jobs</a>
           <h1 style="margin:14px 0 4px 0;font-size:24px;line-height:1.25;color:#0a0a0a;">${esc(heading)}</h1>
-          <p style="margin:0;font-size:14px;color:#666;line-height:1.5;">Added to the board ${since}. Every link goes to the posting, and you apply on the employer's own site.</p>
+          <p style="margin:0;font-size:14px;color:#666;line-height:1.5;">${total === 0
+            ? 'Nothing new on the board for you today, but your tracker has a deadline coming up.'
+            : `Added to the board ${since}. Every link goes to the posting, and you apply on the employer's own site.`}</p>
         </td></tr>
+        ${trackerSection(recipient.tracker, frequency)}
         <tr><td style="padding:0 28px;">
           <table width="100%" cellpadding="0" cellspacing="0" border="0">
             ${jobs.map(j => jobRow(j, frequency)).join('')}
@@ -95,7 +134,7 @@ export function generateJobsEmailHtml(
         </td></tr>
         <tr><td style="padding:14px 28px 26px 28px;">
           <p style="margin:0;font-size:14px;color:#333;line-height:1.6;">
-            Applied to something? <a href="${esc(tracked('/account?tab=jobs', frequency))}" style="color:#0b57d0;">Open your tracker</a> to see what you've started, what you've sent and what closes soon.
+            ${recipient.tracker ? '' : 'Applied to something? '}<a href="${esc(tracked('/account?tab=jobs', frequency))}" style="color:#0b57d0;">Open your tracker</a>${recipient.tracker ? ' for everything you have saved and applied to.' : " to see what you've started, what you've sent and what closes soon."}
             ${recipient.personalised ? '' : `<br>Want better matches? <a href="${esc(tracked(recipient.boardPath, frequency))}" style="color:#0b57d0;">Tell us what you're looking for</a> on the board and this email will follow it.`}
           </p>
         </td></tr>

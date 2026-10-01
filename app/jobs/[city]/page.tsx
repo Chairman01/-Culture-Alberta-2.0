@@ -5,6 +5,7 @@ import {
   getActiveJobs, isJobCity, isIndexableJob, JOB_CITIES, JOB_CITY_LABELS,
   CITY_PAGE_MIN_INDEXABLE_JOBS,
 } from '@/lib/jobs'
+import { jobsEmailArmed } from '@/lib/jobs-email/armed'
 import { JobsItemListStructuredData } from '@/components/seo/structured-data'
 import JobsBrowser from '../jobs-browser'
 import { toBrowserJob } from '../shared'
@@ -98,7 +99,7 @@ export default async function CityJobsPage({ params }: { params: Promise<{ city:
               </ul>
             </div>
 
-            <JobsBrowser jobs={browserJobs} initialCity={label} />
+            <JobsBrowser jobs={browserJobs} initialCity={label} emailAlerts={jobsEmailArmed().armed} />
 
           </div>
         </section>
