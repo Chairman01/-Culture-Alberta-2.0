@@ -8,6 +8,8 @@ interface WelcomeArgs {
     email: string
     name?: string | null
     city?: string | null
+    /** True when they joined from the job board, so the email leads with jobs. */
+    fromJobs?: boolean
 }
 
 /**
@@ -15,7 +17,7 @@ interface WelcomeArgs {
  * black-and-white house style (black header + wordmark, black CTA). Best-effort:
  * no-ops without RESEND_API_KEY.
  */
-export async function sendWelcomeEmail({ email, name, city }: WelcomeArgs): Promise<void> {
+export async function sendWelcomeEmail({ email, name, city, fromJobs }: WelcomeArgs): Promise<void> {
     if (!process.env.RESEND_API_KEY) return
 
     const firstName = (name || '').trim().split(/\s+/)[0]
@@ -69,14 +71,15 @@ export async function sendWelcomeEmail({ email, name, city }: WelcomeArgs): Prom
           ${cityBlock}
 
           <tr><td style="padding:20px 44px 4px">
-            <a href="${SITE_URL}" style="display:inline-block;background:#000000;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 32px;border-radius:8px">
-              Start exploring &rarr;
+            <a href="${fromJobs ? `${SITE_URL}/account?tab=jobs` : SITE_URL}" style="display:inline-block;background:#000000;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 32px;border-radius:8px">
+              ${fromJobs ? 'Open your job tracker' : 'Start exploring'} &rarr;
             </a>
           </td></tr>
 
           <tr><td style="padding:24px 44px 8px">
             <p style="font-size:14px;font-weight:600;color:#18181b;margin:0 0 6px">Here’s what you can do with your account:</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              ${feature('💼', `Track every job you apply to in one place, with closing dates, under <a href="${SITE_URL}/account?tab=jobs" style="color:#2563eb;text-decoration:none;font-weight:600">My jobs</a>`)}
               ${feature('💬', 'Join the conversation in the comments')}
               ${feature('🔖', 'Save articles to read later')}
               ${feature('🔔', 'Get notified when someone replies to you')}
@@ -86,8 +89,9 @@ export async function sendWelcomeEmail({ email, name, city }: WelcomeArgs): Prom
 
           <tr><td style="padding:8px 44px 36px">
             <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0">
-              Curious what’s on this week?
-              <a href="${SITE_URL}/events" style="color:#2563eb;text-decoration:none;font-weight:600">Browse Alberta events &rarr;</a>
+              ${fromJobs
+                ? `Still looking? <a href="${SITE_URL}/jobs" style="color:#2563eb;text-decoration:none;font-weight:600">See today’s new Alberta jobs &rarr;</a>`
+                : `Curious what’s on this week? <a href="${SITE_URL}/events" style="color:#2563eb;text-decoration:none;font-weight:600">Browse Alberta events &rarr;</a>`}
             </p>
           </td></tr>
 

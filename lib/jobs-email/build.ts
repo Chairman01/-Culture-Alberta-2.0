@@ -39,6 +39,23 @@ export interface EmailJob {
   reasons: string[]
 }
 
+/** A job the member is already tracking that needs something from them. */
+export interface TrackerItem {
+  jobId: string
+  slug: string
+  title: string
+  company: string
+  /** "October 3" — set for closing-soon items. */
+  closesLabel: string | null
+}
+
+export interface TrackerSummary {
+  /** Saved or started, not yet applied, and the posting closes within days. */
+  closingSoon: TrackerItem[]
+  /** Clicked Apply at least a day ago and never said they finished. */
+  unfinished: TrackerItem[]
+}
+
 export interface JobsEmailRecipient {
   subscriptionId: string
   email: string
@@ -52,6 +69,8 @@ export interface JobsEmailRecipient {
   moreCount: number
   /** True when the list was ranked by their saved answers. */
   personalised: boolean
+  /** What their own tracker needs from them; null for non-members or nothing due. */
+  tracker: TrackerSummary | null
 }
 
 export interface JobsEmailPlan {
@@ -77,6 +96,10 @@ const FIRST_WINDOW_MS: Record<JobsFrequency, number> = {
   daily: 2 * DAY_MS,
   weekly: 7 * DAY_MS,
 }
+
+/** A tracked job counts as closing soon inside this window. */
+const CLOSING_SOON_MS = 3 * DAY_MS
+const MAX_TRACKER_ITEMS = 3
 
 /** Never reach further back than this, however long someone has gone unmailed. */
 const MAX_WINDOW_MS = 14 * DAY_MS
@@ -120,14 +143,20 @@ export async function buildJobsEmails(
   const lastSent = new Map<string, number>()
   const { data: logRows, error: logErr } = await supabase
     .from('jobs_email_log')
-    .select('subscription_id, sent_at')
+    .select('subscription_id, sent_at, job_ids')
     .in('subscription_id', subs.map(s => s.id))
     .order('sent_at', { ascending: false })
   if (logErr) throw new Error(`send log read failed: ${logErr.message}`)
+  // Every job id a person has already been mailed about, new or reminder, so a
+  // closing-soon nudge goes out once and not every morning until the deadline.
+  const alreadyMailed = new Map<string, Set<string>>()
   for (const row of logRows ?? []) {
     if (!lastSent.has(row.subscription_id)) {
       lastSent.set(row.subscription_id, new Date(row.sent_at).getTime())
     }
+    const seen = alreadyMailed.get(row.subscription_id) ?? new Set<string>()
+    for (const id of (row.job_ids ?? []) as string[]) seen.add(id)
+    alreadyMailed.set(row.subscription_id, seen)
   }
 
   const due = subs.filter(s => {
@@ -183,7 +212,8 @@ export async function buildJobsEmails(
   })
 
   // 4. Saved answers, for the subscribers who are also members.
-  const prefsByEmail = await loadPreferencesByEmail(due.map(s => s.email))
+  const { prefsByEmail, userIdByEmail } = await loadMembers(due.map(s => s.email))
+  const trackerByUser = await loadTrackers([...userIdByEmail.values()], now)
 
   for (const sub of due) {
     const frequency: JobsFrequency = sub.jobs_frequency === 'daily' ? 'daily' : 'weekly'
@@ -193,7 +223,14 @@ export async function buildJobsEmails(
       now - MAX_WINDOW_MS
     )
 
-    const prefs = prefsByEmail.get(sub.email.trim().toLowerCase()) ?? null
+    const emailKey = sub.email.trim().toLowerCase()
+    const prefs = prefsByEmail.get(emailKey) ?? null
+    const userId = userIdByEmail.get(emailKey)
+    const fullTracker = userId ? trackerByUser.get(userId) ?? null : null
+    const mailed = alreadyMailed.get(sub.id)
+    // A deadline they have not been told about yet is worth an email on its
+    // own; an unfinished application only rides along with one.
+    const freshDeadlines = (fullTracker?.closingSoon ?? []).filter(t => !mailed?.has(t.jobId))
     const personalised = hasAnswers(prefs)
 
     // Their area: the cities they named in their answers, else the city they
@@ -206,7 +243,7 @@ export async function buildJobsEmails(
     const inArea = shaped.filter(
       s => s.seenAt > windowStart && (cities.length === 0 || cities.includes(s.job.city as JobCity))
     )
-    if (inArea.length === 0) {
+    if (inArea.length === 0 && freshDeadlines.length === 0) {
       plan.nothingNew++
       continue
     }
@@ -255,6 +292,9 @@ export async function buildJobsEmails(
       jobs: picked,
       moreCount: inArea.length - picked.length,
       personalised,
+      tracker: fullTracker && (fullTracker.closingSoon.length > 0 || fullTracker.unfinished.length > 0)
+        ? fullTracker
+        : null,
     })
   }
 
@@ -267,10 +307,14 @@ export async function buildJobsEmails(
  * job_preferences is keyed by user id and the list by email, so this reads the
  * auth users once to join them. A subscriber with no account simply has none.
  */
-async function loadPreferencesByEmail(emails: string[]): Promise<Map<string, JobPreferences>> {
+async function loadMembers(emails: string[]): Promise<{
+  prefsByEmail: Map<string, JobPreferences>
+  userIdByEmail: Map<string, string>
+}> {
   const out = new Map<string, JobPreferences>()
+  const userIdByEmail = new Map<string, string>()
   const wanted = new Set(emails.map(e => e.trim().toLowerCase()))
-  if (wanted.size === 0) return out
+  if (wanted.size === 0) return { prefsByEmail: out, userIdByEmail }
 
   const supabase = getServiceClient()
   const idToEmail = new Map<string, string>()
@@ -279,11 +323,14 @@ async function loadPreferencesByEmail(emails: string[]): Promise<Map<string, Job
     if (error) throw new Error(`auth user read failed: ${error.message}`)
     for (const u of data.users) {
       const email = u.email?.toLowerCase()
-      if (email && wanted.has(email)) idToEmail.set(u.id, email)
+      if (email && wanted.has(email)) {
+        idToEmail.set(u.id, email)
+        userIdByEmail.set(email, u.id)
+      }
     }
     if (data.users.length < 1000) break
   }
-  if (idToEmail.size === 0) return out
+  if (idToEmail.size === 0) return { prefsByEmail: out, userIdByEmail }
 
   const { data: rows, error } = await supabase
     .from('job_preferences')
@@ -303,6 +350,54 @@ async function loadPreferencesByEmail(emails: string[]): Promise<Map<string, Job
       emailMatches: true,
       dismissedAt: null,
     })
+  }
+  return { prefsByEmail: out, userIdByEmail }
+}
+
+/**
+ * What each member's own tracker needs from them.
+ *
+ * This is the reason to open the email even on a day with few new postings: a
+ * job they saved is about to close, or they clicked Apply and never came back
+ * to say whether they finished.
+ */
+async function loadTrackers(userIds: string[], now: number): Promise<Map<string, TrackerSummary>> {
+  const out = new Map<string, TrackerSummary>()
+  if (userIds.length === 0) return out
+
+  const supabase = getServiceClient()
+  const { data: saved, error } = await supabase
+    .from('saved_jobs')
+    .select('user_id, job_id, status, created_at')
+    .in('user_id', userIds)
+    .in('status', ['saved', 'started'])
+  if (error) throw new Error(`saved_jobs read failed: ${error.message}`)
+  if (!saved || saved.length === 0) return out
+
+  const { data: jobRows, error: jobErr } = await supabase
+    .from('jobs')
+    .select('id, slug, title, company, status, valid_through')
+    .in('id', [...new Set(saved.map(s => s.job_id))])
+  if (jobErr) throw new Error(`tracked jobs read failed: ${jobErr.message}`)
+  const jobById = new Map((jobRows ?? []).map(j => [j.id, j]))
+
+  for (const row of saved) {
+    const job = jobById.get(row.job_id)
+    if (!job || job.status !== 'active') continue
+    const closes = job.valid_through ? new Date(job.valid_through).getTime() : null
+    if (closes !== null && closes < now) continue
+
+    const summary = out.get(row.user_id) ?? { closingSoon: [], unfinished: [] }
+    const item: TrackerItem = {
+      jobId: job.id, slug: job.slug, title: job.title, company: job.company,
+      closesLabel: formatClosingDate(job.valid_through),
+    }
+    if (closes !== null && closes - now <= CLOSING_SOON_MS) {
+      if (summary.closingSoon.length < MAX_TRACKER_ITEMS) summary.closingSoon.push(item)
+    } else if (row.status === 'started' && now - new Date(row.created_at).getTime() >= DAY_MS) {
+      if (summary.unfinished.length < MAX_TRACKER_ITEMS) summary.unfinished.push(item)
+    }
+    out.set(row.user_id, summary)
   }
   return out
 }

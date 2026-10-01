@@ -20,12 +20,15 @@ export async function POST(request: NextRequest) {
     const user = userData?.user
     if (userErr || !user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
 
-    const meta = (user.user_metadata ?? {}) as { welcomed?: boolean; full_name?: string; city?: string }
+    const meta = (user.user_metadata ?? {}) as { welcomed?: boolean; full_name?: string; city?: string; signup_source?: string }
     if (meta.welcomed) return NextResponse.json({ skipped: 'already_welcomed' })
     if (!user.email) return NextResponse.json({ skipped: 'no_email' })
 
     try {
-        await sendWelcomeEmail({ email: user.email, name: meta.full_name, city: meta.city })
+        await sendWelcomeEmail({
+            email: user.email, name: meta.full_name, city: meta.city,
+            fromJobs: meta.signup_source === 'jobs',
+        })
     } catch (e) {
         console.error('[welcome-email] send failed:', e)
         return NextResponse.json({ error: 'Failed to send' }, { status: 500 })

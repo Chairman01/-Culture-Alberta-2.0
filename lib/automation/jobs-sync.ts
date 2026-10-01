@@ -98,7 +98,9 @@ export async function syncAllJobs(): Promise<JobsSyncResult> {
   const toUpdate = kept.filter(r => existing.has(r.source_id))
   const toInsert = kept.filter(r => !existing.has(r.source_id))
 
-  for (const row of toUpdate) {
+  // A few at a time: one request per row, two thousand rows, and the same
+  // 300-second budget the fetch above already spent most of.
+  const updateRow = async (row: (typeof toUpdate)[number]) => {
     const { error } = await supabase
       .from('jobs')
       .update({
@@ -123,6 +125,12 @@ export async function syncAllJobs(): Promise<JobsSyncResult> {
     if (error) result.errors.push(`Update ${row.source_id}: ${error.message}`)
     else result.updated++
   }
+  let nextUpdate = 0
+  await Promise.all(
+    Array.from({ length: Math.min(8, toUpdate.length) }, async () => {
+      while (nextUpdate < toUpdate.length) await updateRow(toUpdate[nextUpdate++])
+    })
+  )
 
   if (toInsert.length > 0) {
     const insertRows = toInsert.map(row => ({

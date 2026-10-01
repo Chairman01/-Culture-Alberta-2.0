@@ -97,9 +97,15 @@ const POSTED_WITHIN_OPTIONS = [
 export default function JobsBrowser({
   jobs,
   initialCity = 'all',
+  totalActive,
+  emailAlerts = false,
 }: {
   jobs: BrowserJob[]
   initialCity?: string
+  /** Every active posting in this page's scope, when that is more than `jobs` holds. */
+  totalActive?: number
+  /** True once the jobs email is sending, so signed-out visitors can be offered it. */
+  emailAlerts?: boolean
 }) {
   const [keyword, setKeyword] = useState('')
   const [city, setCity] = useState(initialCity)
@@ -747,7 +753,7 @@ export default function JobsBrowser({
       )}
 
       {/* Signed-in members not yet on the jobs email. Renders nothing otherwise. */}
-      <JobsEmailOptIn areaLabel={initialCity === 'all' ? 'Alberta' : initialCity} />
+      <JobsEmailOptIn areaLabel={initialCity === 'all' ? 'Alberta' : initialCity} emailSignup={emailAlerts} />
 
       {/* Prominent search bar */}
       <div className="relative mb-4">
@@ -1014,7 +1020,9 @@ export default function JobsBrowser({
           {trackFilter
             ? `${visible.length} ${TRACK_LABELS[trackFilter].toLowerCase()} ${visible.length === 1 ? 'job' : 'jobs'}`
             : visible.length === jobs.length
-              ? `${jobs.length} open ${jobs.length === 1 ? 'job' : 'jobs'} in Alberta`
+              ? totalActive && totalActive > jobs.length
+                ? `The newest ${jobs.length.toLocaleString()} of ${totalActive.toLocaleString()} open jobs in Alberta. Pick a city for every job there.`
+                : `${jobs.length.toLocaleString()} open ${jobs.length === 1 ? 'job' : 'jobs'} in Alberta`
               : `Showing ${showingFrom}-${showingTo} of ${visible.length} matching jobs`}
         </p>
         <p className="hidden text-xs text-gray-500 lg:block">

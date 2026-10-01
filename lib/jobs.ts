@@ -147,6 +147,27 @@ const hasDescription = (q: any) => q.not('description_html', 'is', null)
 const withDescription = <T extends IndexableCheckRow>(row: T) =>
   ({ ...row, description_html: 'present' })
 
+/**
+ * How many postings a board page ships to the browser. It was 500 while the
+ * board held ~600; at 2,100 that hid three quarters of it, including most of
+ * Calgary and Edmonton. 1,000 covers every city page in full — the largest,
+ * Calgary, has under 900 — and is the most one request to the database returns.
+ * The province-wide board shows the newest 1,000 and says so.
+ */
+export const BOARD_PAGE_LIMIT = 1000
+
+/** Count of active postings, for "showing the newest N of M". */
+export async function getActiveJobCount(city?: JobCity): Promise<number> {
+  try {
+    let query = supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'active')
+    if (city) query = query.eq('city', city)
+    const { count } = await query
+    return count ?? 0
+  } catch {
+    return 0
+  }
+}
+
 /** Active jobs, featured/manual first, newest first. */
 export async function getActiveJobs(opts: { city?: JobCity; limit?: number } = {}): Promise<Job[]> {
   try {
@@ -156,7 +177,7 @@ export async function getActiveJobs(opts: { city?: JobCity; limit?: number } = {
       .eq('status', 'active')
       .order('is_featured', { ascending: false })
       .order('posted_at', { ascending: false, nullsFirst: false })
-      .limit(opts.limit ?? 500)
+      .limit(opts.limit ?? BOARD_PAGE_LIMIT)
 
     if (opts.city) query = query.eq('city', opts.city)
 

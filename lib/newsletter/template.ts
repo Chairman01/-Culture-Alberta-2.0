@@ -340,6 +340,16 @@ function eventsSection(events: NewsletterEvent[], cityLabel: string, accentColor
   <tr><td style="padding:16px 32px 0 32px;"><div style="border-top:1px solid #e8e8e8;"></div></td></tr>`
 }
 
+/**
+ * CASL requires the sender's postal address in every commercial email. It comes
+ * from the same variable the jobs email and the partnerships mailer use, so
+ * there is one place to set it; until it is set the line is simply absent.
+ */
+function mailingAddressLine(): string {
+  const address = process.env.CRM_MAILING_ADDRESS?.trim()
+  return address ? ` &middot; ${escapeHtml(address)}` : ''
+}
+
 function footerSection(city: NewsletterCity, unsubscribeUrl: string): string {
   return `
   <!-- FOOTER -->
@@ -362,7 +372,7 @@ function footerSection(city: NewsletterCity, unsubscribeUrl: string): string {
             <a href="https://www.culturealberta.com" style="color:#aaa;text-decoration:underline;">culturealberta.com</a>
           </p>
           <p style="margin:10px 0 0 0;font-size:11px;color:#ccc;">
-            &copy; ${new Date().getFullYear()} Culture Media &middot; Sent by Culture Alberta
+            &copy; ${new Date().getFullYear()} Culture Media &middot; Sent by Culture Alberta${mailingAddressLine()}
           </p>
         </td>
       </tr>
