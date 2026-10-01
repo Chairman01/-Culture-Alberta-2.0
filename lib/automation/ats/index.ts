@@ -132,11 +132,26 @@ function toRows(posting: RawPosting, board: AtsBoard, city: JobCity): JobUpsertR
  * treated as "this employer has no openings" — that distinction decides
  * whether the sync is allowed to expire their existing rows.
  */
+/** Employer boards read at once. See the note in fetchAtsJobs. */
+const BOARD_CONCURRENCY = 4
+
 export async function fetchAtsJobs(boards: AtsBoard[] = ATS_BOARDS): Promise<AtsFetchResult> {
   const rows: JobUpsertRow[] = []
   const report: AtsFetchResult['boards'] = []
 
-  for (const board of boards) {
+  // Several boards at a time. The whole sync shares one 300-second function,
+  // and read one after another the boards alone took ~230 seconds — no room
+  // left to add an employer. Each board is a different employer's host, so
+  // running a few side by side asks no single site for more than before.
+  let next = 0
+  const worker = async () => {
+    while (next < boards.length) {
+      const board = boards[next++]
+      await readBoard(board)
+    }
+  }
+
+  const readBoard = async (board: AtsBoard) => {
     try {
       const postings = await fetchBoard(board, looksAlberta(board))
       let alberta = 0
@@ -165,6 +180,8 @@ export async function fetchAtsJobs(boards: AtsBoard[] = ATS_BOARDS): Promise<Ats
       })
     }
   }
+
+  await Promise.all(Array.from({ length: Math.min(BOARD_CONCURRENCY, boards.length) }, worker))
 
   return { rows, boards: report }
 }
