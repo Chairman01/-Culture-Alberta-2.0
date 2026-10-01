@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  getActiveJobs, isJobCity, isIndexableJob, JOB_CITIES, JOB_CITY_LABELS,
+  getActiveJobs, getActiveJobCount, isJobCity, isIndexableJob, JOB_CITIES, JOB_CITY_LABELS,
   CITY_PAGE_MIN_INDEXABLE_JOBS,
 } from '@/lib/jobs'
 import { jobsEmailArmed } from '@/lib/jobs-email/armed'
@@ -45,7 +45,7 @@ export default async function CityJobsPage({ params }: { params: Promise<{ city:
   if (!isJobCity(city)) notFound()
   const label = JOB_CITY_LABELS[city]
   const otherCities = JOB_CITIES.filter(c => c !== city)
-  const jobs = await getActiveJobs({ city })
+  const [jobs, totalActive] = await Promise.all([getActiveJobs({ city }), getActiveJobCount(city)])
   const browserJobs = jobs.map(toBrowserJob)
 
   return (
@@ -99,7 +99,7 @@ export default async function CityJobsPage({ params }: { params: Promise<{ city:
               </ul>
             </div>
 
-            <JobsBrowser jobs={browserJobs} initialCity={label} emailAlerts={jobsEmailArmed().armed} />
+            <JobsBrowser jobs={browserJobs} initialCity={label} totalActive={totalActive} emailAlerts={jobsEmailArmed().armed} />
 
           </div>
         </section>

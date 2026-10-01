@@ -67,7 +67,7 @@ export const SECTOR_BLURBS: Record<EmployerSector, string> = {
   'Construction & Skilled Trades':
     'General contractors and heavy equipment — site, shop and field roles.',
   'Tech & Finance':
-    'Software, fintech and adtech, concentrated in Calgary and Edmonton.',
+    'Software, telecom, banking and investment, concentrated in Calgary and Edmonton.',
   'Health & Care':
     'Hospitals, continuing care, clinics and community health.',
   'Engineering & Professional Services':
@@ -121,6 +121,17 @@ const SECTOR_BY_COMPANY: Record<string, EmployerSector> = {
   'Canadian Natural Resources': 'Energy & Utilities',
   ATCO: 'Energy & Utilities',
   EPCOR: 'Energy & Utilities',
+  'Imperial Oil': 'Energy & Utilities',
+  'Pembina Pipeline': 'Energy & Utilities',
+  'ARC Resources': 'Energy & Utilities',
+  'Inter Pipeline': 'Energy & Utilities',
+  'Gibson Energy': 'Energy & Utilities',
+  TransAlta: 'Energy & Utilities',
+  FortisAlberta: 'Energy & Utilities',
+  'Precision Drilling': 'Energy & Utilities',
+  Enerflex: 'Energy & Utilities',
+  'NOVA Chemicals': 'Energy & Utilities',
+  Ovintiv: 'Energy & Utilities',
   'Alberta Energy Regulator': 'Government & Public Sector',
   'WCB Alberta': 'Government & Public Sector',
 
@@ -129,21 +140,33 @@ const SECTOR_BY_COMPANY: Record<string, EmployerSector> = {
 
   // Engineering & professional services
   Stantec: 'Engineering & Professional Services',
+  AECOM: 'Engineering & Professional Services',
+  Worley: 'Engineering & Professional Services',
   'Bennett Jones': 'Engineering & Professional Services',
 
   // Agriculture, food & manufacturing
   'Richardson International': 'Agriculture, Food & Manufacturing',
+  'UFA Co-operative': 'Agriculture, Food & Manufacturing',
 
   // Transportation
   'Air Canada': 'Transportation & Logistics',
+  'Canada Post': 'Transportation & Logistics',
+  Purolator: 'Transportation & Logistics',
 
   // Construction & trades. Finning sits here rather than in retail: it sells
   // and services Caterpillar equipment, and its openings are technicians and
   // field service, not store staff.
   Ledcor: 'Construction & Skilled Trades',
-  Bird: 'Construction & Skilled Trades',
+  // Bird is the scooter and e-bike company (bird.co), not Bird Construction.
+  Bird: 'Transportation & Logistics',
   Finning: 'Construction & Skilled Trades',
   'PCL Construction': 'Construction & Skilled Trades',
+  Aecon: 'Construction & Skilled Trades',
+  Kiewit: 'Construction & Skilled Trades',
+  EllisDon: 'Construction & Skilled Trades',
+  'Clark Builders': 'Construction & Skilled Trades',
+  'Bird Construction': 'Construction & Skilled Trades',
+  'Amrize (Lafarge)': 'Construction & Skilled Trades',
 
   // Tech & finance
   Jobber: 'Tech & Finance',
@@ -152,6 +175,9 @@ const SECTOR_BY_COMPANY: Record<string, EmployerSector> = {
   StackAdapt: 'Tech & Finance',
   'ATB Financial': 'Tech & Finance',
   AIMCo: 'Tech & Finance',
+  TELUS: 'Tech & Finance',
+  'Rogers Communications': 'Tech & Finance',
+  AltaML: 'Tech & Finance',
 
   // Hospitality
   "Hell's Kitchen at River Cree Resort": 'Hospitality & Food Service',

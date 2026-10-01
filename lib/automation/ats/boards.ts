@@ -86,6 +86,11 @@ export interface AtsBoard {
    */
   companyNames?: Record<string, string>
   /**
+   * SuccessFactors and Eightfold: ask the employer's own search to filter by
+   * this place ("Alberta") instead of reading a national board end to end.
+   */
+  searchLocation?: string
+  /**
    * PeopleSoft only: a machine-readable list of the employer's open postings,
    * because PeopleSoft itself publishes none. The City of Calgary puts one on
    * its own open data portal, which is a better source than its careers page —
@@ -611,6 +616,51 @@ export const ATS_BOARDS: AtsBoard[] = [
   // Richardson's canola crush plant in Lethbridge: operators, millwrights, QA.
   // The rest of the board is Prairie grain elevators and Winnipeg head office.
   { provider: 'workday', token: 'richardson', company: 'Richardson International', domain: 'richardson.ca', datacenter: 'wd3', site: 'Richardson_Our_Careers' },
+  // ── Added 2026-10-01: large Alberta employers, each verified live ─────────
+  // `domain` is the careers-site origin for the SuccessFactors entries, as with
+  // the Government of Alberta above. `searchLocation` is set where the board is
+  // national or global and Alberta is a small share of it.
+  //
+  // Construction and engineering.
+  { provider: 'successfactors', token: 'aecon', company: 'Aecon', domain: 'jobs.aecon.com', logoDomain: 'aecon.com', searchLocation: 'Alberta' },
+  { provider: 'successfactors', token: 'kiewit', company: 'Kiewit', domain: 'kiewitcareers.kiewit.com', logoDomain: 'kiewit.com', searchLocation: 'Alberta' },
+  { provider: 'successfactors', token: 'amrize', company: 'Amrize (Lafarge)', domain: 'careers.amrize.com', logoDomain: 'amrize.com', searchLocation: 'Alberta' },
+  { provider: 'workday', token: 'ellisdon', company: 'EllisDon', domain: 'ellisdon.com', datacenter: 'wd3', site: 'Ellis-Don' },
+  // Tenant is 'cbgoc'; the board is Clark Builders and its sister companies.
+  { provider: 'workday', token: 'cbgoc', company: 'Clark Builders', domain: 'clarkbuilders.com', datacenter: 'wd3', site: 'cb' },
+  { provider: 'phenom', token: 'bird-construction', company: 'Bird Construction', domain: 'careers.bird.ca/ca/en', logoDomain: 'bird.ca' },
+  { provider: 'jobsyn', token: 'aecom', company: 'AECOM', domain: 'aecom.jobs', logoDomain: 'aecom.com' },
+  { provider: 'eightfold', token: 'worley', company: 'Worley', domain: 'jobs.worley.com', logoDomain: 'worley.com', site: 'worley.com', searchLocation: 'Alberta' },
+  //
+  // Energy and utilities.
+  // Imperial posts on ExxonMobil's shared board; the Alberta filter is what
+  // keeps this to Imperial's own Calgary, Edmonton and Cold Lake roles.
+  { provider: 'successfactors', token: 'imperial-oil', company: 'Imperial Oil', domain: 'jobs.exxonmobil.com', logoDomain: 'imperialoil.ca', searchLocation: 'Alberta' },
+  { provider: 'successfactors', token: 'pembina', company: 'Pembina Pipeline', domain: 'careers.pembina.com', logoDomain: 'pembina.com' },
+  { provider: 'successfactors', token: 'arc-resources', company: 'ARC Resources', domain: 'careers.arcresources.com', logoDomain: 'arcresources.com' },
+  { provider: 'successfactors', token: 'inter-pipeline', company: 'Inter Pipeline', domain: 'careers.interpipeline.com', logoDomain: 'interpipeline.com' },
+  { provider: 'successfactors', token: 'gibson-energy', company: 'Gibson Energy', domain: 'careers.gibsonenergy.com', logoDomain: 'gibsonenergy.com' },
+  { provider: 'successfactors', token: 'transalta', company: 'TransAlta', domain: 'jobs.transalta.com', logoDomain: 'transalta.com' },
+  { provider: 'successfactors', token: 'fortisalberta', company: 'FortisAlberta', domain: 'careers.fortisalberta.com', logoDomain: 'fortisalberta.com' },
+  { provider: 'successfactors', token: 'precision-drilling', company: 'Precision Drilling', domain: 'jobs.precisiondrilling.com', logoDomain: 'precisiondrilling.com' },
+  { provider: 'successfactors', token: 'enerflex', company: 'Enerflex', domain: 'jobs.enerflex.com', logoDomain: 'enerflex.com', searchLocation: 'Alberta' },
+  { provider: 'successfactors', token: 'nova-chemicals', company: 'NOVA Chemicals', domain: 'jobs.novachem.com', logoDomain: 'novachem.com' },
+  { provider: 'workday', token: 'ovintiv', company: 'Ovintiv', domain: 'ovintiv.com', datacenter: 'wd3', site: 'ovintivcareers' },
+  //
+  // Telecom, delivery, agriculture, tech.
+  { provider: 'successfactors', token: 'telus', company: 'TELUS', domain: 'careers.telus.com', logoDomain: 'telus.com', searchLocation: 'Alberta' },
+  { provider: 'successfactors', token: 'rogers', company: 'Rogers Communications', domain: 'jobs.rogers.com', logoDomain: 'rogers.com', searchLocation: 'Alberta' },
+  { provider: 'successfactors', token: 'canada-post', company: 'Canada Post', domain: 'jobs.canadapost.ca', logoDomain: 'canadapost-postescanada.ca', searchLocation: 'Alberta' },
+  { provider: 'successfactors', token: 'purolator', company: 'Purolator', domain: 'careers.purolator.com', logoDomain: 'purolator.com', searchLocation: 'Alberta' },
+  { provider: 'successfactors', token: 'ufa', company: 'UFA Co-operative', domain: 'careers.ufa.com', logoDomain: 'ufa.com' },
+  { provider: 'lever', token: 'altaml', company: 'AltaML', domain: 'altaml.com' },
+  //
+  // Checked the same day and left out: Nutrien, Graham, CN and Olymel run the
+  // newer SuccessFactors UI whose data sits under a robots-disallowed path;
+  // Cargill disallows its search; WSP, JBS, Parkland, Flair and Jacobs block
+  // non-browser clients; WestJet, Ensign and Lantic are Dayforce. Dow (3 of
+  // 191) and Badger (3 of 208) are global boards with almost nothing here.
+
   // NOT ADDED, checked 2026-10-01:
   //   McCain Foods (Coaldale plant) — Phenom at careers.mccain.com, but /ca/en
   //     redirects to /us/en and the reader gets no postings from either.

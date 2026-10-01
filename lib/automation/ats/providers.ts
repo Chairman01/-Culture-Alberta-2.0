@@ -460,8 +460,14 @@ async function fetchWorkday(
 
 // ── SuccessFactors (Government of Alberta) ───────────────────────────────────
 
-const SF_PAGE = 25
 const SF_MAX_PAGES = 12
+
+/** An ISO timestamp from whatever date text a site printed, or null. */
+function toIsoOrNull(value: string | null | undefined): string | null {
+  if (!value) return null
+  const time = new Date(value).getTime()
+  return Number.isFinite(time) ? new Date(time).toISOString() : null
+}
 /** Detail fetches per run. Logged when hit, never silently truncated. */
 const SF_MAX_DETAILS = 130
 
@@ -480,21 +486,43 @@ async function fetchSuccessFactors(
   const listing: Array<{ path: string; title: string; location: string; posted: string | null }> = []
   const seen = new Set<string>()
 
+  // A national employer's board is mostly other provinces, so ask the site to
+  // filter: Aecon has 634 postings and 74 in Alberta. Without it the page
+  // ceiling below would stop long before the Alberta rows were all read.
+  const filter = board.searchLocation
+    ? `q=&locationsearch=${encodeURIComponent(board.searchLocation)}&`
+    : ''
+
+  // Advance by what each page actually returned. Page size is the site's own
+  // setting — 15, 20, 25 and 50 are all in use — and stepping by a fixed 25
+  // skipped rows on the smaller ones.
+  let startRow = 0
   for (let page = 0; page < SF_MAX_PAGES; page++) {
-    const res = await fetch(`${origin}/search/?startrow=${page * SF_PAGE}`, {
+    const res = await fetch(`${origin}/search/?${filter}startrow=${startRow}`, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
       headers: { 'user-agent': UA },
     })
     if (!res.ok) break
     const html = await res.text()
 
+    // Two list templates are in use. The older one is a table of `data-row`s;
+    // the newer "tile" one is a list of `job-tile`s whose fields are divs with
+    // ids like `job-123-desktop-section-location-value`.
+    const blocks = [
+      ...html.matchAll(/<tr class="data-row"[\s\S]*?<\/tr>/g),
+      ...html.matchAll(/<li class="job-tile[\s\S]*?<\/li>/g),
+    ]
+
     let fresh = 0
-    for (const m of html.matchAll(/<tr class="data-row"[\s\S]*?<\/tr>/g)) {
+    for (const m of blocks) {
       const tr = m[0]
       // Decoded, not raw: a title containing an ampersand ("Access & Privacy")
       // arrives as "&amp;" inside the href, and carrying that through produced
       // an apply URL that doesn't resolve.
-      const path = tr.match(/href="(\/job\/[^"]+)"/)?.[1]?.replace(/&amp;/g, '&')
+      // Multi-brand sites put the brand first: /Amrize/job/Calgary-Yard-Worker/…
+      const path = (
+        tr.match(/href="((?:\/[\w-]+)?\/job\/[^"]+)"/) ?? tr.match(/data-url="((?:\/[\w-]+)?\/job\/[^"]+)"/)
+      )?.[1]?.replace(/&amp;/g, '&')
       if (!path || seen.has(path)) continue
       seen.add(path)
       fresh++
@@ -502,7 +530,14 @@ async function fetchSuccessFactors(
       // "Barrister &amp; Solicitor" and would render with the raw entity.
       const strip = (s?: string) =>
         decodeEntities((s ?? '').replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim()
-      const title = strip(tr.match(/class="jobTitle-link"[^>]*>([\s\S]*?)<\/a>/)?.[1])
+      const title = strip(tr.match(/class="jobTitle-link[" ][^>]*>([\s\S]*?)<\/a>/)?.[1])
+      const tileField = (name: string) =>
+        // Anchored on id=: the label beside each field names the same id in its
+        // aria-describedby, and matching that returned the word "Location".
+        strip(tr.match(new RegExp(`id="job-\\d+-desktop-section-${name}-value"[^>]*>([\\s\\S]*?)</div>`))?.[1])
+      // Canada Post's tiles state city and province in separate fields.
+      const tileLocation =
+        tileField('location') || [tileField('city'), tileField('state')].filter(Boolean).join(', ')
       listing.push({
         path,
         title,
@@ -510,11 +545,13 @@ async function fetchSuccessFactors(
         // Municipality of Wood Buffalo's doesn't, so every row read as "no
         // location" and the whole board was dropped by the Alberta filter.
         location: strip(tr.match(/class="jobLocation">([\s\S]*?)<\/span>/)?.[1])
+          || tileLocation
           || locationFromSlug(path, title),
-        posted: strip(tr.match(/class="jobDate">([\s\S]*?)<\/span>/)?.[1]) || null,
+        posted: strip(tr.match(/class="jobDate">([\s\S]*?)<\/span>/)?.[1]) || tileField('date') || null,
       })
     }
     if (fresh === 0) break
+    startRow += blocks.length
   }
 
   const wanted = listing.filter(j => j.title && isAlberta(j.location))
@@ -565,7 +602,7 @@ async function fetchSuccessFactors(
       location: job.location,
       descriptionHtml: described?.trim() ? described : block,
       applyUrl: `${origin}${job.path}`,
-      postedAt: job.posted ? new Date(job.posted).toISOString() : null,
+      postedAt: toIsoOrNull(job.posted) ?? itempropMeta(html, 'datePosted'),
       // Where the tenant states a closing date as microdata, take it; where it
       // doesn't (GoA), leave it undefined so the date is read out of the body.
       validThrough: itempropMeta(html, 'validThrough'),
@@ -2237,7 +2274,7 @@ async function fetchEightfold(
 
   for (let page = 0; page < EIGHTFOLD_MAX_PAGES; page++) {
     const data = (await getJson(
-      `${origin}/api/pcsx/search?domain=${tenant}&query=&location=&start=${page * EIGHTFOLD_PAGE_SIZE}&sort_by=timestamp`
+      `${origin}/api/pcsx/search?domain=${tenant}&query=&location=${encodeURIComponent(board.searchLocation ?? '')}&start=${page * EIGHTFOLD_PAGE_SIZE}&sort_by=timestamp`
     )) as { data?: { positions?: EightfoldPosition[]; count?: number } }
     const positions = data.data?.positions ?? []
     listed.push(...positions)

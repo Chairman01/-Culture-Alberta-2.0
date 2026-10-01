@@ -1021,8 +1021,10 @@ export default function JobsBrowser({
             ? `${visible.length} ${TRACK_LABELS[trackFilter].toLowerCase()} ${visible.length === 1 ? 'job' : 'jobs'}`
             : visible.length === jobs.length
               ? totalActive && totalActive > jobs.length
-                ? `The newest ${jobs.length.toLocaleString()} of ${totalActive.toLocaleString()} open jobs in Alberta. Pick a city for every job there.`
-                : `${jobs.length.toLocaleString()} open ${jobs.length === 1 ? 'job' : 'jobs'} in Alberta`
+                ? initialCity === 'all'
+                  ? `The newest ${jobs.length.toLocaleString()} of ${totalActive.toLocaleString()} open jobs in Alberta. Pick a city for every job there.`
+                  : `The newest ${jobs.length.toLocaleString()} of ${totalActive.toLocaleString()} open jobs in ${initialCity}. Search or filter to narrow them down.`
+                : `${jobs.length.toLocaleString()} open ${jobs.length === 1 ? 'job' : 'jobs'} in ${initialCity === 'all' ? 'Alberta' : initialCity}`
               : `Showing ${showingFrom}-${showingTo} of ${visible.length} matching jobs`}
         </p>
         <p className="hidden text-xs text-gray-500 lg:block">
