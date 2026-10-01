@@ -42,7 +42,19 @@ export interface JobsSyncResult {
   errors: string[]
 }
 
-export async function syncAllJobs(): Promise<JobsSyncResult> {
+/** How many parts the board list is split into. Each part is its own run. */
+export const JOBS_SYNC_PARTS = 3
+
+/**
+ * Sync the job board, or one part of it.
+ *
+ * The whole sync shares one 300-second function. At ~90 employers and ~3,900
+ * postings the reading alone takes over three minutes, so the boards are split
+ * into parts by position and each part runs as its own invocation. A run only
+ * ever expires postings for the boards it read: a board in the other part was
+ * not looked at, and "not seen" must never be mistaken for "closed".
+ */
+export async function syncAllJobs(opts: { part?: number } = {}): Promise<JobsSyncResult> {
   const result: JobsSyncResult = {
     fetched: 0, blocked: 0, inserted: 0, updated: 0, expired: 0,
     byCity: {}, boards: [], errors: [],
@@ -51,7 +63,10 @@ export async function syncAllJobs(): Promise<JobsSyncResult> {
   const supabase = getSupabaseAdmin()
 
   // 1. Fetch every configured board
-  const { rows: fetched, boards } = await fetchAtsJobs()
+  const runBoards = opts.part === undefined
+    ? ATS_BOARDS
+    : ATS_BOARDS.filter((_, i) => i % JOBS_SYNC_PARTS === opts.part)
+  const { rows: fetched, boards } = await fetchAtsJobs(runBoards)
   result.fetched = fetched.length
   result.boards = boards.map(b => ({ board: b.board, provider: b.provider, alberta: b.alberta, error: b.error }))
 
@@ -154,7 +169,7 @@ export async function syncAllJobs(): Promise<JobsSyncResult> {
   //    Scoped per board and skipped for boards that errored — a timeout must
   //    never be read as "this employer closed every role".
   const seen = new Set(kept.map(r => r.source_id))
-  for (const board of ATS_BOARDS) {
+  for (const board of runBoards) {
     if (failedBoards.has(board.token)) continue
 
     const { data: live, error: liveErr } = await supabase

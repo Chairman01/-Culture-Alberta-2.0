@@ -57,14 +57,32 @@ export default function AdminJobsPage() {
     setBusy('sync')
     setMessage(null)
     try {
-      const res = await fetch('/api/admin/automation/sync-jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      // The board list is synced in parts, each its own request, because one
+      // request for every employer runs past the server's time limit. The
+      // first response says how many parts there are.
+      const r: any = { inserted: 0, updated: 0, expired: 0, blocked: 0, byCity: {}, boards: [] }
+      let parts = 1
+      for (let part = 0; part < parts; part++) {
+        setMessage(`Syncing part ${part + 1}${parts > 1 ? ` of ${parts}` : ''}…`)
+        const res = await fetch('/api/admin/automation/sync-jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ part }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+        parts = data.parts ?? 1
+        const one = data.result ?? {}
+        r.inserted += one.inserted ?? 0
+        r.updated += one.updated ?? 0
+        r.expired += one.expired ?? 0
+        r.blocked += one.blocked ?? 0
+        for (const [city, n] of Object.entries(one.byCity ?? {})) {
+          r.byCity[city] = (r.byCity[city] ?? 0) + (n as number)
+        }
+        r.boards.push(...(one.boards ?? []))
+      }
 
-      const r = data.result
       const cities = Object.entries(r?.byCity ?? {})
         .map(([city, n]) => `${city} ${n}`)
         .join(', ')

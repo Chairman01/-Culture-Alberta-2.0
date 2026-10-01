@@ -67,7 +67,7 @@ export const SECTOR_BLURBS: Record<EmployerSector, string> = {
   'Construction & Skilled Trades':
     'General contractors and heavy equipment — site, shop and field roles.',
   'Tech & Finance':
-    'Software, telecom, banking and investment, concentrated in Calgary and Edmonton.',
+    'Software, telecom, banks and insurers.',
   'Health & Care':
     'Hospitals, continuing care, clinics and community health.',
   'Engineering & Professional Services':
@@ -90,6 +90,9 @@ const SECTOR_BY_COMPANY: Record<string, EmployerSector> = {
   // Retail & grocery
   'Calgary Co-op': 'Retail & Grocery',
   'Costco Wholesale Canada': 'Retail & Grocery',
+  'Walmart Canada': 'Retail & Grocery',
+  'Co-op (Federated Co-operatives)': 'Retail & Grocery',
+  'Staples Canada': 'Retail & Grocery',
   'Save-On-Foods': 'Retail & Grocery',
   'The Home Depot Canada': 'Retail & Grocery',
   'Canadian Tire': 'Retail & Grocery',
@@ -132,16 +135,21 @@ const SECTOR_BY_COMPANY: Record<string, EmployerSector> = {
   Enerflex: 'Energy & Utilities',
   'NOVA Chemicals': 'Energy & Utilities',
   Ovintiv: 'Energy & Utilities',
+  'Alberta Electric System Operator': 'Energy & Utilities',
   'Alberta Energy Regulator': 'Government & Public Sector',
   'WCB Alberta': 'Government & Public Sector',
 
   // Health & care
   'Bethany Care Society': 'Health & Care',
+  AgeCare: 'Health & Care',
+  Carewest: 'Health & Care',
+  'Chartwell Retirement Residences': 'Health & Care',
 
   // Engineering & professional services
   Stantec: 'Engineering & Professional Services',
   AECOM: 'Engineering & Professional Services',
   Worley: 'Engineering & Professional Services',
+  'EY Canada': 'Engineering & Professional Services',
   'Bennett Jones': 'Engineering & Professional Services',
 
   // Agriculture, food & manufacturing
@@ -178,9 +186,18 @@ const SECTOR_BY_COMPANY: Record<string, EmployerSector> = {
   TELUS: 'Tech & Finance',
   'Rogers Communications': 'Tech & Finance',
   AltaML: 'Tech & Finance',
+  CIBC: 'Tech & Finance',
+  'TD Bank': 'Tech & Finance',
+  BMO: 'Tech & Finance',
+  RBC: 'Tech & Finance',
+  Scotiabank: 'Tech & Finance',
+  'Intact Insurance': 'Tech & Finance',
+  'Wawanesa Insurance': 'Tech & Finance',
+  'Alberta Motor Association': 'Tech & Finance',
 
   // Hospitality
   "Hell's Kitchen at River Cree Resort": 'Hospitality & Food Service',
+  Starbucks: 'Hospitality & Food Service',
 }
 
 /**
