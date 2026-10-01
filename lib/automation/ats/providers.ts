@@ -368,14 +368,18 @@ async function fetchWorkday(
 
   const first = await listPage({}, 0)
   const sites = workdayLocationFacet(first.facets)
-  const facetFiltered = sites.length > 0
+  // A board can name its own Alberta filter where the tenant has a province
+  // facet instead of (or as well as) per-site ones. Walmart's sites are store
+  // codes on a board of thousands, but one province value selects them all.
+  const pinned = board.facets
+  const facetFiltered = !!pinned || sites.length > 0
   const albertaSites = sites.filter(v => v.id && isAlberta(v.descriptor ?? '')).map(v => v.id!)
 
   // The facet lists every site with a live posting, so no Alberta site means
   // no Alberta postings — not a reason to fall back to reading the whole board.
-  if (facetFiltered && albertaSites.length === 0) return []
+  if (!pinned && facetFiltered && albertaSites.length === 0) return []
 
-  const appliedFacets: Record<string, string[]> = facetFiltered ? { locations: albertaSites } : {}
+  const appliedFacets: Record<string, string[]> = pinned ?? (facetFiltered ? { locations: albertaSites } : {})
   const albertaItems: WorkdayListItem[] = []
   const seen = new Set<string>()
   let total: number | null = null
@@ -396,7 +400,9 @@ async function fetchWorkday(
       seen.add(key)
       fresh++
       const text = item.locationsText ?? ''
-      if (isAlberta(text)) {
+      // Rows from a pinned province filter are Alberta by construction, even
+      // where the text is a store code the city matcher has to work to read.
+      if (pinned || isAlberta(text)) {
         albertaItems.push(item)
       } else if (WORKDAY_MULTI_SITE.test(text)) {
         // Facet-filtered rows are known to include an Alberta site; the rest
@@ -705,7 +711,11 @@ async function fetchPhenom(
   const seen = new Set<string>()
 
   for (let page = 0; page < PHENOM_MAX_PAGES; page++) {
-    const res = await fetch(`${origin}/search-results?from=${page * PHENOM_PAGE}&s=1`, {
+    // `keywords`, not `location`: Phenom's location box needs a geocoded place
+    // and returns nothing for a bare province, while a keyword matches the
+    // province in each posting's own location text.
+    const keywords = board.searchLocation ? `&keywords=${encodeURIComponent(board.searchLocation)}` : ''
+    const res = await fetch(`${origin}/search-results?from=${page * PHENOM_PAGE}&s=1${keywords}`, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
       headers: { 'user-agent': UA },
     })
@@ -826,6 +836,8 @@ async function fetchOracle(
       `${api}/recruitingCEJobRequisitions?onlyData=true` +
       `&expand=requisitionList.secondaryLocations` +
       `&finder=findReqs;siteNumber=${site},limit=${ORACLE_PAGE},offset=${page * ORACLE_PAGE}` +
+      // A location-facet id ("AB, Canada") where the board spans provinces.
+      (board.searchLocation ? `,selectedLocationsFacet=${board.searchLocation}` : '') +
       `,sortBy=POSTING_DATES_DESC`
     )) as { items?: Array<{ requisitionList?: OracleReq[] }> }
 

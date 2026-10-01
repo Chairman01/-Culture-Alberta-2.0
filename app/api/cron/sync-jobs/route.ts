@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { isCronAuthorized } from '@/lib/cron-auth'
-import { syncAllJobs } from '@/lib/automation/jobs-sync'
+import { syncAllJobs, JOBS_SYNC_PARTS } from '@/lib/automation/jobs-sync'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -28,7 +28,13 @@ export async function GET(req: NextRequest) {
   console.log('[sync-jobs cron] Starting')
 
   try {
-    const result = await syncAllJobs()
+    // ?part=0 / ?part=1 — see JOBS_SYNC_PARTS. No part means every board,
+    // which no longer fits in one run and is kept only for a small board list.
+    const partParam = searchParams.get('part')
+    const part = partParam !== null && /^\d+$/.test(partParam) && Number(partParam) < JOBS_SYNC_PARTS
+      ? Number(partParam)
+      : undefined
+    const result = await syncAllJobs({ part })
     console.log(
       `[sync-jobs cron] Complete — ${result.inserted} new, ${result.updated} updated, ` +
       `${result.expired} expired, ${result.blocked} blocked, ${result.errors.length} errors`

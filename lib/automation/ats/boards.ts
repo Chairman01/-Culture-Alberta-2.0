@@ -86,10 +86,13 @@ export interface AtsBoard {
    */
   companyNames?: Record<string, string>
   /**
-   * SuccessFactors and Eightfold: ask the employer's own search to filter by
-   * this place ("Alberta") instead of reading a national board end to end.
+   * Ask the employer's own search to filter to Alberta instead of reading a
+   * national board end to end. SuccessFactors, Eightfold and Phenom take the
+   * word ("Alberta"); Oracle takes the id of its "AB, Canada" location facet.
    */
   searchLocation?: string
+  /** Workday only: facets to apply as-is, for tenants with a province facet. */
+  facets?: Record<string, string[]>
   /**
    * PeopleSoft only: a machine-readable list of the employer's open postings,
    * because PeopleSoft itself publishes none. The City of Calgary puts one on
@@ -654,6 +657,46 @@ export const ATS_BOARDS: AtsBoard[] = [
   { provider: 'successfactors', token: 'purolator', company: 'Purolator', domain: 'careers.purolator.com', logoDomain: 'purolator.com', searchLocation: 'Alberta' },
   { provider: 'successfactors', token: 'ufa', company: 'UFA Co-operative', domain: 'careers.ufa.com', logoDomain: 'ufa.com' },
   { provider: 'lever', token: 'altaml', company: 'AltaML', domain: 'altaml.com' },
+  //
+  // Retail, banking, care and insurance. The national ones are filtered to
+  // Alberta at the source; see `searchLocation` and `facets`.
+  {
+    provider: 'workday', token: 'walmart', company: 'Walmart Canada', domain: 'walmart.ca', datacenter: 'wd504', site: 'WalmartExternal',
+    facets: { locationRegionStateProvince: ['588eb24f950e4c5b93d5ad3f37aebad2'] },
+  },
+  {
+    provider: 'workday', token: 'cibc', company: 'CIBC', domain: 'cibc.com', datacenter: 'wd3', site: 'search',
+    facets: { State__Region__Province: ['588eb24f950e4c5b93d5ad3f37aebad2'] },
+  },
+  { provider: 'workday', token: 'td', company: 'TD Bank', domain: 'td.com', datacenter: 'wd3', site: 'TD_Bank_Careers' },
+  { provider: 'workday', token: 'intactfc', company: 'Intact Insurance', domain: 'intact.ca', datacenter: 'wd3', site: 'intactfc' },
+  { provider: 'workday', token: 'agecare', company: 'AgeCare', domain: 'agecare.ca', datacenter: 'wd10', site: 'AgeCare_Careers_External' },
+  { provider: 'workday', token: 'albertamotorassociation', company: 'Alberta Motor Association', domain: 'ama.ab.ca', datacenter: 'wd3', site: 'AMA' },
+  { provider: 'workday', token: 'aeso', company: 'Alberta Electric System Operator', domain: 'aeso.ca', datacenter: 'wd3', site: 'External' },
+  { provider: 'successfactors', token: 'scotiabank', company: 'Scotiabank', domain: 'jobs.scotiabank.com', logoDomain: 'scotiabank.com', searchLocation: 'Alberta' },
+  { provider: 'successfactors', token: 'ey', company: 'EY Canada', domain: 'careers.ey.com', logoDomain: 'ey.com', searchLocation: 'Alberta' },
+  { provider: 'successfactors', token: 'wawanesa', company: 'Wawanesa Insurance', domain: 'jobs.wawanesa.com', logoDomain: 'wawanesa.com', searchLocation: 'Alberta' },
+  { provider: 'phenom', token: 'bmo', company: 'BMO', domain: 'jobs.bmo.com/ca/en', logoDomain: 'bmo.com', searchLocation: 'Alberta' },
+  { provider: 'phenom', token: 'rbc', company: 'RBC', domain: 'jobs.rbc.com/ca/en', logoDomain: 'rbc.com', searchLocation: 'Alberta' },
+  { provider: 'lever', token: 'carewest', company: 'Carewest', domain: 'carewest.ca' },
+  // Federated Co-operatives and the local co-ops that post through it. The
+  // values filter drops the liquor-store roles the same board carries.
+  {
+    provider: 'oracle', token: 'federated-co-op', company: 'Co-op (Federated Co-operatives)', domain: 'fcl.crs',
+    host: 'fa-esfc-saasfaprod1.fa.ocs.oraclecloud.com', site: 'CX_1', searchLocation: '100000004097694',
+  },
+  {
+    provider: 'oracle', token: 'staples', company: 'Staples Canada', domain: 'staples.ca',
+    host: 'careers.staples.ca', site: 'StaplesCanada', searchLocation: '100000005654655',
+  },
+  {
+    provider: 'oracle', token: 'chartwell', company: 'Chartwell Retirement Residences', domain: 'chartwell.com',
+    host: 'hcrw.fa.us2.oraclecloud.com', site: 'CX_1', searchLocation: '100000000292634',
+  },
+  {
+    provider: 'eightfold', token: 'starbucks', company: 'Starbucks', domain: 'starbucks.eightfold.ai', logoDomain: 'starbucks.ca',
+    site: 'starbucks.com', searchLocation: 'Alberta, Canada',
+  },
   //
   // Checked the same day and left out: Nutrien, Graham, CN and Olymel run the
   // newer SuccessFactors UI whose data sits under a robots-disallowed path;

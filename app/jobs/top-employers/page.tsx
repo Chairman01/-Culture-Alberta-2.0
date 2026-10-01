@@ -280,7 +280,11 @@ export default async function TopEmployersPage() {
                     {section.rows.map((row, i) => (
                       <tr key={i}>
                         {row.map((cell, j) => (
-                          <td key={j} className={`px-4 py-3 ${j === 0 ? 'font-medium text-gray-900' : 'text-gray-600'}`}>{cell}</td>
+                          <td key={j} className={`px-4 py-3 ${j === 0 ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
+                            {typeof cell === 'string' ? cell : (
+                              <a href={cell.href} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline hover:text-blue-900">{cell.text}</a>
+                            )}
+                          </td>
                         ))}
                       </tr>
                     ))}
@@ -311,7 +315,8 @@ export default async function TopEmployersPage() {
                 <strong>The Forbes company culture list</strong> is a survey. Forbes and the research firm Statista
                 asked more than 37,000 people working in Canada, at organizations with at least 500 employees here,
                 whether they would recommend their employer and how they rate its culture. The 200 highest-scoring
-                employers make the list. It measures how surveyed employees feel. It does not compare pay, benefits,
+                employers make the list. The broader Best Employers list is built the same way, asks about pay,
+                flexibility and training as well, and keeps the top 300. It measures how surveyed employees feel. It does not compare pay, benefits,
                 job security or turnover.
               </p>
               <p>
