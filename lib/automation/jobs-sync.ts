@@ -175,6 +175,10 @@ export async function syncAllJobs(): Promise<JobsSyncResult> {
   try {
     revalidatePath('/jobs')
     for (const city of JOB_CITIES) revalidatePath(`/jobs/${city}`)
+    // Company pages too. A newly added employer's page is first requested
+    // before its jobs exist, so the "not found" render sits in the cache for
+    // the full hour after the sync has loaded them.
+    revalidatePath('/jobs/company/[slug]', 'page')
   } catch {
     // revalidatePath throws outside a request scope in some contexts — non-fatal
   }
