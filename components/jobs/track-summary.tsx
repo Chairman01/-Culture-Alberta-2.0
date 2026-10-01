@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { TRACK_LABELS, TRACK_STYLES } from '@/components/jobs/track-badge'
 import type { SavedJobStatus } from '@/lib/types/job'
 
@@ -80,7 +81,7 @@ export function JobTrackSummary({
           })}
         </div>
 
-        {activeFilter && (
+        {activeFilter ? (
           <button
             type="button"
             onClick={() => onFilter(null)}
@@ -88,6 +89,13 @@ export function JobTrackSummary({
           >
             Show all jobs
           </button>
+        ) : (
+          <Link
+            href="/account?tab=jobs"
+            className="ml-auto text-xs font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+          >
+            Open my tracker
+          </Link>
         )}
       </div>
     </div>

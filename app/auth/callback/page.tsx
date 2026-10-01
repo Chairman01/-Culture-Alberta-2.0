@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase-browser'
+import { takeNextAfterOAuth } from '@/lib/auth-next'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
@@ -16,7 +17,7 @@ export default function AuthCallbackPage() {
         try {
           const { error } = await supabaseBrowser.auth.exchangeCodeForSession(code)
           if (error) throw error
-          router.replace('/')
+          router.replace(takeNextAfterOAuth())
           router.refresh()
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Authentication failed')
@@ -27,7 +28,7 @@ export default function AuthCallbackPage() {
         if (hashParams) {
           // Give Supabase client a moment to process the hash
           await new Promise(r => setTimeout(r, 500))
-          router.replace('/')
+          router.replace(takeNextAfterOAuth())
           router.refresh()
         } else {
           setError('No authentication code received')

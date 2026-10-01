@@ -13,6 +13,9 @@ interface PageProps {
     success?: string
     error?: string
     email?: string
+    /** Set when only one list was dropped, e.g. the jobs emails. */
+    topic?: string
+    token?: string
   }>
 }
 
@@ -21,6 +24,9 @@ export default async function UnsubscribePage({ searchParams }: PageProps) {
   const isSuccess = params.success === 'true'
   const isError = !!params.error
   const email = params.email ? decodeURIComponent(params.email) : null
+  const jobsOnly = params.topic === 'jobs'
+  const cultureOnly = params.topic === 'culture'
+  const oneList = jobsOnly || cultureOnly
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
@@ -39,20 +45,39 @@ export default async function UnsubscribePage({ searchParams }: PageProps) {
               <CheckCircle className="w-14 h-14 text-green-500" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-3">
-              You're unsubscribed
+              {jobsOnly ? 'Jobs emails stopped' : "You're unsubscribed"}
             </h1>
             <p className="text-gray-500 text-base leading-relaxed mb-2">
               {email ? (
                 <>
-                  <span className="font-medium text-gray-700">{email}</span> has been removed from our newsletter list.
+                  <span className="font-medium text-gray-700">{email}</span>{' '}
+                  {jobsOnly
+                    ? 'will not get any more jobs emails.'
+                    : cultureOnly
+                      ? 'has been removed from the newsletter.'
+                      : 'has been removed from our newsletter list.'}
                 </>
               ) : (
                 'Your email has been removed from our newsletter list.'
               )}
             </p>
-            <p className="text-gray-400 text-sm mb-8">
-              You won't receive any more emails from us. Changed your mind? You can always re-subscribe on our website.
-            </p>
+            {oneList ? (
+              <p className="text-gray-400 text-sm mb-8">
+                Anything else you signed up for is unchanged.{' '}
+                {params.token && (
+                  <a
+                    href={`/api/newsletter/unsubscribe?token=${encodeURIComponent(params.token)}`}
+                    className="underline hover:text-gray-600"
+                  >
+                    Unsubscribe from all Culture Alberta email
+                  </a>
+                )}
+              </p>
+            ) : (
+              <p className="text-gray-400 text-sm mb-8">
+                You won't receive any more emails from us. Changed your mind? You can always re-subscribe on our website.
+              </p>
+            )}
           </>
         ) : isError ? (
           <>

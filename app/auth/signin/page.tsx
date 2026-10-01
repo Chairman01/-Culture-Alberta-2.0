@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase-browser'
 import { AuthLayout } from '@/components/auth-layout'
 import { SocialAuthButtons } from '@/components/social-auth-buttons'
+import { nextFromLocation } from '@/lib/auth-next'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
@@ -46,7 +47,9 @@ export default function SignInPage() {
         }
         return
       }
-      router.push('/')
+      // Back to where the sign-in gate was hit — usually a job they wanted to
+      // apply for. Landing on the homepage instead lost that job entirely.
+      router.push(nextFromLocation())
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to sign in')

@@ -26,7 +26,7 @@ const SITE_URL = 'https://www.culturealberta.com'
 const BATCH_SIZE = 50 // Resend batch API supports up to 100 per request
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
-function makeUnsubscribeToken(id: string, email: string): string {
+export function makeUnsubscribeToken(id: string, email: string): string {
   const payload = JSON.stringify({ id, email })
   return Buffer.from(payload).toString('base64url')
 }

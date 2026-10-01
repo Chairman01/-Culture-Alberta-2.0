@@ -11,7 +11,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { getJobBySlug, isJobExpired, formatSalary, JOB_CITY_LABELS } from '@/lib/jobs'
+import { getJobBySlug, isJobExpired, formatSalary, formatClosingDate, JOB_CITY_LABELS } from '@/lib/jobs'
 import { prepareJobDescription } from '@/lib/job-description-html'
 import { detectUnionStatus, inferEmploymentType, extractPay } from '@/lib/job-attributes'
 import { employmentLabel } from '@/app/jobs/shared'
@@ -35,6 +35,7 @@ export async function GET(
       slug: job.slug,
       applyUrl: job.apply_url,
       expired: isJobExpired(job),
+      closesLabel: formatClosingDate(job.valid_through),
       descriptionHtml: prepareJobDescription(job.description_html),
       // Falls back to the snippet so the panel is never blank for the handful
       // of rows whose description never arrived.

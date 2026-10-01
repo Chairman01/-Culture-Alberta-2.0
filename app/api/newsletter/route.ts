@@ -17,6 +17,13 @@ export async function POST(request: NextRequest) {
     const requestedTopics: string[] = Array.isArray(body.topics)
       ? body.topics.filter((t: unknown): t is string => t === 'culture' || t === 'jobs')
       : ['culture']
+    // Only meaningful with the jobs topic, and only ever what the reader chose.
+    const jobsFrequency: 'daily' | 'weekly' | null =
+      requestedTopics.includes('jobs') && (body.jobsFrequency === 'daily' || body.jobsFrequency === 'weekly')
+        ? body.jobsFrequency
+        : null
+    const frequencyPatch = jobsFrequency ? { jobs_frequency: jobsFrequency } : {}
+
     if (requestedTopics.length === 0) {
       return NextResponse.json({ error: 'No valid topics supplied' }, { status: 400 })
     }
@@ -79,7 +86,7 @@ export async function POST(request: NextRequest) {
 
         const { error: topicErr } = await supabase
           .from('newsletter_subscriptions')
-          .update({ topics: [...current, ...added], updated_at: new Date().toISOString() })
+          .update({ topics: [...current, ...added], ...frequencyPatch, updated_at: new Date().toISOString() })
           .eq('id', existingEmail.id)
 
         if (topicErr) {
@@ -98,6 +105,7 @@ export async function POST(request: NextRequest) {
             status: 'active',
             city: city,
             topics: requestedTopics,
+            ...frequencyPatch,
             updated_at: new Date().toISOString()
           })
           .eq('id', existingEmail.id)
@@ -128,6 +136,7 @@ export async function POST(request: NextRequest) {
           city,
           status: 'active',
           topics: requestedTopics,
+          ...frequencyPatch,
           // `source` has been arriving here since the form was built and had
           // nowhere to land until the attribution columns existed.
           signup_source: signupSource || source || null,

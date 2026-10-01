@@ -166,6 +166,17 @@ export default function AccountPage() {
     // --- tabs ---
     const [tab, setTab] = useState<'comments' | 'saved' | 'jobs'>('comments')
 
+    // /account?tab=jobs opens the tracker directly. The job board and the jobs
+    // email link here; without it the tracker sat two clicks behind Comments.
+    useEffect(() => {
+        try {
+            const wanted = new URLSearchParams(window.location.search).get('tab')
+            if (wanted === 'jobs' || wanted === 'saved' || wanted === 'comments') setTab(wanted)
+        } catch {
+            /* default tab is fine */
+        }
+    }, [])
+
     if (loading || !user) {
         return (
             <div className="min-h-[60vh] flex items-center justify-center">
@@ -417,6 +428,13 @@ const JOB_STATUS_OPTIONS: Array<{ value: SavedJobStatus; label: string }> =
 
 const JOB_STATUS_STYLES = TRACK_STYLES
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** Whole days until a closing date; negative once it has passed. */
+function daysUntil(iso: string): number {
+    return Math.ceil((new Date(iso).getTime() - Date.now()) / DAY_MS)
+}
+
 function MyJobs() {
     const [items, setItems] = useState<SavedJobCard[] | null>(null)
     const [busy, setBusy] = useState<string | null>(null)
@@ -487,10 +505,31 @@ function MyJobs() {
                                 <p className="mt-0.5 text-sm text-gray-600">{j.company} · {j.city}</p>
                                 <p className="mt-1 text-xs text-gray-500">
                                     Saved {formatDate(j.savedAt)}
-                                    {j.jobStatus === 'expired' && (
-                                        <span className="ml-2 rounded bg-gray-200 px-1.5 py-0.5 text-gray-600">Posting expired</span>
-                                    )}
+                                    {j.jobStatus === 'expired' || (j.closesAt && daysUntil(j.closesAt) < 0) ? (
+                                        <span className="ml-2 rounded bg-gray-200 px-1.5 py-0.5 text-gray-600">Posting closed</span>
+                                    ) : j.closesAt ? (
+                                        // A deadline only matters while there is still something to
+                                        // do about it, so it turns amber for unfinished applications.
+                                        <span className={`ml-2 rounded px-1.5 py-0.5 ${
+                                            daysUntil(j.closesAt) <= 7 && (j.trackStatus === 'saved' || j.trackStatus === 'started')
+                                                ? 'bg-amber-100 font-medium text-amber-900'
+                                                : 'bg-gray-100 text-gray-600'
+                                        }`}>
+                                            Closes {formatDate(j.closesAt)}
+                                            {daysUntil(j.closesAt) <= 7 && ` · ${daysUntil(j.closesAt) <= 1 ? 'last day' : `${daysUntil(j.closesAt)} days left`}`}
+                                        </span>
+                                    ) : null}
                                 </p>
+                                {j.trackStatus === 'started' && j.jobStatus !== 'expired' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setStatus(j.jobId, 'applied')}
+                                        disabled={busy === j.jobId}
+                                        className="mt-2 text-xs font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900 disabled:opacity-50"
+                                    >
+                                        Finished applying? Mark as applied
+                                    </button>
+                                )}
                             </div>
                             <div className="flex flex-shrink-0 items-center gap-2">
                                 <select

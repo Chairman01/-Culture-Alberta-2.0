@@ -23,6 +23,7 @@ import type { SavedJobStatus } from '@/lib/types/job'
  */
 export function JobPanelActions({
   jobId,
+  slug,
   applyUrl,
   company,
   expired,
@@ -31,6 +32,8 @@ export function JobPanelActions({
   onApplyClick,
 }: {
   jobId: string
+  /** For the sign-in gate: the posting page is where they come back to. */
+  slug: string
   applyUrl: string | null
   company: string
   expired: boolean
@@ -48,9 +51,11 @@ export function JobPanelActions({
   const applied = status === 'applied' || status === 'interviewing' || status === 'offer' || status === 'rejected'
 
   const requireAccount = useCallback((what: string) => {
-    router.push(`/auth/signin?next=${encodeURIComponent('/jobs')}`)
+    // Return to this job's own page, where Apply is the first thing on screen.
+    // Sending them back to the board lost the job they had picked.
+    router.push(`/auth/signin?next=${encodeURIComponent(`/jobs/posting/${slug}`)}`)
     toast({ title: `Sign in to ${what}`, description: 'A free account keeps your jobs and applications in one place.' })
-  }, [router, toast])
+  }, [router, toast, slug])
 
   const toggleInterested = useCallback(async () => {
     if (busy) return

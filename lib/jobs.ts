@@ -385,6 +385,20 @@ export function formatSalary(job: Pick<Job, 'salary_min' | 'salary_max' | 'salar
 }
 
 /** True when the job is past its valid_through date or marked expired. */
+/**
+ * "Closes October 21" for an open posting that states a deadline; null when it
+ * states none or the date has passed. Mountain time, so a posting that closes
+ * at the end of the 21st doesn't read as the 22nd.
+ */
+export function formatClosingDate(validThrough: string | null | undefined): string | null {
+  if (!validThrough) return null
+  const time = new Date(validThrough).getTime()
+  if (!Number.isFinite(time) || time < Date.now()) return null
+  return new Date(time).toLocaleDateString('en-CA', {
+    month: 'long', day: 'numeric', timeZone: 'America/Edmonton',
+  })
+}
+
 export function isJobExpired(job: Pick<Job, 'status' | 'valid_through'>): boolean {
   if (job.status === 'expired') return true
   if (job.valid_through && new Date(job.valid_through).getTime() < Date.now()) return true
