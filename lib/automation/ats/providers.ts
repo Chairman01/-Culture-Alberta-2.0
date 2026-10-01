@@ -2341,6 +2341,95 @@ async function fetchJobvite(
   return postings
 }
 
+// ── DigitalRecruiters / Cegid HR (City of Lethbridge) ────────────────────────
+
+const DIGITALRECRUITERS_API = 'https://api.digitalrecruiters.com/public/v1'
+const DIGITALRECRUITERS_PAGE = 100
+
+interface DigitalRecruitersItem {
+  job_ad_id?: number
+  title?: string
+  location?: string
+  url?: string
+}
+
+interface DigitalRecruitersDetail {
+  description?: string
+  profile?: string
+  working_time?: string
+  brand_name?: string
+  republished_at?: string
+  address?: { city?: string; state?: string }
+  jsonld?: { datePosted?: string; validThrough?: string }
+}
+
+/**
+ * The City of Lethbridge left Taleo for a DigitalRecruiters careers site
+ * (careers.lethbridge.ca), a Nuxt shell that renders no jobs server-side. Its
+ * page reads the vendor's public API, keyed by the careers domain:
+ *
+ *   POST /careers-site/job-ads?domainName=…&locale=en_GB   → the list
+ *   GET  /careers-site/job-ads/{id}?domainName=…           → one posting
+ *
+ * The locale has to be en_GB. The site's own URL says /en and the API rejects
+ * "en", "en_CA" and "en_US" alike with "This locale isn't supported".
+ *
+ * Lethbridge Police Service posts through the same site, so this one board
+ * carries its civilian and sworn openings too. Volunteer listings are dropped:
+ * they are not jobs.
+ *
+ * Details run one at a time on purpose. The careers site's robots.txt asks for
+ * a crawl delay, and a dozen postings once a day doesn't need concurrency.
+ */
+async function fetchDigitalRecruiters(board: AtsBoard): Promise<RawPosting[]> {
+  const domain = board.domain!
+  const query = `domainName=${encodeURIComponent(domain)}&locale=en_GB`
+
+  const list = (await getJson(
+    `${DIGITALRECRUITERS_API}/careers-site/job-ads?${query}&limit=${DIGITALRECRUITERS_PAGE}&page=1`,
+    { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ filters: {} }) }
+  )) as { count?: number; items?: DigitalRecruitersItem[] }
+
+  const items = (list.items ?? []).filter(
+    i => i.job_ad_id && i.title && i.url && !/^volunteer\b/i.test(i.title)
+  )
+  if ((list.count ?? 0) > DIGITALRECRUITERS_PAGE) {
+    console.warn(`[ats:${board.token}] ${list.count} postings but only the first ${DIGITALRECRUITERS_PAGE} read`)
+  }
+
+  const postings: RawPosting[] = []
+  for (const item of items) {
+    try {
+      const d = (await getJson(
+        `${DIGITALRECRUITERS_API}/careers-site/job-ads/${item.job_ad_id}?${query}&external=0&withJsonld=1&preview=0`
+      )) as DigitalRecruitersDetail
+      const descriptionHtml = [d.description, d.profile].filter(Boolean).join('')
+      if (!descriptionHtml.trim()) continue
+      const posted = d.jsonld?.datePosted ?? d.republished_at?.replace(' ', 'T')
+      const time = posted ? new Date(posted).getTime() : NaN
+      postings.push({
+        id: String(item.job_ad_id),
+        title: item.title!.trim(),
+        location: [d.address?.city, d.address?.state].filter(Boolean).join(', ') || item.location || '',
+        descriptionHtml,
+        applyUrl: `https://${domain}/en/annonce/${item.url}`,
+        postedAt: Number.isFinite(time) ? new Date(time).toISOString() : null,
+        employmentType: normaliseEmployment(d.working_time),
+        validThrough: d.jsonld?.validThrough ?? undefined,
+        // The police service posts under its own brand on the City's site.
+        company: d.brand_name && d.brand_name !== board.company ? d.brand_name : null,
+      })
+    } catch {
+      // One unreadable posting must not sink the board.
+    }
+  }
+
+  if (items.length > 0 && postings.length === 0) {
+    throw new Error(`list showed ${items.length} postings but no detail could be read`)
+  }
+  return postings
+}
+
 
 // ── Dispatch ─────────────────────────────────────────────────────────────────
 export async function fetchBoard(
@@ -2368,6 +2457,7 @@ export async function fetchBoard(
     case 'jobsyn': return fetchJobsyn(board)
     case 'eightfold': return fetchEightfold(board, isAlberta)
     case 'jobvite': return fetchJobvite(board, isAlberta)
+    case 'digitalrecruiters': return fetchDigitalRecruiters(board)
     default: return []
   }
 }
