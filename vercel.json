@@ -22,7 +22,7 @@
             "statusCode": 301
         },
         {
-            "source": "/(.*)",
+            "source": "/((?!privacy-policy$).+)",
             "has": [
                 {
                     "type": "host",

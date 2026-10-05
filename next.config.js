@@ -47,16 +47,19 @@ const nextConfig = {
         destination: 'https://adstxt.mediavine.com/sites/culturealberta/ads.txt',
         statusCode: 301,
       },
-      // Fix domain redirect loop - force www as primary
+      // Fix domain redirect loop - force www as primary.
+      // '/' and '/privacy-policy' are deliberately excluded so they render on the
+      // apex too — Mediavine's setup checker fetches culturealberta.com and does
+      // not follow redirects. See the matching note in middleware.ts.
       {
-        source: '/:path*',
+        source: '/:path((?!privacy-policy$).+)',
         has: [
           {
             type: 'host',
             value: 'culturealberta.com',
           },
         ],
-        destination: 'https://www.culturealberta.com/:path*',
+        destination: 'https://www.culturealberta.com/:path',
         permanent: true,
       },
       // Redirect old article URLs to new format
