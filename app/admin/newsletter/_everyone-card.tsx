@@ -59,7 +59,8 @@ const looksLikeLink = (s: string) => /^https?:\/\//i.test(s.trim()) || s.trim().
 
 export default function EveryoneSendCard() {
   const [type, setType] = useState<EveryoneType>("alert")
-  const [count, setCount] = useState<number | null>(null)
+  // Alerts reach every subscriber; Regular reaches the newsletter list only.
+  const [counts, setCounts] = useState<Record<EveryoneType, number | null>>({ alert: null, story: null })
   const [prep, setPrep] = useState<AlertPreparation | null>(null)
   const [more, setMore] = useState<AlertArticle[]>([])
   const [note, setNote] = useState(TYPES.alert.note)
@@ -81,13 +82,15 @@ export default function EveryoneSendCard() {
   const [pending, startTransition] = useTransition()
 
   useEffect(() => {
-    getEveryoneCount().then(setCount).catch(() => setCount(null))
+    getEveryoneCount("alert").then(n => setCounts(c => ({ ...c, alert: n }))).catch(() => {})
+    getEveryoneCount("story").then(n => setCounts(c => ({ ...c, story: n }))).catch(() => {})
   }, [])
 
   const moreIds = more.map(a => a.id)
   const input = { kind: type, label: TYPES[type].banner, note, moreArticleIds: moreIds }
   const alreadySent = prep?.history.some(h => h.kind === type) ?? false
   const isAlert = type === "alert"
+  const count = counts[type]
 
   // Search as you type. An empty box lists the newest articles.
   useEffect(() => {
@@ -132,7 +135,7 @@ export default function EveryoneSendCard() {
       if (!prep) {
         const res = await prepareAlert(linkOrId)
         if ("error" in res) setMessage({ tone: "error", text: res.error })
-        else { setPrep(res); setCount(res.recipientCount) }
+        else setPrep(res)
         return
       }
       if (more.length >= MAX_MORE) {
@@ -217,7 +220,7 @@ export default function EveryoneSendCard() {
           <div className={`text-sm font-bold uppercase tracking-wide ${isAlert ? "text-red-700" : "text-gray-900"}`}>Everyone</div>
           <div className="text-lg font-semibold text-gray-900">All subscribers, every city</div>
           <div className="text-sm text-muted-foreground">
-            {count === null ? "…" : count.toLocaleString()} active subscribers · sent once
+            {count === null ? "…" : count.toLocaleString()} {isAlert ? "people: every subscriber, including the jobs list" : "newsletter subscribers"} · sent once
           </div>
         </div>
         <div className="inline-flex rounded-lg border bg-white p-1">
@@ -355,7 +358,7 @@ export default function EveryoneSendCard() {
                 ) : (
                   <div className="flex items-center gap-2 flex-wrap rounded-lg border border-red-300 bg-white px-3 py-2">
                     <span className="text-sm text-red-900">
-                      Goes to <strong>{prep.recipientCount.toLocaleString()}</strong> people now. Type <strong>{prep.recipientCount}</strong>:
+                      Goes to <strong>{(count ?? 0).toLocaleString()}</strong> people now. Type <strong>{count}</strong>:
                     </span>
                     <Input
                       inputMode="numeric"
@@ -368,7 +371,7 @@ export default function EveryoneSendCard() {
                       size="sm"
                       variant="destructive"
                       onClick={send}
-                      disabled={pending || confirmText.trim() !== String(prep.recipientCount)}
+                      disabled={pending || count === null || confirmText.trim() !== String(count)}
                     >
                       {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send now"}
                     </Button>

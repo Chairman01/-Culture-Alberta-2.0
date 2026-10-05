@@ -174,21 +174,27 @@ function isValidEmail(email: string | null | undefined): boolean {
 }
 
 /**
- * Every active culture subscriber, across all editions, one row per address.
+ * Everyone a send of this kind should reach, one row per address.
  *
- * Culture topic only: the jobs list is a separate consent and doesn't get this.
- * Deduplicated because a few people are on two city lists, and they should get
- * one alert, not two.
+ * Alerts and their follow-ups go to every active subscriber, including the
+ * jobs-only list: an AMBER Alert is a public-safety notice, not marketing, and
+ * the owner asked that nobody be left out. A regular story ('story') is
+ * newsletter content, so it goes to the culture list only; jobs-only people
+ * never agreed to that.
+ *
+ * Deduplicated because a few people are on two lists, and they should get one
+ * email, not two.
  */
-export async function getAlertRecipients(): Promise<{ id: string; email: string }[]> {
+export async function getAlertRecipients(kind: AlertKind = 'alert'): Promise<{ id: string; email: string }[]> {
   const rows: { id: string; email: string }[] = []
   const PAGE = 1000
   for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('newsletter_subscriptions')
       .select('id, email')
       .eq('status', 'active')
-      .contains('topics', ['culture'])
+    if (kind === 'story') query = query.contains('topics', ['culture'])
+    const { data, error } = await query
       .order('created_at', { ascending: true })
       .range(from, from + PAGE - 1)
     if (error) throw new Error(`Could not load subscribers: ${error.message}`)
@@ -455,7 +461,7 @@ export async function sendAlertToEveryone(
 
   const more = await loadMoreArticles(article.id, input.moreArticleIds)
 
-  const recipients = await getAlertRecipients()
+  const recipients = await getAlertRecipients(input.kind)
   if (recipients.length === 0) {
     result.errors.push('No active subscribers.')
     return result

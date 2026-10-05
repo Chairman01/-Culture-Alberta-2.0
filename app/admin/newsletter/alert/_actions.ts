@@ -12,6 +12,7 @@ import {
   sendAlertTest,
   sendAlertToEveryone,
   type AlertArticle,
+  type AlertKind,
   type AlertEmailInput,
   type AlertSendResult,
 } from '@/lib/newsletter/alert'
@@ -28,11 +29,14 @@ export interface AlertPreparation {
   history: Awaited<ReturnType<typeof getAlertHistory>>
 }
 
-export async function prepareAlert(articleInput: string): Promise<AlertPreparation | { error: string }> {
+export async function prepareAlert(
+  articleInput: string,
+  kind: AlertKind = 'alert',
+): Promise<AlertPreparation | { error: string }> {
   await assertAdminAction('prepareAlert')
   const article = await resolveAlertArticle(articleInput)
   if (!article) return { error: 'No published article matches that link or slug.' }
-  const [recipients, history] = await Promise.all([getAlertRecipients(), getAlertHistory(article.id)])
+  const [recipients, history] = await Promise.all([getAlertRecipients(kind), getAlertHistory(article.id)])
   return { article, recipientCount: recipients.length, history }
 }
 
@@ -68,9 +72,9 @@ export async function sendAlertEmailToEveryone(
 }
 
 /** How many people an everyone-send reaches right now (deduplicated). */
-export async function getEveryoneCount(): Promise<number> {
+export async function getEveryoneCount(kind: AlertKind = 'alert'): Promise<number> {
   await assertAdminAction('getEveryoneCount')
-  return (await getAlertRecipients()).length
+  return (await getAlertRecipients(kind)).length
 }
 
 /** Look up one article to add as an extra story (link, slug or id). */
