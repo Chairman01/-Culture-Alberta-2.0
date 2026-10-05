@@ -238,6 +238,18 @@ export function generateAlertHtml(
   unsubscribeUrl: string,
   more: AlertArticle[] = [],
 ): string {
+  // Every link opens in a new tab: webmail would otherwise replace the inbox,
+  // and the admin preview would load the article inside its little frame.
+  return renderAlertHtml(article, input, unsubscribeUrl, more)
+    .replace(/<a href=/g, '<a target="_blank" rel="noopener" href=')
+}
+
+function renderAlertHtml(
+  article: AlertArticle,
+  input: AlertEmailInput,
+  unsubscribeUrl: string,
+  more: AlertArticle[],
+): string {
   const style = KIND_STYLE[input.kind]
   const label = input.label.trim()
   const link = trackedUrl(article, input.kind)

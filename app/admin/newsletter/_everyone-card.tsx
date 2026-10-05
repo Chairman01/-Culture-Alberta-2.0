@@ -9,8 +9,7 @@
  * - Regular: the daily edition's look (kind 'story')
  *
  * The first article is the main story; up to MAX_MORE more can be listed
- * under it. A live preview sits beside the controls and redraws as anything
- * changes, so what you see is what gets sent.
+ * under it. Preview builds the email exactly as it would send.
  *
  * Every send needs the recipient count typed back, and each main article can
  * go to everyone once per type (enforced in the database, not here). The
@@ -20,7 +19,7 @@
 import { useEffect, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import {
-  AlertCircle, ArrowUp, CheckCircle, Eye, FlaskConical, Loader2, Maximize2, Newspaper, Plus, Search, Send, Siren, X,
+  AlertCircle, ArrowUp, CheckCircle, Eye, FlaskConical, Loader2, Newspaper, Plus, Search, Send, Siren, X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -73,7 +72,6 @@ export default function EveryoneSendCard() {
 
   const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
-  const [fullPreview, setFullPreview] = useState(false)
 
   const [testOpen, setTestOpen] = useState(false)
   const [testEmail, setTestEmail] = useState("")
@@ -110,19 +108,6 @@ export default function EveryoneSendCard() {
     document.addEventListener("mousedown", onClick)
     return () => document.removeEventListener("mousedown", onClick)
   }, [])
-
-  // Live preview: redraw whenever anything that changes the email changes.
-  useEffect(() => {
-    if (!prep) { setPreview(null); return }
-    setPreviewLoading(true)
-    const handle = setTimeout(() => {
-      previewAlert(prep.article.id, input)
-        .then(res => { if (!("error" in res)) setPreview(res) })
-        .finally(() => setPreviewLoading(false))
-    }, 350)
-    return () => clearTimeout(handle)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prep, type, note, moreIds.join(",")])
 
   function resetConfirm() {
     setConfirming(false)
@@ -186,6 +171,18 @@ export default function EveryoneSendCard() {
     })
   }
 
+  /** Builds the email exactly as it would send, then shows it in a popup. */
+  function openPreview() {
+    if (!prep) return
+    setPreviewLoading(true)
+    previewAlert(prep.article.id, input)
+      .then(res => {
+        if ("error" in res) setMessage({ tone: "error", text: res.error })
+        else setPreview(res)
+      })
+      .finally(() => setPreviewLoading(false))
+  }
+
   function sendTest() {
     if (!prep) return
     setMessage(null)
@@ -241,9 +238,7 @@ export default function EveryoneSendCard() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
-        {/* ── Controls ─────────────────────────────────────────────────── */}
-        <div className="space-y-4 min-w-0">
+      <div className="space-y-4 max-w-3xl">
           {/* Article list */}
           <div className="space-y-2">
             {prep && (
@@ -345,8 +340,8 @@ export default function EveryoneSendCard() {
               </div>
 
               <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" onClick={() => setFullPreview(true)} disabled={!preview} className="bg-white">
-                  <Eye className="mr-2 h-4 w-4" /> Full preview
+                <Button variant="outline" onClick={openPreview} disabled={previewLoading} className="bg-white">
+                  {previewLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />} Preview
                 </Button>
                 {!confirming ? (
                   <Button
@@ -426,46 +421,28 @@ export default function EveryoneSendCard() {
               {message.text}
             </div>
           )}
-        </div>
-
-        {/* ── Live preview ─────────────────────────────────────────────── */}
-        <div className="min-w-0">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 flex items-center gap-2">
-              Preview {previewLoading && prep && <Loader2 className="h-3 w-3 animate-spin" />}
-            </p>
-            {preview && (
-              <button onClick={() => setFullPreview(true)} className="text-xs text-muted-foreground hover:text-gray-700 flex items-center gap-1">
-                <Maximize2 className="h-3 w-3" /> Bigger
-              </button>
-            )}
-          </div>
-          {preview && <p className="text-sm font-medium text-gray-900 mb-2 truncate" title={preview.subject}>{preview.subject}</p>}
-          <div className="rounded-lg border bg-[#e8e8e8] overflow-hidden h-[560px]">
-            {preview ? (
-              <iframe title="Everyone email preview" srcDoc={preview.html} className="w-full h-full bg-[#e8e8e8]" sandbox="" />
-            ) : (
-              <div className="h-full flex items-center justify-center text-center text-sm text-muted-foreground px-8">
-                Add an article and the email appears here, exactly as subscribers will see it.
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
-      {fullPreview && preview && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/60" onClick={() => setFullPreview(false)}>
+      {preview && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/60" onClick={() => setPreview(null)}>
           <div className="mx-auto mt-8 mb-8 flex w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-xl bg-white" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-3">
               <div className="min-w-0">
                 <span className="text-xs text-gray-400">Subject</span>
                 <p className="truncate font-semibold text-gray-900">{preview.subject}</p>
               </div>
-              <button onClick={() => setFullPreview(false)} className="p-1 rounded hover:bg-gray-200">
+              <button onClick={() => setPreview(null)} className="p-1 rounded hover:bg-gray-200">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <iframe title="Everyone email full preview" srcDoc={preview.html} className="w-full flex-1" sandbox="" />
+            {/* allow-popups lets the email's links open the article in a new tab
+                instead of loading inside this frame. */}
+            <iframe
+              title="Everyone email preview"
+              srcDoc={preview.html}
+              className="w-full flex-1"
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+            />
           </div>
         </div>
       )}

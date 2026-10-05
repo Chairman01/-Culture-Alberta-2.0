@@ -268,7 +268,7 @@ export default function AlertSender() {
             <p className="font-medium mb-3">{preview?.subject ?? "…"}</p>
             <div className="rounded-lg border overflow-hidden bg-[#e8e8e8]">
               {preview ? (
-                <iframe title="Alert email preview" srcDoc={preview.html} className="w-full h-[900px] bg-white" sandbox="" />
+                <iframe title="Alert email preview" srcDoc={preview.html} className="w-full h-[900px] bg-white" sandbox="allow-popups allow-popups-to-escape-sandbox" />
               ) : (
                 <div className="h-[400px] flex items-center justify-center text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin" />
