@@ -1,8 +1,10 @@
 'use server'
 
 import { assertAdminAction } from '@/lib/admin-auth'
+import { searchArticlesForPicker } from '@/lib/newsletter/config'
 import {
-  loadAlertArticle,
+  resolveAlertArticle,
+  loadMoreArticles,
   getAlertRecipients,
   getAlertHistory,
   generateAlertHtml,
@@ -28,7 +30,7 @@ export interface AlertPreparation {
 
 export async function prepareAlert(articleInput: string): Promise<AlertPreparation | { error: string }> {
   await assertAdminAction('prepareAlert')
-  const article = await loadAlertArticle(articleInput)
+  const article = await resolveAlertArticle(articleInput)
   if (!article) return { error: 'No published article matches that link or slug.' }
   const [recipients, history] = await Promise.all([getAlertRecipients(), getAlertHistory(article.id)])
   return { article, recipientCount: recipients.length, history }
@@ -39,11 +41,11 @@ export async function previewAlert(
   input: AlertEmailInput,
 ): Promise<{ subject: string; html: string } | { error: string }> {
   await assertAdminAction('previewAlert')
-  const article = await loadAlertArticle(articleInput)
+  const article = await resolveAlertArticle(articleInput)
   if (!article) return { error: 'No published article matches that link or slug.' }
   return {
     subject: getAlertSubject(article, input),
-    html: generateAlertHtml(article, input, '#'),
+    html: generateAlertHtml(article, input, '#', await loadMoreArticles(article.id, input.moreArticleIds)),
   }
 }
 
@@ -69,4 +71,17 @@ export async function sendAlertEmailToEveryone(
 export async function getEveryoneCount(): Promise<number> {
   await assertAdminAction('getEveryoneCount')
   return (await getAlertRecipients()).length
+}
+
+/** Look up one article to add as an extra story (link, slug or id). */
+export async function findAlertArticle(linkOrId: string): Promise<AlertArticle | { error: string }> {
+  await assertAdminAction('findAlertArticle')
+  return (await resolveAlertArticle(linkOrId)) ?? { error: 'No published article matches that link.' }
+}
+
+/** Published articles matching a search, newest first. */
+export async function searchEveryoneArticles(query: string) {
+  await assertAdminAction('searchEveryoneArticles')
+  const items = await searchArticlesForPicker(query)
+  return items.slice(0, 8).map(a => ({ id: a.id, title: a.title, imageUrl: a.image_url, createdAt: a.created_at }))
 }

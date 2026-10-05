@@ -2,6 +2,9 @@ import { Resend } from 'resend'
 import { getServiceClient } from '@/lib/supabase-admin'
 import { makeUnsubscribeToken } from './send-newsletter'
 import { escapeHtml, mailingAddressLine } from './template'
+import { MAX_MORE } from './alert-shared'
+
+export { MAX_MORE }
 
 /**
  * Alert emails: one article, sent once, to every newsletter subscriber.
@@ -95,7 +98,10 @@ export interface AlertEmailInput {
   label: string
   /** Optional short line under the summary, e.g. "If you see them, call 911." */
   note?: string
+  /** Extra stories listed under the main one, in order. Capped at MAX_MORE. */
+  moreArticleIds?: string[]
 }
+
 
 export interface AlertSendResult {
   sent: number
@@ -138,7 +144,7 @@ export async function loadAlertArticle(input: string): Promise<AlertArticle | nu
   }
 }
 
-async function loadArticleById(id: string): Promise<AlertArticle | null> {
+export async function loadArticleById(id: string): Promise<AlertArticle | null> {
   const { data } = await supabase
     .from('articles')
     .select('slug')
@@ -146,6 +152,18 @@ async function loadArticleById(id: string): Promise<AlertArticle | null> {
     .eq('status', 'published')
     .maybeSingle()
   return data?.slug ? loadAlertArticle(data.slug) : null
+}
+
+/** A pasted link, a slug, or an article id. */
+export async function resolveAlertArticle(linkOrId: string): Promise<AlertArticle | null> {
+  return (await loadAlertArticle(linkOrId)) ?? (linkOrId.trim() ? loadArticleById(linkOrId.trim()) : null)
+}
+
+/** The extra stories, published only, in the order given, without the main one. */
+export async function loadMoreArticles(mainId: string, ids: string[] = []): Promise<AlertArticle[]> {
+  const unique = [...new Set(ids)].filter(id => id && id !== mainId).slice(0, MAX_MORE)
+  const loaded = await Promise.all(unique.map(loadArticleById))
+  return loaded.filter((a): a is AlertArticle => !!a)
 }
 
 // ── Recipients ────────────────────────────────────────────────────────────────
@@ -218,6 +236,7 @@ export function generateAlertHtml(
   article: AlertArticle,
   input: AlertEmailInput,
   unsubscribeUrl: string,
+  more: AlertArticle[] = [],
 ): string {
   const style = KIND_STYLE[input.kind]
   const label = input.label.trim()
@@ -303,6 +322,8 @@ export function generateAlertHtml(
           </p>
         </td></tr>` : '<tr><td style="padding:0 0 26px 0;"></td></tr>'}
 
+        ${moreStoriesSection(more, input.kind, style.accent)}
+
         <tr><td style="background-color:#f9f9f9;padding:22px 28px;border-top:1px solid #e8e8e8;text-align:center;">
           <p style="margin:0;font-size:12px;color:#999;line-height:1.7;">
             ${style.reason}
@@ -324,6 +345,44 @@ export function generateAlertHtml(
 </html>`
 }
 
+/** Same row layout as the daily edition's "More from" list (template.ts). */
+function moreStoriesSection(articles: AlertArticle[], kind: AlertKind, accent: string): string {
+  if (articles.length === 0) return ''
+  const rows = articles.map((a, i) => {
+    const link = trackedUrl(a, kind)
+    return `
+        <tr><td>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              ${a.imageUrl ? `
+              <td width="88" style="padding:16px 14px 16px 32px;vertical-align:top;">
+                <a href="${escapeHtml(link)}" style="display:block;line-height:0;">
+                  <img src="${escapeHtml(a.imageUrl)}" alt="" width="88" height="66"
+                    style="display:block;width:88px;height:66px;object-fit:cover;border-radius:6px;border:0;" />
+                </a>
+              </td>` : '<td width="32" style="padding:16px 0 16px 32px;"></td>'}
+              <td style="padding:16px 32px 16px 0;vertical-align:top;">
+                <h3 style="margin:0 0 6px 0;font-size:15px;font-weight:700;line-height:1.35;color:#0a0a0a;">
+                  <a href="${escapeHtml(link)}" style="color:#0a0a0a;text-decoration:none;">${escapeHtml(a.title)}</a>
+                </h3>
+                <p style="margin:0 0 8px 0;font-size:13px;line-height:1.55;color:#555;">${escapeHtml(a.excerpt.substring(0, 120))}${a.excerpt.length > 120 ? '…' : ''}</p>
+                <a href="${escapeHtml(link)}" style="font-size:12px;font-weight:700;color:${accent};text-decoration:none;">Read more &rarr;</a>
+              </td>
+            </tr>
+          </table>
+          ${i < articles.length - 1 ? '<table width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:0 32px;"><div style="border-top:1px solid #f2f2f2;"></div></td></tr></table>' : ''}
+        </td></tr>`
+  }).join('')
+
+  return `
+        <tr><td style="padding:0 32px;"><div style="border-top:1px solid #e8e8e8;"></div></td></tr>
+        <tr><td style="padding:24px 32px 4px 32px;">
+          <div style="font-size:10px;font-weight:800;letter-spacing:2.5px;color:${accent};text-transform:uppercase;">More from Culture Alberta</div>
+        </td></tr>
+        ${rows}
+        <tr><td style="padding:0 0 18px 0;"></td></tr>`
+}
+
 // ── Sending ───────────────────────────────────────────────────────────────────
 
 export async function sendAlertTest(
@@ -332,11 +391,12 @@ export async function sendAlertTest(
   toEmail: string,
 ): Promise<AlertSendResult> {
   const result: AlertSendResult = { sent: 0, failed: 0, skipped: 0, errors: [] }
-  const article = await loadAlertArticle(articleInput)
+  const article = await resolveAlertArticle(articleInput)
   if (!article) {
     result.errors.push('Article not found, or not published yet.')
     return result
   }
+  const more = await loadMoreArticles(article.id, input.moreArticleIds)
   if (!isValidEmail(toEmail)) {
     result.errors.push('Enter a valid test address.')
     return result
@@ -346,7 +406,7 @@ export async function sendAlertTest(
       from: `${FROM_NAME} <${FROM_EMAIL}>`,
       to: toEmail.trim(),
       subject: `[TEST] ${getAlertSubject(article, input)}`,
-      html: generateAlertHtml(article, input, `${SITE_URL}/unsubscribe`),
+      html: generateAlertHtml(article, input, `${SITE_URL}/unsubscribe`, more),
     })
     if (error) {
       result.failed = 1
@@ -380,6 +440,8 @@ export async function sendAlertToEveryone(
     result.errors.push('Article not found, or not published yet.')
     return result
   }
+
+  const more = await loadMoreArticles(article.id, input.moreArticleIds)
 
   const recipients = await getAlertRecipients()
   if (recipients.length === 0) {
@@ -431,7 +493,7 @@ export async function sendAlertToEveryone(
         from: `${FROM_NAME} <${FROM_EMAIL}>`,
         to: sub.email.trim(),
         subject,
-        html: generateAlertHtml(article, input, unsubscribeUrl),
+        html: generateAlertHtml(article, input, unsubscribeUrl, more),
         headers: {
           'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:${FROM_EMAIL}?subject=unsubscribe>`,
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
