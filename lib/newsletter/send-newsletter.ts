@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { getServiceClient } from '@/lib/supabase-admin'
+import { dedupeSubscribers } from './subscriber-email'
 
 // See app/api/newsletter/route.ts — subscriber rows are service-role only.
 const supabase = getServiceClient()
@@ -68,6 +69,7 @@ async function getActiveSubscribers(
     .select('id, email')
     .eq('status', 'active')
     .contains('topics', [topic])
+    .order('created_at', { ascending: true })
 
   // The Alberta edition is defined by exclusion: everyone active who is not on
   // one of the seven city lists. Matching on city = 'alberta' would catch only
@@ -79,7 +81,8 @@ async function getActiveSubscribers(
     : await base.eq('city', city)
 
   if (error || !data) return []
-  return data as { id: string; email: string }[]
+  // One email per person, even where the same address has two rows.
+  return dedupeSubscribers(data as { id: string; email: string }[])
 }
 
 // ── Send result type ──────────────────────────────────────────────────────────

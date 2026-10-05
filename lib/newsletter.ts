@@ -1,5 +1,6 @@
 import { getServiceClient } from './supabase-admin'
 import type { NewsletterSubscription, EmailEvent } from './newsletter-analytics'
+import { dedupeSubscribers } from './newsletter/subscriber-email'
 
 // Subscriber rows are personal data. Every function here runs server-side —
 // from /api/newsletter (public signup) or /api/admin/newsletter/data (admin
@@ -195,13 +196,17 @@ export async function getNewsletterStats() {
     console.log('Fetching newsletter stats...')
     
     // Paginate to bypass PostgREST 1,000 row default cap
-    const allRows: { status: string; city: string }[] = []
+    const allRows: { status: string; city: string; email: string }[] = []
     const PAGE_SIZE = 1000
     let page = 0
     while (true) {
       const { data, error } = await supabase
         .from('newsletter_subscriptions')
-        .select('status, city')
+        .select('status, city, email')
+        // A stable order, or pages can overlap and skip rows; oldest first so
+        // a person's original row is the one kept when duplicates collapse.
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
       if (error) {
         console.error('Supabase error fetching stats:', error)
@@ -212,7 +217,9 @@ export async function getNewsletterStats() {
       if (data.length < PAGE_SIZE) break
       page++
     }
-    const data = allRows
+    // Count people, not rows: the same address with different capitalization
+    // used to get a second row. See lib/newsletter/subscriber-email.ts.
+    const data = dedupeSubscribers(allRows)
 
     console.log('Raw newsletter data count:', data.length)
 

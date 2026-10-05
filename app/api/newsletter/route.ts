@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { normalizeEmail, exactEmailPattern } from '@/lib/newsletter/subscriber-email'
 import { getServiceClient } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-auth'
 
@@ -9,7 +10,10 @@ const supabase = getServiceClient()
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, city, optIn, source, signupSource, signupPath } = body
+    const { city, optIn, source, signupSource, signupPath } = body
+    // Stored lowercase and matched in any case, so "Jane@" and "jane@" are one
+    // subscriber. See lib/newsletter/subscriber-email.ts.
+    const email = typeof body.email === 'string' ? normalizeEmail(body.email) : ''
 
     // Each topic is its own CASL express consent. Callers that predate topics
     // (footer form, inline CTAs) mean the culture list, which is what they have
@@ -49,7 +53,7 @@ export async function POST(request: NextRequest) {
     const { data: bounceEvent } = await supabase
       .from('newsletter_email_events')
       .select('id')
-      .eq('email', email)
+      .ilike('email', exactEmailPattern(email))
       .eq('event_type', 'bounced')
       .limit(1)
       .single()
@@ -63,12 +67,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if email already exists
+    // Check if email already exists, in any capitalization. An active row wins
+    // if an older duplicate exists, so we never reactivate a second copy.
     const { data: existingEmail } = await supabase
       .from('newsletter_subscriptions')
       .select('id, status, topics')
-      .eq('email', email)
-      .single()
+      .ilike('email', exactEmailPattern(email))
+      .order('status', { ascending: true })
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
 
     if (existingEmail) {
       if (existingEmail.status === 'active') {

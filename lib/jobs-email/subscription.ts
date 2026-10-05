@@ -1,4 +1,5 @@
 import { getServiceClient } from '@/lib/supabase-admin'
+import { normalizeEmail, exactEmailPattern } from '@/lib/newsletter/subscriber-email'
 import type { JobsFrequency } from './build'
 
 /**
@@ -38,7 +39,9 @@ export async function getJobsSubscriptionByEmail(email: string): Promise<JobsSub
   const { data } = await getServiceClient()
     .from('newsletter_subscriptions')
     .select(COLUMNS)
-    .ilike('email', email.trim())
+    .ilike('email', exactEmailPattern(email))
+    .order('status', { ascending: true })
+    .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
   return data ? toSubscription(data as Row) : null
@@ -68,7 +71,7 @@ export async function startJobsEmail(opts: {
   signupPath?: string
 }): Promise<JobsSubscription | null> {
   const supabase = getServiceClient()
-  const email = opts.email.trim()
+  const email = normalizeEmail(opts.email)
   const now = new Date().toISOString()
 
   const { data: bounced } = await supabase
@@ -83,7 +86,9 @@ export async function startJobsEmail(opts: {
   const { data: existing } = await supabase
     .from('newsletter_subscriptions')
     .select(COLUMNS)
-    .ilike('email', email)
+    .ilike('email', exactEmailPattern(email))
+    .order('status', { ascending: true })
+    .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
 
