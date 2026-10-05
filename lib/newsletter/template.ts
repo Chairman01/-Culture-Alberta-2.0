@@ -145,7 +145,7 @@ function stripEmDashes(str: string): string {
     .replace(/\s*—\s*/g, (m) => (/^\s|\s$/.test(m) ? ', ' : '-'))
 }
 
-function escapeHtml(str: string): string {
+export function escapeHtml(str: string): string {
   return stripEmDashes(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -345,7 +345,7 @@ function eventsSection(events: NewsletterEvent[], cityLabel: string, accentColor
  * from the same variable the jobs email and the partnerships mailer use, so
  * there is one place to set it; until it is set the line is simply absent.
  */
-function mailingAddressLine(): string {
+export function mailingAddressLine(): string {
   const address = process.env.CRM_MAILING_ADDRESS?.trim()
   return address ? ` &middot; ${escapeHtml(address)}` : ''
 }

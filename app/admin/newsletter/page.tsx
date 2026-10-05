@@ -1006,6 +1006,9 @@ export default function NewsletterAdmin() {
             <h1 className="text-2xl font-bold">Newsletter</h1>
             <p className="text-muted-foreground">Manage subscribers and send newsletters</p>
           </div>
+          <Button asChild variant="outline" size="sm" className="ml-auto border-red-300 text-red-700 hover:bg-red-50">
+            <Link href="/admin/newsletter/alert">Send an alert email</Link>
+          </Button>
         </div>
 
         {/* What the writers handed over. Their picks are already loaded into the
