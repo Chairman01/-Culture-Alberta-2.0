@@ -38,7 +38,47 @@ const FROM_NAME = 'Culture Alberta'
 const SITE_URL = 'https://www.culturealberta.com'
 const BATCH_SIZE = 100 // Resend's batch maximum; keeps a full-list send well inside the function timeout
 
-export type AlertKind = 'alert' | 'update'
+/**
+ * 'alert'  — the first urgent email (red).
+ * 'update' — the follow-up when an alert ends (grey).
+ * 'story'  — a regular, non-urgent story sent to everyone (the daily
+ *            edition's look: dark banner, blue accents, no warning copy).
+ */
+export type AlertKind = 'alert' | 'update' | 'story'
+
+const KIND_STYLE: Record<AlertKind, {
+  banner: string
+  accent: string
+  tag: string
+  button: string
+  footnote: string | null
+  reason: string
+}> = {
+  alert: {
+    banner: '#b91c1c',
+    accent: '#b91c1c',
+    tag: 'Urgent',
+    button: 'Get the latest details',
+    footnote: 'Alerts can change quickly. Our article is updated as police release information, so go by it rather than this email.',
+    reason: "You're receiving this urgent alert because you subscribed to the Culture Alberta newsletter.",
+  },
+  update: {
+    banner: '#334155',
+    accent: '#334155',
+    tag: 'Update',
+    button: 'Read the update',
+    footnote: 'This is a follow-up to an alert we emailed earlier.',
+    reason: "You're receiving this update because you subscribed to the Culture Alberta newsletter.",
+  },
+  story: {
+    banner: '#0a0a0a',
+    accent: '#1a6fc4',
+    tag: 'Top Story',
+    button: 'Read the full story &rarr;',
+    footnote: null,
+    reason: "You're receiving this because you subscribed to the Culture Alberta newsletter.",
+  },
+}
 
 export interface AlertArticle {
   id: string
@@ -160,6 +200,8 @@ export async function getAlertHistory(articleId: string) {
 // ── Template ──────────────────────────────────────────────────────────────────
 
 export function getAlertSubject(article: AlertArticle, input: AlertEmailInput): string {
+  // A regular story reads like any newsletter: the headline is the subject.
+  if (input.kind === 'story') return article.title
   return `${input.label.trim()}: ${article.title}`
 }
 
@@ -177,8 +219,7 @@ export function generateAlertHtml(
   input: AlertEmailInput,
   unsubscribeUrl: string,
 ): string {
-  const isAlert = input.kind === 'alert'
-  const bannerColor = isAlert ? '#b91c1c' : '#334155'
+  const style = KIND_STYLE[input.kind]
   const label = input.label.trim()
   const link = trackedUrl(article, input.kind)
   const sentAt = new Date().toLocaleString('en-CA', {
@@ -207,15 +248,15 @@ export function generateAlertHtml(
       <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation"
         style="max-width:600px;width:100%;background-color:#ffffff;border-radius:10px;overflow:hidden;">
 
-        <tr><td style="background-color:${bannerColor};padding:18px 32px;">
+        <tr><td style="background-color:${style.banner};padding:18px 32px;">
           <table width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr>
-              <td style="font-size:20px;font-weight:900;color:#ffffff;letter-spacing:0.5px;text-transform:uppercase;">
+              <td style="font-size:20px;font-weight:900;color:#ffffff;letter-spacing:0.5px;${input.kind === 'story' ? '' : 'text-transform:uppercase;'}">
                 ${escapeHtml(label)}
               </td>
-              <td align="right" style="font-size:11px;font-weight:700;color:#ffffff;opacity:0.85;letter-spacing:1.2px;text-transform:uppercase;">
+              ${input.kind === 'story' ? '' : `<td align="right" style="font-size:11px;font-weight:700;color:#ffffff;opacity:0.85;letter-spacing:1.2px;text-transform:uppercase;">
                 Culture Alberta
-              </td>
+              </td>`}
             </tr>
           </table>
         </td></tr>
@@ -231,8 +272,8 @@ export function generateAlertHtml(
         </td></tr>` : ''}
 
         <tr><td style="padding:28px 32px 8px 32px;">
-          <div style="display:inline-block;background-color:${bannerColor};border-radius:4px;padding:4px 10px;margin-bottom:14px;">
-            <span style="font-size:10px;font-weight:800;letter-spacing:2px;color:#ffffff;text-transform:uppercase;">${isAlert ? 'Urgent' : 'Update'}</span>
+          <div style="display:inline-block;background-color:${style.accent};border-radius:4px;padding:4px 10px;margin-bottom:14px;">
+            <span style="font-size:10px;font-weight:800;letter-spacing:2px;color:#ffffff;text-transform:uppercase;">${style.tag}</span>
           </div>
           <h1 style="margin:0 0 14px 0;font-size:26px;font-weight:900;line-height:1.25;color:#0a0a0a;letter-spacing:-0.5px;">
             <a href="${escapeHtml(link)}" style="color:#0a0a0a;text-decoration:none;">${escapeHtml(article.title)}</a>
@@ -242,30 +283,29 @@ export function generateAlertHtml(
 
         ${note ? `
         <tr><td style="padding:16px 32px 0 32px;">
-          <div style="border-left:4px solid ${bannerColor};background-color:#fafafa;padding:12px 16px;font-size:16px;font-weight:700;line-height:1.5;color:#0a0a0a;">
+          <div style="border-left:4px solid ${style.accent};background-color:#fafafa;padding:12px 16px;font-size:16px;font-weight:700;line-height:1.5;color:#0a0a0a;">
             ${escapeHtml(note)}
           </div>
         </td></tr>` : ''}
 
         <tr><td align="center" style="padding:24px 32px 8px 32px;">
           <a href="${escapeHtml(link)}"
-            style="display:inline-block;background-color:${bannerColor};color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;">
-            ${isAlert ? 'Get the latest details' : 'Read the update'}
+            style="display:inline-block;background-color:${style.accent};color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;">
+            ${style.button}
           </a>
         </td></tr>
 
+        ${style.footnote ? `
         <tr><td style="padding:12px 32px 26px 32px;">
           <p style="margin:0;font-size:13px;line-height:1.6;color:#666;text-align:center;">
-            ${isAlert
-              ? 'Alerts can change quickly. Our article is updated as police release information, so go by it rather than this email.'
-              : 'This is a follow-up to an alert we emailed earlier.'}
+            ${style.footnote}
             <br />Sent ${escapeHtml(sentAt)} MT.
           </p>
-        </td></tr>
+        </td></tr>` : '<tr><td style="padding:0 0 26px 0;"></td></tr>'}
 
         <tr><td style="background-color:#f9f9f9;padding:22px 28px;border-top:1px solid #e8e8e8;text-align:center;">
           <p style="margin:0;font-size:12px;color:#999;line-height:1.7;">
-            You're receiving this urgent alert because you subscribed to the Culture Alberta newsletter.
+            ${style.reason}
           </p>
           <p style="margin:8px 0 0 0;font-size:12px;">
             <a href="${escapeHtml(unsubscribeUrl)}" style="color:#999;text-decoration:underline;">Unsubscribe</a>
@@ -376,7 +416,7 @@ export async function sendAlertToEveryone(
   if (claimError || !claim) {
     result.errors.push(
       claimError?.code === '23505'
-        ? `This article's ${input.kind === 'alert' ? 'alert' : 'update'} email has already been sent. Nothing was sent again.`
+        ? `This article has already been sent to everyone as ${input.kind === 'alert' ? 'an alert' : input.kind === 'update' ? 'an update' : 'a regular email'}. Nothing was sent again.`
         : `Could not record the send, so nothing was sent: ${claimError?.message ?? 'unknown error'}`
     )
     return result

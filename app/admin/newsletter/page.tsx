@@ -35,6 +35,7 @@ import {
   ExternalLink, Pencil, Clock,
 } from "lucide-react"
 import Link from "next/link"
+import EveryoneSendCard from "./_everyone-card"
 import type { SendResult } from "@/lib/newsletter/send-newsletter"
 import { formatMountain, mountainWallToUtcIso, nextMountainSlot } from "@/lib/utils/mountain-time"
 
@@ -1006,9 +1007,6 @@ export default function NewsletterAdmin() {
             <h1 className="text-2xl font-bold">Newsletter</h1>
             <p className="text-muted-foreground">Manage subscribers and send newsletters</p>
           </div>
-          <Button asChild variant="outline" size="sm" className="ml-auto border-red-300 text-red-700 hover:bg-red-50">
-            <Link href="/admin/newsletter/alert">Send an alert email</Link>
-          </Button>
         </div>
 
         {/* What the writers handed over. Their picks are already loaded into the
@@ -1072,6 +1070,7 @@ export default function NewsletterAdmin() {
             )}
           </CardHeader>
           <CardContent>
+            <EveryoneSendCard />
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
               {(Object.entries(CITY_CONFIG) as [CityKey, typeof CITY_CONFIG[CityKey]][]).map(([city, cfg]) => {
                 const state = sendStates[city]

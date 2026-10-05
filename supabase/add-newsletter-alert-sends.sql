@@ -3,8 +3,8 @@
 -- The unique (article_id, kind) index is the double-send guard: the row is
 -- inserted BEFORE any mail goes out, so a second click, a second tab or a
 -- retried request hits the constraint instead of mailing everyone again.
--- An article gets at most one 'alert' email and one 'update' email (the
--- follow-up when the alert is cancelled).
+-- An article gets at most one 'alert', one 'update' (the follow-up when the
+-- alert is cancelled) and one 'story' (a regular everyone-send).
 --
 -- A row stuck at status 'sending' means a send died part-way. It deliberately
 -- keeps blocking: some readers already have the email, and a duplicate is worse
@@ -15,7 +15,7 @@
 create table if not exists public.newsletter_alert_sends (
   id          uuid primary key default gen_random_uuid(),
   article_id  text not null,
-  kind        text not null check (kind in ('alert', 'update')),
+  kind        text not null check (kind in ('alert', 'update', 'story')),
   label       text not null,
   subject     text not null,
   status      text not null default 'sending' check (status in ('sending', 'sent', 'failed')),

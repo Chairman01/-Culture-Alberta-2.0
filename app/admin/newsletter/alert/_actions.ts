@@ -64,3 +64,9 @@ export async function sendAlertEmailToEveryone(
   const session = await assertAdminAction('sendAlertEmailToEveryone')
   return sendAlertToEveryone(articleId, input, confirmedCount, session.username)
 }
+
+/** How many people an everyone-send reaches right now (deduplicated). */
+export async function getEveryoneCount(): Promise<number> {
+  await assertAdminAction('getEveryoneCount')
+  return (await getAlertRecipients()).length
+}
