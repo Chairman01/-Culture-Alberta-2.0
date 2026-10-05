@@ -207,7 +207,7 @@ export function generateAlertHtml(
       <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation"
         style="max-width:600px;width:100%;background-color:#ffffff;border-radius:10px;overflow:hidden;">
 
-        <tr><td style="background-color:${bannerColor};padding:18px 28px;">
+        <tr><td style="background-color:${bannerColor};padding:18px 32px;">
           <table width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr>
               <td style="font-size:20px;font-weight:900;color:#ffffff;letter-spacing:0.5px;text-transform:uppercase;">
@@ -220,34 +220,41 @@ export function generateAlertHtml(
           </table>
         </td></tr>
 
+        <!-- Same layout as the daily edition's top story (heroSection in
+             template.ts), so the alert reads as a Culture Alberta story card. -->
         ${article.imageUrl ? `
-        <tr><td>
-          <a href="${escapeHtml(link)}"><img src="${escapeHtml(article.imageUrl)}" alt="" width="600"
-            style="display:block;width:100%;max-width:600px;height:auto;border:0;" /></a>
+        <tr><td style="padding:0;">
+          <a href="${escapeHtml(link)}" style="display:block;line-height:0;">
+            <img src="${escapeHtml(article.imageUrl)}" alt="${escapeHtml(article.title)}" width="600"
+              style="display:block;width:100%;max-width:600px;height:auto;border:0;" />
+          </a>
         </td></tr>` : ''}
 
-        <tr><td style="padding:26px 28px 8px 28px;">
-          <h1 style="margin:0 0 14px 0;font-size:24px;line-height:1.25;color:#0a0a0a;font-weight:800;">
+        <tr><td style="padding:28px 32px 8px 32px;">
+          <div style="display:inline-block;background-color:${bannerColor};border-radius:4px;padding:4px 10px;margin-bottom:14px;">
+            <span style="font-size:10px;font-weight:800;letter-spacing:2px;color:#ffffff;text-transform:uppercase;">${isAlert ? 'Urgent' : 'Update'}</span>
+          </div>
+          <h1 style="margin:0 0 14px 0;font-size:26px;font-weight:900;line-height:1.25;color:#0a0a0a;letter-spacing:-0.5px;">
             <a href="${escapeHtml(link)}" style="color:#0a0a0a;text-decoration:none;">${escapeHtml(article.title)}</a>
           </h1>
-          <p style="margin:0;font-size:16px;line-height:1.6;color:#333;">${escapeHtml(article.excerpt)}</p>
+          <p style="margin:0;font-size:16px;line-height:1.7;color:#3a3a3a;">${escapeHtml(article.excerpt)}</p>
         </td></tr>
 
         ${note ? `
-        <tr><td style="padding:16px 28px 0 28px;">
+        <tr><td style="padding:16px 32px 0 32px;">
           <div style="border-left:4px solid ${bannerColor};background-color:#fafafa;padding:12px 16px;font-size:16px;font-weight:700;line-height:1.5;color:#0a0a0a;">
             ${escapeHtml(note)}
           </div>
         </td></tr>` : ''}
 
-        <tr><td align="center" style="padding:24px 28px 8px 28px;">
+        <tr><td align="center" style="padding:24px 32px 8px 32px;">
           <a href="${escapeHtml(link)}"
             style="display:inline-block;background-color:${bannerColor};color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:6px;">
             ${isAlert ? 'Get the latest details' : 'Read the update'}
           </a>
         </td></tr>
 
-        <tr><td style="padding:12px 28px 26px 28px;">
+        <tr><td style="padding:12px 32px 26px 32px;">
           <p style="margin:0;font-size:13px;line-height:1.6;color:#666;text-align:center;">
             ${isAlert
               ? 'Alerts can change quickly. Our article is updated as police release information, so go by it rather than this email.'
