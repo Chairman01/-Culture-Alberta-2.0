@@ -1551,7 +1551,7 @@ export default function NewsletterAdmin() {
                   <Badge variant="secondary" className="text-[10px] bg-green-100 text-green-600">Shared across all newsletters</Badge>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  This section appears in <strong>all three city newsletters</strong>. It automatically pulls recent Alberta-wide news. When you pin articles below, only those articles appear — load the current auto selection to start editing.
+                  This section appears in <strong>every city newsletter</strong>. It automatically pulls recent Alberta-wide news. When you pin articles below, only those articles appear — load the current auto selection to start editing. The Province edition skips this section whenever its own articles are hand-picked above, so your picks are the whole email.
                 </p>
 
                 {albertaDraft.ids === null || albertaDraft.items.length === 0 ? (

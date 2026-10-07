@@ -261,6 +261,16 @@ export async function fetchNewsletterContent(
   const cityArticleIds = new Set(cityArticles.map(a => a.id))
   albertaArticles = albertaArticles.filter(a => !cityArticleIds.has(a.id))
 
+  // The Province edition is already province-wide. When the admin has picked
+  // its stories by hand, those picks are the whole email: the shared "Across
+  // Alberta" block would only tack on three more Alberta stories the admin
+  // didn't choose, so it is dropped. The auto edition keeps it, because there
+  // the lead stories are the week's newest site-wide and the block is what
+  // supplies the province-wide ones.
+  if (isProvinceWide && config.article_order && config.article_order.length > 0) {
+    albertaArticles = []
+  }
+
   // ── 3. Events ───────────────────────────────────────────────────────────────
   const events: NewsletterEvent[] = (eventsResult.data || []).map((e: any) => {
     const eventSlug = titleToSlug(e.title || '')
