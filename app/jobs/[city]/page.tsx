@@ -1,8 +1,8 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import {
-  getActiveJobs, getActiveJobCount, isJobCity, isIndexableJob, JOB_CITIES, JOB_CITY_LABELS,
+  getActiveJobs, getActiveJobCount, getJobBySlug, isJobCity, isIndexableJob, JOB_CITIES, JOB_CITY_LABELS,
   CITY_PAGE_MIN_INDEXABLE_JOBS,
 } from '@/lib/jobs'
 import { jobsEmailArmed } from '@/lib/jobs-email/armed'
@@ -42,7 +42,14 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
 
 export default async function CityJobsPage({ params }: { params: Promise<{ city: string }> }) {
   const { city } = await params
-  if (!isJobCity(city)) notFound()
+  if (!isJobCity(city)) {
+    // Several articles linked postings as /jobs/<slug> instead of
+    // /jobs/posting/<slug>. A non-city segment that matches a job slug gets a
+    // 308 to the posting page so those links keep working.
+    const job = await getJobBySlug(city)
+    if (job) permanentRedirect(`/jobs/posting/${job.slug}`)
+    notFound()
+  }
   const label = JOB_CITY_LABELS[city]
   const otherCities = JOB_CITIES.filter(c => c !== city)
   const [jobs, totalActive] = await Promise.all([getActiveJobs({ city }), getActiveJobCount(city)])
