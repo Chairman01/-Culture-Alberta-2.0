@@ -12,6 +12,8 @@
  * GET /api/pin/<slug>
  */
 
+import { readFile } from 'fs/promises'
+import { join } from 'path'
 import { ImageResponse } from 'next/og'
 import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
@@ -31,16 +33,54 @@ const PHOTO_BAND = 780
 
 // Fetched once per lambda rather than per request. The renderer needs real font
 // data — it cannot use a CSS font the way the site does.
-let fontsPromise: Promise<{ black: ArrayBuffer; medium: ArrayBuffer }> | null = null
+//
+// The brand faces live in assets/fonts rather than public/, so the files are
+// read from disk and never served to anyone (licences are alongside them):
+//   Kollektif       the city label, as in the Canva templates
+//   Anton           the CULTURE wordmark — a free stand-in for the template's
+//                   OPTIMorgan One, which cannot be licensed (see
+//                   assets/fonts/README.md)
+// Any that cannot be read fall back to Libre Franklin rather than failing the
+// whole card.
+type BrandFont = 'Kollektif-Regular' | 'Anton-Regular'
+
+interface PinFonts {
+  black: ArrayBuffer
+  medium: ArrayBuffer
+  brand: Partial<Record<BrandFont, Buffer>>
+}
+
+async function loadBrandFont(name: BrandFont): Promise<[BrandFont, Buffer] | null> {
+  try {
+    return [name, await readFile(join(process.cwd(), 'assets/fonts', `${name}.ttf`))]
+  } catch (err) {
+    console.warn(`[pin card] ${name} unavailable, using Libre Franklin:`, err)
+    return null
+  }
+}
+
+let fontsPromise: Promise<PinFonts> | null = null
 function loadFonts(origin: string) {
   if (!fontsPromise) {
     fontsPromise = Promise.all([
       fetch(`${origin}/fonts/LibreFranklin-Black.ttf`).then((r) => r.arrayBuffer()),
       fetch(`${origin}/fonts/LibreFranklin-Medium.ttf`).then((r) => r.arrayBuffer()),
-    ]).then(([black, medium]) => ({ black, medium }))
+      Promise.all(
+        (['Kollektif-Regular', 'Anton-Regular'] as const).map(loadBrandFont)
+      ),
+    ]).then(([black, medium, loaded]) => ({
+      black,
+      medium,
+      brand: Object.fromEntries(loaded.filter((f) => f !== null)),
+    }))
   }
   return fontsPromise
 }
+
+
+// The two brand badges, side by side, as on the Instagram posts.
+const BADGE_SIZE = 104
+const BADGES = ['/images/pin/culture-alberta-badge.png', '/images/pin/culture-yyc-badge.png']
 
 /**
  * Long headlines get smaller type rather than a clipped card. The thresholds
@@ -75,6 +115,14 @@ export async function GET(
   const category = (article.category ?? 'Alberta').toUpperCase()
   const background = getSocialImageUrl(article.image_url)
   const fonts = await loadFonts(origin)
+
+  const kollektif = fonts.brand['Kollektif-Regular']
+  const anton = fonts.brand['Anton-Regular']
+
+  const brandFonts = [
+    ...(kollektif ? [{ name: 'Kollektif', data: kollektif }] : []),
+    ...(anton ? [{ name: 'Anton', data: anton }] : []),
+  ].map((f) => ({ ...f, style: 'normal' as const, weight: 400 as const }))
 
   return new ImageResponse(
     (
@@ -156,30 +204,25 @@ export async function GET(
             color: '#ffffff',
             fontSize: 30,
             letterSpacing: 3,
-            fontWeight: 500,
+            fontWeight: kollektif ? 400 : 500,
+            ...(kollektif ? { fontFamily: 'Kollektif' } : {}),
           }}
         >
           {category}
         </div>
 
-        <div style={{ position: 'absolute', top: 36, right: 44, display: 'flex' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 96,
-              height: 96,
-              borderRadius: 48,
-              backgroundColor: '#000000',
-              color: '#ffffff',
-              fontSize: 19,
-              lineHeight: 1.05,
-              textAlign: 'center',
-            }}
-          >
-            CULTURE ALBERTA
-          </div>
+        <div style={{ position: 'absolute', top: 36, right: 44, display: 'flex', gap: 14 }}>
+          {BADGES.map((path) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={path}
+              src={`${origin}${path}`}
+              alt=""
+              width={BADGE_SIZE}
+              height={BADGE_SIZE}
+              style={{ width: BADGE_SIZE, height: BADGE_SIZE }}
+            />
+          ))}
         </div>
 
         <div
@@ -202,12 +245,12 @@ export async function GET(
           style={{
             position: 'absolute',
             right: 48,
-            bottom: 52,
+            bottom: 48,
             display: 'flex',
             color: '#ffffff',
-            fontSize: 34,
-            letterSpacing: 2,
-            fontWeight: 900,
+            ...(anton
+              ? { fontFamily: 'Anton', fontSize: 44, fontWeight: 400, letterSpacing: 1 }
+              : { fontSize: 34, letterSpacing: 2, fontWeight: 900 }),
           }}
         >
           CULTURE
@@ -220,6 +263,7 @@ export async function GET(
       fonts: [
         { name: 'Libre Franklin', data: fonts.black, style: 'normal', weight: 900 },
         { name: 'Libre Franklin', data: fonts.medium, style: 'normal', weight: 500 },
+        ...brandFonts,
       ],
     }
   )

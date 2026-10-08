@@ -1,0 +1,11 @@
+Kollektif — Copyright (c) 2015 by Doğu Kaya.
+
+Listed as free for personal and commercial use:
+  https://befonts.com/kollektif-typeface.html
+  https://www.dafontfree.io/kollektif-typeface/
+The font's own licence field points to dogukaya.com, which no longer
+resolves (checked 2026-10-08). Kollektif is also a built-in Canva font.
+
+Used only server-side by app/api/pin/[slug]/route.tsx to render the city
+label on Pinterest cards. Deliberately kept out of public/ so the font file
+itself is not redistributed.
