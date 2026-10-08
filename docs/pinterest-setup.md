@@ -44,10 +44,11 @@ https://www.culturealberta.com/api/pinterest/connect
 ```
 
 Approve the consent screen. Pinterest sends you back to the callback, which
-stores the access token (30 days) and refresh token (about a year) in
+stores the access token (30 days) and refresh token (60 days) in
 `social_tokens`. The weekly cron `/api/cron/refresh-pinterest-token` renews
 the access token before it lapses. If the refresh token ever expires, just
-repeat this step.
+repeat this step. Each renewal returns a fresh refresh token, so as long as the
+weekly cron keeps running the chain never lapses.
 
 Scopes requested: `boards:read`, `pins:read`, `pins:write`. Nothing more.
 

@@ -3,7 +3,7 @@ import { getServiceClient } from '@/lib/supabase-admin'
 // ---------------------------------------------------------------------------
 // Pinterest OAuth and token storage.
 //
-// Pinterest access tokens last ~30 days and refresh tokens ~1 year, so this is
+// Pinterest access tokens last ~30 days and refresh tokens ~60 days, so this is
 // the same problem as Threads: a token that has to be rewritten on a schedule
 // cannot live in a Vercel env var. Both go in social_tokens (service-role only)
 // under the platform keys 'pinterest' and 'pinterest_refresh'.
