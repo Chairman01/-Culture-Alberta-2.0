@@ -3,6 +3,12 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // The Pinterest card reads its brand font from disk (assets/, not public/,
+  // so the font file is never served). Make sure that file ships with the
+  // function rather than relying on the tracer spotting the readFile call.
+  outputFileTracingIncludes: {
+    '/api/pin/[slug]': ['./assets/fonts/**'],
+  },
   // Performance optimizations
   compress: true,
   // Production optimizations

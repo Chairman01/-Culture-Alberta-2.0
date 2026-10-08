@@ -12,6 +12,8 @@
  * GET /api/pin/<slug>
  */
 
+import { readFile } from 'fs/promises'
+import { join } from 'path'
 import { ImageResponse } from 'next/og'
 import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
@@ -32,20 +34,21 @@ const PHOTO_BAND = 780
 // Fetched once per lambda rather than per request. The renderer needs real font
 // data — it cannot use a CSS font the way the site does.
 //
-// Kollektif is the brand face for the city label. It is optional: until the
-// file is in public/fonts the label falls back to Libre Franklin rather than
-// failing the whole card.
+// Kollektif is the brand face for the city label, as in the Canva templates.
+// It lives in assets/ rather than public/ so the file itself is not served to
+// anyone (see assets/fonts/KOLLEKTIF-LICENSE.txt). If it cannot be read, the
+// label falls back to Libre Franklin rather than failing the whole card.
 interface PinFonts {
   black: ArrayBuffer
   medium: ArrayBuffer
-  kollektif: ArrayBuffer | null
+  kollektif: Buffer | null
 }
 
-async function optional(url: string): Promise<ArrayBuffer | null> {
+async function loadKollektif(): Promise<Buffer | null> {
   try {
-    const res = await fetch(url)
-    return res.ok ? await res.arrayBuffer() : null
-  } catch {
+    return await readFile(join(process.cwd(), 'assets/fonts/Kollektif-Regular.ttf'))
+  } catch (err) {
+    console.warn('[pin card] Kollektif unavailable, using Libre Franklin:', err)
     return null
   }
 }
@@ -56,7 +59,7 @@ function loadFonts(origin: string) {
     fontsPromise = Promise.all([
       fetch(`${origin}/fonts/LibreFranklin-Black.ttf`).then((r) => r.arrayBuffer()),
       fetch(`${origin}/fonts/LibreFranklin-Medium.ttf`).then((r) => r.arrayBuffer()),
-      optional(`${origin}/fonts/Kollektif-Bold.ttf`),
+      loadKollektif(),
     ]).then(([black, medium, kollektif]) => ({ black, medium, kollektif }))
   }
   return fontsPromise
@@ -194,7 +197,7 @@ export async function GET(
             color: '#ffffff',
             fontSize: 30,
             letterSpacing: 3,
-            fontWeight: fonts.kollektif ? 700 : 500,
+            fontWeight: fonts.kollektif ? 400 : 500,
             ...(fonts.kollektif ? { fontFamily: 'Kollektif' } : {}),
           }}
         >
@@ -264,7 +267,7 @@ export async function GET(
         { name: 'Libre Franklin', data: fonts.black, style: 'normal', weight: 900 },
         { name: 'Libre Franklin', data: fonts.medium, style: 'normal', weight: 500 },
         ...(fonts.kollektif
-          ? [{ name: 'Kollektif', data: fonts.kollektif, style: 'normal' as const, weight: 700 as const }]
+          ? [{ name: 'Kollektif', data: fonts.kollektif, style: 'normal' as const, weight: 400 as const }]
           : []),
       ],
     }
