@@ -34,21 +34,27 @@ const PHOTO_BAND = 780
 // Fetched once per lambda rather than per request. The renderer needs real font
 // data — it cannot use a CSS font the way the site does.
 //
-// Kollektif is the brand face for the city label, as in the Canva templates.
-// It lives in assets/ rather than public/ so the file itself is not served to
-// anyone (see assets/fonts/KOLLEKTIF-LICENSE.txt). If it cannot be read, the
-// label falls back to Libre Franklin rather than failing the whole card.
+// The brand faces live in assets/fonts rather than public/, so the files are
+// read from disk and never served to anyone (licences are alongside them):
+//   Kollektif       the city label, as in the Canva templates
+//   Anton           the CULTURE wordmark — a free stand-in for the template's
+//                   OPTIMorgan One, which cannot be licensed (see
+//                   assets/fonts/README.md)
+// Any that cannot be read fall back to Libre Franklin rather than failing the
+// whole card.
+type BrandFont = 'Kollektif-Regular' | 'Anton-Regular'
+
 interface PinFonts {
   black: ArrayBuffer
   medium: ArrayBuffer
-  kollektif: Buffer | null
+  brand: Partial<Record<BrandFont, Buffer>>
 }
 
-async function loadKollektif(): Promise<Buffer | null> {
+async function loadBrandFont(name: BrandFont): Promise<[BrandFont, Buffer] | null> {
   try {
-    return await readFile(join(process.cwd(), 'assets/fonts/Kollektif-Regular.ttf'))
+    return [name, await readFile(join(process.cwd(), 'assets/fonts', `${name}.ttf`))]
   } catch (err) {
-    console.warn('[pin card] Kollektif unavailable, using Libre Franklin:', err)
+    console.warn(`[pin card] ${name} unavailable, using Libre Franklin:`, err)
     return null
   }
 }
@@ -59,25 +65,18 @@ function loadFonts(origin: string) {
     fontsPromise = Promise.all([
       fetch(`${origin}/fonts/LibreFranklin-Black.ttf`).then((r) => r.arrayBuffer()),
       fetch(`${origin}/fonts/LibreFranklin-Medium.ttf`).then((r) => r.arrayBuffer()),
-      loadKollektif(),
-    ]).then(([black, medium, kollektif]) => ({ black, medium, kollektif }))
+      Promise.all(
+        (['Kollektif-Regular', 'Anton-Regular'] as const).map(loadBrandFont)
+      ),
+    ]).then(([black, medium, loaded]) => ({
+      black,
+      medium,
+      brand: Object.fromEntries(loaded.filter((f) => f !== null)),
+    }))
   }
   return fontsPromise
 }
 
-// The bottom-right CULTURE wordmark is the brand's own lettering, exported
-// from Canva as a transparent PNG. Until that file exists, the card sets the
-// word in Libre Franklin instead.
-const WORDMARK_PATH = '/images/pin/culture-wordmark.png'
-let wordmarkPromise: Promise<boolean> | null = null
-function hasWordmark(origin: string): Promise<boolean> {
-  if (!wordmarkPromise) {
-    wordmarkPromise = fetch(`${origin}${WORDMARK_PATH}`, { method: 'HEAD' })
-      .then((r) => r.ok)
-      .catch(() => false)
-  }
-  return wordmarkPromise
-}
 
 // The two brand badges, side by side, as on the Instagram posts.
 const BADGE_SIZE = 104
@@ -115,7 +114,15 @@ export async function GET(
   const title = (article.title ?? '').trim()
   const category = (article.category ?? 'Alberta').toUpperCase()
   const background = getSocialImageUrl(article.image_url)
-  const [fonts, wordmark] = await Promise.all([loadFonts(origin), hasWordmark(origin)])
+  const fonts = await loadFonts(origin)
+
+  const kollektif = fonts.brand['Kollektif-Regular']
+  const anton = fonts.brand['Anton-Regular']
+
+  const brandFonts = [
+    ...(kollektif ? [{ name: 'Kollektif', data: kollektif }] : []),
+    ...(anton ? [{ name: 'Anton', data: anton }] : []),
+  ].map((f) => ({ ...f, style: 'normal' as const, weight: 400 as const }))
 
   return new ImageResponse(
     (
@@ -197,8 +204,8 @@ export async function GET(
             color: '#ffffff',
             fontSize: 30,
             letterSpacing: 3,
-            fontWeight: fonts.kollektif ? 400 : 500,
-            ...(fonts.kollektif ? { fontFamily: 'Kollektif' } : {}),
+            fontWeight: kollektif ? 400 : 500,
+            ...(kollektif ? { fontFamily: 'Kollektif' } : {}),
           }}
         >
           {category}
@@ -234,30 +241,20 @@ export async function GET(
           {title}
         </div>
 
-        {wordmark ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={`${origin}${WORDMARK_PATH}`}
-            alt=""
-            height={44}
-            style={{ position: 'absolute', right: 48, bottom: 52, height: 44 }}
-          />
-        ) : (
-          <div
-            style={{
-              position: 'absolute',
-              right: 48,
-              bottom: 52,
-              display: 'flex',
-              color: '#ffffff',
-              fontSize: 34,
-              letterSpacing: 2,
-              fontWeight: 900,
-            }}
-          >
-            CULTURE
-          </div>
-        )}
+        <div
+          style={{
+            position: 'absolute',
+            right: 48,
+            bottom: 48,
+            display: 'flex',
+            color: '#ffffff',
+            ...(anton
+              ? { fontFamily: 'Anton', fontSize: 44, fontWeight: 400, letterSpacing: 1 }
+              : { fontSize: 34, letterSpacing: 2, fontWeight: 900 }),
+          }}
+        >
+          CULTURE
+        </div>
       </div>
     ),
     {
@@ -266,9 +263,7 @@ export async function GET(
       fonts: [
         { name: 'Libre Franklin', data: fonts.black, style: 'normal', weight: 900 },
         { name: 'Libre Franklin', data: fonts.medium, style: 'normal', weight: 500 },
-        ...(fonts.kollektif
-          ? [{ name: 'Kollektif', data: fonts.kollektif, style: 'normal' as const, weight: 400 as const }]
-          : []),
+        ...brandFonts,
       ],
     }
   )

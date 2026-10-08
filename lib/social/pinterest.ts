@@ -14,10 +14,12 @@ import { getPinterestToken } from './pinterest-tokens'
 // see ./pinterest-tokens. Env: PINTEREST_APP_ID, PINTEREST_APP_SECRET and
 // PINTEREST_BOARD_ID (the board that takes anything without a city board).
 //
-// Board routing: a board named exactly after the article's city — "Edmonton",
-// "Calgary", "Red Deer" — gets that city's stories; everything else lands on
-// PINTEREST_BOARD_ID. Boards are matched by name so a new city needs no
-// deploy, just a new board. /api/pinterest/status lists boards and their ids.
+// Board routing: a board whose name is, or starts with, the article's city —
+// "Edmonton" or "Edmonton News and Things to Do" — gets that city's stories;
+// everything else lands on PINTEREST_BOARD_ID. Boards are matched by name so a
+// new city needs no deploy, just a new board. /api/pinterest/status lists
+// boards and their ids; /api/pinterest/preview shows what any article would
+// pin as, without posting.
 // ---------------------------------------------------------------------------
 
 const API = 'https://api.pinterest.com/v5'
@@ -25,9 +27,9 @@ const SITE = 'https://www.culturealberta.com'
 
 // Pinterest's own field limits.
 const MAX_TITLE = 100
-const MAX_DESCRIPTION = 800
+const MAX_DESCRIPTION = 500
 const MAX_ALT_TEXT = 500
-const MAX_HASHTAGS = 5
+const MAX_HASHTAGS = 2
 
 // The board list changes rarely; one lookup per lambda per hour is plenty.
 const BOARDS_TTL_MS = 60 * 60 * 1000
@@ -78,9 +80,18 @@ const NOT_FOR_PINTEREST = [
   /\bsentenced?\b/i,
 ]
 
-export function isPinnable(article: SocialArticle): boolean {
+/** Why an article stays off Pinterest, or null when it can be pinned. */
+export function pinSkipReason(article: SocialArticle): string | null {
   const haystack = [article.title, ...(article.tags ?? [])].filter(Boolean).join(' ')
-  return !NOT_FOR_PINTEREST.some((re) => re.test(haystack))
+  for (const re of NOT_FOR_PINTEREST) {
+    const hit = haystack.match(re)
+    if (hit) return `mentions "${hit[0]}" — crime, tragedy and court stories are not pinned`
+  }
+  return null
+}
+
+export function isPinnable(article: SocialArticle): boolean {
+  return pinSkipReason(article) === null
 }
 
 const truncate = (text: string, max: number): string => {
@@ -89,10 +100,31 @@ const truncate = (text: string, max: number): string => {
   return chars.slice(0, max - 1).join('').trimEnd() + '…'
 }
 
+// Categories that are sections of the site rather than places. A Pin about
+// one of these is described as Alberta-wide.
+const NOT_A_PLACE = new Set(['', 'local', 'national', 'culture', 'news', 'alberta'])
+
+/** The place a reader would search for: the city, or Alberta. */
+export function pinPlace(article: SocialArticle): string {
+  const category = (article.category ?? '').trim()
+  return NOT_A_PLACE.has(category.toLowerCase()) ? 'Alberta' : category
+}
+
 /**
- * Title is the headline. The description carries the excerpt — Pinterest
- * indexes it for search, so it should read as a sentence, not a tag dump —
- * followed by the same city-first hashtags the other platforms use.
+ * Pinterest ranks on words, not hashtags. Hashtags stopped being clickable in
+ * 2020 and its search now reads the title, the description, the board name and
+ * the image. So:
+ *
+ *   title        the headline — it already leads with the subject and place.
+ *   description  the excerpt first, because the opening ~50 characters carry
+ *                the most weight, then one plain sentence that names the place
+ *                and what Culture Alberta covers. At most two hashtags close it
+ *                off, for the readers who still search that way.
+ *   alt_text     what the image is, with the headline, for accessibility and
+ *                for Pinterest's image understanding.
+ *
+ * The description is held to 500 characters, the length Pinterest shows in
+ * full; its 800 limit only buys text nobody sees.
  */
 export function buildPin(article: SocialArticle): {
   title: string
@@ -100,17 +132,27 @@ export function buildPin(article: SocialArticle): {
   alt_text: string
 } {
   const title = truncate(article.title, MAX_TITLE)
+  const place = pinPlace(article)
 
-  const hashtags = collectHashtags(article, MAX_HASHTAGS)
-  const suffix = hashtags.length > 0 ? `\n\n${hashtags.map((t) => `#${t}`).join(' ')}` : ''
+  const closing = `More ${place} news, events and things to do from Culture Alberta.`
+  const hashtags = [...new Set([place, 'Alberta'])]
+    .map((p) => collectHashtags({ ...article, category: p, tags: [] }, 1)[0])
+    .filter(Boolean)
+    .slice(0, MAX_HASHTAGS)
+  const tagLine = hashtags.map((t) => `#${t}`).join(' ')
+
+  const tail = `\n\n${closing}${tagLine ? `\n${tagLine}` : ''}`
   const body = (article.excerpt ?? '').trim() || article.title.trim()
-  const room = Math.max(0, MAX_DESCRIPTION - [...suffix].length)
-  const description = `${truncate(body, room)}${suffix}`
+  const room = Math.max(0, MAX_DESCRIPTION - [...tail].length)
+  const description = `${truncate(body, room)}${tail}`
 
   return {
     title,
     description,
-    alt_text: truncate(`${article.title} — Culture Alberta`, MAX_ALT_TEXT),
+    alt_text: truncate(
+      `${article.title}. Culture Alberta story card for ${place}, with a photo from the article.`,
+      MAX_ALT_TEXT
+    ),
   }
 }
 
@@ -166,23 +208,40 @@ export async function listBoards(token: string, { fresh = false } = {}): Promise
 }
 
 /**
- * The city's own board when there is one, else the default. Matched by exact
- * name, case-insensitively, so "Edmonton" routes there and "Edmonton Eats"
- * does not get stories it was never meant to hold.
+ * The board whose name is the city, or starts with it, else the default.
+ *
+ * Pinterest ranks keyword-rich board names, so a city board is better named
+ * "Edmonton News and Things to Do" than plain "Edmonton" — and both match.
+ * An exact name wins over a prefix. Only city categories route this way;
+ * "Local", "National" and the like go to the default board.
+ *
+ * Because any board starting with the city matches, don't give an unrelated
+ * board a city-first name (e.g. "Edmonton Recipes") or stories will land there.
  */
+export function matchCityBoard(
+  article: SocialArticle,
+  boards: PinterestBoard[]
+): PinterestBoard | undefined {
+  const place = pinPlace(article)
+  if (place === 'Alberta') return undefined
+  const city = place.toLowerCase()
+
+  const named = boards.map((b) => ({ b, name: b.name.trim().toLowerCase() }))
+  return (
+    named.find((n) => n.name === city)?.b ??
+    named.find((n) => n.name.startsWith(`${city} `))?.b
+  )
+}
+
 export async function chooseBoard(article: SocialArticle, token: string): Promise<string> {
   const fallback = process.env.PINTEREST_BOARD_ID
-  const city = (article.category ?? '').trim().toLowerCase()
 
-  if (city) {
-    try {
-      const boards = await listBoards(token)
-      const match = boards.find((b) => b.name.trim().toLowerCase() === city)
-      if (match) return match.id
-    } catch (err) {
-      // A board lookup failing should not cost the Pin — the default is fine.
-      console.warn('⚠️ Pinterest board lookup failed, using the default board:', err)
-    }
+  try {
+    const match = matchCityBoard(article, await listBoards(token))
+    if (match) return match.id
+  } catch (err) {
+    // A board lookup failing should not cost the Pin — the default is fine.
+    console.warn('⚠️ Pinterest board lookup failed, using the default board:', err)
   }
 
   if (!fallback) throw new Error('PINTEREST_BOARD_ID is not set and no city board matched')

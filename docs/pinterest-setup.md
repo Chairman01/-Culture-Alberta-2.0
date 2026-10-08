@@ -1,8 +1,9 @@
 # Pinterest auto-pinning
 
 Every published article that passes the Pinterest filter becomes one Pin: the
-1000x1500 card from `/api/pin/<slug>`, the headline as the title, the excerpt
-plus hashtags as the description, and the article URL as the link. It runs
+1000x1500 card from `/api/pin/<slug>`, the headline as the title, a
+keyword-led description, and the article URL as the link (see "How a Pin is
+written" below). It runs
 inside the same `lib/social` pipeline as Bluesky and Threads, so dedupe, the
 hourly retry sweeper and the `social_posts` log all apply.
 
@@ -32,8 +33,9 @@ read-only and cannot create a Pin. The site does its own OAuth in step 3.
 | `PINTEREST_APP_SECRET` | the App secret from step 1 |
 | `PINTEREST_BOARD_ID` | set in step 4, after connecting |
 
-`SOCIAL_AUTOPOST=true` is already set. Env vars are read on the next request,
-no redeploy needed.
+`SOCIAL_AUTOPOST=true` is already set. **Redeploy after changing any of these.**
+Vercel bakes env vars into each deployment, so a new value is invisible until
+the next deploy (Deployments, then Redeploy on the latest one).
 
 ## 3. Connect the account (once)
 
@@ -57,11 +59,17 @@ Scopes requested: `boards:read`, `pins:read`, `pins:write`. Nothing more.
 Open `/api/pinterest/status` (admin). It lists every board with its id.
 
 - Set `PINTEREST_BOARD_ID` in Vercel to the board that should take everything
-  that has no city board. "Alberta" is the natural choice.
-- Optionally create one board per city, named **exactly** after the article
-  category: `Edmonton`, `Calgary`, `Lethbridge`, `Red Deer`, `Grande Prairie`.
-  Matching is by name, case-insensitive, so no code change is needed when a
-  city is added. A board called "Edmonton Eats" does not match.
+  that has no city board, e.g. **Alberta News and Things to Do**.
+- Optionally create one board per city whose name **starts with the city**, as
+  the article category spells it. Pinterest ranks keyword-rich board names, so
+  prefer **Edmonton News and Things to Do** over plain **Edmonton**; both
+  match. Cities in use: Edmonton, Calgary, Lethbridge, Red Deer, Grande
+  Prairie. No code change is needed when a city is added.
+- Because any board starting with a city name matches, don't start an
+  unrelated board's name with a city ("Edmonton Recipes") or stories will be
+  routed to it.
+- Give every board a description of a couple of sentences naming the place
+  and topics in plain words. Pinterest reads it.
 
 Once `PINTEREST_BOARD_ID` is set the status page reports "Ready".
 
@@ -72,8 +80,32 @@ exist, the API returns an id, but only the app owner can see them and they
 send no traffic. Apply for **Standard** access from the app page. Pinterest
 asks for a short screen recording of the OAuth flow, which is the
 `/api/pinterest/connect` to `/api/pinterest/callback` round trip from step 3.
-Until Standard access is granted, treat `social_posts` rows for `pinterest`
-as a dry run.
+**Leave `PINTEREST_BOARD_ID` unset until Standard access is granted.** On Trial
+access every Pin fails; after five attempts the sweeper gives up and those
+articles would never be pinned. With the board id unset the poster stays off.
+
+## How a Pin is written
+
+Pinterest ranks on words, not hashtags: hashtags stopped being clickable in
+2020, and its search reads the title, description, board name and image.
+`buildPin()` in `lib/social/pinterest.ts` therefore writes:
+
+| Field | Content |
+| --- | --- |
+| Title | The headline (100 max; about 50 show in the feed) |
+| Description | The excerpt first, since the opening words carry most weight, then "More <City> news, events and things to do from Culture Alberta." and at most two hashtags, the city and #Alberta. Capped at 500 characters. |
+| Alt text | The headline plus what the image is |
+| Link | The article |
+
+Categories that are site sections rather than places (Local, National,
+Culture) are described as Alberta.
+
+## Testing without posting
+
+Open `/api/pinterest/preview` signed in as admin. It lists the 30 newest
+articles with Pin or Skip and the reason, and each opens to the exact card,
+title, description, alt text, link and board the real Pin would use. It never
+calls Pinterest's create-Pin endpoint.
 
 ## What gets pinned
 
