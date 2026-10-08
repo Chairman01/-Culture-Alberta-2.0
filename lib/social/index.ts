@@ -5,6 +5,7 @@ import { getThreadsToken } from './threads-tokens'
 import { postToTelegram } from './telegram'
 import { postToX } from './x'
 import { postToReddit } from './reddit'
+import { postToPinterest, isPinnable } from './pinterest'
 
 // ---------------------------------------------------------------------------
 // Automated social posting — fires as a non-blocking side-effect when an
@@ -106,6 +107,22 @@ const PLATFORMS: Platform[] = [
         process.env.REDDIT_PASSWORD
       ),
     post: postToReddit,
+  },
+  // Pinterest keeps a Pin in search for months, so it gets the evergreen
+  // slice — guides, openings, jobs, rankings — and skips crime and tragedy.
+  // The token itself lives in social_tokens (OAuth via /api/pinterest/connect);
+  // a missing token fails the row with a clear message and the hourly sweeper
+  // picks it up once the account is connected.
+  {
+    name: 'pinterest',
+    enabled: () =>
+      !!(
+        process.env.PINTEREST_APP_ID &&
+        process.env.PINTEREST_APP_SECRET &&
+        process.env.PINTEREST_BOARD_ID
+      ),
+    accepts: isPinnable,
+    post: postToPinterest,
   },
 ]
 
