@@ -99,7 +99,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { slug } = await params
+  // /api/pin/<slug>.png serves the same card: some schedulers (Buffer for X)
+  // only accept image URLs that look like a direct file.
+  const { slug: rawSlug } = await params
+  const slug = rawSlug.replace(/\.png$/i, '')
   const origin = request.nextUrl.origin
 
   const { data: article } = await supabase
