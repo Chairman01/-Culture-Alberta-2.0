@@ -10,6 +10,22 @@ export function Footer() {
             <p className="text-gray-600 text-sm">
               Your guide to Alberta's best culture, events, and experiences.
             </p>
+            <p className="mt-4 text-sm text-gray-600">
+              <span className="font-semibold text-gray-900">Follow us: </span>
+              {[
+                ['Instagram', 'https://www.instagram.com/culturealberta._/'],
+                ['Pinterest', 'https://www.pinterest.com/culturealberta/'],
+                ['YouTube', 'https://www.youtube.com/@CultureAlberta_'],
+                ['Facebook', 'https://www.facebook.com/profile.php?id=100064044099295'],
+              ].map(([name, href], i) => (
+                <span key={name}>
+                  {i > 0 && ' · '}
+                  <a href={href} target="_blank" rel="noopener noreferrer" className="hover:text-gray-900 underline-offset-2 hover:underline">
+                    {name}
+                  </a>
+                </span>
+              ))}
+            </p>
           </div>
 
           <div>

@@ -296,7 +296,8 @@ export function OrganizationStructuredData({ baseUrl = 'https://www.culturealber
       "https://www.youtube.com/@CultureAlberta_",
       "https://www.facebook.com/profile.php?id=100064044099295",
       "https://www.tiktok.com/@culturealberta",
-      "https://twitter.com/culturealberta"
+      "https://twitter.com/culturealberta",
+      "https://www.pinterest.com/culturealberta/"
     ],
     "foundingDate": "2024",
     "foundingLocation": {

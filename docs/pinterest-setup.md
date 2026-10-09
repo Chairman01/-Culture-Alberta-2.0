@@ -107,6 +107,18 @@ articles with Pin or Skip and the reason, and each opens to the exact card,
 title, description, alt text, link and board the real Pin would use. It never
 calls Pinterest's create-Pin endpoint.
 
+## Pinning recent articles by hand
+
+Open `/api/pinterest/backfill` signed in as admin. It lists the 30 newest
+articles with Pin or Skip, lets you pick the default board, and pins them when
+you press the button, oldest first. City and Canada boards still apply.
+Successful Pins are recorded so the automatic poster never repeats them;
+failures are not recorded, and two failures in a row stop the run.
+
+Boards in use (2026-10-08): Alberta News and Things to Do (default),
+Edmonton, Calgary, Red Deer and Lethbridge News and Things to Do, and Canada
+News and Trending Stories, which takes the National category.
+
 ## What gets pinned
 
 Pinterest readers search for things to do, places to go and ways to save, and
