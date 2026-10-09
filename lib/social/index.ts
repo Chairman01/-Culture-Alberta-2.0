@@ -6,6 +6,7 @@ import { postToTelegram } from './telegram'
 import { postToX } from './x'
 import { postToReddit } from './reddit'
 import { postToPinterest, isPinnable } from './pinterest'
+import { postToXViaBuffer } from './x-buffer'
 
 // ---------------------------------------------------------------------------
 // Automated social posting — fires as a non-blocking side-effect when an
@@ -86,9 +87,20 @@ const PLATFORMS: Platform[] = [
     enabled: () => !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHANNEL_ID),
     post: postToTelegram,
   },
+  // X goes through Buffer: an image card + point-form bullets, with the link in
+  // the post or a reply (A/B tested). See ./x-buffer and ./buffer.
+  {
+    name: 'x_buffer',
+    enabled: () => !!(process.env.BUFFER_API_KEY && process.env.BUFFER_X_CHANNEL_ID),
+    post: postToXViaBuffer,
+  },
+  // The direct X API poster, kept as a fallback only. X charges $0.20 per post
+  // or reply containing a link, so it stays off — and it can never run while
+  // Buffer is configured, or every article would reach X twice.
   {
     name: 'x',
     enabled: () =>
+      !(process.env.BUFFER_API_KEY && process.env.BUFFER_X_CHANNEL_ID) &&
       !!(
         process.env.X_API_KEY &&
         process.env.X_API_SECRET &&
