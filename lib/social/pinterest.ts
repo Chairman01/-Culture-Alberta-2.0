@@ -102,11 +102,12 @@ const truncate = (text: string, max: number): string => {
 
 // Categories that are sections of the site rather than places. A Pin about
 // one of these is described as Alberta-wide.
-const NOT_A_PLACE = new Set(['', 'local', 'national', 'culture', 'news', 'alberta'])
+const NOT_A_PLACE = new Set(['', 'local', 'culture', 'news', 'alberta'])
 
-/** The place a reader would search for: the city, or Alberta. */
+/** The place a reader would search for: the city, Canada for National, or Alberta. */
 export function pinPlace(article: SocialArticle): string {
   const category = (article.category ?? '').trim()
+  if (category.toLowerCase() === 'national') return 'Canada'
   return NOT_A_PLACE.has(category.toLowerCase()) ? 'Alberta' : category
 }
 
@@ -208,12 +209,12 @@ export async function listBoards(token: string, { fresh = false } = {}): Promise
 }
 
 /**
- * The board whose name is the city, or starts with it, else the default.
+ * The board whose name is the place, or starts with it, else the default.
  *
  * Pinterest ranks keyword-rich board names, so a city board is better named
  * "Edmonton News and Things to Do" than plain "Edmonton" — and both match.
- * An exact name wins over a prefix. Only city categories route this way;
- * "Local", "National" and the like go to the default board.
+ * An exact name wins over a prefix. National stories route to a board starting
+ * with "Canada"; "Local", "Alberta" and the like go to the default board.
  *
  * Because any board starting with the city matches, don't give an unrelated
  * board a city-first name (e.g. "Edmonton Recipes") or stories will land there.
@@ -233,8 +234,11 @@ export function matchCityBoard(
   )
 }
 
-export async function chooseBoard(article: SocialArticle, token: string): Promise<string> {
-  const fallback = process.env.PINTEREST_BOARD_ID
+export async function chooseBoard(
+  article: SocialArticle,
+  token: string,
+  fallback: string | undefined = process.env.PINTEREST_BOARD_ID
+): Promise<string> {
 
   try {
     const match = matchCityBoard(article, await listBoards(token))
@@ -272,9 +276,15 @@ async function warmPinImage(url: string): Promise<void> {
   await res.arrayBuffer() // the CDN only keeps a response that was read in full
 }
 
+/**
+ * Create the Pin. `defaultBoardId` overrides PINTEREST_BOARD_ID, so the admin
+ * backfill page can pin to a chosen board before autopinning is switched on.
+ * City boards still win over it, exactly as for automatic Pins.
+ */
 export async function postToPinterest(
   article: SocialArticle,
-  articleUrl: string
+  articleUrl: string,
+  { defaultBoardId }: { defaultBoardId?: string } = {}
 ): Promise<string | undefined> {
   const token = await getPinterestToken()
   if (!token) {
@@ -284,7 +294,7 @@ export async function postToPinterest(
   const imageUrl = pinImageUrl(article.slug)
   await warmPinImage(imageUrl)
 
-  const boardId = await chooseBoard(article, token)
+  const boardId = await chooseBoard(article, token, defaultBoardId ?? process.env.PINTEREST_BOARD_ID)
   const { title, description, alt_text } = buildPin(article)
 
   const pin = await call<{ id?: string }>('/pins', token, {
