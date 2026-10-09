@@ -52,7 +52,10 @@ the access token before it lapses. If the refresh token ever expires, just
 repeat this step. Each renewal returns a fresh refresh token, so as long as the
 weekly cron keeps running the chain never lapses.
 
-Scopes requested: `boards:read`, `pins:read`, `pins:write`. Nothing more.
+Scopes requested: `boards:read`, `boards:write`, `pins:read`, `pins:write`.
+Creating a Pin needs all four; without `boards:write` Pinterest refuses with
+"Missing: ['boards:write']". A token keeps the scopes it was issued with, so
+after any change to this list, reconnect.
 
 ## 4. Choose the boards
 

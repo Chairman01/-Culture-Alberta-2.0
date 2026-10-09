@@ -159,6 +159,9 @@ export function buildPin(article: SocialArticle): {
 
 function describeError(status: number, json: PinterestError): string {
   const base = `${status} ${json.message ?? JSON.stringify(json).slice(0, 300)}`
+  if (status === 401 && /missing/i.test(json.message ?? '')) {
+    return `${base} — the token was issued without a scope this needs; sign in as admin and reconnect at /api/pinterest/connect`
+  }
   if (status === 401) {
     return `${base} — the Pinterest token is expired or revoked; sign in as admin and visit /api/pinterest/connect`
   }

@@ -18,10 +18,15 @@ const TOKEN_URL = 'https://api.pinterest.com/v5/oauth/token'
 export const PINTEREST_REDIRECT_URI = 'https://www.culturealberta.com/api/pinterest/callback'
 
 /**
- * Only what posting actually needs. boards:read to find the board to pin to,
- * pins:write to create the Pin. Asking for more invites a harder review.
+ * Only what posting actually needs — which, per Pinterest, is all four of
+ * these: POST /v5/pins is refused with "Missing: ['boards:write']" without
+ * boards:write, because creating a Pin writes to a board. boards:read finds
+ * the board to pin to. Asking for more invites a harder review.
+ *
+ * Changing this list only takes effect after reconnecting at
+ * /api/pinterest/connect; an existing token keeps the scopes it was issued.
  */
-export const PINTEREST_SCOPES = ['boards:read', 'pins:read', 'pins:write'].join(',')
+export const PINTEREST_SCOPES = ['boards:read', 'boards:write', 'pins:read', 'pins:write'].join(',')
 
 const TOKEN_KEY = 'pinterest'
 const REFRESH_KEY = 'pinterest_refresh'
