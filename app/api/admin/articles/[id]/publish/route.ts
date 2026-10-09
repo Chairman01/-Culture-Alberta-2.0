@@ -81,6 +81,9 @@ export async function PATCH(
     revalidatePath('/alberta')
     revalidatePath('/national')
     revalidatePath('/sitemap.xml')
+    // The RSS feed is what Publer reads to post to X; without this a new
+    // article waits up to an hour for the feed's cache to expire.
+    revalidatePath('/feed.xml')
   } catch { /* non-fatal */ }
 
   // Clear fast cache

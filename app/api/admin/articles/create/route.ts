@@ -256,6 +256,9 @@ export async function POST(request: NextRequest) {
       revalidatePath(`/articles/${data.slug || articleSlug}`)
       revalidateWeekendHub(data.slug || articleSlug)
       revalidatePath('/sitemap.xml')
+      // The RSS feed is what Publer reads to post to X; without this a new
+      // article waits up to an hour for the feed's cache to expire.
+      revalidatePath('/feed.xml')
       console.log('✅ Pages revalidated')
     } catch (revalidateError) {
       console.error('❌ Revalidation failed:', revalidateError)
