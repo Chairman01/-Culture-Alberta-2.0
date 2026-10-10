@@ -7,6 +7,7 @@ import { postToX } from './x'
 import { postToReddit } from './reddit'
 import { postToPinterest, isPinnable } from './pinterest'
 import { postToXViaBuffer } from './x-buffer'
+import { postToTikTok, isTikTokable, tiktokEnabled } from './tiktok'
 
 // ---------------------------------------------------------------------------
 // Automated social posting — fires as a non-blocking side-effect when an
@@ -93,6 +94,15 @@ const PLATFORMS: Platform[] = [
     name: 'x_buffer',
     enabled: () => !!(process.env.BUFFER_API_KEY && process.env.BUFFER_X_CHANNEL_ID),
     post: postToXViaBuffer,
+  },
+  // TikTok: a photo carousel (cover, key facts, "link in bio") with the sound
+  // picked in the editor, posted through PostFast (or Buffer, silently, if
+  // TIKTOK_PROVIDER=buffer). Crime and tragedy are skipped. See ./tiktok.
+  {
+    name: 'tiktok',
+    enabled: tiktokEnabled,
+    accepts: isTikTokable,
+    post: (article) => postToTikTok(article),
   },
   // The direct X API poster, kept as a fallback only. X charges $0.20 per post
   // or reply containing a link, so it stays off — and it can never run while

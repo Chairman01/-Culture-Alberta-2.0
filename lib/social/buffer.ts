@@ -110,3 +110,49 @@ export async function publishToX(channelId: string, parts: XThreadPart[]): Promi
   }
   return createPost.post.id
 }
+
+export interface TikTokPhotoPost {
+  /** 1–35 public JPEG/WEBP URLs, in slide order. */
+  imageUrls: string[]
+  /** The caption: keywords first, then hashtags. */
+  text: string
+  /** TikTok's photo-post title, shown in bold above the caption (90 chars). */
+  title: string
+  /**
+   * Reminder mode: Buffer notifies the phone and the post is finished in the
+   * TikTok app, which is the only way to add a sound. Otherwise it publishes
+   * on its own, silently.
+   */
+  reminder: boolean
+}
+
+/** Publish a TikTok photo carousel right now. */
+export async function publishToTikTok(channelId: string, post: TikTokPhotoPost): Promise<string> {
+  if (post.imageUrls.length === 0) throw new Error('A TikTok photo post needs at least one image')
+
+  const input = {
+    channelId,
+    schedulingType: post.reminder ? 'notification' : 'automatic',
+    mode: 'shareNow',
+    text: post.text,
+    assets: post.imageUrls.slice(0, 35).map((url) => ({ image: { url } })),
+    metadata: { tiktok: { title: post.title.slice(0, 90) } },
+  }
+
+  const { createPost } = await gql<{
+    createPost: { post?: { id: string }; message?: string }
+  }>(
+    `mutation CreatePost($input: CreatePostInput!) {
+      createPost(input: $input) {
+        ... on PostActionSuccess { post { id } }
+        ... on MutationError { message }
+      }
+    }`,
+    { input }
+  )
+
+  if (!createPost.post?.id) {
+    throw new Error(`Buffer refused the TikTok post: ${createPost.message ?? 'no reason given'}`)
+  }
+  return createPost.post.id
+}
