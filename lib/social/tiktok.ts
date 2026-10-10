@@ -2,24 +2,27 @@ import type { SocialArticle } from './index'
 import { publishToTikTok } from './buffer'
 import { toHashtag } from './hashtags'
 import { isPinnable } from './pinterest'
+import { publishTikTokCarousel } from './postfast'
 import { encodeSlideText, signSlide } from './slide-signing'
+import { resolveSound, type SoundChoice } from './tiktok-sounds'
 import { writeXBullets, type BulletResult } from './x-bullets'
 import { getServiceClient } from '@/lib/supabase-admin'
 
 // ---------------------------------------------------------------------------
-// TikTok via Buffer — each article becomes a swipeable photo carousel:
+// TikTok — each article becomes a swipeable photo carousel:
 //   1. cover: the photo and headline (the hook)
 //   2–4. one key fact per slide, in big type (written by Claude)
 //   5. "Full story: link in bio"
 //
 // Why a carousel: TikTok counts swiping through every slide like watching a
-// video to the end and widens distribution for it; guides put the sweet spot
-// at 5–8 slides. Search reads the caption, hashtags and on-slide text, so the
-// caption leads with the headline's keywords and carries 3–5 hashtags.
+// video to the end and widens distribution for it. Search reads the caption,
+// hashtags and on-slide text, so the caption leads with the headline's
+// keywords and carries 3–5 hashtags.
 //
-// Sound: Buffer can't add music; TikTok only allows it in the app. With
-// TIKTOK_PUBLISH_MODE=reminder Buffer notifies the phone instead and the post
-// is finished there with a sound. Default is fully automatic, silent.
+// Provider (TIKTOK_PROVIDER): 'postfast' (default) posts with a chosen sound —
+// the article's pick from the editor, else the default sound, else TikTok's
+// recommended music. 'buffer' is kept as a fallback; it can't add music.
+// Sounds come from TikTok's Commercial Music Library (business-cleared).
 //
 // Crime and tragedy are skipped (same filter as Pinterest): TikTok
 // age-restricts violent content and it isn't what the account is for.
@@ -86,49 +89,97 @@ async function articleBody(id: string): Promise<string | null> {
   }
 }
 
+export type TikTokProvider = 'postfast' | 'buffer'
+
+export function tiktokProvider(): TikTokProvider {
+  return process.env.TIKTOK_PROVIDER === 'buffer' ? 'buffer' : 'postfast'
+}
+
+export function tiktokEnabled(): boolean {
+  return tiktokProvider() === 'buffer'
+    ? !!(process.env.BUFFER_API_KEY && process.env.BUFFER_TIKTOK_CHANNEL_ID)
+    : !!(process.env.POSTFAST_API_KEY && process.env.POSTFAST_TIKTOK_ACCOUNT_ID)
+}
+
+/** When no sound is picked anywhere, let TikTok choose (off with TIKTOK_AUTO_MUSIC=off). */
+const autoMusicFallback = () => process.env.TIKTOK_AUTO_MUSIC !== 'off'
+
 export interface TikTokPlan {
   slides: string[]
   caption: string
   title: string
+  provider: TikTokProvider
+  sound: SoundChoice | null
+  soundSource: 'article' | 'default' | 'none'
+  /** What will actually play: the chosen sound, TikTok's pick, or nothing. */
+  music: string
   reminder: boolean
   bullets: BulletResult
 }
 
+function describeMusic(provider: TikTokProvider, sound: SoundChoice | null): string {
+  if (provider === 'buffer') return 'none (Buffer cannot add music)'
+  if (sound) return `${sound.name ?? 'chosen sound'}${sound.artist ? ` — ${sound.artist}` : ''}`
+  return autoMusicFallback() ? "TikTok's recommended music" : 'none'
+}
+
 /** Everything that would be posted, without posting. */
 export async function planTikTokPost(article: SocialArticle): Promise<TikTokPlan> {
-  const bullets = await writeXBullets(article, await articleBody(article.id))
+  const [bullets, resolved] = await Promise.all([
+    articleBody(article.id).then((body) => writeXBullets(article, body)),
+    resolveSound(article.id),
+  ])
+  const provider = tiktokProvider()
   return {
     slides: tiktokSlideUrls(article.slug, bullets.bullets),
     caption: tiktokCaption(article),
     title: article.title.trim().slice(0, 90),
+    provider,
+    sound: resolved.sound,
+    soundSource: resolved.source,
+    music: describeMusic(provider, resolved.sound),
     reminder: process.env.TIKTOK_PUBLISH_MODE === 'reminder',
     bullets,
   }
 }
 
-async function warm(url: string): Promise<void> {
+/** Render a slide (which also warms the CDN) and return its bytes. */
+async function fetchSlide(url: string): Promise<Buffer> {
   const res = await fetch(url, { cache: 'no-store', headers: { 'User-Agent': 'CultureAlbertaSlideWarmer/1.0' } })
   if (!res.ok || !(res.headers.get('content-type') ?? '').startsWith('image/')) {
     throw new Error(`Slide unavailable: ${res.status} for ${url.split('?')[0]}`)
   }
-  await res.arrayBuffer()
+  return Buffer.from(await res.arrayBuffer())
 }
 
-export async function postToTikTokViaBuffer(article: SocialArticle): Promise<string | undefined> {
-  const channelId = process.env.BUFFER_TIKTOK_CHANNEL_ID
-  if (!channelId) throw new Error('BUFFER_TIKTOK_CHANNEL_ID is not set')
-
+export async function postToTikTok(article: SocialArticle): Promise<string | undefined> {
   const plan = await planTikTokPost(article)
-  // TikTok pulls the images when it publishes; render them first so a cold
-  // slide route can't make that fetch time out.
-  await Promise.all(plan.slides.map(warm))
+  const slides = await Promise.all(plan.slides.map(fetchSlide))
 
-  const postId = await publishToTikTok(channelId, {
-    imageUrls: plan.slides,
-    text: plan.caption,
+  if (plan.provider === 'buffer') {
+    const channelId = process.env.BUFFER_TIKTOK_CHANNEL_ID
+    if (!channelId) throw new Error('BUFFER_TIKTOK_CHANNEL_ID is not set')
+    const postId = await publishToTikTok(channelId, {
+      imageUrls: plan.slides,
+      text: plan.caption,
+      title: plan.title,
+      reminder: plan.reminder,
+    })
+    console.log(`[tiktok via buffer] ${plan.slides.length} slides, buffer post ${postId}`)
+    return `buffer:${postId}`
+  }
+
+  const accountId = process.env.POSTFAST_TIKTOK_ACCOUNT_ID
+  if (!accountId) throw new Error('POSTFAST_TIKTOK_ACCOUNT_ID is not set')
+  const postId = await publishTikTokCarousel({
+    accountId,
+    slides,
+    caption: plan.caption,
     title: plan.title,
-    reminder: plan.reminder,
+    soundId: plan.sound?.musicSoundId,
+    soundName: plan.sound?.name,
+    autoMusic: autoMusicFallback(),
   })
-  console.log(`[tiktok via buffer] ${plan.slides.length} slides, ${plan.reminder ? 'reminder' : 'automatic'}, buffer post ${postId}`)
-  return `buffer:${postId}`
+  console.log(`[tiktok via postfast] ${slides.length} slides, music: ${plan.music} (${plan.soundSource}), post ${postId}`)
+  return `postfast:${postId}`
 }

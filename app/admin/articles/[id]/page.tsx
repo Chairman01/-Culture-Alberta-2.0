@@ -20,6 +20,7 @@ import { MAIN_CATEGORIES, TIER1_LOCATIONS, OTHER_COMMUNITY_LOCATIONS } from "@/l
 import { SeoTitleField } from "@/app/admin/components/seo-title-field"
 import { PublishScheduleField } from "@/app/admin/components/publish-schedule-field"
 import { formatMountain } from "@/lib/utils/mountain-time"
+import { TikTokSoundPicker, type SoundChoice } from "@/app/admin/components/tiktok-sound-picker"
 
 interface Article {
   id: string
@@ -81,6 +82,9 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  // TikTok sound: only sent with the save once the editor changes it.
+  const [tiktokSound, setTiktokSound] = useState<SoundChoice | null>(null)
+  const [tiktokSoundTouched, setTiktokSoundTouched] = useState(false)
   const [includePoll, setIncludePoll] = useState(false)
   const [suggestingPoll, setSuggestingPoll] = useState(false)
   const [pollQuestion, setPollQuestion] = useState("")
@@ -186,6 +190,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       // A schedule already on the row, so reopening the article shows the time it
       // is waiting for instead of silently resetting it to "publish now".
       setPublishAt(articleData.publishAt || null)
+      setTiktokSound(articleData.tiktokSound ?? null)
 
       // Load this article's existing poll so it can be edited in place
       try {
@@ -347,7 +352,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           : includePoll && pollQuestion.trim() &&
             (pollQuestion.trim() !== loadedPoll.question.trim() || normalizedPollOptions() !== loadedPoll.options.trim())
             ? { question: pollQuestion.trim(), options: pollOptions.map(o => o.trim()).filter(Boolean) }
-            : undefined
+            : undefined,
+        tiktokSound: tiktokSoundTouched ? tiktokSound : undefined,
       }
 
       console.log('Sending update data:', updateData)
@@ -665,6 +671,14 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
             </div>
             </>)}
           </div>
+
+          <TikTokSoundPicker
+            value={tiktokSound}
+            onChange={(next) => {
+              setTiktokSound(next)
+              setTiktokSoundTouched(true)
+            }}
+          />
         </div>
 
         <div className="space-y-4">

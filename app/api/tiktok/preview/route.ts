@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     `<p><a href="?">&larr; All articles</a></p>
      <h1>${esc(a.title)}</h1>
      <p class="note">${why ? `<span class="skip">Would be skipped:</span> ${esc(why)}.` : '<span class="pin">Would be posted</span>'}
-       · ${plan.slides.length} slides · ${plan.reminder ? 'reminder mode (you add a sound in the app)' : 'fully automatic, no sound'}
+       · ${plan.slides.length} slides · posting via ${plan.provider === 'postfast' ? 'PostFast' : 'Buffer'} · music: <b>${esc(plan.music)}</b>${plan.soundSource === 'article' ? ' (picked for this article)' : plan.soundSource === 'default' ? ' (default sound)' : ''}
        · facts written by ${plan.bullets.source === 'claude' ? 'Claude' : 'the excerpt (fallback)'}${plan.bullets.note ? ` (${esc(plan.bullets.note)})` : ''}.
        Nothing is posted from this page.</p>
      <div class="slides">${plan.slides.map((s) => `<img src="${esc(s)}" alt="" loading="lazy">`).join('')}</div>

@@ -13,6 +13,7 @@ import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 import { parsePublishAt } from '@/lib/publish-article'
 import { sanitizeAdminHtml } from '@/lib/sanitize-html'
 import { getServiceClient } from '@/lib/supabase-admin'
+import { isSoundChoice, setArticleSound } from '@/lib/social/tiktok-sounds'
 
 // The social posting in after() polls Threads until its container is ready,
 // so this needs materially more than the default budget.
@@ -270,6 +271,13 @@ export async function POST(request: NextRequest) {
     if (hasManualPoll) {
       saveManualPollForArticle(data.id, manualPoll!.question!, manualPoll!.options!)
         .catch(err => console.warn('⚠️ Manual poll save failed (non-fatal):', err))
+    }
+
+    // TikTok sound picked in the editor (admins only). Awaited so a straight-
+    // to-published article posts to TikTok with it.
+    if (auth.role === 'admin' && isSoundChoice(articleData.tiktokSound)) {
+      await setArticleSound(String(data.id), articleData.tiktokSound)
+        .catch(err => console.warn('⚠️ TikTok sound save failed (non-fatal):', err))
     }
 
     // Auto-notify search engines about the new article (non-blocking)
