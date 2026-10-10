@@ -1,7 +1,7 @@
 # TikTok auto-posting
 
 Every published article that isn't crime or tragedy becomes a TikTok photo
-carousel on @culturealberta._:
+carousel for @culturealberta._:
 
 1. Cover: the article's main photo, full-screen, with the headline
 2. One slide per key fact (written by Claude), each on the article's next photo
@@ -15,40 +15,53 @@ published after setup are posted.
 
 Research: `reports/TikTok autoposting with music.md` (2026-10-09).
 
-## Sound
+## Default: finish each post in the TikTok app (free)
 
-Pick a sound in the article editor's **TikTok sound** box (admins only):
-search or browse this week's trending sounds, press **Play** to preview,
-**Use** to pick it for this article, or **Set default** to use it for every
-article without its own pick. The order is: the article's pick, then the
-default, then TikTok's recommended music (turn that last fallback off with
-`TIKTOK_AUTO_MUSIC=off`).
+No posting API can attach songs from TikTok's main trending chart, so by
+default each carousel comes to your phone ready to post, and you add the
+sound in TikTok yourself:
 
-Sounds are from TikTok's Commercial Music Library, cleared for business use.
-No API can attach songs from TikTok's general trending chart.
+- **Buffer (reminder mode)**: the Buffer app notifies you, saves the slides
+  to your phone and copies the caption. Open TikTok, select the slides, paste
+  the caption, add a sound, post. Same free Buffer account as X.
+- **Zernio (draft mode)**: the carousel lands in TikTok's own drafts inbox
+  with the slides already in order. Add a sound and post. Free for 2 accounts.
+  TikTok allows 5 pending drafts per 24 hours, so clear them daily.
 
-## Setup (PostFast)
+`TIKTOK_PUBLISH_MODE=auto` makes either publish directly instead (Buffer
+silently; Zernio with TikTok's recommended music).
 
-1. Sign up at postfa.st and connect the TikTok account (Accounts page).
-2. PostFast → Settings → API: create a key. Add it to Vercel (Production) as
-   `POSTFAST_API_KEY` and redeploy.
-3. Signed in as admin, open `/api/admin/tiktok/status`. Copy the TikTok
-   account's `id` into Vercel as `POSTFAST_TIKTOK_ACCOUNT_ID` and redeploy.
-4. `SLIDE_SIGNING_SECRET` is optional; without it the slides are signed with
-   `CRON_SECRET`, which is already set.
-5. Open `/api/tiktok/preview` to see the exact carousel, caption and music for
-   any recent article. It posts nothing.
+## Optional: pick the sound on the website (PostFast, paid)
 
-If a sound list fails with `requiresBusinessApi`, reconnect the TikTok account
-once from PostFast's Accounts page.
+With PostFast the editor's **TikTok sound** box lists this week's trending
+Commercial Music Library sounds: play a preview, **Use** one for the article,
+or **Set default** for every article. The site then publishes directly with
+that sound. Order: the article's pick, the default, then TikTok's recommended
+music (`TIKTOK_AUTO_MUSIC=off` to skip that). With Buffer or Zernio the box
+just says the sound is added in TikTok.
 
-## Switching provider
+## Which service
 
-`TIKTOK_PROVIDER=buffer` posts through Buffer instead (needs `BUFFER_API_KEY`
-and `BUFFER_TIKTOK_CHANNEL_ID`), but Buffer can't add music.
+`TIKTOK_PROVIDER=buffer|zernio|postfast`. When unset, the first one with its
+settings in Vercel is used, in that order.
+
+| Service | Vercel settings |
+| --- | --- |
+| Buffer | `BUFFER_API_KEY`, `BUFFER_TIKTOK_CHANNEL_ID` |
+| Zernio | `ZERNIO_API_KEY`, `ZERNIO_TIKTOK_ACCOUNT_ID` |
+| PostFast | `POSTFAST_API_KEY`, `POSTFAST_TIKTOK_ACCOUNT_ID` |
+
+Open `/api/admin/tiktok/status` (admin) for the TikTok account ids each
+service reports and what to set next. Open `/api/tiktok/preview` to see any
+recent article's exact carousel and caption; it posts nothing. Redeploy after
+changing Vercel settings.
+
+`SLIDE_SIGNING_SECRET` is optional; without it slides are signed with
+`CRON_SECRET`, which is already set.
 
 ## Notes
 
-- PostFast can't publish "now"; posts are scheduled about 90 seconds ahead.
-- Carousels take 2–10 images on PostFast; ours are 5.
-- TikTok caps API posts at about 15 per account per day; we post about 3.
+- PostFast can't publish "now"; its posts are scheduled about 90 seconds ahead.
+- TikTok caps API posts at about 15 per account per day; we send about 3.
+- Buffer's free plan holds at most 10 waiting posts. Finish reminders as they
+  arrive so they don't pile up.
