@@ -56,6 +56,8 @@ export function TikTokSoundPicker({
   const [error, setError] = useState<string | null>(null)
   const [playing, setPlaying] = useState<string | null>(null)
   const [savingDefault, setSavingDefault] = useState<string | null>(null)
+  // Buffer reminders / Zernio drafts: the sound is added in the TikTok app.
+  const [handFinished, setHandFinished] = useState(false)
   const audio = useRef<HTMLAudioElement | null>(null)
 
   // Load the default once, so the collapsed box can say what will play.
@@ -64,6 +66,10 @@ export function TikTokSoundPicker({
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d) return
+        if (d.handFinished) {
+          setHandFinished(true)
+          return
+        }
         setDefaultSound(d.defaultSound ?? null)
         if (Array.isArray(d.sounds)) setSounds(d.sounds)
         if (d.error) setError(d.error)
@@ -124,6 +130,18 @@ export function TikTokSoundPicker({
     } finally {
       setSavingDefault(null)
     }
+  }
+
+  if (handFinished) {
+    return (
+      <div className="rounded-lg border border-gray-300 bg-gray-50/60 p-4">
+        <div className="font-medium text-gray-900">TikTok sound</div>
+        <div className="text-xs text-gray-600 mt-0.5">
+          When this article is published, its TikTok carousel comes to your phone ready to post. Add any sound in
+          the TikTok app before you tap Post.
+        </div>
+      </div>
+    )
   }
 
   const effective = value

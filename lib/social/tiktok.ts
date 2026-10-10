@@ -3,6 +3,7 @@ import { publishToTikTok } from './buffer'
 import { toHashtag } from './hashtags'
 import { isPinnable } from './pinterest'
 import { publishTikTokCarousel } from './postfast'
+import { publishTikTokViaZernio } from './zernio'
 import { encodeSlideText, signSlide } from './slide-signing'
 import { resolveSound, type SoundChoice } from './tiktok-sounds'
 import { writeXBullets, type BulletResult } from './x-bullets'
@@ -19,10 +20,17 @@ import { getServiceClient } from '@/lib/supabase-admin'
 // hashtags and on-slide text, so the caption leads with the headline's
 // keywords and carries 3–5 hashtags.
 //
-// Provider (TIKTOK_PROVIDER): 'postfast' (default) posts with a chosen sound —
-// the article's pick from the editor, else the default sound, else TikTok's
-// recommended music. 'buffer' is kept as a fallback; it can't add music.
-// Sounds come from TikTok's Commercial Music Library (business-cleared).
+// Provider (TIKTOK_PROVIDER; when unset, the first one configured below):
+//   'buffer'   Reminder mode by default: Buffer's phone app hands over the
+//              slides and caption, and the post is finished in TikTok with any
+//              sound. Free, same service as X. TIKTOK_PUBLISH_MODE=auto posts
+//              silently instead.
+//   'zernio'   Draft mode by default: the carousel lands in TikTok's drafts
+//              inbox, ready to add a sound and post. Free for 2 accounts.
+//              TIKTOK_PUBLISH_MODE=auto publishes directly with TikTok's music.
+//   'postfast' Publishes directly with the sound picked in the editor (or the
+//              default sound, or TikTok's recommended music). Paid.
+// Picked sounds come from TikTok's Commercial Music Library (business-cleared).
 //
 // Crime and tragedy are skipped (same filter as Pinterest): TikTok
 // age-restricts violent content and it isn't what the account is for.
@@ -89,16 +97,32 @@ async function articleBody(id: string): Promise<string | null> {
   }
 }
 
-export type TikTokProvider = 'postfast' | 'buffer'
+export type TikTokProvider = 'buffer' | 'zernio' | 'postfast'
+
+const configured: Record<TikTokProvider, () => boolean> = {
+  buffer: () => !!(process.env.BUFFER_API_KEY && process.env.BUFFER_TIKTOK_CHANNEL_ID),
+  zernio: () => !!(process.env.ZERNIO_API_KEY && process.env.ZERNIO_TIKTOK_ACCOUNT_ID),
+  postfast: () => !!(process.env.POSTFAST_API_KEY && process.env.POSTFAST_TIKTOK_ACCOUNT_ID),
+}
 
 export function tiktokProvider(): TikTokProvider {
-  return process.env.TIKTOK_PROVIDER === 'buffer' ? 'buffer' : 'postfast'
+  const set = process.env.TIKTOK_PROVIDER as TikTokProvider | undefined
+  if (set && set in configured) return set
+  return (['buffer', 'zernio', 'postfast'] as const).find((p) => configured[p]()) ?? 'buffer'
 }
 
 export function tiktokEnabled(): boolean {
-  return tiktokProvider() === 'buffer'
-    ? !!(process.env.BUFFER_API_KEY && process.env.BUFFER_TIKTOK_CHANNEL_ID)
-    : !!(process.env.POSTFAST_API_KEY && process.env.POSTFAST_TIKTOK_ACCOUNT_ID)
+  return configured[tiktokProvider()]()
+}
+
+/**
+ * Hand-finished (reminder/draft) vs published directly. Buffer and Zernio
+ * default to hand-finished so a sound can be added in TikTok; PostFast
+ * publishes directly because it attaches the sound itself.
+ */
+export function tiktokHandFinished(provider: TikTokProvider = tiktokProvider()): boolean {
+  if (provider === 'postfast') return false
+  return process.env.TIKTOK_PUBLISH_MODE !== 'auto'
 }
 
 /** When no sound is picked anywhere, let TikTok choose (off with TIKTOK_AUTO_MUSIC=off). */
@@ -118,7 +142,9 @@ export interface TikTokPlan {
 }
 
 function describeMusic(provider: TikTokProvider, sound: SoundChoice | null): string {
+  if (tiktokHandFinished(provider)) return 'you add it in the TikTok app before posting'
   if (provider === 'buffer') return 'none (Buffer cannot add music)'
+  if (provider === 'zernio') return autoMusicFallback() ? "TikTok's recommended music" : 'none'
   if (sound) return `${sound.name ?? 'chosen sound'}${sound.artist ? ` — ${sound.artist}` : ''}`
   return autoMusicFallback() ? "TikTok's recommended music" : 'none'
 }
@@ -138,7 +164,7 @@ export async function planTikTokPost(article: SocialArticle): Promise<TikTokPlan
     sound: resolved.sound,
     soundSource: resolved.source,
     music: describeMusic(provider, resolved.sound),
-    reminder: process.env.TIKTOK_PUBLISH_MODE === 'reminder',
+    reminder: tiktokHandFinished(provider),
     bullets,
   }
 }
@@ -154,7 +180,23 @@ async function fetchSlide(url: string): Promise<Buffer> {
 
 export async function postToTikTok(article: SocialArticle): Promise<string | undefined> {
   const plan = await planTikTokPost(article)
+  // Renders every slide first, so the service's own fetch hits a warm cache.
   const slides = await Promise.all(plan.slides.map(fetchSlide))
+
+  if (plan.provider === 'zernio') {
+    const accountId = process.env.ZERNIO_TIKTOK_ACCOUNT_ID
+    if (!accountId) throw new Error('ZERNIO_TIKTOK_ACCOUNT_ID is not set')
+    const { id, url } = await publishTikTokViaZernio({
+      accountId,
+      imageUrls: plan.slides,
+      title: plan.title,
+      caption: plan.caption,
+      draft: plan.reminder,
+      autoMusic: autoMusicFallback(),
+    })
+    console.log(`[tiktok via zernio] ${plan.slides.length} slides, ${plan.reminder ? 'sent to TikTok drafts' : 'published'}, post ${id}`)
+    return url ?? `zernio:${id}`
+  }
 
   if (plan.provider === 'buffer') {
     const channelId = process.env.BUFFER_TIKTOK_CHANNEL_ID

@@ -1,9 +1,10 @@
 /**
  * TikTok setup status — read-only.
  *
- * Lists the accounts connected in PostFast (POSTFAST_TIKTOK_ACCOUNT_ID is the
- * TikTok one), the provider and music settings, the default sound, and the
- * last ten TikTok posts. Never posts anything.
+ * Shows which service posts to TikTok (Buffer, Zernio or PostFast), whether
+ * posts are finished by hand in the TikTok app, the account ids each
+ * configured service reports (the value for its *_TIKTOK_* env var), the
+ * default sound, and the last ten TikTok posts. Never posts anything.
  *
  * GET /api/admin/tiktok/status   (admin)
  */
@@ -11,34 +12,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
 import { getServiceClient } from '@/lib/supabase-admin'
-import { listPostFastAccounts, type PostFastAccount } from '@/lib/social/postfast'
-import { tiktokEnabled, tiktokProvider } from '@/lib/social/tiktok'
+import { listBufferChannels } from '@/lib/social/buffer'
+import { listPostFastAccounts } from '@/lib/social/postfast'
+import { tiktokEnabled, tiktokHandFinished, tiktokProvider } from '@/lib/social/tiktok'
 import { getDefaultSound } from '@/lib/social/tiktok-sounds'
+import { listZernioAccounts } from '@/lib/social/zernio'
 
 export const dynamic = 'force-dynamic'
+
+async function attempt<T>(fn: () => Promise<T>): Promise<{ data?: T; error?: string }> {
+  try {
+    return { data: await fn() }
+  } catch (err) {
+    return { error: String(err).slice(0, 300) }
+  }
+}
 
 export async function GET(request: NextRequest) {
   const auth = requireAdmin(request)
   if (!auth.ok) return auth.response
 
+  const provider = tiktokProvider()
   const configured = {
-    provider: tiktokProvider(),
+    provider,
     enabled: tiktokEnabled(),
-    postfastApiKey: !!process.env.POSTFAST_API_KEY,
-    postfastTikTokAccountId: process.env.POSTFAST_TIKTOK_ACCOUNT_ID ?? null,
-    autoMusicFallback: process.env.TIKTOK_AUTO_MUSIC !== 'off',
+    finishedInTikTokApp: tiktokHandFinished(provider),
+    buffer: { apiKey: !!process.env.BUFFER_API_KEY, tiktokChannelId: process.env.BUFFER_TIKTOK_CHANNEL_ID ?? null },
+    zernio: { apiKey: !!process.env.ZERNIO_API_KEY, tiktokAccountId: process.env.ZERNIO_TIKTOK_ACCOUNT_ID ?? null },
+    postfast: { apiKey: !!process.env.POSTFAST_API_KEY, tiktokAccountId: process.env.POSTFAST_TIKTOK_ACCOUNT_ID ?? null },
     autopost: process.env.SOCIAL_AUTOPOST === 'true',
   }
 
-  let accounts: PostFastAccount[] | null = null
-  let accountsError: string | null = null
-  if (configured.postfastApiKey) {
-    try {
-      accounts = await listPostFastAccounts()
-    } catch (err) {
-      accountsError = String(err).slice(0, 300)
-    }
-  }
+  const [buffer, zernio, postfast] = await Promise.all([
+    configured.buffer.apiKey ? attempt(async () => (await listBufferChannels()).filter((c) => c.service === 'tiktok')) : null,
+    configured.zernio.apiKey ? attempt(async () => (await listZernioAccounts()).filter((a) => a.platform === 'tiktok')) : null,
+    configured.postfast.apiKey ? attempt(listPostFastAccounts) : null,
+  ])
 
   const { data: recent } = await getServiceClient()
     .from('social_posts')
@@ -47,16 +56,17 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false })
     .limit(10)
 
+  const envFor = { buffer: 'BUFFER_TIKTOK_CHANNEL_ID', zernio: 'ZERNIO_TIKTOK_ACCOUNT_ID', postfast: 'POSTFAST_TIKTOK_ACCOUNT_ID' }[provider]
+
   return NextResponse.json({
     configured,
+    tiktokAccounts: { buffer, zernio, postfast },
     defaultSound: await getDefaultSound().catch(() => null),
-    accounts,
-    accountsError,
     recentPosts: recent ?? [],
-    next: !configured.postfastApiKey
-      ? 'Create an API key in PostFast (Settings → API), add it to Vercel as POSTFAST_API_KEY, then redeploy'
-      : !configured.postfastTikTokAccountId
-        ? 'Copy the TikTok account id from `accounts` into Vercel as POSTFAST_TIKTOK_ACCOUNT_ID, then redeploy'
-        : 'Ready — pick sounds in the article editor; new articles post to TikTok on publish',
+    next: configured.enabled
+      ? configured.finishedInTikTokApp
+        ? 'Ready — each new article arrives on your phone to review, add a sound and post'
+        : 'Ready — new articles post to TikTok on publish'
+      : `Set the ${provider} API key and ${envFor} in Vercel (ids are listed under tiktokAccounts), then redeploy`,
   })
 }

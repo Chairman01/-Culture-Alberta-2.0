@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
 import { listTikTokSounds, type SoundQuery } from '@/lib/social/postfast'
 import { getDefaultSound } from '@/lib/social/tiktok-sounds'
+import { tiktokHandFinished, tiktokProvider } from '@/lib/social/tiktok'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,14 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response
 
   const defaultSound = await getDefaultSound().catch(() => null)
+
+  // Only PostFast attaches a sound by API. With Buffer reminders or Zernio
+  // drafts the sound is added in the TikTok app, so there is nothing to pick.
+  const provider = tiktokProvider()
+  if (provider !== 'postfast' || tiktokHandFinished(provider)) {
+    return NextResponse.json({ configured: false, provider, handFinished: true, sounds: [], defaultSound })
+  }
+
   const accountId = process.env.POSTFAST_TIKTOK_ACCOUNT_ID
   if (!process.env.POSTFAST_API_KEY || !accountId) {
     return NextResponse.json({
