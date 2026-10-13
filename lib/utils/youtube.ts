@@ -398,7 +398,12 @@ export function formatArticleTables(html: string): string {
         let body = paragraphs.length
           ? paragraphs.join('<br>') + stripped.trim()
           : inner
-        body = body.trim()
+        // Font-size and font-family spans the editor keeps from a paste
+        // would fight the table's own type size. Their text stays.
+        body = body
+          .replace(/<span\b[^>]*>/gi, '')
+          .replace(/<\/span>/gi, '')
+          .trim()
         const text = body.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ')
         const numeric = NUMERIC_CELL.test(text)
         return `<${tag}${attrs}${numeric ? ' class="num"' : ''}>${body}</${tag}>`
