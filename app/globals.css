@@ -362,6 +362,122 @@ body {
   color: #4b5563;
 }
 
+/* ── Tables in article bodies ───────────────────────────────────────────────
+   Writers paste tables from Claude, spreadsheets and other sites. Whatever
+   markup arrives, it should read like the site's own table: full width,
+   hairline rules, a shaded header row, right-aligned numbers.
+
+   Server side, processArticleContent (lib/utils/youtube.ts) wraps each table
+   in .article-table so wide tables scroll sideways on phones instead of
+   breaking the layout, unwraps the <p> the editor puts inside every cell
+   (Mediavine inserts ads after <p>s, including ones inside cells), and tags
+   numeric cells with .num. The editor shares these rules through the
+   .article-content-wrapper class it sets on itself, so it shows what readers
+   will see. */
+.article-content-wrapper .article-table {
+  margin: 1.75rem 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+}
+
+.article-content-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: #374151;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A bare table (older content, or anything that skipped the wrapper) still
+   needs its own spacing and outline. */
+.article-content-wrapper > table,
+.article-content-wrapper :not(.article-table) > table {
+  margin: 1.75rem 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+}
+
+.article-content-wrapper th,
+.article-content-wrapper td {
+  padding: 0.65rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+  border: 0;
+  border-bottom: 1px solid #e5e7eb;
+  min-width: 0;
+}
+
+.article-content-wrapper tr:last-child > th,
+.article-content-wrapper tr:last-child > td {
+  border-bottom: 0;
+}
+
+.article-content-wrapper th {
+  background: #f9fafb;
+  color: #111827;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* A header-only first row that arrived as bold <td>s (common from pasted
+   sites) still reads as a header. */
+.article-content-wrapper thead td {
+  background: #f9fafb;
+  color: #111827;
+  font-weight: 600;
+}
+
+.article-content-wrapper tbody tr:nth-child(even) > td {
+  background: #fafafa;
+}
+
+.article-content-wrapper th.num,
+.article-content-wrapper td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* The editor stores every cell's text inside a <p>; without this each cell
+   would carry a paragraph's 1.5rem bottom margin. */
+.article-content-wrapper th > p,
+.article-content-wrapper td > p {
+  margin: 0;
+  line-height: inherit;
+}
+
+.article-content-wrapper th > p + p,
+.article-content-wrapper td > p + p {
+  margin-top: 0.35rem;
+}
+
+.article-content-wrapper td > strong,
+.article-content-wrapper td > p > strong {
+  color: #111827;
+}
+
+.article-content-wrapper caption {
+  caption-side: bottom;
+  padding-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .article-content-wrapper table {
+    font-size: 0.9375rem;
+  }
+  .article-content-wrapper th,
+  .article-content-wrapper td {
+    padding: 0.55rem 0.7rem;
+  }
+}
+
 /* ── Job descriptions ───────────────────────────────────────────────────────
    Hand-written for the same reason .article-content-wrapper is: this project
    does NOT install @tailwindcss/typography, so `prose` and every `prose-h3:`

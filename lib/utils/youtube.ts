@@ -353,6 +353,73 @@ function captionCreditedImages(html: string): string {
   )
 }
 
+/**
+ * A cell is "numeric" when, stripped of tags, it is a number with the usual
+ * dressing: thousands separators, decimals, a leading sign or dollar sign, a
+ * trailing percent, a dash for "none". "L 6-1" or "Oct. 1" are not numbers.
+ */
+const NUMERIC_CELL = /^\s*(?:[-+−–]\s*)?(?:\$|C\$|US\$|€|£)?\s*\d[\d,]*(?:\.\d+)?\s*(?:%|pp|x|k|K|M|B)?\s*$|^\s*[—–-]\s*$/
+
+/**
+ * Normalises whatever table markup a writer pasted into the one shape the
+ * article CSS is written for. Every change is markup-only and idempotent, so
+ * a table that went through this on a previous render (or was hand-written
+ * to match) is left alone.
+ *
+ *  - Drops the <p> the editor stores inside each cell. Mediavine's in-content
+ *    ads land after <p>s wherever they are, cells included.
+ *  - Strips inline styles, widths and <colgroup>s the source site sent along,
+ *    so the table takes the site's own look instead of a mix of both.
+ *  - Tags number-only cells with class="num" so they right-align.
+ *  - Wraps each table in <div class="article-table"> for sideways scrolling
+ *    on narrow screens.
+ */
+export function formatArticleTables(html: string): string {
+  if (!html || !/<table\b/i.test(html)) return html
+
+  return html.replace(/<table\b[\s\S]*?<\/table>/gi, (table) => {
+    let out = table
+      .replace(/<colgroup\b[\s\S]*?<\/colgroup>/gi, '')
+      .replace(/<col\b[^>]*\/?>/gi, '')
+      // Inline styling and sizing from the source page.
+      .replace(/<(table|thead|tbody|tfoot|tr|th|td)\b([^>]*)>/gi, (_m, tag: string, attrs: string) => {
+        const kept = attrs
+          .replace(/\s(?:style|width|height|bgcolor|border|cellpadding|cellspacing|align|valign|class)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+        return `<${tag}${kept}>`
+      })
+      // Cell text lives in <p>s in the editor. Join paragraphs with a line
+      // break instead so no <p> is left inside a cell.
+      .replace(/<(th|td)(\b[^>]*)>([\s\S]*?)<\/\1>/gi, (_m, tag: string, attrs: string, inner: string) => {
+        const paragraphs: string[] = []
+        const stripped = inner.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (_p, text: string) => {
+          paragraphs.push(text)
+          return ''
+        })
+        let body = paragraphs.length
+          ? paragraphs.join('<br>') + stripped.trim()
+          : inner
+        body = body.trim()
+        const text = body.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ')
+        const numeric = NUMERIC_CELL.test(text)
+        return `<${tag}${attrs}${numeric ? ' class="num"' : ''}>${body}</${tag}>`
+      })
+      // A table whose only header row is bold <td>s in the first row of a
+      // thead still gets header treatment through CSS (thead td), so nothing
+      // to do there.
+
+    // The old editor wrote class="editor-table"; the CSS keys on the wrapper.
+    out = out.replace(/<table\b[^>]*>/i, '<table>')
+
+    return `<div class="article-table">${out}</div>`
+  })
+    // Idempotence: a wrapper that already existed around the table now holds
+    // a second one. Collapse the pair.
+    .replace(/<div class="article-table">\s*<div class="article-table">([\s\S]*?)<\/div>\s*<\/div>/gi, '<div class="article-table">$1</div>')
+    // The editor's paragraph wrapper around a table (TipTap never does this,
+    // but hand-pasted HTML sometimes does) would put a <div> inside a <p>.
+    .replace(/<p>\s*(<div class="article-table">[\s\S]*?<\/div>)\s*<\/p>/gi, '$1')
+}
+
 export function processArticleContent(content: string): string {
   if (!content) return content
 
@@ -360,6 +427,7 @@ export function processArticleContent(content: string): string {
   let processed = processMediavineVideoEmbeds(content)
 
   processed = captionCreditedImages(processed)
+  processed = formatArticleTables(processed)
 
   // First process anchor tags (more specific patterns, must run before standalone URL patterns)
   processed = processYouTubeAnchors(processed)
