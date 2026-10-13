@@ -12,6 +12,7 @@ import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { Button } from "@/components/ui/button"
+import { htmlForPaste } from '@/lib/editor/paste-tables'
 
 // Custom FontSize extension
 const FontSize = Extension.create({
@@ -128,6 +129,19 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
     editorProps: {
       attributes: {
         class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[300px] p-4 article-content-wrapper',
+      },
+      // Pasted tables. Claude's Copy button hands over Markdown, web pages and
+      // spreadsheets hand over HTML dressed in their own fonts and widths.
+      // Both become a plain editor table that takes the article's styling.
+      // Anything that is not a table paste falls through to normal handling.
+      handlePaste: (view, event) => {
+        const data = event.clipboardData
+        if (!data) return false
+        const html = htmlForPaste(data.getData('text/html'), data.getData('text/plain'))
+        if (!html) return false
+        event.preventDefault()
+        editor?.chain().focus().insertContent(html, { parseOptions: { preserveWhitespace: false } }).run()
+        return true
       },
     },
     immediatelyRender: false, // Fix SSR hydration mismatch
@@ -304,29 +318,17 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
         .prose span[style*="font-size"] {
           /* Let the inline style take precedence */
         }
-        /* Table styles */
-        .ProseMirror table,
-        .editor-table {
-          border-collapse: collapse;
-          margin: 1.5rem 0;
-          width: 100%;
-          overflow: hidden;
+        /* Table styles. The look (rules, header shading, padding) comes from
+           the .article-content-wrapper rules in globals.css, the same ones the
+           public article uses, so the editor shows what readers get. Only the
+           editing affordances live here. */
+        .ProseMirror table {
+          table-layout: fixed;
         }
         .ProseMirror table td,
         .ProseMirror table th {
-          border: 2px solid #d1d5db;
-          padding: 0.5rem 0.75rem;
-          vertical-align: top;
           min-width: 80px;
           position: relative;
-        }
-        .ProseMirror table th {
-          background: #f3f4f6;
-          font-weight: 600;
-          text-align: left;
-        }
-        .ProseMirror table tr:nth-child(even) td {
-          background: #f9fafb;
         }
         .ProseMirror table .selectedCell:after {
           background: rgba(59, 130, 246, 0.15);
@@ -569,9 +571,9 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your ar
 
       {/* Editor Content or Preview */}
       {isPreviewMode ? (
-        <div 
-          className="prose prose-lg max-w-none p-4 min-h-[300px]"
-           dangerouslySetInnerHTML={{ 
+        <div
+          className="prose prose-lg max-w-none p-4 min-h-[300px] article-content-wrapper"
+           dangerouslySetInnerHTML={{
              __html: content
                .replace(/<ul>/g, '<ul class="space-y-2 mb-6">')
                .replace(/<ol>/g, '<ol class="space-y-2 mb-6">')
