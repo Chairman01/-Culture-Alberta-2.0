@@ -10,7 +10,7 @@ import { warmSocialPreview } from '@/lib/social-image-url'
 import { saveManualPollForArticle } from '@/lib/poll-generator'
 import { requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
-import { parsePublishAt } from '@/lib/publish-article'
+import { parsePublishAt, hasMainImage, MISSING_IMAGE_ERROR } from '@/lib/publish-article'
 import { sanitizeAdminHtml } from '@/lib/sanitize-html'
 import { getServiceClient } from '@/lib/supabase-admin'
 
@@ -106,6 +106,19 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Article content is required',
           details: 'Add the full article body before publishing.',
+        },
+        { status: 400 }
+      )
+    }
+
+    // Publishing and scheduling both need a main image; a plain draft does not.
+    // Checked server-side so an API caller cannot skip what the form enforces.
+    if ((articleStatus === 'published' || scheduledFor) && !hasMainImage(articleData.imageUrl)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: MISSING_IMAGE_ERROR,
+          details: 'Every published article needs a main image. Upload one, or save as a draft.',
         },
         { status: 400 }
       )

@@ -12,6 +12,7 @@ import { notifySearchEngines } from '@/lib/indexing'
 import { postArticleToSocial } from '@/lib/social'
 import { warmSocialPreview } from '@/lib/social-image-url'
 import { revalidateWeekendHub, weekendHubPath } from '@/lib/weekend-guides'
+import { hasMainImage, MISSING_IMAGE_ERROR } from '@/lib/publish-article'
 
 // The social posting in after() polls Threads until its container is ready,
 // so this needs materially more than the default budget.
@@ -45,6 +46,12 @@ export async function PATCH(
 
   if (fetchError || !article) {
     return NextResponse.json({ error: 'Article not found' }, { status: 404 })
+  }
+
+  // This is the route /admin/review approves through, so a contributor draft
+  // submitted without an image is caught here with a message the reviewer sees.
+  if (!hasMainImage(article.image_url)) {
+    return NextResponse.json({ error: MISSING_IMAGE_ERROR }, { status: 400 })
   }
 
   // Update status to published

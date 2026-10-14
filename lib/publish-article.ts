@@ -66,6 +66,19 @@ export function parsePublishAt(value: unknown): ParsedSchedule {
 }
 
 /**
+ * The one rule every publish path shares: nothing goes live without a main
+ * image. The article card, the homepage hero, og:image, the social autopost
+ * and the Pinterest pin all key off it, so a piece without one ships broken
+ * everywhere at once. Drafts may sit without one; publishing and scheduling
+ * may not.
+ */
+export const MISSING_IMAGE_ERROR = 'Add a main article image before publishing'
+
+export function hasMainImage(imageUrl: unknown): boolean {
+  return typeof imageUrl === 'string' && imageUrl.trim().length > 0
+}
+
+/**
  * Flip one scheduled draft to published and run every side effect.
  *
  * `requireDue` is the difference between the cron and an editor's "publish now
@@ -101,6 +114,14 @@ export async function publishScheduledArticle(
   }
   if (requireDue && new Date(draft.publish_at).getTime() > Date.now()) {
     return { ok: false, id: articleId, reason: 'Not due yet' }
+  }
+  if (!hasMainImage(draft.image_url)) {
+    // The schedule routes refuse to set a timer without an image, so this only
+    // happens when the image was removed afterwards. Leave the timer in place
+    // and keep reporting it, so the admin list shows it stuck rather than
+    // silently dropping the schedule.
+    console.warn(`[publish-scheduled] "${draft.title}" is due but has no main image — not publishing`)
+    return { ok: false, id: articleId, reason: MISSING_IMAGE_ERROR }
   }
 
   // `date` and `created_at` both move to the publish moment. Every public
