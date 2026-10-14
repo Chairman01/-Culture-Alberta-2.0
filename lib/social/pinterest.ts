@@ -46,10 +46,11 @@ interface PinterestError {
 }
 
 /**
- * Stories that have no place on a board people browse for ideas. Pinterest's
- * readers come looking for things to do, places to go and ways to save, and
- * its ranking buries anything grim — so pinning these would only dilute the
- * account. The social pipeline still posts them to Bluesky and Threads.
+ * Crime, tragedy and court keywords. Every article is posted by default (the
+ * owner's decision, 2026-10-14): this list only applies when
+ * SOCIAL_SKIP_SENSITIVE=true, which keeps such stories off Pinterest and
+ * TikTok again. Pinterest's ranking tends to bury grim content, and TikTok can
+ * age-restrict or limit graphic news, which is why the switch exists.
  */
 const NOT_FOR_PINTEREST = [
   /\bmissing\b/i,
@@ -82,6 +83,7 @@ const NOT_FOR_PINTEREST = [
 
 /** Why an article stays off Pinterest, or null when it can be pinned. */
 export function pinSkipReason(article: SocialArticle): string | null {
+  if (process.env.SOCIAL_SKIP_SENSITIVE !== 'true') return null
   const haystack = [article.title, ...(article.tags ?? [])].filter(Boolean).join(' ')
   for (const re of NOT_FOR_PINTEREST) {
     const hit = haystack.match(re)
