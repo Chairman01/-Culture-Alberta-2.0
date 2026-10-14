@@ -124,11 +124,11 @@ News and Trending Stories, which takes the National category.
 
 ## What gets pinned
 
-Pinterest readers search for things to do, places to go and ways to save, and
-its ranking buries grim content. `isPinnable()` in `lib/social/pinterest.ts`
-therefore skips any article whose title or tags mention crime, missing people,
-deaths, crashes, court or fraud. Those articles still go to Bluesky and
-Threads as before. Edit the `NOT_FOR_PINTEREST` list to tune this.
+Every published article is pinned (decided 2026-10-14). Setting
+`SOCIAL_SKIP_SENSITIVE=true` in Vercel turns the old filter back on: articles
+whose title or tags mention crime, missing people, deaths, crashes, court or
+fraud are then kept off Pinterest and TikTok (they still go to X, Bluesky and
+Threads). The keyword list is `NOT_FOR_PINTEREST` in `lib/social/pinterest.ts`.
 
 Articles published before the account went live are never backfilled; the
 sweeper only ever refills a platform that had already posted something.
