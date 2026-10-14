@@ -186,6 +186,9 @@ export async function publishScheduledArticle(
     // sat as a draft, so unlike an ordinary edit this is the first chance the
     // crawlers get to see the URL.
     revalidatePath('/sitemap.xml')
+    // The RSS feed is what Publer reads to post to X; without this a new
+    // article waits up to an hour for the feed's cache to expire.
+    revalidatePath('/feed.xml')
     revalidatePath('/news-sitemap.xml')
     if (published.slug) revalidatePath(`/articles/${published.slug}`)
     revalidateWeekendHub(published.slug)

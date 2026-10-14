@@ -484,6 +484,9 @@ export async function PUT(
       revalidatePath('/lethbridge')
       revalidatePath('/edmonton')
       revalidatePath('/calgary')
+      // The RSS feed is what Publer reads to post to X; without this a new
+      // article waits up to an hour for the feed's cache to expire.
+      revalidatePath('/feed.xml')
       revalidatePath(`/articles/${data.slug || nextSlug}`)
       revalidateWeekendHub(data.slug || nextSlug)
       if (existingArticle?.slug && existingArticle.slug !== nextSlug) {
