@@ -8,6 +8,7 @@ const nextConfig = {
   // function rather than relying on the tracer spotting the readFile call.
   outputFileTracingIncludes: {
     '/api/pin/[slug]': ['./assets/fonts/**'],
+    '/api/tiktok-slide/[slug]/[slide]': ['./assets/fonts/**'],
   },
   // Performance optimizations
   compress: true,

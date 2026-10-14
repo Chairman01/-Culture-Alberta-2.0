@@ -13,6 +13,7 @@ import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
 import { parsePublishAt } from '@/lib/publish-article'
 import { sanitizeAdminHtml } from '@/lib/sanitize-html'
 import { getServiceClient } from '@/lib/supabase-admin'
+import { getArticleSound, isSoundChoice, setArticleSound } from '@/lib/social/tiktok-sounds'
 
 // The social posting in after() polls Threads until its container is ready,
 // so this needs materially more than the default budget.
@@ -110,6 +111,8 @@ export async function GET(
 
     const mapped = {
       ...data,
+      // The TikTok sound picked in the editor, or null for the default.
+      tiktokSound: authCheck.role === 'admin' ? await getArticleSound(String(data.id)).catch(() => null) : null,
       imageUrl: data.image_url || data.image || '',
       imageSource: data.image_source || '',
       date: data.created_at,
@@ -506,6 +509,17 @@ export async function PUT(
     } else if (manualPoll === null) {
       deletePollForArticle(data.id)
         .catch(err => console.warn('⚠️ Poll removal failed (non-fatal):', err))
+    }
+
+    // TikTok sound picked in the editor (admins only): an object saves it,
+    // null clears it so the default sound applies, absent means no change.
+    // Awaited, not fire-and-forget: the TikTok post below must see it.
+    if (authCheck.role === 'admin' && articleData.tiktokSound !== undefined) {
+      const pick = articleData.tiktokSound
+      if (pick === null || isSoundChoice(pick)) {
+        await setArticleSound(String(data.id), pick === null ? null : pick)
+          .catch(err => console.warn('⚠️ TikTok sound save failed (non-fatal):', err))
+      }
     }
 
     // Auto-notify search engines about the updated article (non-blocking)

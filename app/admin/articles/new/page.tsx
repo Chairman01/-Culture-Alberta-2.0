@@ -18,6 +18,7 @@ import { MAIN_CATEGORIES, TIER1_LOCATIONS, OTHER_COMMUNITY_LOCATIONS } from "@/l
 import { SeoTitleField } from "@/app/admin/components/seo-title-field"
 import { PublishScheduleField } from "@/app/admin/components/publish-schedule-field"
 import { formatMountain } from "@/lib/utils/mountain-time"
+import { TikTokSoundPicker, type SoundChoice } from "@/app/admin/components/tiktok-sound-picker"
 
 export default function NewArticlePage() {
   const router = useRouter()
@@ -47,6 +48,7 @@ export default function NewArticlePage() {
   const [imageSource, setImageSource] = useState("")
   const [showImageUploader, setShowImageUploader] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [tiktokSound, setTiktokSound] = useState<SoundChoice | null>(null)
   const [includePoll, setIncludePoll] = useState(false)
   const [suggestingPoll, setSuggestingPoll] = useState(false)
   const [pollQuestion, setPollQuestion] = useState("")
@@ -233,7 +235,8 @@ export default function NewArticlePage() {
           featuredAlberta,
           poll: includePoll && pollQuestion.trim()
             ? { question: pollQuestion.trim(), options: pollOptions.map(o => o.trim()).filter(Boolean) }
-            : undefined
+            : undefined,
+          tiktokSound: tiktokSound ?? undefined,
         })
       })
 
@@ -532,6 +535,8 @@ export default function NewArticlePage() {
             </div>
             </>)}
           </div>
+
+          {!isContributor && <TikTokSoundPicker value={tiktokSound} onChange={setTiktokSound} />}
         </div>
 
         <div className="space-y-4">
