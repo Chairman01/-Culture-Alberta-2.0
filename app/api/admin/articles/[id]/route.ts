@@ -10,7 +10,7 @@ import { warmSocialPreview } from '@/lib/social-image-url'
 import { saveManualPollForArticle, deletePollForArticle } from '@/lib/poll-generator'
 import { requireAdmin, requireAdminOrContributor } from '@/lib/admin-auth'
 import { createSlug, generateUniqueSlug } from '@/lib/utils/slug'
-import { parsePublishAt } from '@/lib/publish-article'
+import { parsePublishAt, hasMainImage, MISSING_IMAGE_ERROR } from '@/lib/publish-article'
 import { sanitizeAdminHtml } from '@/lib/sanitize-html'
 import { getServiceClient } from '@/lib/supabase-admin'
 
@@ -200,6 +200,20 @@ export async function PUT(
     // `status = 'published'`. The cron flips it at the appointed time.
     const isScheduled = schedule.kind === 'at'
     const articleStatus = isScheduled ? 'draft' : requestedStatus
+
+    // Publishing and scheduling both need a main image. A contributor's save
+    // keeps whatever status the row already had, so an already-live article
+    // cannot lose its image through a typo fix either.
+    if ((articleStatus === 'published' || isScheduled) && !hasMainImage(articleData.imageUrl)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: MISSING_IMAGE_ERROR,
+          details: 'Every published article needs a main image. Upload one before saving.',
+        },
+        { status: 400 }
+      )
+    }
 
     // publish_at is only ever meaningful on a draft, so anything that ends up
     // published clears it. That matters for the older forms that send no

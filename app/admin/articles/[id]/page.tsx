@@ -296,6 +296,17 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       return
     }
 
+    // The server refuses to publish or schedule without a main image; checking
+    // here too means the writer hears about it before leaving the page.
+    if (!imageUrl.trim()) {
+      toast({
+        title: "Add a main image",
+        description: "Every article needs a main image before it can be published. Upload one in the Featured Image box.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSaving(true)
 
     console.log('Saving article with ID:', resolvedParams.id)
@@ -394,7 +405,9 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       console.error("Error updating article:", error)
       toast({
         title: "Error updating article",
-        description: "There was a problem updating your article.",
+        description: error instanceof Error && error.message
+          ? error.message.replace(/^Failed to update article: /, '')
+          : "There was a problem updating your article.",
         variant: "destructive",
       })
     } finally {

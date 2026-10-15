@@ -196,6 +196,17 @@ export default function NewArticlePage() {
       return
     }
 
+    // The server refuses to publish or schedule without a main image; checking
+    // here too means the writer hears about it before the form clears.
+    if (!imageUrl.trim()) {
+      toast({
+        title: "Add a main image",
+        description: "Every article needs a main image before it can be published. Upload one in the Featured Image box.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSaving(true)
 
     try {
@@ -238,7 +249,10 @@ export default function NewArticlePage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to create article')
+        // Surface the server's reason (missing image, missing content) rather
+        // than a generic failure the writer cannot act on.
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create article')
       }
 
       const newArticle = await response.json()
@@ -276,7 +290,9 @@ export default function NewArticlePage() {
       console.error("Error creating article:", error)
       toast({
         title: "Error creating article",
-        description: "There was a problem creating your article.",
+        description: error instanceof Error && error.message
+          ? error.message
+          : "There was a problem creating your article.",
         variant: "destructive",
       })
     } finally {
