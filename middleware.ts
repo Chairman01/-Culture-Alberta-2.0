@@ -98,11 +98,20 @@ async function getSlugRedirects(): Promise<SlugRedirectMap> {
   }
 }
 
+const APEX_ALLOWED_PATHS = new Set(['/', '/privacy-policy'])
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get('host')?.toLowerCase()
 
-  if (host === 'culturealberta.com') {
+  // Apex -> www, except for the paths Mediavine's setup checker fetches. That
+  // checker requests https://culturealberta.com (the host our account is
+  // registered under) and does NOT follow the 308, so it saw only the
+  // "Redirecting..." stub and reported "Ads Script Not Found" / "Privacy Policy
+  // Not Found" while both were live on www all along. Every page hardcodes
+  // <link rel="canonical" href="https://www.culturealberta.com...">, so serving
+  // these two on the apex keeps www the single indexed host.
+  if (host === 'culturealberta.com' && !APEX_ALLOWED_PATHS.has(pathname)) {
     const url = request.nextUrl.clone()
     url.hostname = 'www.culturealberta.com'
     return NextResponse.redirect(url, { status: 308 })
