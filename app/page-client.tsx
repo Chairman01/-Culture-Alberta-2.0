@@ -10,6 +10,7 @@ import { Article } from '@/lib/types/article'
 import { Suspense, useState, useEffect } from 'react'
 import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { HomepageLoading } from '@/components/page-loading'
+import { isArticleInCity } from '@/lib/utils/article-city'
 
 // Client-side data loading
 function useHomePageData() {
@@ -302,29 +303,11 @@ export default function Home() {
   const featuredPost = posts.find((post: any) => post.featuredHome === true) || posts[0] || null
   // Use the same flexible filtering logic as getCityArticles
   const edmontonPosts = posts.filter((post: any) => {
-    const hasCityCategory = post.category?.toLowerCase().includes('edmonton');
-    const hasCityLocation = post.location?.toLowerCase().includes('edmonton');
-    const hasCityCategories = post.categories?.some((cat: string) => 
-      cat.toLowerCase().includes('edmonton')
-    );
-    const hasCityTags = post.tags?.some((tag: string) => 
-      tag.toLowerCase().includes('edmonton')
-    );
-    
-    return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+    return isArticleInCity(post, 'edmonton')
   }).slice(0, 3)
   
   const calgaryPosts = posts.filter((post: any) => {
-    const hasCityCategory = post.category?.toLowerCase().includes('calgary');
-    const hasCityLocation = post.location?.toLowerCase().includes('calgary');
-    const hasCityCategories = post.categories?.some((cat: string) => 
-      cat.toLowerCase().includes('calgary')
-    );
-    const hasCityTags = post.tags?.some((tag: string) => 
-      tag.toLowerCase().includes('calgary')
-    );
-    
-    return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+    return isArticleInCity(post, 'calgary')
   }).slice(0, 3)
   const foodDrinkPosts = posts.filter((post: any) => post.category === 'Food & Drink').slice(0, 2)
   const trendingPosts = posts.filter((post: any) => post.trendingHome === true).slice(0, 5)

@@ -3,6 +3,7 @@ import { getAllArticles as getSupabaseArticles, getHomepageArticles, getAllPubli
 import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fallback'
 import fs from 'fs'
 import path from 'path'
+import { isArticleInCity } from './utils/article-city'
 
 // Cache for articles.json data - DISABLED for production fix
 let articlesJsonCache: Article[] | null = null
@@ -194,15 +195,7 @@ export async function getCityArticlesWithFallback(city: string): Promise<Article
       if ((article as any).type === 'event' || (article as any).type === 'Event') return false
       if ((article as any).categories?.includes('Events')) return false
 
-      const hasCityCategory = article.category?.toLowerCase().includes(city.toLowerCase())
-      const hasCityLocation = article.location?.toLowerCase().includes(city.toLowerCase())
-      const hasCityCategories = article.categories?.some((cat: string) =>
-        cat.toLowerCase().includes(city.toLowerCase())
-      )
-      const hasCityTags = (article as any).tags?.some((tag: string) =>
-        tag.toLowerCase().includes(city.toLowerCase())
-      )
-      return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags
+      return isArticleInCity(article, city)
     })
     return excludeOtherCityArticles(filtered, city.toLowerCase())
   } catch (error) {

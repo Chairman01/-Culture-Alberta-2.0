@@ -16,6 +16,7 @@ import { deduplicateRequest, generateCacheKey } from './request-deduplication'
 import { startBackgroundSyncIfNeeded } from './background-sync'
 import { createSlug } from './utils/slug'
 import { loadOptimizedFallback } from './optimized-fallback'
+import { isArticleInCity } from './utils/article-city'
 
 // Constants to prevent typos and ensure consistency
 const IMAGE_FIELDS = {
@@ -796,16 +797,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
 
         // Filter file articles by city
         const filteredFileArticles = fileArticles.filter((article: any) => {
-          const hasCityCategory = article.category?.toLowerCase().includes(city);
-          const hasCityLocation = article.location?.toLowerCase().includes(city);
-          const hasCityCategories = article.categories?.some((cat: string) =>
-            cat.toLowerCase().includes(city)
-          );
-          const hasCityTags = article.tags?.some((tag: string) =>
-            tag.toLowerCase().includes(city)
-          );
-
-          return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+          return isArticleInCity(article, city)
         });
 
         if (filteredFileArticles.length > 0) {
@@ -827,16 +819,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
 
       // Filter file articles by city
       const filteredFileArticles = fileArticles.filter((article: any) => {
-        const hasCityCategory = article.category?.toLowerCase().includes(city);
-        const hasCityLocation = article.location?.toLowerCase().includes(city);
-        const hasCityCategories = article.categories?.some((cat: string) =>
-          cat.toLowerCase().includes(city)
-        );
-        const hasCityTags = article.tags?.some((tag: string) =>
-          tag.toLowerCase().includes(city)
-        );
-
-        return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+        return isArticleInCity(article, city)
       });
 
       if (filteredFileArticles.length > 0) {
@@ -852,16 +835,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     if (articlesCache && (now - cacheTimestamp) < getCacheDuration()) {
       console.log(`Using homepage cache to filter ${city} articles`)
       const filteredFromHomepage = articlesCache.filter((article: any) => {
-        const hasCityCategory = article.category?.toLowerCase().includes(city);
-        const hasCityLocation = article.location?.toLowerCase().includes(city);
-        const hasCityCategories = article.categories?.some((cat: string) =>
-          cat.toLowerCase().includes(city)
-        );
-        const hasCityTags = article.tags?.some((tag: string) =>
-          tag.toLowerCase().includes(city)
-        );
-
-        return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+        return isArticleInCity(article, city)
       });
 
       if (filteredFromHomepage.length > 0) {
@@ -889,16 +863,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
 
       // Filter file articles by city
       const filteredFileArticles = fileArticles.filter((article: any) => {
-        const hasCityCategory = article.category?.toLowerCase().includes(city);
-        const hasCityLocation = article.location?.toLowerCase().includes(city);
-        const hasCityCategories = article.categories?.some((cat: string) =>
-          cat.toLowerCase().includes(city)
-        );
-        const hasCityTags = article.tags?.some((tag: string) =>
-          tag.toLowerCase().includes(city)
-        );
-
-        return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+        return isArticleInCity(article, city)
       });
 
       console.log(`Supabase fallback: Found ${filteredFileArticles.length} ${city} articles out of ${fileArticles.length} total`)
@@ -913,7 +878,9 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
     const supabasePromise = supabase
       .from('articles')
       .select(fields)
-      .or(`category.ilike.%${city}%,location.ilike.%${city}%,title.ilike.%${city}%`)
+      // Editor-chosen fields only. The title used to be here, which pulled in any
+      // story that merely mentions the city (see lib/utils/article-city.ts).
+      .or(`category.ilike.%${city}%,location.ilike.%${city}%,categories.cs.{"${city.charAt(0).toUpperCase() + city.slice(1)}"}`)
       .eq('status', 'published') // Public read: never serve drafts
       .order('created_at', { ascending: false })
       .limit(500) // All articles for city pages
@@ -957,16 +924,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
 
     // Additional client-side filtering to ensure we get the right city articles
     const filteredArticles = mappedArticles.filter((article: any) => {
-      const hasCityCategory = article.category?.toLowerCase().includes(city);
-      const hasCityLocation = article.location?.toLowerCase().includes(city);
-      const hasCityCategories = article.categories?.some((cat: string) =>
-        cat.toLowerCase().includes(city)
-      );
-      const hasCityTags = article.tags?.some((tag: string) =>
-        tag.toLowerCase().includes(city)
-      );
-
-      return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+      return isArticleInCity(article, city)
     });
 
     console.log(`Filtered ${city} articles:`, filteredArticles.length, 'out of', mappedArticles.length, 'total articles')
@@ -984,16 +942,7 @@ export async function getCityArticles(city: 'edmonton' | 'calgary'): Promise<Art
 
     // Filter file articles by city as well
     const filteredFileArticles = fileArticles.filter((article: any) => {
-      const hasCityCategory = article.category?.toLowerCase().includes(city);
-      const hasCityLocation = article.location?.toLowerCase().includes(city);
-      const hasCityCategories = article.categories?.some((cat: string) =>
-        cat.toLowerCase().includes(city)
-      );
-      const hasCityTags = article.tags?.some((tag: string) =>
-        tag.toLowerCase().includes(city)
-      );
-
-      return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags;
+      return isArticleInCity(article, city)
     });
 
     console.log(`File system fallback: Found ${filteredFileArticles.length} ${city} articles out of ${fileArticles.length} total`)
