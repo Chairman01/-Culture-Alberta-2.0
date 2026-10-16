@@ -14,6 +14,7 @@ import {
   deleteArticle as deleteArticleFromSupabase
 } from './supabase-articles'
 import { updateOptimizedFallback, loadOptimizedFallback } from './optimized-fallback'
+import { isArticleInCity } from './utils/article-city'
 
 // SUSTAINABLE FALLBACK SYSTEM
 // Supabase is the primary source for live/fresh data.
@@ -115,15 +116,7 @@ export async function getCityArticles(city: string): Promise<Article[]> {
         // First filter out events
         if (article.type === 'event') return false
 
-        const hasCityCategory = article.category?.toLowerCase().includes(city.toLowerCase())
-        const hasCityLocation = article.location?.toLowerCase().includes(city.toLowerCase())
-        const hasCityCategories = article.categories?.some((cat: string) =>
-          cat.toLowerCase().includes(city.toLowerCase())
-        )
-        const hasCityTags = article.tags?.some((tag: string) =>
-          tag.toLowerCase().includes(city.toLowerCase())
-        )
-        return hasCityCategory || hasCityLocation || hasCityCategories || hasCityTags
+        return isArticleInCity(article, city)
       })
     }
 

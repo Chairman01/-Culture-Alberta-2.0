@@ -12,6 +12,7 @@ import { getArticleUrl, getEventUrl } from '@/lib/utils/article-url'
 import { getTrendingByViews } from '@/lib/trending-articles'
 import { loadOptimizedFallback } from '@/lib/optimized-fallback'
 import { HomepageStructuredData } from '@/components/seo/structured-data'
+import { isArticleInCity } from '@/lib/utils/article-city'
 
 // ISR: cache for 10 min, revalidate in background — reduces Supabase load during traffic spikes
 export const revalidate = 1800
@@ -365,43 +366,25 @@ export default async function HomeStatic() {
     return OTHER_ALBERTA_CITIES.some(city => combined.includes(city))
   }
 
-  // Strong signal = category / location / tags. The title is NOT a strong signal:
-  // "Edmonton Hit-and-Run on Calgary Trail" (a road in Edmonton) must not count as Calgary.
-  const hasStrongCitySignal = (post: Article, city: string) => {
-    const cityLower = city.toLowerCase()
-    return post.category?.toLowerCase().includes(cityLower) ||
-      post.categories?.some((cat: string) => cat.toLowerCase().includes(cityLower)) ||
-      post.location?.toLowerCase().includes(cityLower) ||
-      (post as any).tags?.some((tag: string) => tag.toLowerCase().includes(cityLower)) || false
-  }
-
-  // Assign each post to a single city. A strong signal is authoritative; if neither
-  // city (or both) has one, fall back to the title and let the city named FIRST win,
-  // so a post never lands in both spotlights.
-  const belongsToCity = (post: Article, city: string, otherCity: string) => {
-    const strongThis = hasStrongCitySignal(post, city)
-    const strongOther = hasStrongCitySignal(post, otherCity)
-    if (strongThis && !strongOther) return true
-    if (strongOther && !strongThis) return false
-    const title = (post.title || '').toLowerCase()
-    const idxThis = title.indexOf(city.toLowerCase())
-    const idxOther = title.indexOf(otherCity.toLowerCase())
-    if (idxThis === -1) return false
-    if (idxOther === -1) return true
-    return idxThis < idxOther
-  }
+  // A post goes in a city spotlight only if the editor assigned it to that city:
+  // its category or categories, or its location when no city category was
+  // picked. Tags and the title are ignored on purpose (lib/utils/article-city.ts):
+  // "Spruce Grove Man Charged After Calgary Undercover Investigation" is an
+  // Edmonton story that names Calgary, and the old title fallback put it in
+  // Calgary Spotlight. A post the editor files under both cities shows in both.
+  const belongsToCity = (post: Article, city: string) => isArticleInCity(post, city)
 
   // Edmonton Spotlight: Edmonton-only, exclude Red Deer/Lethbridge etc (even if mis-tagged)
   const primaryEdmontonPosts = homepageCandidatePosts.filter(post => {
     if (post.type === 'event') return false
     if (isFromOtherAlbertaCity(post)) return false
 
-    return belongsToCity(post, 'edmonton', 'calgary')
+    return belongsToCity(post, 'edmonton')
   }).slice(0, 3)
   const fallbackEdmontonPosts = fallbackSortedPosts.filter(post => {
     if (post.type === 'event') return false
     if (isFromOtherAlbertaCity(post)) return false
-    return belongsToCity(post, 'edmonton', 'calgary')
+    return belongsToCity(post, 'edmonton')
   }).slice(0, 3)
   const edmontonPosts = primaryEdmontonPosts.length > 0 ? primaryEdmontonPosts : fallbackEdmontonPosts
 
@@ -410,7 +393,7 @@ export default async function HomeStatic() {
     if (post.type === 'event') return false
     if (isFromOtherAlbertaCity(post)) return false
 
-    return belongsToCity(post, 'calgary', 'edmonton')
+    return belongsToCity(post, 'calgary')
   }).slice(0, 3)
 
   // More From Alberta: Alberta-wide, Red Deer, Lethbridge, Medicine Hat, Grande Prairie, other communities
